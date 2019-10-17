@@ -125,7 +125,6 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="ABICxxModule.h" />
-    <ClInclude Include="ABIModule.h" />
     <ClInclude Include="Base\UwpReactInstance.h" />
     <ClInclude Include="Crash.h" />
     <ClInclude Include="DynamicReader.h">
@@ -137,10 +136,6 @@
     <ClInclude Include="Executors\WebSocketJSExecutorUwp.h" />
     <ClInclude Include="HResult.h" />
     <ClInclude Include="LifecycleState.h" />
-    <ClInclude Include="MethodInfo.h">
-      <DependentUpon>MethodInfo.idl</DependentUpon>
-      <SubType>Code</SubType>
-    </ClInclude>
     <ClInclude Include="IReactModuleBuilder.h">
       <DependentUpon>IReactModuleBuilder.idl</DependentUpon>
     </ClInclude>
@@ -183,10 +178,6 @@
     <ClInclude Include="Modules\StatusBarModule.h" />
     <ClInclude Include="Modules\TimingModule.h" />
     <ClInclude Include="Modules\WebSocketModuleUwp.h" />
-    <ClInclude Include="NativeModuleRegistry.h">
-      <DependentUpon>NativeModuleRegistry.idl</DependentUpon>
-      <SubType>Code</SubType>
-    </ClInclude>
     <ClInclude Include="NativeModulesProvider.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="Polyester\ButtonContentViewManager.h" />
@@ -284,7 +275,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ABICxxModule.cpp" />
-    <ClCompile Include="ABIModule.cpp" />
     <ClCompile Include="Base\InstanceFactory.cpp" />
     <ClCompile Include="Base\UwpReactInstance.cpp" />
     <ClCompile Include="CxxReactUWP\JSBigString.cpp" />
@@ -296,10 +286,6 @@
     </ClCompile>
     <ClCompile Include="Executors\WebSocketJSExecutorFactory.cpp" />
     <ClCompile Include="Executors\WebSocketJSExecutorUwp.cpp" />
-    <ClCompile Include="MethodInfo.cpp">
-      <DependentUpon>MethodInfo.idl</DependentUpon>
-      <SubType>Code</SubType>
-    </ClCompile>
     <ClCompile Include="IReactModuleBuilder.cpp">
       <DependentUpon>IReactModuleBuilder.idl</DependentUpon>
     </ClCompile>
@@ -338,10 +324,6 @@
     <ClCompile Include="Modules\StatusBarModule.cpp" />
     <ClCompile Include="Modules\TimingModule.cpp" />
     <ClCompile Include="Modules\WebSocketModuleUwp.cpp" />
-    <ClCompile Include="NativeModuleRegistry.cpp">
-      <DependentUpon>NativeModuleRegistry.idl</DependentUpon>
-      <SubType>Code</SubType>
-    </ClCompile>
     <ClCompile Include="NativeModulesProvider.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
@@ -448,19 +430,11 @@
     <Midl Include="IJSValueReader.idl" />
     <Midl Include="IJSValueWriter.idl" />
     <Midl Include="ILifecycleEventListener.idl" />
-    <Midl Include="INativeModule.idl" />
     <Midl Include="IReactModuleBuilder.idl" />
     <Midl Include="IReactOptions.idl" />
-    <Midl Include="IReactPackage.idl" />
     <Midl Include="IReactPackageBuilder.idl" />
     <Midl Include="IReactPackageProvider.idl" />
     <Midl Include="IViewManager.idl" />
-    <Midl Include="MethodInfo.idl">
-      <SubType>Designer</SubType>
-    </Midl>
-    <Midl Include="NativeModuleRegistry.idl">
-      <SubType>Designer</SubType>
-    </Midl>
     <Midl Include="ReactApplication.idl" />
     <Midl Include="ReactApplicationDelegate.idl">
       <SubType>Designer</SubType>
