@@ -18,7 +18,7 @@ enum FacadeType {
   Perspective,
 };
 
-static FacadeType StringToFacadeType(const std::string &string) {
+inline FacadeType StringToFacadeType(const std::string &string) {
   if (string == "opacity")
     return FacadeType::Opacity;
   if (string == "rotate")
