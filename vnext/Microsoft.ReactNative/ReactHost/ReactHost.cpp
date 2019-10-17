@@ -1,7 +1,7 @@
 #include "precomp.h"
 
-#include "ReactHost.h"
 #include <Future/FutureWait.h>
+#include "ReactHost.h"
 
 namespace Mso::React {
 
@@ -9,575 +9,541 @@ namespace Mso::React {
 // ReactOptions implementation
 //=============================================================================================
 
-LIBLET_PUBLICAPI ReactOptions& ReactOptions::AddRegisteredJSBundle(::string_view jsBundleId) noexcept
-{
-	this->JSBundles.push_back(MakeRegisteredJSBundle(jsBundleId));
-	return *this;
+LIBLET_PUBLICAPI ReactOptions &ReactOptions::AddRegisteredJSBundle(
+    ::string_view jsBundleId) noexcept {
+  this->JSBundles.push_back(MakeRegisteredJSBundle(jsBundleId));
+  return *this;
 }
 
 //! Adds JS bundle based on a file name to JSBundles.
-LIBLET_PUBLICAPI ReactOptions& ReactOptions::AddFileJSBundle(::string_view jsBundleId, ::string_view fileName) noexcept
-{
-	this->JSBundles.push_back(MakeFileJSBundle(jsBundleId.data(), fileName.data()));
-	return *this;
+LIBLET_PUBLICAPI ReactOptions &ReactOptions::AddFileJSBundle(
+    ::string_view jsBundleId,
+    ::string_view fileName) noexcept {
+  this->JSBundles.push_back(
+      MakeFileJSBundle(jsBundleId.data(), fileName.data()));
+  return *this;
 }
 
 //=============================================================================================
 // AsyncActionQueue implementation
 //=============================================================================================
 
-AsyncActionQueue::AsyncActionQueue(Mso::Async::IDispatchQueue& queue) noexcept
-	: m_queue { &queue }
-{
+AsyncActionQueue::AsyncActionQueue(Mso::Async::IDispatchQueue &queue) noexcept
+    : m_queue{&queue} {}
+
+Mso::Future<void> AsyncActionQueue::PostAction(AsyncAction &&action) noexcept {
+  Entry entry{std::move(action), Mso::Promise<void>{}};
+  Mso::Future<void> result = entry.Result.AsFuture();
+  auto &actionQueue = m_actions.Load();
+  if (!m_isInvoking.Load() && actionQueue.empty()) {
+    InvokeAction(std::move(entry));
+  } else {
+    actionQueue.push_back(std::move(entry));
+  }
+
+  return result;
 }
 
-Mso::Future<void> AsyncActionQueue::PostAction(AsyncAction&& action) noexcept
-{
-	Entry entry { std::move(action), Mso::Promise<void>{} };
-	Mso::Future<void> result = entry.Result.AsFuture();
-	auto& actionQueue = m_actions.Load();
-	if (!m_isInvoking.Load() && actionQueue.empty())
-	{
-		InvokeAction(std::move(entry));
-	}
-	else
-	{
-		actionQueue.push_back(std::move(entry));
-	}
+Mso::Future<void> AsyncActionQueue::PostActions(
+    std::initializer_list<AsyncAction> actions) noexcept {
+  // Return Future for the last action in the list
+  Mso::Future<void> result;
+  for (auto &action : actions) {
+    // We must copy action because the initialize_list is read-only (a bug in
+    // the standard?).
+    result = PostAction(Mso::Copy(action));
+  }
 
-	return result;
+  if (!result) {
+    result = Mso::MakeSucceededFuture();
+  }
+
+  return result;
 }
 
-Mso::Future<void> AsyncActionQueue::PostActions(std::initializer_list<AsyncAction> actions) noexcept
-{
-	// Return Future for the last action in the list
-	Mso::Future<void> result;
-	for (auto& action : actions)
-	{
-		// We must copy action because the initialize_list is read-only (a bug in the standard?).
-		result = PostAction(Mso::Copy(action));
-	}
+void AsyncActionQueue::InvokeAction(Entry &&entry) noexcept {
+  Mso::Details::VerifyIsInQueueElseCrash(*m_queue);
 
-	if (!result)
-	{
-		result = Mso::MakeSucceededFuture();
-	}
-
-	return result;
+  m_isInvoking.Store(true);
+  auto actionResult = entry.Action();
+  actionResult.Then(
+      m_executor,
+      [ entry = std::move(entry), spThis = Mso::MakeTCntPtr(this) ](
+          Mso::Maybe<void> && result) mutable noexcept {
+        spThis->CompleteAction(std::move(entry), std::move(result));
+      });
 }
 
-void AsyncActionQueue::InvokeAction(Entry&& entry) noexcept
-{
-	Mso::Details::VerifyIsInQueueElseCrash(*m_queue);
+void AsyncActionQueue::CompleteAction(
+    Entry &&entry,
+    Mso::Maybe<void> &&result) noexcept {
+  // Complete the action
+  entry.Result.SetValue(std::move(result));
+  entry = {nullptr, nullptr}; // Release the action before the next one starts
 
-	m_isInvoking.Store(true);
-	auto actionResult = entry.Action();
-	actionResult.Then(m_executor,
-		[entry = std::move(entry), spThis = Mso::MakeTCntPtr(this)] (Mso::Maybe<void>&& result) mutable noexcept
-	{
-		spThis->CompleteAction(std::move(entry), std::move(result));
-	});
+  // Start the next action from the queue.
+  auto &actionQueue = m_actions.Load();
+  if (!actionQueue.empty()) {
+    auto nextActionEntry = std::move(actionQueue[0]);
+    actionQueue.erase(actionQueue.begin());
+    InvokeAction(std::move(nextActionEntry));
+  } else {
+    m_isInvoking.Store(false);
+  }
 }
 
-void AsyncActionQueue::CompleteAction(Entry&& entry, Mso::Maybe<void>&& result) noexcept
-{
-	// Complete the action
-	entry.Result.SetValue(std::move(result));
-	entry = { nullptr, nullptr }; // Release the action before the next one starts
-
-	// Start the next action from the queue.
-	auto& actionQueue = m_actions.Load();
-	if (!actionQueue.empty())
-	{
-		auto nextActionEntry = std::move(actionQueue[0]);
-		actionQueue.erase(actionQueue.begin());
-		InvokeAction(std::move(nextActionEntry));
-	}
-	else
-	{
-		m_isInvoking.Store(false);
-	}
-}
-
-Mso::Async::IDispatchQueue& AsyncActionQueue::Queue() noexcept
-{
-	return *m_queue;
+Mso::Async::IDispatchQueue &AsyncActionQueue::Queue() noexcept {
+  return *m_queue;
 }
 
 //=============================================================================================
 // ReactHost implementation
 //=============================================================================================
 
-ReactHost::ReactHost(ReactOptions&& options, Mso::Promise<void>&& onInstanceLoaded) noexcept
-	: Super { GetNativeQueue(options) }
-	, m_onInstanceLoaded { std::move(onInstanceLoaded), Queue() }
-	, m_rekaContextProxy { Mso::JSHost::MakeRekaContextProxy(&Queue()) }
-	, m_options { std::move(options), Queue(), m_mutex }
-	, m_notifyWhenClosed { ReactHostRegistry::Register(*this), Queue(), m_mutex }
-{
+ReactHost::ReactHost(
+    ReactOptions &&options,
+    Mso::Promise<void> &&onInstanceLoaded) noexcept
+    : Super{GetNativeQueue(options)},
+      m_onInstanceLoaded{std::move(onInstanceLoaded), Queue()},
+      m_rekaContextProxy{Mso::JSHost::MakeRekaContextProxy(&Queue())},
+      m_options{std::move(options), Queue(), m_mutex},
+      m_notifyWhenClosed{ReactHostRegistry::Register(*this), Queue(), m_mutex} {
 }
 
-ReactHost::~ReactHost() noexcept
-{
-}
+ReactHost::~ReactHost() noexcept {}
 
 // Initialize is always called from the Native queue
-void ReactHost::Initialize() noexcept
-{
-	auto whenLoaded = m_actionQueue.Load()->PostAction(MakeLoadInstanceAction(Mso::Copy(m_options.Load())));
+void ReactHost::Initialize() noexcept {
+  auto whenLoaded = m_actionQueue.Load()->PostAction(
+      MakeLoadInstanceAction(Mso::Copy(m_options.Load())));
 
-	// We only use the m_onInstanceLoaded for the initial notification and then set it to null.
-	Mso::SetPromiseValue(m_onInstanceLoaded.Exchange(nullptr), std::move(whenLoaded));
+  // We only use the m_onInstanceLoaded for the initial notification and then
+  // set it to null.
+  Mso::SetPromiseValue(
+      m_onInstanceLoaded.Exchange(nullptr), std::move(whenLoaded));
 }
 
 // Finalize is always called from the Native queue
-void ReactHost::Finalize() noexcept
-{
-	// If we are here, then it means that the current ref count is zero.
-	// Since each AsyncAction has a strong ref count to ReactHost, the AsyncActionQueue must be empty.
-	// Thus, we only need to call UnloadInQueue to unload ReactInstance if the ReactHost is not closed yet.
-	if (Mso::Promise<void> notifyWhenClosed = m_notifyWhenClosed.Exchange(nullptr))
-	{
-		UnloadInQueue(0).Then<Mso::Executors::Inline>([notifyWhenClosed = std::move(notifyWhenClosed)]() noexcept
-		{
-			notifyWhenClosed.TrySetValue();
-		});
-	}
+void ReactHost::Finalize() noexcept {
+  // If we are here, then it means that the current ref count is zero.
+  // Since each AsyncAction has a strong ref count to ReactHost, the
+  // AsyncActionQueue must be empty. Thus, we only need to call UnloadInQueue to
+  // unload ReactInstance if the ReactHost is not closed yet.
+  if (Mso::Promise<void> notifyWhenClosed =
+          m_notifyWhenClosed.Exchange(nullptr)) {
+    UnloadInQueue(0).Then<Mso::Executors::Inline>(
+        [notifyWhenClosed = std::move(notifyWhenClosed)]() noexcept {
+          notifyWhenClosed.TrySetValue();
+        });
+  }
 }
 
-void ReactHost::Close() noexcept
-{
-	InvokeInQueue([this]() noexcept
-	{
-		// Put the ReactHost to the closed state, unload ReactInstance, and notify the closing Promise.
-		auto whenClosed = m_actionQueue.Load()->PostAction(MakeUnloadInstanceAction());
+void ReactHost::Close() noexcept {
+  InvokeInQueue([this]() noexcept {
+    // Put the ReactHost to the closed state, unload ReactInstance, and notify
+    // the closing Promise.
+    auto whenClosed =
+        m_actionQueue.Load()->PostAction(MakeUnloadInstanceAction());
 
-		// After we set the m_notifyWhenClosed to null, the ReactHost is considered to be closed.
-		Mso::SetPromiseValue(m_notifyWhenClosed.Exchange(nullptr), std::move(whenClosed));
-	});
+    // After we set the m_notifyWhenClosed to null, the ReactHost is considered
+    // to be closed.
+    Mso::SetPromiseValue(
+        m_notifyWhenClosed.Exchange(nullptr), std::move(whenClosed));
+  });
 }
 
-bool ReactHost::IsClosed() const noexcept
-{
-	return !static_cast<bool>(m_notifyWhenClosed.Load());
+bool ReactHost::IsClosed() const noexcept {
+  return !static_cast<bool>(m_notifyWhenClosed.Load());
 }
 
-Mso::TCntPtr<AsyncActionQueue> ReactHost::ActionQueue() const noexcept
-{
-	return m_actionQueue.LoadWithLock();
+Mso::TCntPtr<AsyncActionQueue> ReactHost::ActionQueue() const noexcept {
+  return m_actionQueue.LoadWithLock();
 }
 
-size_t ReactHost::PendingUnloadActionId() const noexcept
-{
-	return m_pendingUnloadActionId.Load();
+size_t ReactHost::PendingUnloadActionId() const noexcept {
+  return m_pendingUnloadActionId.Load();
 }
 
-bool ReactHost::IsInstanceLoaded() const noexcept
-{
-	return m_isInstanceLoaded.Load();
+bool ReactHost::IsInstanceLoaded() const noexcept {
+  return m_isInstanceLoaded.Load();
 }
 
-/*static*/ Mso::TCntPtr<Mso::Async::IDispatchQueue> ReactHost::GetNativeQueue(const ReactOptions& options) noexcept
-{
-	auto nativeDispatchQueue = options.Properties.Get(NativeDispatchQueueProperty);
-	if (nativeDispatchQueue)
-	{
-		VerifyElseCrashSzTag(Mso::Async::IsSequentialQueue(*nativeDispatchQueue), "NativeQueue must be sequential", 0x0281e3d6 /* tag_c64pw */);
-	}
-	else
-	{
-		// Try to use current queue
-		nativeDispatchQueue = &Mso::Async::CurrentQueue();
-		if (!Mso::Async::IsSequentialQueue(*nativeDispatchQueue))
-		{
-			nativeDispatchQueue = Mso::Async::CreateBackgroundSequentialDispatchQueue();
-		}
-	}
+/*static*/ Mso::TCntPtr<Mso::Async::IDispatchQueue> ReactHost::GetNativeQueue(
+    const ReactOptions &options) noexcept {
+  auto nativeDispatchQueue =
+      options.Properties.Get(NativeDispatchQueueProperty);
+  if (nativeDispatchQueue) {
+    VerifyElseCrashSzTag(
+        Mso::Async::IsSequentialQueue(*nativeDispatchQueue),
+        "NativeQueue must be sequential",
+        0x0281e3d6 /* tag_c64pw */);
+  } else {
+    // Try to use current queue
+    nativeDispatchQueue = &Mso::Async::CurrentQueue();
+    if (!Mso::Async::IsSequentialQueue(*nativeDispatchQueue)) {
+      nativeDispatchQueue =
+          Mso::Async::CreateBackgroundSequentialDispatchQueue();
+    }
+  }
 
-	return nativeDispatchQueue;
+  return nativeDispatchQueue;
 }
 
-ReactOptions ReactHost::Options() const noexcept
-{
-	return m_options.LoadWithLock();
+ReactOptions ReactHost::Options() const noexcept {
+  return m_options.LoadWithLock();
 }
 
-Mso::TCntPtr<IReactInstance> ReactHost::Instance() const noexcept
-{
-	return m_reactInstance.LoadWithLock();
+Mso::TCntPtr<IReactInstance> ReactHost::Instance() const noexcept {
+  return m_reactInstance.LoadWithLock();
 }
 
-Mso::JSHost::IRekaContext& ReactHost::RekaContext() noexcept
-{
-	return *m_rekaContextProxy;
+Mso::JSHost::IRekaContext &ReactHost::RekaContext() noexcept {
+  return *m_rekaContextProxy;
 }
 
-Mso::Async::IDispatchQueue& ReactHost::NativeQueue() const noexcept
-{
-	return Queue();
+Mso::Async::IDispatchQueue &ReactHost::NativeQueue() const noexcept {
+  return Queue();
 }
 
-Mso::Future<void> ReactHost::ReloadInstance() noexcept
-{
-	return ReloadInstanceWithOptions(m_options.LoadWithLock());
+Mso::Future<void> ReactHost::ReloadInstance() noexcept {
+  return ReloadInstanceWithOptions(m_options.LoadWithLock());
 }
 
-Mso::Future<void> ReactHost::ReloadInstanceWithOptions(ReactOptions&& options) noexcept
-{
-	return PostInQueue([this, options = std::move(options)]() mutable noexcept
-	{
-		return m_actionQueue.Load()->PostActions({
-			MakeUnloadInstanceAction(),
-			MakeLoadInstanceAction(std::move(options)) });
-	});
+Mso::Future<void> ReactHost::ReloadInstanceWithOptions(
+    ReactOptions &&options) noexcept {
+  return PostInQueue([ this, options = std::move(options) ]() mutable noexcept {
+    return m_actionQueue.Load()->PostActions(
+        {MakeUnloadInstanceAction(),
+         MakeLoadInstanceAction(std::move(options))});
+  });
 }
 
-Mso::Future<void> ReactHost::UnloadInstance() noexcept
-{
-	return PostInQueue([this]() noexcept
-	{
-		return m_actionQueue.Load()->PostAction(MakeUnloadInstanceAction());
-	});
+Mso::Future<void> ReactHost::UnloadInstance() noexcept {
+  return PostInQueue([this]() noexcept {
+    return m_actionQueue.Load()->PostAction(MakeUnloadInstanceAction());
+  });
 }
 
-AsyncAction ReactHost::MakeLoadInstanceAction(ReactOptions&& options) noexcept
-{
-	return [spThis = Mso::MakeTCntPtr(this), options = std::move(options)]() mutable noexcept
-	{
-		return spThis->LoadInQueue(std::move(options));
-	};
+AsyncAction ReactHost::MakeLoadInstanceAction(ReactOptions &&options) noexcept {
+  return [
+    spThis = Mso::MakeTCntPtr(this),
+    options = std::move(options)
+  ]() mutable noexcept {
+    return spThis->LoadInQueue(std::move(options));
+  };
 }
 
-AsyncAction ReactHost::MakeUnloadInstanceAction() noexcept
-{
-	size_t unloadActionId = ++m_nextUnloadActionId.Load();
-	m_pendingUnloadActionId.Store(Mso::Copy(unloadActionId));
-	return [spThis = Mso::MakeTCntPtr(this), unloadActionId]() noexcept
-	{
-		return spThis->UnloadInQueue(unloadActionId);
-	};
+AsyncAction ReactHost::MakeUnloadInstanceAction() noexcept {
+  size_t unloadActionId = ++m_nextUnloadActionId.Load();
+  m_pendingUnloadActionId.Store(Mso::Copy(unloadActionId));
+  return [ spThis = Mso::MakeTCntPtr(this), unloadActionId ]() noexcept {
+    return spThis->UnloadInQueue(unloadActionId);
+  };
 }
 
-Mso::TCntPtr<IReactViewHost> ReactHost::MakeViewHost(ReactViewOptions&& options) noexcept
-{
-	return Mso::Make<ReactViewHost, IReactViewHost>(*this, std::move(options));
+Mso::TCntPtr<IReactViewHost> ReactHost::MakeViewHost(
+    ReactViewOptions &&options) noexcept {
+  return Mso::Make<ReactViewHost, IReactViewHost>(*this, std::move(options));
 }
 
-Mso::Future<std::vector<Mso::TCntPtr<IReactViewHost>>> ReactHost::GetViewHostList() noexcept
-{
-	Mso::Promise<std::vector<Mso::TCntPtr<IReactViewHost>>> result;
-	InvokeInQueue([this, result]() noexcept
-	{
-		std::vector<Mso::TCntPtr<IReactViewHost>> viewHosts;
-		ForEachViewHost([&viewHosts](auto& viewHost) noexcept
-		{
-			viewHosts.push_back(&viewHost);
-		});
-		result.SetValue(std::move(viewHosts));
-	});
-	return result.AsFuture();
+Mso::Future<std::vector<Mso::TCntPtr<IReactViewHost>>>
+ReactHost::GetViewHostList() noexcept {
+  Mso::Promise<std::vector<Mso::TCntPtr<IReactViewHost>>> result;
+  InvokeInQueue([ this, result ]() noexcept {
+    std::vector<Mso::TCntPtr<IReactViewHost>> viewHosts;
+    ForEachViewHost([&viewHosts](auto &viewHost) noexcept {
+      viewHosts.push_back(&viewHost);
+    });
+    result.SetValue(std::move(viewHosts));
+  });
+  return result.AsFuture();
 }
 
-Mso::Future<void> ReactHost::LoadInQueue(ReactOptions&& options) noexcept
-{
-	// If the ReactHost is already closed then we cancel loading ReactInstance.
-	if (IsClosed())
-	{
-		return Mso::MakeCanceledFuture();
-	}
+Mso::Future<void> ReactHost::LoadInQueue(ReactOptions &&options) noexcept {
+  // If the ReactHost is already closed then we cancel loading ReactInstance.
+  if (IsClosed()) {
+    return Mso::MakeCanceledFuture();
+  }
 
-	// Make sure that we set new options even if we do not load due to the pending unload.
-	m_options.Exchange(Mso::Copy(options));
+  // Make sure that we set new options even if we do not load due to the pending
+  // unload.
+  m_options.Exchange(Mso::Copy(options));
 
-	// If there is a pending unload action, then we cancel loading ReactInstance.
-	if (PendingUnloadActionId())
-	{
-		return Mso::MakeCanceledFuture();
-	}
+  // If there is a pending unload action, then we cancel loading ReactInstance.
+  if (PendingUnloadActionId()) {
+    return Mso::MakeCanceledFuture();
+  }
 
-	Mso::Promise<void> onLoaded;
-	m_reactInstance.Exchange(MakeReactInstance(*this, std::move(options), *m_rekaContextProxy, Mso::Copy(onLoaded)));
+  Mso::Promise<void> onLoaded;
+  m_reactInstance.Exchange(MakeReactInstance(
+      *this, std::move(options), *m_rekaContextProxy, Mso::Copy(onLoaded)));
 
-	// After the instance is loaded, we load the view instances.
-	// It is safe to capture 'this' because the Load action keeps a strong reference to ReactHost.
-	return onLoaded.AsFuture().Then(m_executor, [this](Mso::Maybe<void>&& /*value*/) noexcept
-	{
-		m_isInstanceLoaded.Store(true);
+  // After the instance is loaded, we load the view instances.
+  // It is safe to capture 'this' because the Load action keeps a strong
+  // reference to ReactHost.
+  return onLoaded.AsFuture().Then(
+      m_executor, [this](Mso::Maybe<void> && /*value*/) noexcept {
+        m_isInstanceLoaded.Store(true);
 
-		std::vector<Mso::Future<void>> loadCompletionList;
-		ForEachViewHost([&loadCompletionList](auto& viewHost) noexcept
-		{
-			loadCompletionList.push_back(viewHost.LoadViewInstanceInQueue(viewHost.Options()));
-		});
+        std::vector<Mso::Future<void>> loadCompletionList;
+        ForEachViewHost([&loadCompletionList](auto &viewHost) noexcept {
+          loadCompletionList.push_back(
+              viewHost.LoadViewInstanceInQueue(viewHost.Options()));
+        });
 
-		return Mso::WhenAllCompleted(loadCompletionList);
-	});
+        return Mso::WhenAllCompleted(loadCompletionList);
+      });
 }
 
-Mso::Future<void> ReactHost::UnloadInQueue(size_t unloadActionId) noexcept
-{
-	// If the pending unload action Id does not match, then we have newer unload action,
-	// and thus we should cancel this one.
-	if (unloadActionId != PendingUnloadActionId())
-	{
-		return Mso::MakeCanceledFuture();
-	}
+Mso::Future<void> ReactHost::UnloadInQueue(size_t unloadActionId) noexcept {
+  // If the pending unload action Id does not match, then we have newer unload
+  // action, and thus we should cancel this one.
+  if (unloadActionId != PendingUnloadActionId()) {
+    return Mso::MakeCanceledFuture();
+  }
 
-	// Clear the pending unload action Id
-	m_pendingUnloadActionId.Store(0);
+  // Clear the pending unload action Id
+  m_pendingUnloadActionId.Store(0);
 
-	std::vector<Mso::Future<void>> unloadCompletionList;
-	ForEachViewHost([&unloadCompletionList](auto& viewHost) noexcept
-	{
-		unloadCompletionList.push_back(viewHost.UnloadViewInstanceInQueue(0));
-	});
+  std::vector<Mso::Future<void>> unloadCompletionList;
+  ForEachViewHost([&unloadCompletionList](auto &viewHost) noexcept {
+    unloadCompletionList.push_back(viewHost.UnloadViewInstanceInQueue(0));
+  });
 
-	// We unload ReactInstance after all view instances are unloaded.
-	// It is safe to capture 'this' because the Unload action keeps a strong reference to ReactHost.
-	return Mso::WhenAllCompleted(unloadCompletionList).Then(m_executor, [this](Mso::Maybe<void>&& /*value*/) noexcept
-	{
-		Mso::Future<void> onUnloaded;
-		if (auto reactInstance = m_reactInstance.Exchange(nullptr))
-		{
-			m_isInstanceLoaded.Store(false);
-			onUnloaded = reactInstance->Destroy();
-		}
+  // We unload ReactInstance after all view instances are unloaded.
+  // It is safe to capture 'this' because the Unload action keeps a strong
+  // reference to ReactHost.
+  return Mso::WhenAllCompleted(unloadCompletionList)
+      .Then(m_executor, [this](Mso::Maybe<void> && /*value*/) noexcept {
+        Mso::Future<void> onUnloaded;
+        if (auto reactInstance = m_reactInstance.Exchange(nullptr)) {
+          m_isInstanceLoaded.Store(false);
+          onUnloaded = reactInstance->Destroy();
+        }
 
-		m_lastError.Store({});
+        m_lastError.Store({});
 
-		if (!onUnloaded)
-		{
-			onUnloaded = Mso::MakeSucceededFuture();
-		}
+        if (!onUnloaded) {
+          onUnloaded = Mso::MakeSucceededFuture();
+        }
 
-		return onUnloaded;
-	});
+        return onUnloaded;
+      });
 }
 
-void ReactHost::ForEachViewHost(const Mso::FunctorRef<void(ReactViewHost&)>& action) noexcept
-{
-	for (const auto& entry : m_viewHosts.Load())
-	{
-		if (auto viewHost = entry.second.GetStrongPtr())
-		{
-			action(*viewHost);
-		}
-	}
+void ReactHost::ForEachViewHost(
+    const Mso::FunctorRef<void(ReactViewHost &)> &action) noexcept {
+  for (const auto &entry : m_viewHosts.Load()) {
+    if (auto viewHost = entry.second.GetStrongPtr()) {
+      action(*viewHost);
+    }
+  }
 }
 
-void ReactHost::AttachViewHost(ReactViewHost& viewHost) noexcept
-{
-	auto& viewHosts = m_viewHosts.Load();
+void ReactHost::AttachViewHost(ReactViewHost &viewHost) noexcept {
+  auto &viewHosts = m_viewHosts.Load();
 
-	uintptr_t viewHostKey = reinterpret_cast<uintptr_t>(&viewHost);
-	auto it = viewHosts.find(viewHostKey);
-	VerifyElseCrashSzTag(it == viewHosts.end(), "The view host is already attached", 0x0281e3d8 /* tag_c64py */);
-	viewHosts[viewHostKey] = &viewHost;
+  uintptr_t viewHostKey = reinterpret_cast<uintptr_t>(&viewHost);
+  auto it = viewHosts.find(viewHostKey);
+  VerifyElseCrashSzTag(
+      it == viewHosts.end(),
+      "The view host is already attached",
+      0x0281e3d8 /* tag_c64py */);
+  viewHosts[viewHostKey] = &viewHost;
 }
 
-void ReactHost::DetachViewHost(ReactViewHost& viewHost) noexcept
-{
-	auto& viewHosts = m_viewHosts.Load();
+void ReactHost::DetachViewHost(ReactViewHost &viewHost) noexcept {
+  auto &viewHosts = m_viewHosts.Load();
 
-	uintptr_t viewHostKey = reinterpret_cast<uintptr_t>(&viewHost);
-	auto it = viewHosts.find(viewHostKey);
-	VerifyElseCrashSzTag(it != viewHosts.end(), "The view host is not attached", 0x0281e3d9 /* tag_c64pz */);
-	viewHosts.erase(it);
+  uintptr_t viewHostKey = reinterpret_cast<uintptr_t>(&viewHost);
+  auto it = viewHosts.find(viewHostKey);
+  VerifyElseCrashSzTag(
+      it != viewHosts.end(),
+      "The view host is not attached",
+      0x0281e3d9 /* tag_c64pz */);
+  viewHosts.erase(it);
 }
-
 
 //=============================================================================================
 // ReactViewHost implementation
 //=============================================================================================
 
 ReactViewHost::ReactViewHost(
-	Mso::React::ReactHost& reactHost,
-	ReactViewOptions&& options) noexcept
-	: Super { &reactHost.NativeQueue() }
-	, m_actionQueue { reactHost.ActionQueue(), Queue() }
-	, m_reactHost { &reactHost }
-	, m_options { std::move(options), Queue(), m_mutex }
-{
+    Mso::React::ReactHost &reactHost,
+    ReactViewOptions &&options) noexcept
+    : Super{&reactHost.NativeQueue()},
+      m_actionQueue{reactHost.ActionQueue(), Queue()},
+      m_reactHost{&reactHost},
+      m_options{std::move(options), Queue(), m_mutex} {}
+
+ReactViewHost::~ReactViewHost() noexcept {}
+
+IReactHost &ReactViewHost::ReactHost() const noexcept {
+  return *m_reactHost;
 }
 
-ReactViewHost::~ReactViewHost() noexcept
-{
+ReactViewOptions ReactViewHost::Options() const noexcept {
+  return m_options.LoadWithLock();
 }
 
-IReactHost& ReactViewHost::ReactHost() const noexcept
-{
-	return *m_reactHost;
+void ReactViewHost::SetOptions(ReactViewOptions &&options) noexcept {
+  m_options.Exchange(std::move(options));
 }
 
-ReactViewOptions ReactViewHost::Options() const noexcept
-{
-	return m_options.LoadWithLock();
+Mso::Future<void> ReactViewHost::ReloadViewInstance() noexcept {
+  return m_reactHost->PostInQueue([this]() noexcept {
+    return m_actionQueue.Load()->PostActions(
+        {MakeUnloadViewInstanceAction(), MakeLoadViewInstanceAction()});
+  });
 }
 
-void ReactViewHost::SetOptions(ReactViewOptions&& options) noexcept
-{
-	m_options.Exchange(std::move(options));
+Mso::Future<void> ReactViewHost::ReloadViewInstanceWithOptions(
+    ReactViewOptions &&options) noexcept {
+  return m_reactHost->PostInQueue(
+      [ this, options = std::move(options) ]() mutable noexcept {
+        return m_actionQueue.Load()->PostActions(
+            {MakeUnloadViewInstanceAction(),
+             MakeLoadViewInstanceAction(std::move(options))});
+      });
 }
 
-Mso::Future<void> ReactViewHost::ReloadViewInstance() noexcept
-{
-	return m_reactHost->PostInQueue([this]() noexcept
-	{
-		return m_actionQueue.Load()->PostActions({
-			MakeUnloadViewInstanceAction(),
-			MakeLoadViewInstanceAction() });
-	});
+Mso::Future<void> ReactViewHost::UnloadViewInstance() noexcept {
+  return m_reactHost->PostInQueue([this]() noexcept {
+    return m_actionQueue.Load()->PostAction(MakeUnloadViewInstanceAction());
+  });
 }
 
-Mso::Future<void> ReactViewHost::ReloadViewInstanceWithOptions(ReactViewOptions&& options) noexcept
-{
-	return m_reactHost->PostInQueue([this, options = std::move(options)]() mutable noexcept
-	{
-		return m_actionQueue.Load()->PostActions({
-			MakeUnloadViewInstanceAction(),
-			MakeLoadViewInstanceAction(std::move(options)) });
-	});
+Mso::Future<void> ReactViewHost::AttachViewInstance(
+    IReactViewInstance &viewInstance) noexcept {
+  return m_reactHost->PostInQueue(
+      [ this, viewInstance = Mso::MakeTCntPtr(&viewInstance) ]() noexcept {
+        auto previousViewInstance =
+            m_viewInstance.Exchange(Mso::Copy(viewInstance));
+        VerifyElseCrashSzTag(
+            !previousViewInstance,
+            "ViewInstance must not be previously attached.",
+            0x028508d6 /* tag_c7q9w */);
+        m_reactHost->AttachViewHost(*this);
+
+        // Schedule the viewInstance load in the action queue since there can be
+        // other load actions in the queue that need to be consolidated.
+        return m_actionQueue.Load()->PostAction(MakeLoadViewInstanceAction());
+      });
 }
 
-Mso::Future<void> ReactViewHost::UnloadViewInstance() noexcept
-{
-	return m_reactHost->PostInQueue([this]() noexcept
-	{
-		return m_actionQueue.Load()->PostAction(MakeUnloadViewInstanceAction());
-	});
+Mso::Future<void> ReactViewHost::DetachViewInstance() noexcept {
+  return m_reactHost->PostInQueue([this]() noexcept {
+    auto viewInstance = m_viewInstance.Exchange(nullptr);
+    VerifyElseCrashSzTag(
+        viewInstance,
+        "ViewInstance is not attached.",
+        0x0281e3db /* tag_c64p1 */);
+    m_reactHost->DetachViewHost(*this);
+
+    // We unload the viewInstance here as soon as possible without using the
+    // action queue, otherwise we would not have the viewInstance to call the
+    // Unload() later.
+    m_isViewInstanceLoaded.Store(false);
+    return viewInstance->Unload();
+  });
 }
 
-Mso::Future<void> ReactViewHost::AttachViewInstance(IReactViewInstance& viewInstance) noexcept
-{
-	return m_reactHost->PostInQueue([this, viewInstance = Mso::MakeTCntPtr(&viewInstance)]() noexcept
-	{
-		auto previousViewInstance = m_viewInstance.Exchange(Mso::Copy(viewInstance));
-		VerifyElseCrashSzTag(!previousViewInstance, "ViewInstance must not be previously attached.", 0x028508d6 /* tag_c7q9w */);
-		m_reactHost->AttachViewHost(*this);
-
-		// Schedule the viewInstance load in the action queue since there can be other load actions in the queue that need to be consolidated. 
-		return m_actionQueue.Load()->PostAction(MakeLoadViewInstanceAction());
-	});
+AsyncAction ReactViewHost::MakeLoadViewInstanceAction() noexcept {
+  return [spThis = Mso::MakeTCntPtr(this)]() mutable noexcept {
+    return spThis->LoadViewInstanceInQueue();
+  };
 }
 
-Mso::Future<void> ReactViewHost::DetachViewInstance() noexcept
-{
-	return m_reactHost->PostInQueue([this]() noexcept
-	{
-		auto viewInstance = m_viewInstance.Exchange(nullptr);
-		VerifyElseCrashSzTag(viewInstance, "ViewInstance is not attached.", 0x0281e3db /* tag_c64p1 */);
-		m_reactHost->DetachViewHost(*this);
-
-		// We unload the viewInstance here as soon as possible without using the action queue,
-		// otherwise we would not have the viewInstance to call the Unload() later.
-		m_isViewInstanceLoaded.Store(false);
-		return viewInstance->Unload();
-	});
+AsyncAction ReactViewHost::MakeLoadViewInstanceAction(
+    ReactViewOptions &&options) noexcept {
+  return [
+    spThis = Mso::MakeTCntPtr(this),
+    options = std::move(options)
+  ]() mutable noexcept {
+    return spThis->LoadViewInstanceInQueue(std::move(options));
+  };
 }
 
-AsyncAction ReactViewHost::MakeLoadViewInstanceAction() noexcept
-{
-	return [spThis = Mso::MakeTCntPtr(this)]() mutable noexcept
-	{
-		return spThis->LoadViewInstanceInQueue();
-	};
+AsyncAction ReactViewHost::MakeUnloadViewInstanceAction() noexcept {
+  size_t unloadActionId = ++m_nextUnloadActionId.Load();
+  m_pendingUnloadActionId.Store(std::move(unloadActionId));
+  return [ spThis = Mso::MakeTCntPtr(this), unloadActionId ]() noexcept {
+    return spThis->UnloadViewInstanceInQueue(unloadActionId);
+  };
 }
 
-AsyncAction ReactViewHost::MakeLoadViewInstanceAction(ReactViewOptions&& options) noexcept
-{
-	return [spThis = Mso::MakeTCntPtr(this), options = std::move(options)]() mutable noexcept
-	{
-		return spThis->LoadViewInstanceInQueue(std::move(options));
-	};
+Mso::Future<void> ReactViewHost::LoadViewInstanceInQueue() noexcept {
+  // It is already loaded: nothing to do.
+  if (m_isViewInstanceLoaded.Load()) {
+    return Mso::MakeSucceededFuture();
+  }
+
+  // Cancel if the ReactHost is already closed.
+  if (m_reactHost->IsClosed()) {
+    return Mso::MakeCanceledFuture();
+  }
+
+  // If there is a pending unload action, then we cancel loading
+  // ReactViewInstance.
+  if (m_reactHost->PendingUnloadActionId() || m_pendingUnloadActionId.Load()) {
+    return Mso::MakeCanceledFuture();
+  }
+
+  // We cannot load if instance is not loaded.
+  if (!m_reactHost->IsInstanceLoaded()) {
+    return Mso::MakeCanceledFuture();
+  }
+
+  // Make sure that we have a ReactInstance
+  if (!m_reactHost->Instance()) {
+    return Mso::MakeCanceledFuture();
+  }
+
+  if (auto viewInstance = m_viewInstance.Load().Get()) {
+    m_isViewInstanceLoaded.Store(true);
+    return viewInstance->Reload(
+        m_reactHost->Instance(), Mso::Copy(m_options.Load()));
+  }
+
+  return Mso::MakeCanceledFuture();
 }
 
-AsyncAction ReactViewHost::MakeUnloadViewInstanceAction() noexcept
-{
-	size_t unloadActionId = ++m_nextUnloadActionId.Load();
-	m_pendingUnloadActionId.Store(std::move(unloadActionId));
-	return [spThis = Mso::MakeTCntPtr(this), unloadActionId]() noexcept
-	{
-		return spThis->UnloadViewInstanceInQueue(unloadActionId);
-	};
+Mso::Future<void> ReactViewHost::LoadViewInstanceInQueue(
+    ReactViewOptions &&options) noexcept {
+  // Make sure that we set new options even if we do not load due to the pending
+  // unload.
+  m_options.Exchange(std::move(options));
+
+  VerifyElseCrashSzTag(
+      !m_isViewInstanceLoaded.Load(),
+      "The viewInstance must be unloaded before the load with new options.",
+      0x0285411a /* tag_c7ue0 */);
+
+  return LoadViewInstanceInQueue();
 }
 
-Mso::Future<void> ReactViewHost::LoadViewInstanceInQueue() noexcept
-{
-	// It is already loaded: nothing to do.
-	if (m_isViewInstanceLoaded.Load())
-	{
-		return Mso::MakeSucceededFuture();
-	}
+Mso::Future<void> ReactViewHost::UnloadViewInstanceInQueue(
+    size_t unloadActionId) noexcept {
+  // If the pending unload action Id does not match, then we have newer unload
+  // action, and thus we should cancel this one.
+  if (unloadActionId != m_pendingUnloadActionId.Load()) {
+    return Mso::MakeCanceledFuture();
+  }
 
-	// Cancel if the ReactHost is already closed.
-	if (m_reactHost->IsClosed())
-	{
-		return Mso::MakeCanceledFuture();
-	}
+  // Clear the pending unload action Id
+  m_pendingUnloadActionId.Store(0);
 
-	// If there is a pending unload action, then we cancel loading ReactViewInstance.
-	if (m_reactHost->PendingUnloadActionId() || m_pendingUnloadActionId.Load())
-	{
-		return Mso::MakeCanceledFuture();
-	}
+  if (m_reactHost->PendingUnloadActionId()) {
+    return Mso::MakeCanceledFuture();
+  }
 
-	// We cannot load if instance is not loaded.
-	if (!m_reactHost->IsInstanceLoaded())
-	{
-		return Mso::MakeCanceledFuture();
-	}
+  if (auto viewInstance = m_viewInstance.Load().Get()) {
+    m_isViewInstanceLoaded.Store(false);
+    return viewInstance->Unload();
+  }
 
-	// Make sure that we have a ReactInstance
-	if (!m_reactHost->Instance())
-	{
-		return Mso::MakeCanceledFuture();
-	}
-
-	if (auto viewInstance = m_viewInstance.Load().Get())
-	{
-		m_isViewInstanceLoaded.Store(true);
-		return viewInstance->Reload(m_reactHost->Instance(), Mso::Copy(m_options.Load()));
-	}
-
-	return Mso::MakeCanceledFuture();
+  return Mso::MakeCanceledFuture();
 }
-
-Mso::Future<void> ReactViewHost::LoadViewInstanceInQueue(ReactViewOptions&& options) noexcept
-{
-	// Make sure that we set new options even if we do not load due to the pending unload.
-	m_options.Exchange(std::move(options));
-
-	VerifyElseCrashSzTag(!m_isViewInstanceLoaded.Load(), "The viewInstance must be unloaded before the load with new options.", 0x0285411a /* tag_c7ue0 */);
-
-	return LoadViewInstanceInQueue();
-}
-
-Mso::Future<void> ReactViewHost::UnloadViewInstanceInQueue(size_t unloadActionId) noexcept
-{
-	// If the pending unload action Id does not match, then we have newer unload action,
-	// and thus we should cancel this one.
-	if (unloadActionId != m_pendingUnloadActionId.Load())
-	{
-		return Mso::MakeCanceledFuture();
-	}
-
-	// Clear the pending unload action Id
-	m_pendingUnloadActionId.Store(0);
-
-	if (m_reactHost->PendingUnloadActionId())
-	{
-		return Mso::MakeCanceledFuture();
-	}
-
-	if (auto viewInstance = m_viewInstance.Load().Get())
-	{
-		m_isViewInstanceLoaded.Store(false);
-		return viewInstance->Unload();
-	}
-
-	return Mso::MakeCanceledFuture();
-}
-
 
 //=============================================================================================
 // ReactHostRegistry implementation
@@ -586,101 +552,99 @@ Mso::Future<void> ReactViewHost::UnloadViewInstanceInQueue(size_t unloadActionId
 /*static*/ std::mutex ReactHostRegistry::s_mutex;
 /*static*/ Mso::TCntPtr<ReactHostRegistry> ReactHostRegistry::s_registry;
 
-ReactHostRegistry::~ReactHostRegistry() noexcept
-{
+ReactHostRegistry::~ReactHostRegistry() noexcept {}
+
+/*static*/ void ReactHostRegistry::OnLibletInit() noexcept {
+  // Create new global ReactHostRegistry
+  std::lock_guard<std::mutex> lock{s_mutex};
+  VerifyElseCrashSzTag(
+      !s_registry,
+      "No ReactHostRegistry must exist yet.",
+      0x0281e3dc /* tag_c64p2 */);
+  s_registry = Mso::Make<ReactHostRegistry>();
 }
 
-/*static*/ void ReactHostRegistry::OnLibletInit() noexcept
-{
-	// Create new global ReactHostRegistry
-	std::lock_guard<std::mutex> lock{s_mutex};
-	VerifyElseCrashSzTag(!s_registry, "No ReactHostRegistry must exist yet.", 0x0281e3dc /* tag_c64p2 */);
-	s_registry = Mso::Make<ReactHostRegistry>();
-}
-	
-/*static*/ void ReactHostRegistry::OnLibletUninit() noexcept
-{
-	// Wait for all pending ReactHost futures indicating closing state and remove the global ReactHostRegistry.
-	std::vector<Mso::Future<void>> futures;
+/*static*/ void ReactHostRegistry::OnLibletUninit() noexcept {
+  // Wait for all pending ReactHost futures indicating closing state and remove
+  // the global ReactHostRegistry.
+  std::vector<Mso::Future<void>> futures;
 
-	{
-		std::lock_guard<std::mutex> lock{s_mutex};
-		auto registry = std::move(s_registry);
+  {
+    std::lock_guard<std::mutex> lock{s_mutex};
+    auto registry = std::move(s_registry);
 
-		for (const auto& entry : registry->m_entries)
-		{
-			if (auto reactHost = entry.second.WeakReactHost.GetStrongPtr())
-			{
-				reactHost->Close();
-			}
+    for (const auto &entry : registry->m_entries) {
+      if (auto reactHost = entry.second.WeakReactHost.GetStrongPtr()) {
+        reactHost->Close();
+      }
 
-			futures.push_back(entry.second.WhenReactHostClosed);
-		}
-	}
+      futures.push_back(entry.second.WhenReactHostClosed);
+    }
+  }
 
-	Mso::FutureWait(Mso::WhenAllCompleted(futures));
+  Mso::FutureWait(Mso::WhenAllCompleted(futures));
 }
 
-/*static*/ Mso::Promise<void> ReactHostRegistry::Register(ReactHost& reactHost) noexcept
-{
-	std::lock_guard<std::mutex> lock{s_mutex};
+/*static*/ Mso::Promise<void> ReactHostRegistry::Register(
+    ReactHost &reactHost) noexcept {
+  std::lock_guard<std::mutex> lock{s_mutex};
 
-	if (!s_registry)
-	{
-		// Return an empty Promise to indicate failure to register.
-		return Mso::Promise<void>{nullptr};
-	}
+  if (!s_registry) {
+    // Return an empty Promise to indicate failure to register.
+    return Mso::Promise<void>{nullptr};
+  }
 
-	auto& entries = s_registry->m_entries;
-	uintptr_t reactHostKey = reinterpret_cast<uintptr_t>(&reactHost);
-	auto it = entries.find(reactHostKey);
-	VerifyElseCrashSzTag(it == entries.end(), "The ReactHost is already registered", 0x0281e3dd /* tag_c64p3 */);
+  auto &entries = s_registry->m_entries;
+  uintptr_t reactHostKey = reinterpret_cast<uintptr_t>(&reactHost);
+  auto it = entries.find(reactHostKey);
+  VerifyElseCrashSzTag(
+      it == entries.end(),
+      "The ReactHost is already registered",
+      0x0281e3dd /* tag_c64p3 */);
 
-	Mso::Promise<void> notifyWhenClosed;
-	Mso::Future<void> whenReactHostClosed = notifyWhenClosed.AsFuture().Then<Mso::Executors::Inline>(
-		[registry{s_registry}, reactHostKey](Mso::Maybe<void>&& result) noexcept
-		{
-			registry->Unregister(reactHostKey);
-			return std::move(result);
-		});
-	entries.emplace(reactHostKey, Entry{&reactHost, std::move(whenReactHostClosed)});
-	return notifyWhenClosed;
+  Mso::Promise<void> notifyWhenClosed;
+  Mso::Future<void> whenReactHostClosed =
+      notifyWhenClosed.AsFuture().Then<Mso::Executors::Inline>(
+          [ registry{s_registry},
+            reactHostKey ](Mso::Maybe<void> && result) noexcept {
+            registry->Unregister(reactHostKey);
+            return std::move(result);
+          });
+  entries.emplace(
+      reactHostKey, Entry{&reactHost, std::move(whenReactHostClosed)});
+  return notifyWhenClosed;
 }
 
-void ReactHostRegistry::Unregister(uintptr_t reactHostKey) noexcept
-{
-	std::lock_guard<std::mutex> lock{s_mutex};
+void ReactHostRegistry::Unregister(uintptr_t reactHostKey) noexcept {
+  std::lock_guard<std::mutex> lock{s_mutex};
 
-	auto it = m_entries.find(reactHostKey);
-	VerifyElseCrashSzTag(it != m_entries.end(), "The ReactHost is not registered", 0x0281e3de /* tag_c64p4 */);
-	m_entries.erase(it);
+  auto it = m_entries.find(reactHostKey);
+  VerifyElseCrashSzTag(
+      it != m_entries.end(),
+      "The ReactHost is not registered",
+      0x0281e3de /* tag_c64p4 */);
+  m_entries.erase(it);
 }
-
 
 //=============================================================================================
 // Standalone functions
 //=============================================================================================
 
-LIBLET_PUBLICAPI OnErrorCallback GetDefaultOnErrorHandler() noexcept
-{
-	return [](const Mso::ErrorCode& errorCode) noexcept
-	{
-		// If error is due to std::exception, write out its message in Debug Assert
-		if (const std::exception_ptr* exc = errorCode.HandleAs(Mso::ExceptionErrorProvider()))
-		{
-			try
-			{
-				std::rethrow_exception(*exc);
-			}
-			catch (const std::exception& ex)
-			{
-				UNREFERENCED_PARAMETER(ex);
-				AssertSzTag(false, ex.what(), 0x0281e3df /* tag_c64p5 */);
-			}
-		}
+LIBLET_PUBLICAPI OnErrorCallback GetDefaultOnErrorHandler() noexcept {
+  return [](const Mso::ErrorCode &errorCode) noexcept {
+    // If error is due to std::exception, write out its message in Debug Assert
+    if (const std::exception_ptr *exc =
+            errorCode.HandleAs(Mso::ExceptionErrorProvider())) {
+      try {
+        std::rethrow_exception(*exc);
+      } catch (const std::exception &ex) {
+        UNREFERENCED_PARAMETER(ex);
+        AssertSzTag(false, ex.what(), 0x0281e3df /* tag_c64p5 */);
+      }
+    }
 
-		ShipAssertTag(false, 0x0281e3e0 /* tag_c64p6 */);
-	};
+    ShipAssertTag(false, 0x0281e3e0 /* tag_c64p6 */);
+  };
 }
 
 } // namespace Mso::React
