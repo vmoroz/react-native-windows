@@ -1,0 +1,14 @@
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License.
+
+import "IReactOptions.idl";
+
+namespace Microsoft.ReactNative {
+
+  interface IReactInstance2 {
+    IReactOptions Options {
+      get;
+    };
+  };
+
+} // namespace Microsoft.ReactNative

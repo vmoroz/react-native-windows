@@ -5,7 +5,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ABICxxModule.cpp" />
-    <ClCompile Include="ABIModule.cpp" />
     <ClCompile Include="NativeModulesProvider.cpp" />
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="$(GeneratedFilesDir)module.g.cpp" />
@@ -289,7 +288,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ABICxxModule.h" />
-    <ClInclude Include="ABIModule.h" />
     <ClInclude Include="Crash.h" />
     <ClInclude Include="HResult.h" />
     <ClInclude Include="LifecycleState.h" />
@@ -572,15 +570,10 @@
     <Midl Include="IJSValueReader.idl" />
     <Midl Include="IJSValueWriter.idl" />
     <Midl Include="ILifecycleEventListener.idl" />
-    <Midl Include="INativeModule.idl" />
     <Midl Include="IReactModuleBuilder.idl" />
-    <Midl Include="IReactOptions.idl" />
-    <Midl Include="IReactPackage.idl" />
     <Midl Include="IReactPackageBuilder.idl" />
     <Midl Include="IReactPackageProvider.idl" />
     <Midl Include="IViewManager.idl" />
-    <Midl Include="MethodInfo.idl" />
-    <Midl Include="NativeModuleRegistry.idl" />
     <Midl Include="ReactApplication.idl" />
     <Midl Include="ReactApplicationDelegate.idl" />
     <Midl Include="ReactContext.idl" />
@@ -588,7 +581,6 @@
     <Midl Include="ReactInstanceManager.idl" />
     <Midl Include="ReactInstanceSettings.idl" />
     <Midl Include="ReactNativeHost.idl" />
-    <Midl Include="ReactOptionsBuilder.idl" />
     <Midl Include="ReactRootView.idl" />
     <Midl Include="Views\cppwinrt\ViewPanel.idl">
       <Filter>Views\cppwinrt</Filter>
@@ -599,6 +591,25 @@
     <Midl Include="Views\cppwinrt\BorderEffect.idl">
       <Filter>Views\cppwinrt</Filter>
     </Midl>
+    <Midl Include="IPropertyBag.idl">
+      <Filter>ReactHost</Filter>
+    </Midl>
+    <Midl Include="IReactHost.idl">
+      <Filter>ReactHost</Filter>
+    </Midl>
+    <Midl Include="IReactOptions.idl">
+      <Filter>ReactHost</Filter>
+    </Midl>
+    <Midl Include="ReactOptionsBuilder.idl">
+      <Filter>ReactHost</Filter>
+    </Midl>
+    <Midl Include="IReactInstance2.idl">
+      <Filter>ReactHost</Filter>
+    </Midl>
+    <Midl Include="IReactViewOptions.idl">
+      <Filter>ReactHost</Filter>
+    </Midl>
+    <Midl Include="IReactViewHost.idl" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -653,6 +664,9 @@
     </Filter>
     <Filter Include="CxxReactUWP">
       <UniqueIdentifier>{3b861ea5-e87b-4783-a4b1-ce28548c1985}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ReactHost">
+      <UniqueIdentifier>{dac5144d-4655-4b17-ba9c-f70d2bdc0659}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

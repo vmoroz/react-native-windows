@@ -430,11 +430,16 @@
     <Midl Include="IJSValueReader.idl" />
     <Midl Include="IJSValueWriter.idl" />
     <Midl Include="ILifecycleEventListener.idl" />
+    <Midl Include="IReactHost.idl" />
+    <Midl Include="IReactInstance2.idl" />
     <Midl Include="IReactModuleBuilder.idl" />
     <Midl Include="IReactOptions.idl" />
     <Midl Include="IReactPackageBuilder.idl" />
     <Midl Include="IReactPackageProvider.idl" />
+    <Midl Include="IReactViewHost.idl" />
+    <Midl Include="IReactViewOptions.idl" />
     <Midl Include="IViewManager.idl" />
+    <Midl Include="IPropertyBag.idl" />
     <Midl Include="ReactApplication.idl" />
     <Midl Include="ReactApplicationDelegate.idl">
       <SubType>Designer</SubType>
