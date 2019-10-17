@@ -9,6 +9,8 @@
 #include <winrt/Windows.ApplicationModel.Activation.h>
 #include <winrt/Windows.Foundation.Collections.h>
 #include <winrt/Windows.Foundation.h>
+#include <winrt/Windows.System.h>
+#include <winrt/Windows.UI.Core.h>
 #include <winrt/Windows.UI.Xaml.Controls.Primitives.h>
 #include <winrt/Windows.UI.Xaml.Controls.h>
 #include <winrt/Windows.UI.Xaml.Data.h>
@@ -16,4 +18,23 @@
 #include <winrt/Windows.UI.Xaml.Markup.h>
 #include <winrt/Windows.UI.Xaml.Navigation.h>
 #include <winrt/Windows.UI.Xaml.h>
+#include <winrt/Windows.Web.Http.Headers.h>
 #include "HResult.h"
+
+#include "winrt/Windows.UI.Composition.h"
+
+
+#include <cxxreact/JSBigString.h>
+#include <cxxreact/JSExecutor.h>
+#include <cxxreact/CxxModule.h>
+#include <cxxreact/Instance.h>
+#include <folly/json.h>
+#include <folly/Memory.h>
+#include <folly/Optional.h>
+#include <werapi.h>
+#include <functional>
+#include <memory>
+#include <condition_variable>
+#include <string>
+#include <fbsystrace.h>
+#include <oaidl.h>
