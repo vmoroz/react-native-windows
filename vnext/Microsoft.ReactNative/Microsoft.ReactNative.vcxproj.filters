@@ -591,25 +591,6 @@
     <Midl Include="Views\cppwinrt\BorderEffect.idl">
       <Filter>Views\cppwinrt</Filter>
     </Midl>
-    <Midl Include="IPropertyBag.idl">
-      <Filter>ReactHost</Filter>
-    </Midl>
-    <Midl Include="IReactHost.idl">
-      <Filter>ReactHost</Filter>
-    </Midl>
-    <Midl Include="IReactOptions.idl">
-      <Filter>ReactHost</Filter>
-    </Midl>
-    <Midl Include="ReactOptionsBuilder.idl">
-      <Filter>ReactHost</Filter>
-    </Midl>
-    <Midl Include="IReactInstance2.idl">
-      <Filter>ReactHost</Filter>
-    </Midl>
-    <Midl Include="IReactViewOptions.idl">
-      <Filter>ReactHost</Filter>
-    </Midl>
-    <Midl Include="IReactViewHost.idl" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
