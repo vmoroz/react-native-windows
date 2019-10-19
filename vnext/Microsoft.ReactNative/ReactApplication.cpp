@@ -33,9 +33,6 @@ ReactApplication::ReactApplication()
         }
       });
 #endif
-
-
-  winrt::resume_foreground
 }
 
 Microsoft::ReactNative::ReactNativeHost ReactApplication::Host() {
