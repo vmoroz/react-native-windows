@@ -196,6 +196,7 @@
       <DependentUpon>ReactContext.idl</DependentUpon>
       <SubType>Code</SubType>
     </ClInclude>
+    <ClInclude Include="ReactHost\ReactHost.h" />
     <ClInclude Include="ReactInstanceCreator.h" />
     <ClInclude Include="ReactInstance.h">
       <DependentUpon>ReactInstance.idl</DependentUpon>
@@ -339,6 +340,7 @@
       <DependentUpon>ReactContext.idl</DependentUpon>
       <SubType>Code</SubType>
     </ClCompile>
+    <ClCompile Include="ReactHost\ReactHost.cpp" />
     <ClCompile Include="ReactInstanceCreator.cpp" />
     <ClCompile Include="ReactInstance.cpp">
       <DependentUpon>ReactInstance.idl</DependentUpon>

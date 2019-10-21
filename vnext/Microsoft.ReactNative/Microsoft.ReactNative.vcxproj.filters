@@ -285,6 +285,9 @@
     <ClCompile Include="CxxReactUWP\JSBigString.cpp">
       <Filter>CxxReactUWP</Filter>
     </ClCompile>
+    <ClCompile Include="ReactHost\ReactHost.cpp">
+      <Filter>ReactHost</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ABICxxModule.h" />
@@ -563,6 +566,9 @@
     </ClInclude>
     <ClInclude Include="Executors\WebSocketJSExecutorUwp.h">
       <Filter>Executors</Filter>
+    </ClInclude>
+    <ClInclude Include="ReactHost\ReactHost.h">
+      <Filter>ReactHost</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
