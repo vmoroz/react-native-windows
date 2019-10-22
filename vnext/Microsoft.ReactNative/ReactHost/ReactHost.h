@@ -6,6 +6,7 @@
 #include <functional>
 #include "winrt/Microsoft.ReactNative.Bridge.h"
 #include "Threading/WorkerMessageQueueThread.h"
+#include <ppltasks.h>
 
 namespace Microsoft::ReactNative {
 
@@ -13,7 +14,7 @@ class ReactViewHost;
 class ReactHost;
 
 //! The async action is a Functor that returns void Future.
-using AsyncAction = std::function<winrt::Windows::Foundation::IAsyncAction()>;
+using AsyncAction = std::function<concurrency::task<void>()>;
 
 //! The queue that executes actions in the sequential order.
 //! Each action returns Mso::Future<void> to indicate its completion.
@@ -30,13 +31,13 @@ struct AsyncActionQueue final : std::enable_shared_from_this<AsyncActionQueue> {
 
   //! Posts a new action to the AsyncActionQueue and returns Future indicating
   //! when it is completed.
-  winrt::Windows::Foundation::IAsyncAction PostAction(
+  concurrency::task<void> PostAction(
       AsyncAction &&action) noexcept;
 
   //! Posts a new action to the AsyncActionQueue and returns Future indicating
   //! when the last one is completed. For the empty list it returns succeeded
   //! Future immediately.
-  winrt::Windows::Foundation::IAsyncAction PostActions(
+  concurrency::task<void> PostActions(
       std::initializer_list<AsyncAction> actions) noexcept;
 
   //! Returns the queue associated with the AsyncActionQueue.
@@ -45,21 +46,21 @@ struct AsyncActionQueue final : std::enable_shared_from_this<AsyncActionQueue> {
  private:
   struct Entry {
     AsyncAction Action;
-//    Mso::Promise<void> Result;
+    concurrency::task_completion_event<void> Result;
   };
 
- //private:
- // //! Invokes action in the m_queue and observes its result.
- // void InvokeAction(Entry &&entry) noexcept;
+ private:
+  //! Invokes action in the m_queue and observes its result.
+  void InvokeAction(Entry &&entry) noexcept;
 
- // //! Completes the action, and then starts the next one.
- // void CompleteAction(Entry &&entry, Mso::Maybe<void> &&result) noexcept;
+  //! Completes the action, and then starts the next one.
+  void CompleteAction(Entry &&entry, std::exception_ptr &&result) noexcept;
 
- //private:
- // const Mso::TCntPtr<Mso::Async::IDispatchQueue> m_queue;
- // const Mso::ActiveField<std::vector<Entry>> m_actions{*m_queue};
- // const Mso::ActiveField<bool> m_isInvoking{*m_queue};
- // const Mso::InvokeElsePostExecutor m_executor{m_queue.Get()};
+ private:
+  const std::shared_ptr<react::uwp::WorkerMessageQueueThread> m_queue;
+  std::vector<Entry> m_actions;
+  bool m_isInvoking{false};
+  //const Mso::InvokeElsePostExecutor m_executor{m_queue.Get()};
 };
 
 //! ReactHost manages lifetime of ReactNative instance.

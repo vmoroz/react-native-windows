@@ -5,8 +5,9 @@
 
 #include "ReactHost.h"
 
+namespace Microsoft::ReactNative {
+
 #if 0
-namespace Mso::React {
 
 //=============================================================================================
 // ReactOptions implementation
@@ -24,58 +25,53 @@ LIBLET_PUBLICAPI ReactOptions& ReactOptions::AddFileJSBundle(::string_view jsBun
 	this->JSBundles.push_back(MakeFileJSBundle(jsBundleId.data(), fileName.data()));
 	return *this;
 }
+#endif
 
 //=============================================================================================
 // AsyncActionQueue implementation
 //=============================================================================================
 
-AsyncActionQueue::AsyncActionQueue(Mso::Async::IDispatchQueue& queue) noexcept
-	: m_queue { &queue }
-{
+AsyncActionQueue::AsyncActionQueue(
+    std::shared_ptr<react::uwp::WorkerMessageQueueThread> &&queue) noexcept
+    : m_queue{std::move(queue)} {}
+
+concurrency::task<void> AsyncActionQueue::PostAction(
+    AsyncAction &&action) noexcept {
+  Entry entry{std::move(action), concurrency::task_completion_event<void>{}};
+  concurrency::task<void> result{entry.Result};
+  auto &actionQueue = m_actions;
+  if (!m_isInvoking && actionQueue.empty()) {
+    InvokeAction(std::move(entry));
+  } else {
+    actionQueue.push_back(std::move(entry));
+  }
+
+  return result;
 }
 
-Mso::Future<void> AsyncActionQueue::PostAction(AsyncAction&& action) noexcept
-{
-	Entry entry { std::move(action), Mso::Promise<void>{} };
-	Mso::Future<void> result = entry.Result.AsFuture();
-	auto& actionQueue = m_actions.Load();
-	if (!m_isInvoking.Load() && actionQueue.empty())
-	{
-		InvokeAction(std::move(entry));
-	}
-	else
-	{
-		actionQueue.push_back(std::move(entry));
-	}
+concurrency::task<void> AsyncActionQueue::PostActions(
+    std::initializer_list<AsyncAction> actions) noexcept {
+  // Return Future for the last action in the list
+  concurrency::task<void> result;
+  for (auto &action : actions) {
+    // We must copy action because the initialize_list is read-only (a bug in
+    // the standard?).
+    result = PostAction(AsyncAction{action});
+  }
 
-	return result;
+  if (result == concurrency::task<void>{}) {
+    result = concurrency::task_from_result();
+  }
+
+  return result;
 }
 
-Mso::Future<void> AsyncActionQueue::PostActions(std::initializer_list<AsyncAction> actions) noexcept
-{
-	// Return Future for the last action in the list
-	Mso::Future<void> result;
-	for (auto& action : actions)
-	{
-		// We must copy action because the initialize_list is read-only (a bug in the standard?).
-		result = PostAction(Mso::Copy(action));
-	}
-
-	if (!result)
-	{
-		result = Mso::MakeSucceededFuture();
-	}
-
-	return result;
-}
-
+#if 0
 void AsyncActionQueue::InvokeAction(Entry&& entry) noexcept
 {
-	Mso::Details::VerifyIsInQueueElseCrash(*m_queue);
-
-	m_isInvoking.Store(true);
+	m_isInvoking = true;
 	auto actionResult = entry.Action();
-	actionResult.Then(m_executor,
+	actionResult.then(   .Then(m_executor,
 		[entry = std::move(entry), spThis = Mso::MakeTCntPtr(this)] (Mso::Maybe<void>&& result) mutable noexcept
 	{
 		spThis->CompleteAction(std::move(entry), std::move(result));
@@ -686,5 +682,6 @@ LIBLET_PUBLICAPI OnErrorCallback GetDefaultOnErrorHandler() noexcept
 	};
 }
 
-} // namespace Mso::React
 #endif
+
+} // namespace Microsoft::ReactNative
