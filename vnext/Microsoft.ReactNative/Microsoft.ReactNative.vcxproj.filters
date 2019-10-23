@@ -288,6 +288,12 @@
     <ClCompile Include="ReactHost\ReactHost.cpp">
       <Filter>ReactHost</Filter>
     </ClCompile>
+    <ClCompile Include="Views\SliderViewManager.cpp">
+      <Filter>Views</Filter>
+    </ClCompile>
+    <ClCompile Include="Modules\Animated\CalculatedAnimationDriver.cpp">
+      <Filter>Modules\Animated</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ABICxxModule.h" />
@@ -569,6 +575,12 @@
     </ClInclude>
     <ClInclude Include="ReactHost\ReactHost.h">
       <Filter>ReactHost</Filter>
+    </ClInclude>
+    <ClInclude Include="Views\SliderViewManager.h">
+      <Filter>Views</Filter>
+    </ClInclude>
+    <ClInclude Include="Modules\Animated\CalculatedAnimationDriver.h">
+      <Filter>Modules\Animated</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

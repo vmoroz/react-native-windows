@@ -145,6 +145,7 @@
     <ClInclude Include="Modules\Animated\AnimatedNodeType.h" />
     <ClInclude Include="Modules\Animated\AnimationDriver.h" />
     <ClInclude Include="Modules\Animated\AnimationType.h" />
+    <ClInclude Include="Modules\Animated\CalculatedAnimationDriver.h" />
     <ClInclude Include="Modules\Animated\DecayAnimationDriver.h" />
     <ClInclude Include="Modules\Animated\DiffClampAnimatedNode.h" />
     <ClInclude Include="Modules\Animated\DivisionAnimatedNode.h" />
@@ -258,6 +259,7 @@
     <ClInclude Include="Views\RootViewManager.h" />
     <ClInclude Include="Views\ScrollContentViewManager.h" />
     <ClInclude Include="Views\ScrollViewManager.h" />
+    <ClInclude Include="Views\SliderViewManager.h" />
     <ClInclude Include="Views\SwitchViewManager.h" />
     <ClInclude Include="Views\TextInputViewManager.h" />
     <ClInclude Include="Views\TextViewManager.h" />
@@ -288,6 +290,7 @@
     <ClCompile Include="Modules\Animated\AdditionAnimatedNode.cpp" />
     <ClCompile Include="Modules\Animated\AnimatedNode.cpp" />
     <ClCompile Include="Modules\Animated\AnimationDriver.cpp" />
+    <ClCompile Include="Modules\Animated\CalculatedAnimationDriver.cpp" />
     <ClCompile Include="Modules\Animated\DecayAnimationDriver.cpp" />
     <ClCompile Include="Modules\Animated\DiffClampAnimatedNode.cpp" />
     <ClCompile Include="Modules\Animated\DivisionAnimatedNode.cpp" />
@@ -404,6 +407,7 @@
     <ClCompile Include="Views\ScrollContentViewManager.cpp" />
     <ClCompile Include="Views\ScrollViewManager.cpp" />
     <ClCompile Include="Views\ShadowNodeBase.cpp" />
+    <ClCompile Include="Views\SliderViewManager.cpp" />
     <ClCompile Include="Views\SwitchViewManager.cpp" />
     <ClCompile Include="Views\TextInputViewManager.cpp" />
     <ClCompile Include="Views\TextViewManager.cpp" />

@@ -9831,10 +9831,10 @@ react-is@^16.8.1, react-is@^16.8.4, react-is@^16.8.6:
   resolved "https://registry.yarnpkg.com/react-is/-/react-is-16.9.0.tgz#21ca9561399aad0ff1a7701c01683e8ca981edcb"
   integrity sha512-tJBzzzIgnnRfEm046qRcURvwQnZVXmuCbscxUO5RWrGTXpon2d4c8mI0D8WE6ydVIm29JiLB6+RslkIvym9Rjw==
 
-"react-native@https://github.com/microsoft/react-native/archive/v0.60.0-microsoft.7.tar.gz":
-  version "0.60.0-microsoft.7"
-  uid dbf8aaeede1d495c0d8cf7b7ba503d7f6550a4a9
-  resolved "https://github.com/microsoft/react-native/archive/v0.60.0-microsoft.7.tar.gz#dbf8aaeede1d495c0d8cf7b7ba503d7f6550a4a9"
+"react-native@https://github.com/microsoft/react-native/archive/v0.60.0-microsoft.9.tar.gz":
+  version "0.60.0-microsoft.9"
+  uid e3882023fd841d13833dce99dcf88eedd63a9f79
+  resolved "https://github.com/microsoft/react-native/archive/v0.60.0-microsoft.9.tar.gz#e3882023fd841d13833dce99dcf88eedd63a9f79"
   dependencies:
     "@babel/core" "^7.4.0"
     "@babel/generator" "^7.4.0"
@@ -9879,6 +9879,7 @@ react-is@^16.8.1, react-is@^16.8.4, react-is@^16.8.6:
     jsc-android "245459.0.0"
     metro "0.54.1"
     metro-babel-register "0.54.1"
+    metro-config "0.54.1"
     metro-react-native-babel-transformer "0.54.1"
     nullthrows "^1.1.0"
     pretty-format "^24.7.0"
@@ -10368,10 +10369,10 @@ rimraf@~2.6.2:
   dependencies:
     glob "^7.1.3"
 
-rnpm-plugin-windows@^0.3.6:
-  version "0.3.6"
-  resolved "https://registry.yarnpkg.com/rnpm-plugin-windows/-/rnpm-plugin-windows-0.3.6.tgz#7052b5a29972972e822c199947c5d8f9b6cb3652"
-  integrity sha512-GBotxkgZhpost5AsHC+MilJKQLVdOVTYC07Wv2slkjgENsuwSxO6WMPcGidgLS4w2Pcga5nzTvmn1QxFULlmnw==
+rnpm-plugin-windows@^0.3.7:
+  version "0.3.7"
+  resolved "https://registry.yarnpkg.com/rnpm-plugin-windows/-/rnpm-plugin-windows-0.3.7.tgz#0c76e8d7e34e7c24e6bc30a21a90463792ba6964"
+  integrity sha512-RsY1rEggkFGUggL+gIoSvdcnbPoG+47zVLf9mWCoD1uMz1y8brCE4Lfvg+HDsBkBMS3s1xG6Lni66Zp5D5/nUw==
   dependencies:
     chalk "^1.1.3"
     extract-zip "^1.6.7"

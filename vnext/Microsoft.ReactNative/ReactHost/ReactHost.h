@@ -15,7 +15,7 @@ class ReactHost;
 
 //! The async action is a Functor that returns void Future.
 using AsyncAction = std::function<concurrency::task<void>()>;
-
+#if 0
 //! The queue that executes actions in the sequential order.
 //! Each action returns Mso::Future<void> to indicate its completion.
 //! The next action does not start until the previous action is completed.
@@ -62,7 +62,7 @@ struct AsyncActionQueue final : std::enable_shared_from_this<AsyncActionQueue> {
   bool m_isInvoking{false};
   //const Mso::InvokeElsePostExecutor m_executor{m_queue.Get()};
 };
-
+#endif
 //! ReactHost manages lifetime of ReactNative instance.
 //! It is associated with a native queue that is used modify its state.
 //! - It can reload or unload react instance using Reload and Unload.

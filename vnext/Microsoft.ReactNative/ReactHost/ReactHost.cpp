@@ -30,7 +30,7 @@ LIBLET_PUBLICAPI ReactOptions& ReactOptions::AddFileJSBundle(::string_view jsBun
 //=============================================================================================
 // AsyncActionQueue implementation
 //=============================================================================================
-
+#if 0
 AsyncActionQueue::AsyncActionQueue(
     std::shared_ptr<react::uwp::WorkerMessageQueueThread> &&queue) noexcept
     : m_queue{std::move(queue)} {}
@@ -65,7 +65,7 @@ concurrency::task<void> AsyncActionQueue::PostActions(
 
   return result;
 }
-
+#endif
 #if 0
 void AsyncActionQueue::InvokeAction(Entry&& entry) noexcept
 {
