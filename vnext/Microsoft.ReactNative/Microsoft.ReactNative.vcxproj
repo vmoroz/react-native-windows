@@ -125,6 +125,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="ABICxxModule.h" />
+    <ClInclude Include="BackgroundDispatchQueue.h" />
     <ClInclude Include="Base\UwpReactInstance.h" />
     <ClInclude Include="Crash.h" />
     <ClInclude Include="DynamicReader.h">
@@ -139,6 +140,7 @@
     <ClInclude Include="IReactModuleBuilder.h">
       <DependentUpon>IReactModuleBuilder.idl</DependentUpon>
     </ClInclude>
+    <ClInclude Include="LooperDispatchQueue.h" />
     <ClInclude Include="Modules\AlertModuleUwp.h" />
     <ClInclude Include="Modules\Animated\AdditionAnimatedNode.h" />
     <ClInclude Include="Modules\Animated\AnimatedNode.h" />
@@ -224,12 +226,14 @@
       <SubType>Code</SubType>
     </ClInclude>
     <ClInclude Include="ReactSupport.h" />
+    <ClInclude Include="SimpleEvent.h" />
     <ClInclude Include="Threading\AsyncWorkQueue.h" />
     <ClInclude Include="Threading\AsyncWorkQueue_Priv.h" />
     <ClInclude Include="Threading\BatchingUIMessageQueueThread.h" />
     <ClInclude Include="Threading\JSQueueThread.h" />
     <ClInclude Include="Threading\UIMessageQueueThread.h" />
     <ClInclude Include="Threading\WorkerMessageQueueThread.h" />
+    <ClInclude Include="UIDispatchQueue.h" />
     <ClInclude Include="Utils\CppWinrtLessExceptions.h" />
     <ClInclude Include="Utils\Helpers.h" />
     <ClInclude Include="Utils\LocalBundleReader.h" />
@@ -272,6 +276,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ABICxxModule.cpp" />
+    <ClCompile Include="BackgroundDispatchQueue.cpp" />
     <ClCompile Include="Base\InstanceFactory.cpp" />
     <ClCompile Include="Base\UwpReactInstance.cpp" />
     <ClCompile Include="CxxReactUWP\JSBigString.cpp" />
@@ -286,6 +291,7 @@
     <ClCompile Include="IReactModuleBuilder.cpp">
       <DependentUpon>IReactModuleBuilder.idl</DependentUpon>
     </ClCompile>
+    <ClCompile Include="LooperDispatchQueue.cpp" />
     <ClCompile Include="Modules\AlertModuleUwp.cpp" />
     <ClCompile Include="Modules\Animated\AdditionAnimatedNode.cpp" />
     <ClCompile Include="Modules\Animated\AnimatedNode.cpp" />
@@ -376,6 +382,7 @@
     <ClCompile Include="Threading\JSQueueThread.cpp" />
     <ClCompile Include="Threading\UIMessageQueueThread.cpp" />
     <ClCompile Include="Threading\WorkerMessageQueueThread.cpp" />
+    <ClCompile Include="UIDispatchQueue.cpp" />
     <ClCompile Include="Utils\AccessibilityUtils.cpp" />
     <ClCompile Include="Utils\Helpers.cpp" />
     <ClCompile Include="Utils\LocalBundleReader.cpp" />
@@ -427,6 +434,7 @@
     <Midl Include="IReactModuleBuilder.idl" />
     <Midl Include="IReactPackageBuilder.idl" />
     <Midl Include="IReactPackageProvider.idl" />
+    <Midl Include="ISerialDispatchQueue.idl" />
     <Midl Include="IViewManager.idl" />
     <Midl Include="ReactApplication.idl" />
     <Midl Include="ReactApplicationDelegate.idl">

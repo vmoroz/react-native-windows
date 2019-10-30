@@ -294,6 +294,15 @@
     <ClCompile Include="Modules\Animated\CalculatedAnimationDriver.cpp">
       <Filter>Modules\Animated</Filter>
     </ClCompile>
+    <ClCompile Include="BackgroundDispatchQueue.cpp">
+      <Filter>ReactHost</Filter>
+    </ClCompile>
+    <ClCompile Include="UIDispatchQueue.cpp">
+      <Filter>ReactHost</Filter>
+    </ClCompile>
+    <ClCompile Include="LooperDispatchQueue.cpp">
+      <Filter>ReactHost</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ABICxxModule.h" />
@@ -582,6 +591,18 @@
     <ClInclude Include="Modules\Animated\CalculatedAnimationDriver.h">
       <Filter>Modules\Animated</Filter>
     </ClInclude>
+    <ClInclude Include="LooperDispatchQueue.h">
+      <Filter>ReactHost</Filter>
+    </ClInclude>
+    <ClInclude Include="BackgroundDispatchQueue.h">
+      <Filter>ReactHost</Filter>
+    </ClInclude>
+    <ClInclude Include="UIDispatchQueue.h">
+      <Filter>ReactHost</Filter>
+    </ClInclude>
+    <ClInclude Include="SimpleEvent.h">
+      <Filter>ReactHost</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Midl Include="IBackgroundEventListener.idl" />
@@ -608,6 +629,9 @@
     </Midl>
     <Midl Include="Views\cppwinrt\BorderEffect.idl">
       <Filter>Views\cppwinrt</Filter>
+    </Midl>
+    <Midl Include="ISerialDispatchQueue.idl">
+      <Filter>ReactHost</Filter>
     </Midl>
   </ItemGroup>
   <ItemGroup>

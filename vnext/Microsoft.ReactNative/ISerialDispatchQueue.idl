@@ -1,0 +1,8 @@
+namespace Microsoft.ReactNative {
+  delegate void DispatchQueueCallback(Boolean isCanceled);
+
+  interface ISerialDispatchQueue {
+    Boolean HasThreadAccess();
+    void Post(DispatchQueueCallback callback);
+  };
+}
