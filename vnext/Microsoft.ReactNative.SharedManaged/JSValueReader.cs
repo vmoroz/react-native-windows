@@ -5,17 +5,26 @@ using Microsoft.ReactNative.Bridge;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading;
+using Windows.Devices.Geolocation;
 using ReflectionMethodInfo = System.Reflection.MethodInfo;
 
 namespace Microsoft.ReactNative.Managed
 {
+  delegate bool ReadValueDelegate<T>(IJSValueReader reader, out T value);
+
+  // A value can be read from IJSValueReader in one of two ways:
+  // 1. There is a TryReadValue extension for IJSValueReader interface that matches the type.
+  // 2. We can auto-generate the read method for the type.
   static class JSValueReader
   {
     private static Lazy<Dictionary<Type, ReflectionMethodInfo>> s_readValueMethods =
         new Lazy<Dictionary<Type, ReflectionMethodInfo>>(InitReadValueMethods, LazyThreadSafetyMode.PublicationOnly);
+
+    private static Dictionary<Type, Delegate> s_readers = new Dictionary<Type, Delegate>();
 
     public static ReflectionMethodInfo GetReadValueMethod(Type valueType)
     {
@@ -113,6 +122,129 @@ namespace Microsoft.ReactNative.Managed
     public static bool TryReadValue(this IJSValueReader reader, out string value)
     {
       return reader.TryGetString(out value);
+    }
+
+    public static bool TryReadValue<T>(this IJSValueReader reader, out T value)
+    {
+      return GetReadValueDelegate<T>()(reader, out value);
+    }
+
+    public static bool StartReadArray(this IJSValueReader reader)
+    {
+      //if (reader.State == JSValueReaderState.ObjectBegin)
+      //{
+      //  while (reader.ReadNext() != JSValueReaderState.ObjectEnd)
+      //  {
+
+      //  }
+      //}
+
+
+      return reader.ReadNext() == JSValueReaderState.ArrayBegin;
+    }
+
+    public static bool EndReadArray(this IJSValueReader reader)
+    {
+      return reader.ReadNext() == JSValueReaderState.ArrayEnd;
+    }
+
+    public static ReadValueDelegate<T> GetReadValueDelegate<T>()
+    {
+      return (ReadValueDelegate<T>)GetReadValueDelegate(typeof(T));
+    }
+
+    public static Delegate GetReadValueDelegate(Type valueType)
+    {
+      return null;
+      //var readers = s_readers; // Get the current collection of readers
+      //if (readers.TryGetValue(valueType, out Delegate readerDelegate))
+      //{
+      //  return readerDelegate;
+      //}
+
+      //// Initialize it if it was never initialized before.
+      //if (!readers.Any())
+      //{
+      //  InitializeReaders();
+      //  return GetReadValueDelegate(valueType);
+      //}
+
+      //GenerateReaderDelegate(valueType);
+      //return GetReadValueDelegate(valueType);
+    }
+
+    //public static bool TryReadArgs<T0>(this IJSValueReader reader, out T0 arg0)
+    //{
+    //  return reader.StartReadArray()
+    //    && GetReadValueDelegate<T0>()(reader, out arg0)
+    //    && reader.EndReadArray();
+    //}
+
+    private static void InitializeReaders()
+    {
+      // Only initialize if it is not initialized yet.
+      var currentReaders = s_readers;
+      if (currentReaders.Any())
+      {
+        return;
+      }
+
+      var newReaders = new Dictionary<Type, Delegate>();
+      var readMethods = InitReadValueMethods();
+      foreach (var readMethodPair in readMethods)
+      {
+        Type delegateType = typeof(ReadValueDelegate<>).MakeGenericType(readMethodPair.Key);
+        newReaders.Add(readMethodPair.Key, readMethodPair.Value.CreateDelegate(delegateType));
+      }
+
+      // Only override the s_readers if another thread did not do it yet.
+      Interlocked.CompareExchange(ref s_readers, newReaders, currentReaders);
+    }
+
+    private static void GenerateReadValueDelegate(Type valueType)
+    {
+
+      //TypeInfo typeInfo = valueType.GetTypeInfo();
+      //if (typeInfo.IsEnum)
+      //{
+
+      //}
+      //else
+      //{
+      //  valueType.GetInterfaces
+      //  bool isStruct = type.IsValueType && !type.IsPrimitive;
+      //  bool isClass = type.IsClass;
+      //}
+      //// Only generate if it is not defined yet.
+      //var currentReaders = s_readers;
+      //if (currentReaders.Any())
+      //{
+      //  return;
+      //}
+
+    }
+
+    public static bool GetBoolean(this IJSValueReader reader)
+    {
+      reader.TryGetBoolen(out bool value);
+      return value;
+    }
+    public static long GetInt64(this IJSValueReader reader)
+    {
+      reader.TryGetInt64(out long value);
+      return value;
+    }
+
+    public static double GetDouble(this IJSValueReader reader)
+    {
+      reader.TryGetDouble(out double value);
+      return value;
+    }
+
+    public static string GetString(this IJSValueReader reader)
+    {
+      reader.TryGetString(out string value);
+      return value;
     }
   }
 }
