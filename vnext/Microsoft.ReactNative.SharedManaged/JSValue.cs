@@ -1,12 +1,17 @@
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License.
+
 using Microsoft.ReactNative.Bridge;
+using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Runtime.InteropServices;
 
 namespace Microsoft.ReactNative.Managed
 {
   enum JSValueType
   {
-    Null, // Null value must be first for the default initialization.
+    Null,
     Object,
     Array,
     String,
@@ -15,69 +20,165 @@ namespace Microsoft.ReactNative.Managed
     Double,
   }
 
-  struct JSValue
+  // JSValue represents an immutable JavaScript value passed as a parameter.
+  // It is created to simplify working with IJSValueReader.
+  //
+  // JSValue is designed to minimize number of memory allocations:
+  // - It is a struct that avoid extra memory allocations when it is stored in a container.
+  // - It avoids boxing simple values by using a union type to store them.
+  // The JSValue is an immutable and is safe to be used from multiple threads.
+  // It does not implement GetHashCode() and must not be used as a key in a dictionary.
+  struct JSValue : IEquatable<JSValue>
   {
-    private readonly JSValueType m_type;
+    public static readonly JSValue Null = new JSValue();
+
     private readonly SimpleValue m_simpleValue;
     private readonly object m_objValue;
 
-    public JSValue(IDictionary<string, JSValue> value)
+    public JSValue(IReadOnlyDictionary<string, JSValue> value)
     {
-      m_type = JSValueType.Object;
+      Type = JSValueType.Object;
       m_simpleValue = new SimpleValue();
       m_objValue = value;
     }
 
-    public JSValue(IList<JSValue> value)
+    public JSValue(IReadOnlyList<JSValue> value)
     {
-      m_type = JSValueType.Array;
+      Type = JSValueType.Array;
       m_simpleValue = new SimpleValue();
       m_objValue = value;
     }
 
     public JSValue(string value)
     {
-      m_type = JSValueType.String;
+      Type = JSValueType.String;
       m_simpleValue = new SimpleValue();
       m_objValue = value;
     }
 
     public JSValue(bool value)
     {
-      m_type = JSValueType.Boolean;
+      Type = JSValueType.Boolean;
       m_simpleValue = new SimpleValue { BooleanValue = value };
       m_objValue = null;
     }
 
     public JSValue(long value)
     {
-      m_type = JSValueType.Int64;
+      Type = JSValueType.Int64;
       m_simpleValue = new SimpleValue { Int64Value = value };
       m_objValue = null;
     }
 
     public JSValue(double value)
     {
-      m_type = JSValueType.Double;
+      Type = JSValueType.Double;
       m_simpleValue = new SimpleValue { DoubleValue = value };
       m_objValue = null;
     }
 
-    public JSValueType Type { get { return m_type; } }
+    public JSValueType Type { get; }
 
-    public IDictionary<string, JSValue> Object { get { return (IDictionary<string, JSValue>)m_objValue; } }
-    public IList<JSValue> Array { get { return (IList<JSValue>)m_objValue; } }
-    public string String { get { return (string)m_objValue; } }
-    public bool Boolean { get { return m_simpleValue.BooleanValue; } }
-    public long Int64 { get { return m_simpleValue.Int64Value; } }
-    public double Double { get { return m_simpleValue.DoubleValue; } }
+    public bool IsNull => Type == JSValueType.Null;
 
-    public static JSValue Null = new JSValue();
+    public IReadOnlyDictionary<string, JSValue> Object => (IReadOnlyDictionary<string, JSValue>)m_objValue;
+    public IReadOnlyList<JSValue> Array => (IReadOnlyList<JSValue>)m_objValue;
+    public string String => (string)m_objValue;
+    public bool Boolean => m_simpleValue.BooleanValue;
+    public long Int64 => m_simpleValue.Int64Value;
+    public double Double => m_simpleValue.DoubleValue;
 
-    public bool IsNull { get { return m_type == JSValueType.Null; } }
+    public static bool operator ==(in JSValue lhs, in JSValue rhs)
+    {
+      return lhs.ValueEquals(rhs);
+    }
+
+    public static bool operator !=(in JSValue lhs, in JSValue rhs)
+    {
+      return !lhs.ValueEquals(rhs);
+    }
+
+    public bool Equals(JSValue other)
+    {
+      return ValueEquals(other);
+    }
+
+    private bool ValueEquals(in JSValue other)
+    {
+      if (Type == other.Type)
+      {
+        switch (Type)
+        {
+          case JSValueType.Null: return true;
+          case JSValueType.Object: return ObjectEquals(other.Object);
+          case JSValueType.Array: return ArrayEquals(other.Array);
+          case JSValueType.String: return String == other.String;
+          case JSValueType.Boolean: return Boolean == other.Boolean;
+          case JSValueType.Int64: return Int64 == other.Int64;
+          case JSValueType.Double: return Double == other.Double;
+          default: return false;
+        }
+      }
+
+      return false;
+    }
+
+    private bool ObjectEquals(IReadOnlyDictionary<string, JSValue> other)
+    {
+      var obj = Object;
+      if (obj.Count != other.Count)
+      {
+        return false;
+      }
+
+      foreach (var entry in obj)
+      {
+        if (!other.TryGetValue(entry.Key, out var value) || !value.ValueEquals(entry.Value))
+        {
+          return false;
+        }
+      }
+
+      return true;
+    }
+
+    private bool ArrayEquals(IReadOnlyList<JSValue> other)
+    {
+      var arr = Array;
+      if (arr.Count != other.Count)
+      {
+        return false;
+      }
+
+      for (int i = 0; i < arr.Count; ++i)
+      {
+        if (!arr[i].ValueEquals(other[i]))
+        {
+          return false;
+        }
+      }
+
+      return true;
+    }
+
+    public override bool Equals(object obj)
+    {
+      return (obj is JSValue) && Equals((JSValue)obj);
+    }
+
+    public override int GetHashCode()
+    {
+      throw new NotImplementedException("JSValue currently does not support hash codes");
+    }
 
     public static JSValue ReadFrom(IJSValueReader reader)
     {
+      var treeReader = reader as IJSValueTreeReader;
+      if (treeReader != null)
+      {
+        return treeReader.Current;
+      }
+
       return ReadValue(reader, reader.ReadNext());
     }
 
@@ -85,55 +186,44 @@ namespace Microsoft.ReactNative.Managed
     {
       switch (state)
       {
+        case JSValueReaderState.NullValue: return Null;
         case JSValueReaderState.ObjectBegin: return ReadObject(reader);
         case JSValueReaderState.ArrayBegin: return ReadArray(reader);
-        case JSValueReaderState.NullValue: return Null;
+        case JSValueReaderState.StringValue: return new JSValue(reader.GetString());
         case JSValueReaderState.BooleanValue: return new JSValue(reader.GetBoolean());
         case JSValueReaderState.Int64Value: return new JSValue(reader.GetInt64());
         case JSValueReaderState.DoubleValue: return new JSValue(reader.GetDouble());
-        case JSValueReaderState.StringValue: return new JSValue(reader.GetString());
         default: throw new ReactException("Unexpected JSValueReader state");
       }
     }
 
-    public static JSValue ReadObject(IJSValueReader reader)
+    private static JSValue ReadObject(IJSValueReader reader)
     {
-      var obj = new Dictionary<string, JSValue>();
+      var properties = new Dictionary<string, JSValue>();
       JSValueReaderState state;
-
-      string ReadPropertyName()
-      {
-        if (state != JSValueReaderState.PropertyName)
-        {
-          throw new ReactException($"Unexpected JSValueReader state: {state}");
-        }
-
-        string result = reader.GetString();
-        state = reader.ReadNext();
-        return result;
-      }
-
       while ((state = reader.ReadNext()) != JSValueReaderState.ObjectEnd)
       {
-        obj.Add(ReadPropertyName(), ReadValue(reader, state));
+        properties.Add(reader.GetPropertyName(), ReadValue(reader, state));
       }
-      return new JSValue(obj);
+
+      return new JSValue(new ReadOnlyDictionary<string, JSValue>(properties));
     }
 
-    public static JSValue ReadArray(IJSValueReader reader)
+    private static JSValue ReadArray(IJSValueReader reader)
     {
-      var array = new List<JSValue>();
+      var items = new List<JSValue>();
       JSValueReaderState state;
       while ((state = reader.ReadNext()) != JSValueReaderState.ArrayEnd)
       {
-        array.Add(ReadValue(reader, state));
+        items.Add(ReadValue(reader, state));
       }
-      return new JSValue(array);
+
+      return new JSValue(new ReadOnlyCollection<JSValue>(items));
     }
 
     public void WriteTo(IJSValueWriter writer)
     {
-      switch (m_type)
+      switch (Type)
       {
         case JSValueType.Null: writer.WriteNull(); break;
         case JSValueType.Object: WriteObject(writer); break;
@@ -166,6 +256,7 @@ namespace Microsoft.ReactNative.Managed
       writer.WriteArrayEnd();
     }
 
+    // This is a 'union' type that may store in the same location bool, long, or double.
     [StructLayout(LayoutKind.Explicit)]
     private struct SimpleValue
     {

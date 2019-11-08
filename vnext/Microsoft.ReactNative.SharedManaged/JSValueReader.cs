@@ -19,8 +19,116 @@ namespace Microsoft.ReactNative.Managed
   // A value can be read from IJSValueReader in one of two ways:
   // 1. There is a TryReadValue extension for IJSValueReader interface that matches the type.
   // 2. We can auto-generate the read method for the type.
-  static class JSValueReader
+  class JSValueReader
   {
+    private IJSValueReader m_reader;
+    private JSValueReaderState m_state;
+
+    public void ReadValue(out string value)
+    {
+      switch (m_state)
+      {
+        case JSValueReaderState.StringValue: value = m_reader.GetString(); break;
+        case JSValueReaderState.BooleanValue: value = m_reader.GetBoolean() ? "true" : "false"; break;
+        case JSValueReaderState.Int64Value: value = m_reader.GetInt64().ToString(); break;
+        case JSValueReaderState.DoubleValue: value = m_reader.GetDouble().ToString(); break;
+        default: value = ""; break;
+      }
+    }
+
+    public void ReadValue(out bool value)
+    {
+      switch (m_state)
+      {
+        case JSValueReaderState.StringValue: value = string.IsNullOrEmpty(m_reader.GetString()); break;
+        case JSValueReaderState.BooleanValue: value = m_reader.GetBoolean(); break;
+        case JSValueReaderState.Int64Value: value = m_reader.GetInt64() != 0; break;
+        case JSValueReaderState.DoubleValue: value = m_reader.GetDouble() != 0; break;
+        default: value = false; break;
+      }
+    }
+
+    public void ReadValue(out sbyte value)
+    {
+      ReadValue(out long val);
+      value = (sbyte)val;
+    }
+
+    public void ReadValue(out short value)
+    {
+      ReadValue(out long val);
+      value = (short)val;
+    }
+
+    public void ReadValue(out int value)
+    {
+      ReadValue(out long val);
+      value = (int)val;
+    }
+
+    public void ReadValue(out long value)
+    {
+      switch (m_state)
+      {
+        case JSValueReaderState.StringValue:
+          {
+            if (!long.TryParse(m_reader.GetString(), out value)) { value = 0; }
+            break;
+          }
+        case JSValueReaderState.BooleanValue: value = m_reader.GetBoolean() ? 1 : 0; break;
+        case JSValueReaderState.Int64Value: value = m_reader.GetInt64(); break;
+        case JSValueReaderState.DoubleValue: value = (long)m_reader.GetDouble(); break;
+        default: value = 0; break;
+      }
+    }
+
+    public void ReadValue(out byte value)
+    {
+      ReadValue(out long val);
+      value = (byte)val;
+    }
+
+    public void ReadValue(out ushort value)
+    {
+      ReadValue(out long val);
+      value = (ushort)val;
+    }
+
+    public void ReadValue(out uint value)
+    {
+      ReadValue(out long val);
+      value = (uint)val;
+    }
+
+    public void ReadValue(out ulong value)
+    {
+      ReadValue(out long val);
+      value = (ulong)val;
+    }
+
+    public void ReadValue(out float value)
+    {
+      ReadValue(out double val);
+      value = (float)val;
+    }
+
+    public void ReadValue(out double value)
+    {
+      switch (m_state)
+      {
+        case JSValueReaderState.StringValue:
+          {
+            if (!double.TryParse(m_reader.GetString(), out value)) { value = 0; }
+            break;
+          }
+        case JSValueReaderState.BooleanValue: value = m_reader.GetBoolean() ? 1 : 0; break;
+        case JSValueReaderState.Int64Value: value = m_reader.GetInt64(); break;
+        case JSValueReaderState.DoubleValue: value = m_reader.GetDouble(); break;
+        default: value = 0; break;
+      }
+    }
+
+#if false
     private static Lazy<Dictionary<Type, ReflectionMethodInfo>> s_readValueMethods =
         new Lazy<Dictionary<Type, ReflectionMethodInfo>>(InitReadValueMethods, LazyThreadSafetyMode.PublicationOnly);
 
@@ -47,81 +155,6 @@ namespace Microsoft.ReactNative.Managed
                   where parameters.Length == 2 && parameters[0].ParameterType == typeof(IJSValueReader)
                   select new { valueType = parameters[1].ParameterType, method };
       return query.ToDictionary(i => i.valueType, i => i.method);
-    }
-
-    public static bool TryReadValue(this IJSValueReader reader, out bool value)
-    {
-      return reader.TryGetBoolen(out value);
-    }
-
-    public static bool TryReadValue(this IJSValueReader reader, out sbyte value)
-    {
-      bool result = reader.TryGetInt64(out long int64Value);
-      value = (sbyte)int64Value;
-      return result;
-    }
-    public static bool TryReadValue(this IJSValueReader reader, out short value)
-    {
-      bool result = reader.TryGetInt64(out long int64Value);
-      value = (short)int64Value;
-      return result;
-    }
-
-    public static bool TryReadValue(this IJSValueReader reader, out int value)
-    {
-      bool result = reader.TryGetInt64(out long int64Value);
-      value = (int)int64Value;
-      return result;
-    }
-
-    public static bool TryReadValue(this IJSValueReader reader, out long value)
-    {
-      return reader.TryGetInt64(out value);
-    }
-
-    public static bool TryReadValue(this IJSValueReader reader, out byte value)
-    {
-      bool result = reader.TryGetInt64(out long int64Value);
-      value = (byte)int64Value;
-      return result;
-    }
-
-    public static bool TryReadValue(this IJSValueReader reader, out ushort value)
-    {
-      bool result = reader.TryGetInt64(out long int64Value);
-      value = (ushort)int64Value;
-      return result;
-    }
-
-    public static bool TryReadValue(this IJSValueReader reader, out uint value)
-    {
-      bool result = reader.TryGetInt64(out long int64Value);
-      value = (uint)int64Value;
-      return result;
-    }
-
-    public static bool TryReadValue(this IJSValueReader reader, out ulong value)
-    {
-      bool result = reader.TryGetInt64(out long int64Value);
-      value = (ulong)int64Value;
-      return result;
-    }
-
-    public static bool TryReadValue(this IJSValueReader reader, out float value)
-    {
-      bool result = reader.TryGetDouble(out double doubleValue);
-      value = (float)doubleValue;
-      return result;
-    }
-
-    public static bool TryReadValue(this IJSValueReader reader, out double value)
-    {
-      return reader.TryGetDouble(out value);
-    }
-
-    public static bool TryReadValue(this IJSValueReader reader, out string value)
-    {
-      return reader.TryGetString(out value);
     }
 
     public static bool TryReadValue<T>(this IJSValueReader reader, out T value)
@@ -223,28 +256,6 @@ namespace Microsoft.ReactNative.Managed
       //}
 
     }
-
-    public static bool GetBoolean(this IJSValueReader reader)
-    {
-      reader.TryGetBoolen(out bool value);
-      return value;
-    }
-    public static long GetInt64(this IJSValueReader reader)
-    {
-      reader.TryGetInt64(out long value);
-      return value;
-    }
-
-    public static double GetDouble(this IJSValueReader reader)
-    {
-      reader.TryGetDouble(out double value);
-      return value;
-    }
-
-    public static string GetString(this IJSValueReader reader)
-    {
-      reader.TryGetString(out string value);
-      return value;
-    }
+#endif
   }
 }
