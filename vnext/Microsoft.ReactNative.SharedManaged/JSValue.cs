@@ -9,17 +9,6 @@ using System.Runtime.InteropServices;
 
 namespace Microsoft.ReactNative.Managed
 {
-  enum JSValueType
-  {
-    Null,
-    Object,
-    Array,
-    String,
-    Boolean,
-    Int64,
-    Double,
-  }
-
   // JSValue represents an immutable JavaScript value passed as a parameter.
   // It is created to simplify working with IJSValueReader.
   //
@@ -179,31 +168,30 @@ namespace Microsoft.ReactNative.Managed
         return treeReader.Current;
       }
 
-      return ReadValue(reader, reader.ReadNext());
+      return ReadValue(reader);
     }
 
-    private static JSValue ReadValue(IJSValueReader reader, JSValueReaderState state)
+    private static JSValue ReadValue(IJSValueReader reader)
     {
-      switch (state)
+      switch (reader.ValueType)
       {
-        case JSValueReaderState.NullValue: return Null;
-        case JSValueReaderState.ObjectBegin: return ReadObject(reader);
-        case JSValueReaderState.ArrayBegin: return ReadArray(reader);
-        case JSValueReaderState.StringValue: return new JSValue(reader.GetString());
-        case JSValueReaderState.BooleanValue: return new JSValue(reader.GetBoolean());
-        case JSValueReaderState.Int64Value: return new JSValue(reader.GetInt64());
-        case JSValueReaderState.DoubleValue: return new JSValue(reader.GetDouble());
-        default: throw new ReactException("Unexpected JSValueReader state");
+        case JSValueType.Null: return Null;
+        case JSValueType.Object: return ReadObject(reader);
+        case JSValueType.Array: return ReadArray(reader);
+        case JSValueType.String: return new JSValue(reader.GetString());
+        case JSValueType.Boolean: return new JSValue(reader.GetBoolean());
+        case JSValueType.Int64: return new JSValue(reader.GetInt64());
+        case JSValueType.Double: return new JSValue(reader.GetDouble());
+        default: throw new ReactException("Unexpected JSValueType");
       }
     }
 
     private static JSValue ReadObject(IJSValueReader reader)
     {
       var properties = new Dictionary<string, JSValue>();
-      JSValueReaderState state;
-      while ((state = reader.ReadNext()) != JSValueReaderState.ObjectEnd)
+      while (reader.GetNextObjectProperty(out string propertyName))
       {
-        properties.Add(reader.GetPropertyName(), ReadValue(reader, state));
+        properties.Add(propertyName, ReadValue(reader));
       }
 
       return new JSValue(new ReadOnlyDictionary<string, JSValue>(properties));
@@ -212,10 +200,9 @@ namespace Microsoft.ReactNative.Managed
     private static JSValue ReadArray(IJSValueReader reader)
     {
       var items = new List<JSValue>();
-      JSValueReaderState state;
-      while ((state = reader.ReadNext()) != JSValueReaderState.ArrayEnd)
+      while (reader.GetNextArrayItem())
       {
-        items.Add(ReadValue(reader, state));
+        items.Add(ReadValue(reader));
       }
 
       return new JSValue(new ReadOnlyCollection<JSValue>(items));

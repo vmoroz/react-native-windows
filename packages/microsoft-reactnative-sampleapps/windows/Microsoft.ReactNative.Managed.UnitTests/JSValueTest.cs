@@ -14,7 +14,7 @@ using Newtonsoft.Json.Linq;
 namespace Microsoft.ReactNative.Managed.UnitTests
 {
     [TestClass]
-    public class UnitTest1
+    public class JSValueTest
     {
         [TestMethod]
         public void TestReadObject()

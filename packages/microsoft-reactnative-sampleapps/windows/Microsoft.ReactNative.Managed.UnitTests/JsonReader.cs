@@ -1,185 +1,164 @@
 using Microsoft.ReactNative.Bridge;
 using Newtonsoft.Json.Linq;
-using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace Microsoft.ReactNative.Managed.UnitTests
 {
     class JTokenReader : IJSValueReader
     {
-        // Special initial internal state that we never return.
-        private static readonly JSValueReaderState StartState = (JSValueReaderState)(-1);
-
-        private readonly JToken m_root;
         private JToken m_current;
-        private JSValueReaderState m_state = StartState;
+        private bool m_isIterating = false;
         private readonly Stack<StackEntry> m_stack = new Stack<StackEntry>();
 
         public JTokenReader(JToken root)
         {
-            m_root = root;
+            m_current = root;
         }
 
-        public JSValueReaderState ReadNext()
+        public JSValueType ValueType
         {
-            if (m_state == StartState)
+            get
             {
-                return ReadValue(m_root);
-            }
-
-            switch (m_state)
-            {
-                case JSValueReaderState.ObjectBegin: return ReadObject();
-                case JSValueReaderState.ArrayBegin: return ReadArray();
-                case JSValueReaderState.NullValue:
-                case JSValueReaderState.ObjectEnd:
-                case JSValueReaderState.ArrayEnd:
-                case JSValueReaderState.StringValue:
-                case JSValueReaderState.BooleanValue:
-                case JSValueReaderState.Int64Value:
-                case JSValueReaderState.DoubleValue: return ReadNextValue();
-                default: return m_state = JSValueReaderState.Error;
-            }
-        }
-
-        private JSValueReaderState ReadValue(JToken value)
-        {
-            if (value == null)
-            {
-                return m_state = JSValueReaderState.Error;
-            }
-
-            m_current = value;
-            switch (value.Type)
-            {
-                case JTokenType.Null:
-                    return m_state = JSValueReaderState.NullValue;
-                case JTokenType.Object:
-                    return m_state = JSValueReaderState.ObjectBegin;
-                case JTokenType.Array:
-                    return m_state = JSValueReaderState.ArrayBegin;
-                case JTokenType.String:
-                    return m_state = JSValueReaderState.StringValue;
-                case JTokenType.Boolean:
-                    return m_state = JSValueReaderState.BooleanValue;
-                case JTokenType.Integer:
-                    return m_state = JSValueReaderState.Int64Value;
-                case JTokenType.Float:
-                    return m_state = JSValueReaderState.DoubleValue;
-                default:
-                    return m_state = JSValueReaderState.Error;
+                switch (m_current.Type)
+                {
+                    case JTokenType.Null:
+                        return JSValueType.Null;
+                    case JTokenType.Object:
+                        return JSValueType.Object;
+                    case JTokenType.Array:
+                        return JSValueType.Array;
+                    case JTokenType.String:
+                        return JSValueType.String;
+                    case JTokenType.Boolean:
+                        return JSValueType.Boolean;
+                    case JTokenType.Integer:
+                        return JSValueType.Int64;
+                    case JTokenType.Float:
+                        return JSValueType.Double;
+                    default:
+                        return JSValueType.Null;
+                }
             }
         }
 
-        private JSValueReaderState ReadObject()
+        public bool GetNextObjectProperty(out string propertyName)
         {
-            var properties = ((JObject)m_current).Properties().GetEnumerator();
-            if (properties.MoveNext())
+            if (!m_isIterating)
             {
-                m_stack.Push(StackEntry.ObjectProperty(m_current, properties));
-                return ReadValue(properties.Current.Value);
+                if (m_current.Type == JTokenType.Object)
+                {
+                    var properties = ((JObject)m_current).Properties().GetEnumerator();
+                    if (properties.MoveNext())
+                    {
+                        m_stack.Push(StackEntry.ObjectProperty(m_current, properties));
+                        SetCurrentValue(properties.Current.Value);
+                        propertyName = properties.Current.Name;
+                        return true;
+                    }
+                    else
+                    {
+                        m_isIterating = m_stack.Count != 0;
+                    }
+                }
             }
-            else
+            else if (m_stack.Count != 0)
             {
-                return m_state = JSValueReaderState.ObjectEnd;
-            }
-        }
-
-        private JSValueReaderState ReadArray()
-        {
-            var items = ((JArray)m_current).GetEnumerator();
-            if (items.MoveNext())
-            {
-                m_stack.Push(StackEntry.ArrayItem(m_current, items));
-                return ReadValue(items.Current);
-            }
-            else
-            {
-                return m_state = JSValueReaderState.ObjectEnd;
-            }
-        }
-
-        private JSValueReaderState ReadNextValue()
-        {
-            if (m_stack.Count == 0)
-            {
-                return m_state = JSValueReaderState.Error;
-            }
-
-            switch (m_stack.Peek().Value.Type)
-            {
-                case JTokenType.Object:
-                    return ReadNextObjectProperty();
-                case JTokenType.Array:
-                    return ReadNextArrayItem();
-                default:
-                    return m_state = JSValueReaderState.Error;
-            }
-        }
-
-        private JSValueReaderState ReadNextObjectProperty()
-        {
-            StackEntry entry = m_stack.Peek();
-            if (entry.Property.MoveNext())
-            {
-                return ReadValue(entry.Property.Current.Value);
-            }
-            else
-            {
-                m_current = entry.Value;
-                m_stack.Pop();
-                return m_state = JSValueReaderState.ObjectEnd;
-            }
-        }
-
-        private JSValueReaderState ReadNextArrayItem()
-        {
-            var entry = m_stack.Peek();
-            if (entry.Item.MoveNext())
-            {
-                return ReadValue(entry.Item.Current);
-            }
-            else
-            {
-                m_current = entry.Value;
-                m_stack.Pop();
-                return m_state = JSValueReaderState.ArrayEnd;
-            }
-        }
-
-        public string GetPropertyName()
-        {
-            if (m_stack.Count != 0)
-            {
-                var entry = m_stack.Peek();
+                StackEntry entry = m_stack.Peek();
                 if (entry.Value.Type == JTokenType.Object)
                 {
-                    return entry.Property.Current.Name;
+                    if (entry.Property.MoveNext())
+                    {
+                        SetCurrentValue(entry.Property.Current.Value);
+                        propertyName = entry.Property.Current.Name;
+                        return true;
+                    }
+                    else
+                    {
+                        m_current = entry.Value;
+                        m_stack.Pop();
+                        m_isIterating = m_stack.Count != 0;
+                    }
                 }
             }
 
-            return "";
+            propertyName = "";
+            return false;
+        }
+
+        public bool GetNextArrayItem()
+        {
+            if (!m_isIterating)
+            {
+                if (m_current.Type == JTokenType.Array)
+                {
+                    var items = ((JArray)m_current).GetEnumerator();
+                    if (items.MoveNext())
+                    {
+                        m_stack.Push(StackEntry.ArrayItem(m_current, items));
+                        SetCurrentValue(items.Current);
+                        return true;
+                    }
+                    else
+                    {
+                        m_isIterating = m_stack.Count != 0;
+                    }
+                }
+            }
+            else if (m_stack.Count != 0)
+            {
+                var entry = m_stack.Peek();
+                if (entry.Value.Type == JTokenType.Array)
+                {
+                    if (entry.Item.MoveNext())
+                    {
+                        SetCurrentValue(entry.Item.Current);
+                        return true;
+                    }
+                    else
+                    {
+                        m_current = entry.Value;
+                        m_stack.Pop();
+                        m_isIterating = m_stack.Count != 0;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        private void SetCurrentValue(JToken value)
+        {
+            m_current = value;
+            switch (value.Type)
+            {
+                case JTokenType.Object:
+                case JTokenType.Array:
+                    m_isIterating = false;
+                    break;
+                default:
+                    m_isIterating = true;
+                    break;
+            }
         }
 
         public string GetString()
         {
-            return (m_state == JSValueReaderState.StringValue) ? (string)(JValue)m_stack.Peek().Value : "";
+            return (m_current.Type == JTokenType.String) ? (string)(JValue)m_current : "";
         }
 
         public bool GetBoolean()
         {
-            return (m_state == JSValueReaderState.BooleanValue) ? (bool)(JValue)m_stack.Peek().Value : false;
+            return (m_current.Type == JTokenType.Boolean) ? (bool)(JValue)m_current : false;
         }
 
         public long GetInt64()
         {
-            return (m_state == JSValueReaderState.Int64Value) ? (long)(JValue)m_stack.Peek().Value : 0;
+            return (m_current.Type == JTokenType.Integer) ? (long)(JValue)m_current : 0;
         }
 
         public double GetDouble()
         {
-            return (m_state == JSValueReaderState.DoubleValue) ? (double)(JValue)m_stack.Peek().Value : 0;
+            return (m_current.Type == JTokenType.Float) ? (double)(JValue)m_current : 0;
         }
 
         private struct StackEntry

@@ -79,6 +79,7 @@ bool DynamicReader::GetNextObjectProperty(hstring &propertyName) noexcept {
     }
   }
 
+  propertyName = to_hstring(L"");
   return false;
 }
 
@@ -115,6 +116,10 @@ void DynamicReader::SetCurrentValue(const folly::dynamic *value) noexcept {
     case folly::dynamic::Type::OBJECT:
     case folly::dynamic::Type::ARRAY:
       m_isIterating = false;
+      break;
+    default:
+      m_isIterating = true;
+      break;
   }
 }
 
