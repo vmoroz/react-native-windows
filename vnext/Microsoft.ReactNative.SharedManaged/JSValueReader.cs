@@ -152,6 +152,7 @@ namespace Microsoft.ReactNative.Managed
 
     public static Delegate GetReadValueDelegate(Type valueType)
     {
+      var generatedDelegate = new Lazy<Delegate>(() => GenerateReadValueDelegate(valueType));
       while (true)
       {
         var readerDelegates = s_readerDelegates;
@@ -162,7 +163,7 @@ namespace Microsoft.ReactNative.Managed
 
         // The ReadValue delegate is not found. Generate it add try to add to the dictionary atomically.
         var updatedReaderDelegates = new Dictionary<Type, Delegate>(readerDelegates as IDictionary<Type, Delegate>);
-        updatedReaderDelegates.Add(valueType, GenerateReadValueDelegate(valueType));
+        updatedReaderDelegates.Add(valueType, generatedDelegate.Value);
         Interlocked.CompareExchange(ref s_readerDelegates, updatedReaderDelegates, readerDelegates);
       }
     }
@@ -173,8 +174,8 @@ namespace Microsoft.ReactNative.Managed
         || TryGenerateReadValueFromJSValueExtension(valueType, out readDelegate)
         || TryGenerateReadValueForEnum(valueType, out readDelegate)
         || TryGenerateReadValueForNullable(valueType, out readDelegate)
-        || TryGenerateReadValueForIList(valueType, out readDelegate)
         || TryGenerateReadValueForIDictionary(valueType, out readDelegate)
+        || TryGenerateReadValueForIList(valueType, out readDelegate)
         || TryGenerateReadValueForTuple(valueType, out readDelegate)
         || TryGenerateReadValueForClass(valueType, out readDelegate))
       {
@@ -208,11 +209,11 @@ namespace Microsoft.ReactNative.Managed
     {
       // Generate code that looks like:
       //
-      // (IJSValueReader reader, out Type value) =>
+      // (IJSValueReader reader, out EnumType value) =>
       // {
       //   int temp;
       //   reader.ReadValue(out temp);
-      //   value = (Type)temp;
+      //   value = (EnumType)temp;
       // }
 
       if (valueType.GetTypeInfo().IsEnum)
@@ -248,18 +249,230 @@ namespace Microsoft.ReactNative.Managed
 
     private static bool TryGenerateReadValueForNullable(Type valueType, out Delegate readDelegate)
     {
-      readDelegate = null;
-      return false;
-    }
+      // Generate code that looks like:
+      //
+      // (IJSValueReader reader, out Nullable<Type> value) =>
+      // {
+      //   if (reader.ValueType != JSValueType.Null)
+      //   {
+      //     Type temp;
+      //     reader.ReadValue(out temp);
+      //     value = temp;
+      //   }
+      //   else
+      //   {
+      //     value = null;
+      //   }
+      // }
 
-    private static bool TryGenerateReadValueForIList(Type valueType, out Delegate readDelegate)
-    {
+      var typeInfo = valueType.GetTypeInfo();
+      if (typeInfo.IsGenericType && typeInfo.GetGenericTypeDefinition() == typeof(Nullable<>))
+      {
+        var typeArg = typeInfo.GenericTypeArguments[0];
+        Delegate typeArgReadValue = GetReadValueDelegate(typeArg);
+        if (typeArgReadValue != null)
+        {
+          // Lambda parameters (IJSValueReader reader, out Type value)
+          var readerParam = Expression.Parameter(typeof(IJSValueReader), "reader");
+          var valueParam = Expression.Parameter(valueType.MakeByRefType(), "value");
+
+          // (reader.ValueType != JSValueType.Null)
+          var testExpr = Expression.NotEqual(
+            Expression.Property(readerParam, nameof(IJSValueReader.ValueType)),
+            Expression.Constant(JSValueType.Null));
+
+          var typeArgReadValueType = typeof(ReadValueDelegate<>).MakeGenericType(typeArg);
+          var typeArgReadValueDelegate = Expression.Convert(Expression.Constant(typeArgReadValue), typeArgReadValueType);
+
+          // Type temp;
+          var varTemp = Expression.Variable(typeArg, "temp");
+          var assignValue = Expression.Block(
+            new ParameterExpression[] { varTemp },
+            // reader.ReadValue(out temp);
+            Expression.Invoke(typeArgReadValueDelegate, readerParam, varTemp),
+            // value = (Type)temp;
+            Expression.Assign(valueParam, Expression.Convert(varTemp, valueType)));
+
+          // value = null;
+          var assignNull = Expression.Assign(valueParam, Expression.New(valueType));
+
+          var lambdaBody = Expression.IfThenElse(testExpr, assignValue, assignNull);
+
+          var lambdaType = typeof(ReadValueDelegate<>).MakeGenericType(valueType);
+          var lambda = Expression.Lambda(lambdaType, lambdaBody, readerParam, valueParam);
+
+          readDelegate = lambda.Compile();
+          return true;
+        }
+      }
+
       readDelegate = null;
       return false;
     }
 
     private static bool TryGenerateReadValueForIDictionary(Type valueType, out Delegate readDelegate)
     {
+      // Generate code that looks like:
+      //
+      // (IJSValueReader reader, out IDictionary<string, Type> value) =>
+      // {
+      //   Dictionary<string, T> dictionary = new Dictionary<string, T>();
+      //   string propertyName;
+      //   while (reader.GetNextArrayProperty(out propertyName))
+      //   {
+      //     Type temp;
+      //     reader.ReadValue(out temp);
+      //     dictionary.Add(propertyName, temp);
+      //   }
+      //   value = dictionary;
+      // }
+
+      var iDictionaryQuery =
+        from intfType in valueType.GetInterfaces().Concat(new[] { valueType })
+        let intfTypeInfo = intfType.GetTypeInfo()
+        where intfTypeInfo.IsInterface
+        && intfTypeInfo.IsGenericType
+        && intfTypeInfo.GetGenericTypeDefinition() == typeof(IDictionary<,>)
+        && intfTypeInfo.GenericTypeArguments[0] == typeof(string)
+        select intfTypeInfo.GenericTypeArguments[1];
+
+      Type typeArg = iDictionaryQuery.FirstOrDefault();
+      if (typeArg != null)
+      {
+        Delegate typeArgReadValue = GetReadValueDelegate(typeArg);
+        if (typeArgReadValue != null)
+        {
+          // Lambda parameters (IJSValueReader reader, out Type value)
+          var readerParam = Expression.Parameter(typeof(IJSValueReader), "reader");
+          var valueParam = Expression.Parameter(valueType.MakeByRefType(), "value");
+
+          var typeArgReadValueType = typeof(ReadValueDelegate<>).MakeGenericType(typeArg);
+          var typeArgReadValueDelegate = Expression.Convert(Expression.Constant(typeArgReadValue), typeArgReadValueType);
+
+          // Dictionary<string, T> list = new Dictionary<string, T>();
+          var dictionaryType = typeof(Dictionary<,>).MakeGenericType(typeof(string), typeArg);
+          var varDictionary = Expression.Variable(dictionaryType, "dictionary");
+          var createDictionary = Expression.Assign(varDictionary, Expression.New(dictionaryType));
+
+          // string propertyName;
+          var varPropertyName = Expression.Variable(typeof(string), "propertyName");
+
+          // Type temp;
+          var varTemp = Expression.Variable(typeArg, "temp");
+          var addMetodInfo = dictionaryType.GetMethod("Add");
+          var whileBody = Expression.Block(
+            new ParameterExpression[] { varTemp },
+            // reader.ReadValue(out temp);
+            Expression.Invoke(typeArgReadValueDelegate, readerParam, varTemp),
+            // value.Add(temp);
+            Expression.Call(varDictionary, addMetodInfo, varPropertyName, varTemp));
+
+          // Creating a label to jump to from a loop.
+          LabelTarget label = Expression.Label(typeof(void));
+
+          var whileLoop =
+            Expression.Loop(
+              Expression.IfThenElse(
+                Expression.Call(readerParam, typeof(IJSValueReader).GetMethod(nameof(IJSValueReader.GetNextObjectProperty)), varPropertyName),
+                whileBody,
+                Expression.Break(label)), label);
+
+          // value = dictionary;
+          var valueAssign = Expression.Assign(valueParam, varDictionary);
+
+          var lambdaBody = Expression.Block(
+            new ParameterExpression[] { varDictionary, varPropertyName },
+            createDictionary, whileLoop, valueAssign);
+
+          var lambdaType = typeof(ReadValueDelegate<>).MakeGenericType(valueType);
+          var lambda = Expression.Lambda(lambdaType, lambdaBody, readerParam, valueParam);
+
+          readDelegate = lambda.Compile();
+          return true;
+        }
+      }
+
+      readDelegate = null;
+      return false;
+    }
+
+    private static bool TryGenerateReadValueForIList(Type valueType, out Delegate readDelegate)
+    {
+      // Generate code that looks like:
+      //
+      // (IJSValueReader reader, out IList<Type> value) =>
+      // {
+      //   List<T> list = new List<T>();
+      //   while (reader.GetNextArrayItem())
+      //   {
+      //     Type temp;
+      //     reader.ReadValue(out temp);
+      //     list.Add(temp);
+      //   }
+      //   value = list;
+      // }
+
+      var iListQuery =
+        from intfType in valueType.GetInterfaces().Concat(new[] { valueType })
+        let intfTypeInfo = intfType.GetTypeInfo()
+        where intfTypeInfo.IsInterface
+        && intfTypeInfo.IsGenericType
+        && intfTypeInfo.GetGenericTypeDefinition() == typeof(IList<>)
+        select intfTypeInfo.GenericTypeArguments[0];
+
+      Type typeArg = iListQuery.FirstOrDefault();
+      if (typeArg != null)
+      {
+        Delegate typeArgReadValue = GetReadValueDelegate(typeArg);
+        if (typeArgReadValue != null)
+        {
+          // Lambda parameters (IJSValueReader reader, out Type value)
+          var readerParam = Expression.Parameter(typeof(IJSValueReader), "reader");
+          var valueParam = Expression.Parameter(valueType.MakeByRefType(), "value");
+
+          var typeArgReadValueType = typeof(ReadValueDelegate<>).MakeGenericType(typeArg);
+          var typeArgReadValueDelegate = Expression.Convert(Expression.Constant(typeArgReadValue), typeArgReadValueType);
+
+          // List<T> list = new List<T>();
+          var listType = typeof(List<>).MakeGenericType(typeArg);
+          var varList = Expression.Variable(listType, "list");
+          var createList = Expression.Assign(varList, Expression.New(listType));
+
+          // Type temp;
+          var varTemp = Expression.Variable(typeArg, "temp");
+          var addMetodInfo = listType.GetMethod("Add");
+          var whileBody = Expression.Block(
+            new ParameterExpression[] { varTemp },
+            // reader.ReadValue(out temp);
+            Expression.Invoke(typeArgReadValueDelegate, readerParam, varTemp),
+            // value.Add(temp);
+            Expression.Call(varList, addMetodInfo, varTemp));
+
+          // Creating a label to jump to from a loop.
+          LabelTarget label = Expression.Label(typeof(void));
+
+          var whileLoop =
+            Expression.Loop(
+              Expression.IfThenElse(
+                Expression.Call(readerParam, typeof(IJSValueReader).GetMethod(nameof(IJSValueReader.GetNextArrayItem))),
+                whileBody,
+                Expression.Break(label)), label);
+
+          // value = list;
+          var valueAssign = Expression.Assign(valueParam, varList);
+
+          var lambdaBody = Expression.Block(
+            new ParameterExpression[] { varList },
+            createList, whileLoop, valueAssign);
+
+          var lambdaType = typeof(ReadValueDelegate<>).MakeGenericType(valueType);
+          var lambda = Expression.Lambda(lambdaType, lambdaBody, readerParam, valueParam);
+
+          readDelegate = lambda.Compile();
+          return true;
+        }
+      }
+
       readDelegate = null;
       return false;
     }

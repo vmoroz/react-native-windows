@@ -1,5 +1,6 @@
 
 using System;
+using System.Collections.Generic;
 using Microsoft.ReactNative.Bridge;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json.Linq;
@@ -35,10 +36,15 @@ namespace Microsoft.ReactNative.Managed.UnitTests
         public string Name { get; set; }
         public int Age;
         public RobotShape Shape { get; set; }
+        public RobotShape? Shape2 { get; set; }
+        public RobotShape? Shape3 { get; set; }
+        public IList<int> Steps { get; set; }
+        public IDictionary<string, int> Dimensions { get; set; }
     }
 
     static class RobotSerialization
     {
+        // Reading RobotModel enum value. It could be generated instead.
         public static void ReadValue(this IJSValueReader reader, out RobotInfo value)
         {
             value = new RobotInfo();
@@ -46,14 +52,19 @@ namespace Microsoft.ReactNative.Managed.UnitTests
             {
                 switch (propertyName)
                 {
-                    case nameof(value.Model): reader.ReadValue(out RobotModel model); value.Model = model; break;
-                    case nameof(value.Name): reader.ReadValue(out string name); value.Name = name; break;
+                    case nameof(value.Model): value.Model = reader.ReadValue<RobotModel>(); break;
+                    case nameof(value.Name): value.Name = reader.ReadValue<string>(); break;
                     case nameof(value.Age): reader.ReadValue(out value.Age); break;
-                    case nameof(value.Shape): reader.ReadValue(out RobotShape shape); value.Shape = shape; break;
+                    case nameof(value.Shape): value.Shape = reader.ReadValue<RobotShape>(); break;
+                    case nameof(value.Shape2): value.Shape2 = reader.ReadValue<RobotShape?>(); break;
+                    case nameof(value.Shape3): value.Shape3 = reader.ReadValue<RobotShape?>(); break;
+                    case nameof(value.Steps): value.Steps = reader.ReadValue<IList<int>>(); break;
+                    case nameof(value.Dimensions): value.Dimensions = reader.ReadValue<IDictionary<string, int>>(); break;
                 }
             }
         }
 
+        // Reading RobotModel enum value. It could be generated instead.
         public static void ReadValue(this IJSValueReader reader, out RobotModel value)
         {
             reader.ReadValue(out int model);
@@ -65,9 +76,21 @@ namespace Microsoft.ReactNative.Managed.UnitTests
     public class JSValueReaderTest
     {
         [TestMethod]
-        public void TestReadRobotInfo()
+        public void TestReadCustomType()
         {
-            JObject jobj = JObject.Parse(@"{ Model: 1, Name: ""Bob"", Age: 42, Shape: 1 }");
+            JObject jobj = JObject.Parse(@"{
+                Model: 1,
+                Name: ""Bob"",
+                Age: 42,
+                Shape: 1,
+                Shape2: 2,
+                Shape3: null,
+                Steps: [1, 2, 3],
+                Dimensions: {
+                    Width: 24,
+                    Height: 78
+                }
+            }");
             IJSValueReader reader = new JTokenReader(jobj);
 
             reader.ReadValue(out RobotInfo robot);
@@ -75,6 +98,15 @@ namespace Microsoft.ReactNative.Managed.UnitTests
             Assert.AreEqual("Bob", robot.Name);
             Assert.AreEqual(42, robot.Age);
             Assert.AreEqual(RobotShape.Trashcan, robot.Shape);
+            Assert.AreEqual(RobotShape.Beercan, robot.Shape2.Value);
+            Assert.IsFalse(robot.Shape3.HasValue);
+            Assert.AreEqual(3, robot.Steps.Count);
+            Assert.AreEqual(1, robot.Steps[0]);
+            Assert.AreEqual(2, robot.Steps[1]);
+            Assert.AreEqual(3, robot.Steps[2]);
+            Assert.AreEqual(2, robot.Dimensions.Count);
+            Assert.AreEqual(24, robot.Dimensions["Width"]);
+            Assert.AreEqual(78, robot.Dimensions["Height"]);
         }
 
         [TestMethod]
