@@ -129,6 +129,31 @@ namespace Microsoft.ReactNative.Managed
       }
     }
 
+    public static void ReadValue(this IJSValueReader reader, out JSValue value)
+    {
+      value = JSValue.ReadFrom(reader);
+    }
+
+    public static void ReadValue(this IJSValueReader reader, out IDictionary<string, JSValue> value)
+    {
+      value = JSValue.ReadObjectPropertiesFrom(reader);      
+    }
+
+    public static void ReadValue(this IJSValueReader reader, out Dictionary<string, JSValue> value)
+    {
+      value = JSValue.ReadObjectPropertiesFrom(reader);
+    }
+
+    public static void ReadValue(this IJSValueReader reader, out IList<JSValue> value)
+    {
+      value = JSValue.ReadArrayItemsFrom(reader);
+    }
+
+    public static void ReadValue(this IJSValueReader reader, out List<JSValue> value)
+    {
+      value = JSValue.ReadArrayItemsFrom(reader);
+    }
+
     public static void ReadValue<T>(this IJSValueReader reader, out T value)
     {
       JSValueReader<T>.ReadValue(reader, out value);
@@ -207,44 +232,7 @@ namespace Microsoft.ReactNative.Managed
 
     private static bool TryGenerateReadValueForEnum(Type valueType, out Delegate readDelegate)
     {
-      // Generate code that looks like:
-      //
-      // (IJSValueReader reader, out EnumType value) =>
-      // {
-      //   int temp;
-      //   reader.ReadValue(out temp);
-      //   value = (EnumType)temp;
-      // }
-
-      if (valueType.GetTypeInfo().IsEnum)
-      {
-        ReflectionMethodInfo readValueMethodInfo = GetReadValueExtensionMethodInfo(typeof(int));
-        if (readValueMethodInfo != null)
-        {
-          // Lambda parameters (IJSValueReader reader, out Type value)
-          var readerParam = Expression.Parameter(typeof(IJSValueReader), "reader");
-          var valueParam = Expression.Parameter(valueType.MakeByRefType(), "value");
-
-          // int temp;
-          var varTemp = Expression.Variable(typeof(int), "temp");
-
-          var lambdaBody = Expression.Block(
-            new ParameterExpression[] { varTemp },
-            // reader.ReadValue(out temp);
-            Expression.Call(readValueMethodInfo, readerParam, varTemp),
-            // value = (Type)temp;
-            Expression.Assign(valueParam, Expression.Convert(varTemp, valueType)));
-
-          var lambdaType = typeof(ReadValueDelegate<>).MakeGenericType(valueType);
-          var lambda = Expression.Lambda(lambdaType, lambdaBody, readerParam, valueParam);
-
-          readDelegate = lambda.Compile();
-          return true;
-        }
-      }
-
-      readDelegate = null;
-      return false;
+      return JSValueReaderGenerator.TryGenerateReadValueForEnum(valueType, out readDelegate);
     }
 
     private static bool TryGenerateReadValueForNullable(Type valueType, out Delegate readDelegate)
@@ -398,87 +386,115 @@ namespace Microsoft.ReactNative.Managed
 
     private static bool TryGenerateReadValueForIList(Type valueType, out Delegate readDelegate)
     {
-      // Generate code that looks like:
-      //
-      // (IJSValueReader reader, out IList<Type> value) =>
-      // {
-      //   List<T> list = new List<T>();
-      //   while (reader.GetNextArrayItem())
-      //   {
-      //     Type temp;
-      //     reader.ReadValue(out temp);
-      //     list.Add(temp);
-      //   }
-      //   value = list;
-      // }
-
-      var iListQuery =
-        from intfType in valueType.GetInterfaces().Concat(new[] { valueType })
-        let intfTypeInfo = intfType.GetTypeInfo()
-        where intfTypeInfo.IsInterface
-        && intfTypeInfo.IsGenericType
-        && intfTypeInfo.GetGenericTypeDefinition() == typeof(IList<>)
-        select intfTypeInfo.GenericTypeArguments[0];
-
-      Type typeArg = iListQuery.FirstOrDefault();
-      if (typeArg != null)
-      {
-        Delegate typeArgReadValue = GetReadValueDelegate(typeArg);
-        if (typeArgReadValue != null)
-        {
-          // Lambda parameters (IJSValueReader reader, out Type value)
-          var readerParam = Expression.Parameter(typeof(IJSValueReader), "reader");
-          var valueParam = Expression.Parameter(valueType.MakeByRefType(), "value");
-
-          var typeArgReadValueType = typeof(ReadValueDelegate<>).MakeGenericType(typeArg);
-          var typeArgReadValueDelegate = Expression.Convert(Expression.Constant(typeArgReadValue), typeArgReadValueType);
-
-          // List<T> list = new List<T>();
-          var listType = typeof(List<>).MakeGenericType(typeArg);
-          var varList = Expression.Variable(listType, "list");
-          var createList = Expression.Assign(varList, Expression.New(listType));
-
-          // Type temp;
-          var varTemp = Expression.Variable(typeArg, "temp");
-          var addMetodInfo = listType.GetMethod("Add");
-          var whileBody = Expression.Block(
-            new ParameterExpression[] { varTemp },
-            // reader.ReadValue(out temp);
-            Expression.Invoke(typeArgReadValueDelegate, readerParam, varTemp),
-            // value.Add(temp);
-            Expression.Call(varList, addMetodInfo, varTemp));
-
-          // Creating a label to jump to from a loop.
-          LabelTarget label = Expression.Label(typeof(void));
-
-          var whileLoop =
-            Expression.Loop(
-              Expression.IfThenElse(
-                Expression.Call(readerParam, typeof(IJSValueReader).GetMethod(nameof(IJSValueReader.GetNextArrayItem))),
-                whileBody,
-                Expression.Break(label)), label);
-
-          // value = list;
-          var valueAssign = Expression.Assign(valueParam, varList);
-
-          var lambdaBody = Expression.Block(
-            new ParameterExpression[] { varList },
-            createList, whileLoop, valueAssign);
-
-          var lambdaType = typeof(ReadValueDelegate<>).MakeGenericType(valueType);
-          var lambda = Expression.Lambda(lambdaType, lambdaBody, readerParam, valueParam);
-
-          readDelegate = lambda.Compile();
-          return true;
-        }
-      }
-
-      readDelegate = null;
-      return false;
+      return JSValueReaderGenerator.TryGenerateReadValueForIList(valueType, out readDelegate);
     }
 
     private static bool TryGenerateReadValueForTuple(Type valueType, out Delegate readDelegate)
     {
+      // Generate code that looks as the following:
+      // (It may be up to seven template arguments: T1, T2, T3, T4, T5, T6, T7.)
+      // (ValueTuple is not supported because it is in a different package.)
+      //
+      // (IJSValueReader reader, out Tuple<T1, T2> value) =>
+      // {
+      //   if (reader.ValueType == JSValueType.Array)
+      //   {
+      //     if (reader.GetNextArrayItem())
+      //     {
+      //       T1 t1 = reader.ReadValue<T1>();
+      //       if (reader.GetNextArrayItem())
+      //       {
+      //         T2 t2 = reader.ReadValue<T2>();
+      //         while (!reader.GetNextArrayItem())
+      //         {
+      //            reader.ReadValue<JSValue>();
+      //         }
+      //         value = new Tuple<T1, T2>(t1, t2);
+      //         return;
+      //       }
+      //     }
+      //   }
+      //   value = default;
+      // }
+      //var valueTypeInfo = valueType.GetTypeInfo();
+      //var genericValueType = valueTypeInfo.GetGenericTypeDefinition();
+      //var genericValueTypeArgs = valueTypeInfo.GenericTypeArguments;
+      //int typeArgCount = 0;
+      //if (genericValueType == typeof(Tuple<>))
+      //{
+      //  typeArgCount = 1;
+      //}
+      //else if (genericValueType == typeof(Tuple<,>))
+      //{
+      //  typeArgCount = 2;
+      //}
+      //else if (genericValueType == typeof(Tuple<,,>))
+      //{
+      //  typeArgCount = 3;
+      //}
+      //else if (genericValueType == typeof(Tuple<,,,>))
+      //{
+      //  typeArgCount = 4;
+      //}
+      //else if (genericValueType == typeof(Tuple<,,,,>))
+      //{
+      //  typeArgCount = 5;
+      //}
+      //else if (genericValueType == typeof(Tuple<,,,,,>))
+      //{
+      //  typeArgCount = 6;
+      //}
+      //else if (genericValueType == typeof(Tuple<,,,,,,>))
+      //{
+      //  typeArgCount = 7;
+      //}
+
+      //if (typeArgCount > 0)
+      //{
+      //  // Lambda parameters (IJSValueReader reader, out Type value)
+      //  var readerParam = Expression.Parameter(typeof(IJSValueReader), "reader");
+      //  var valueParam = Expression.Parameter(valueType.MakeByRefType(), "value");
+
+      //  // We start with the innermost block and build up on top of it.
+
+      //  // T2 t2 = reader.ReadValue<T2>();
+      //  var typeArg = genericValueTypeArgs[typeArgCount - 1];
+
+      //  var readValueGenericMethod = (
+      //    from method in typeof(JSValueReader).GetMethods(BindingFlags.Static | BindingFlags.Public)
+      //    where method.IsGenericMethod && method.IsDefined(typeof(ExtensionAttribute), inherit: false) && method.Name == nameof(ReadValue)
+      //    let parameters = method.GetParameters()
+      //    where parameters.Length == 1
+      //    && parameters[0].ParameterType == typeof(IJSValueReader)
+      //    select method
+      //  ).FirstOrDefault();
+      //  if (readValueGenericMethod != null)
+      //  {
+      //    var readValueMethod = readValueGenericMethod.MakeGenericMethod(typeArg);
+      //    var tVar = Expression.Variable(typeArg);
+      //    Expression.Assign(tVar, Expression.Call(readValueMethod, readerParam));
+
+
+      //    var readValueOfJSValue = readValueGenericMethod.MakeGenericMethod(typeof(JSValue));
+      //    var whileBody = Expression.Call(readValueOfJSValue, readerParam);
+
+      //    // Creating a label to jump to from a loop.
+      //    LabelTarget label = Expression.Label(typeof(void));
+
+      //    var whileLoop =
+      //      Expression.Loop(
+      //        Expression.IfThenElse(
+      //          Expression.Call(readerParam, typeof(IJSValueReader).GetMethod(nameof(IJSValueReader.GetNextArrayItem))),
+      //          whileBody,
+      //          Expression.Break(label)), label);
+
+      //    // value = new Tuple<T1, T2>(t1, t2);
+      //    Expression.New(type)
+
+      //  }
+
+      //}
+
       readDelegate = null;
       return false;
     }
@@ -496,7 +512,7 @@ namespace Microsoft.ReactNative.Managed
         let typeInfo = type.GetTypeInfo()
         where typeInfo.IsSealed && !typeInfo.IsGenericType && !typeInfo.IsNested
         from method in type.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
-        where method.IsDefined(typeof(ExtensionAttribute), inherit: false) && method.Name == "ReadValue"
+        where method.IsDefined(typeof(ExtensionAttribute), inherit: false) && method.Name == nameof(ReadValue)
         let parameters = method.GetParameters()
         where parameters.Length == 2
         && parameters[0].ParameterType == typeof(IJSValueReader)

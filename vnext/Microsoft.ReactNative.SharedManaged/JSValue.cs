@@ -171,6 +171,38 @@ namespace Microsoft.ReactNative.Managed
       return ReadValue(reader);
     }
 
+    public static Dictionary<string, JSValue> ReadObjectPropertiesFrom(IJSValueReader reader)
+    {
+      if (reader.ValueType == JSValueType.Object)
+      {
+        var treeReader = reader as IJSValueTreeReader;
+        if (treeReader != null)
+        {
+          return new Dictionary<string, JSValue>(treeReader.Current.Object as IDictionary<string, JSValue>);
+        }
+
+        return ReadObjectProperties(reader);
+      }
+
+      return new Dictionary<string, JSValue>();
+    }
+
+    public static List<JSValue> ReadArrayItemsFrom(IJSValueReader reader)
+    {
+      if (reader.ValueType == JSValueType.Array)
+      {
+        var treeReader = reader as IJSValueTreeReader;
+        if (treeReader != null)
+        {
+          return new List<JSValue>(treeReader.Current.Array as IList<JSValue>);
+        }
+
+        return ReadArrayItems(reader);
+      }
+
+      return new List<JSValue>();
+    }
+
     private static JSValue ReadValue(IJSValueReader reader)
     {
       switch (reader.ValueType)
@@ -188,16 +220,26 @@ namespace Microsoft.ReactNative.Managed
 
     private static JSValue ReadObject(IJSValueReader reader)
     {
+      return new JSValue(new ReadOnlyDictionary<string, JSValue>(ReadObjectProperties(reader)));
+    }
+
+    private static JSValue ReadArray(IJSValueReader reader)
+    {
+      return new JSValue(new ReadOnlyCollection<JSValue>(ReadArrayItems(reader)));
+    }
+
+    private static Dictionary<string, JSValue> ReadObjectProperties(IJSValueReader reader)
+    {
       var properties = new Dictionary<string, JSValue>();
       while (reader.GetNextObjectProperty(out string propertyName))
       {
         properties.Add(propertyName, ReadValue(reader));
       }
 
-      return new JSValue(new ReadOnlyDictionary<string, JSValue>(properties));
+      return properties;
     }
 
-    private static JSValue ReadArray(IJSValueReader reader)
+    private static List<JSValue> ReadArrayItems(IJSValueReader reader)
     {
       var items = new List<JSValue>();
       while (reader.GetNextArrayItem())
@@ -205,7 +247,7 @@ namespace Microsoft.ReactNative.Managed
         items.Add(ReadValue(reader));
       }
 
-      return new JSValue(new ReadOnlyCollection<JSValue>(items));
+      return items;
     }
 
     public void WriteTo(IJSValueWriter writer)
