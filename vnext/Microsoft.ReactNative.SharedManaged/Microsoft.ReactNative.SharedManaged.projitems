@@ -16,6 +16,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)JSValueReaderGenerator.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)JSValueTreeReader.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)JSValueWriter.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)OneOf.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)ReactAttributes.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)ReactCallback.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)ReactConstantInfo.cs" />

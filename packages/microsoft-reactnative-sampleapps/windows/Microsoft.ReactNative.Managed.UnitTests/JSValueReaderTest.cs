@@ -4,10 +4,27 @@
 using Microsoft.ReactNative.Bridge;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json.Linq;
+using System;
 using System.Collections.Generic;
 
 namespace Microsoft.ReactNative.Managed.UnitTests
 {
+    class RobotInfo
+    {
+        public RobotModel Model { get; set; }
+        public string Name { get; set; }
+        public int Age;
+        public RobotShape Shape { get; set; }
+        public RobotShape? Shape2 { get; set; }
+        public RobotShape? Shape3 { get; set; }
+        public IList<int> Steps { get; set; }
+        public IDictionary<string, int> Dimensions { get; set; }
+        public Tuple<int, string, bool> Badges { get; set; }
+        public RobotTool[] Tools { get; set; }
+        public RobotPoint[] Path { get; set; }
+        public OneOf<T2Extra, R2D2Extra> Extra { get; set; }
+    }
+
     enum RobotModel
     {
         T2,
@@ -24,16 +41,28 @@ namespace Microsoft.ReactNative.Managed.UnitTests
         Quadrocopter,
     }
 
-    class RobotInfo
+    class RobotTool
     {
-        public RobotModel Model { get; set; }
         public string Name { get; set; }
-        public int Age;
-        public RobotShape Shape { get; set; }
-        public RobotShape? Shape2 { get; set; }
-        public RobotShape? Shape3 { get; set; }
-        public IList<int> Steps { get; set; }
-        public IDictionary<string, int> Dimensions { get; set; }
+        public int Weight;
+        public bool IsEnabled { get; set; }
+    }
+
+    struct RobotPoint
+    {
+        public int X;
+        public int Y;
+    }
+
+    class T2Extra
+    {
+        public string ActorName { get; set; }
+        public int MovieYear { get; set; }
+    }
+
+    class R2D2Extra
+    {
+        public string MovieSeries { get; set; }
     }
 
     static class RobotSerialization
@@ -48,12 +77,16 @@ namespace Microsoft.ReactNative.Managed.UnitTests
                 {
                     case nameof(value.Model): value.Model = reader.ReadValue<RobotModel>(); break;
                     case nameof(value.Name): value.Name = reader.ReadValue<string>(); break;
-                    case nameof(value.Age): reader.ReadValue(out value.Age); break;
+                    case nameof(value.Age): value.Age = reader.ReadValue<int>(); break;
                     case nameof(value.Shape): value.Shape = reader.ReadValue<RobotShape>(); break;
                     case nameof(value.Shape2): value.Shape2 = reader.ReadValue<RobotShape?>(); break;
                     case nameof(value.Shape3): value.Shape3 = reader.ReadValue<RobotShape?>(); break;
                     case nameof(value.Steps): value.Steps = reader.ReadValue<IList<int>>(); break;
                     case nameof(value.Dimensions): value.Dimensions = reader.ReadValue<IDictionary<string, int>>(); break;
+                    case nameof(value.Badges): value.Badges = reader.ReadValue<Tuple<int, string, bool>>(); break;
+                    case nameof(value.Tools): value.Tools = reader.ReadValue<RobotTool[]>(); break;
+                    case nameof(value.Path): value.Path = reader.ReadValue<RobotPoint[]>(); break;
+                    case nameof(value.Extra): value.Extra = reader.ReadValue<OneOf<T2Extra, R2D2Extra>>(); break;
                 }
             }
         }
@@ -63,6 +96,21 @@ namespace Microsoft.ReactNative.Managed.UnitTests
         {
             reader.ReadValue(out int model);
             value = (RobotModel)model;
+        }
+
+        // Reading discriminating union requires using JSValue.
+        public static void ReadValue(this JSValue jsValue, out OneOf<T2Extra, R2D2Extra> value)
+        {
+            value = default;
+            if (jsValue.TryGetObjectProperty("Kind", out JSValue kind))
+            {
+                RobotModel modelType = kind.ReadValue<RobotModel>();
+                switch (modelType)
+                {
+                    case RobotModel.T2: value = jsValue.ReadValue<T2Extra>(); break;
+                    case RobotModel.R2D2: value = jsValue.ReadValue<R2D2Extra>(); break;
+                }
+            }
         }
     }
 
@@ -83,7 +131,11 @@ namespace Microsoft.ReactNative.Managed.UnitTests
                 Dimensions: {
                     Width: 24,
                     Height: 78
-                }
+                },
+                Badges: [2, ""Maverick"", true],
+                Tools: [{Name: ""Screwdriver"", Weight: 2, IsEnabled: true}, {Name: ""Electro-shocker"", Weight: 3, IsEnabled: false}],
+                Path: [{X: 5, Y: 6}, {X: 45, Y: 90}, {X: 15, Y: 16}],
+                Extra: {Kind: 1, MovieSeries: ""Episode 2""}
             }");
             IJSValueReader reader = new JTokenReader(jobj);
 
@@ -101,6 +153,25 @@ namespace Microsoft.ReactNative.Managed.UnitTests
             Assert.AreEqual(2, robot.Dimensions.Count);
             Assert.AreEqual(24, robot.Dimensions["Width"]);
             Assert.AreEqual(78, robot.Dimensions["Height"]);
+            Assert.AreEqual(2, robot.Badges.Item1);
+            Assert.AreEqual("Maverick", robot.Badges.Item2);
+            Assert.AreEqual(true, robot.Badges.Item3);
+            Assert.AreEqual(2, robot.Tools.Length);
+            Assert.AreEqual("Screwdriver", robot.Tools[0].Name);
+            Assert.AreEqual(2, robot.Tools[0].Weight);
+            Assert.AreEqual(true, robot.Tools[0].IsEnabled);
+            Assert.AreEqual("Electro-shocker", robot.Tools[1].Name);
+            Assert.AreEqual(3, robot.Tools[1].Weight);
+            Assert.AreEqual(false, robot.Tools[1].IsEnabled);
+            Assert.AreEqual(3, robot.Path.Length);
+            Assert.AreEqual(5, robot.Path[0].X);
+            Assert.AreEqual(6, robot.Path[0].Y);
+            Assert.AreEqual(45, robot.Path[1].X);
+            Assert.AreEqual(90, robot.Path[1].Y);
+            Assert.AreEqual(15, robot.Path[2].X);
+            Assert.AreEqual(16, robot.Path[2].Y);
+            Assert.AreEqual(true, robot.Extra.TryGet<R2D2Extra>(out var r2d2Extra));
+            Assert.AreEqual("Episode 2", r2d2Extra.MovieSeries);
         }
 
         [TestMethod]

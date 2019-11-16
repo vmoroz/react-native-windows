@@ -77,6 +77,17 @@ namespace Microsoft.ReactNative.Managed
     public long Int64 => m_simpleValue.Int64Value;
     public double Double => m_simpleValue.DoubleValue;
 
+    public bool TryGetObjectProperty(string propertyName, out JSValue value)
+    {
+      if (Type == JSValueType.Object && Object.TryGetValue(propertyName, out value))
+      {
+        return true;
+      }
+
+      value = Null;
+      return false;
+    }
+
     public static bool operator ==(in JSValue lhs, in JSValue rhs)
     {
       return lhs.ValueEquals(rhs);
