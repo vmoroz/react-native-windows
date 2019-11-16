@@ -1,5 +1,4 @@
 using Microsoft.ReactNative.Bridge;
-using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -22,7 +21,6 @@ namespace Microsoft.ReactNative.Managed
       new Lazy<IReadOnlyDictionary<Type, MethodInfo>>(
         () => GetReadValueExtensionMethods(typeof(JSValue)),
         LazyThreadSafetyMode.PublicationOnly);
-
 
     public class VariableWrapper
     {
@@ -325,14 +323,15 @@ namespace Microsoft.ReactNative.Managed
       //
       // (IJSValueReader reader, out EnumType value) =>
       // {
-      //   value = (EnumType)reader.ReadValue<EnumType>();
+      //   value = (EnumType)reader.ReadValue<int>();
       // }
 
-      readDelegate = valueType.GetTypeInfo().IsEnum ?
-        ReadValueDelegateOf(valueType).CompileLambda(
-          Parameter(typeof(IJSValueReader), out var reader),
-          Parameter(valueType.MakeByRefType(), out var value),
-          value.Assign(Convert(valueType, reader.CallExt(ReadValueOf(typeof(int)))))) : null;
+      readDelegate = valueType.GetTypeInfo().IsEnum
+        ? ReadValueDelegateOf(valueType).CompileLambda(
+            Parameter(typeof(IJSValueReader), out var reader),
+            Parameter(valueType.MakeByRefType(), out var value),
+            value.Assign(Convert(valueType, reader.CallExt(ReadValueOf(typeof(int))))))
+        : null;
 
       return readDelegate != null;
     }
@@ -341,7 +340,7 @@ namespace Microsoft.ReactNative.Managed
     {
       // Generate code that looks like:
       //
-      // (IJSValueReader reader, out Nullable<T> value) =>
+      // (IJSValueReader reader, out T? value) =>
       // {
       //   if (reader.ValueType != JSValueType.Null)
       //   {
@@ -353,13 +352,14 @@ namespace Microsoft.ReactNative.Managed
       //   }
       // }
 
-      readDelegate = TryGetClassTypeArg(valueType, typeof(Nullable<>), out Type typeArg) ?
-        ReadValueDelegateOf(valueType).CompileLambda(
-          Parameter(typeof(IJSValueReader), out var reader),
-          Parameter(valueType.MakeByRefType(), out var value),
-          IfThenElse(NotEqual(reader.Property(ValueType), Constant(JSValueType.Null)),
-            ifTrue: value.Assign(Convert(valueType, reader.CallExt(ReadValueOf(typeArg)))),
-            ifFalse: value.Assign(New(valueType)))) : null;
+      readDelegate = TryGetClassTypeArg(valueType, typeof(Nullable<>), out Type typeArg)
+        ? ReadValueDelegateOf(valueType).CompileLambda(
+            Parameter(typeof(IJSValueReader), out var reader),
+            Parameter(valueType.MakeByRefType(), out var value),
+            IfThenElse(NotEqual(reader.Property(ValueType), Constant(JSValueType.Null)),
+              ifTrue: value.Assign(Convert(valueType, reader.CallExt(ReadValueOf(typeArg)))),
+              ifFalse: value.Assign(New(valueType))))
+        : null;
 
       return readDelegate != null;
     }
@@ -371,9 +371,12 @@ namespace Microsoft.ReactNative.Managed
       // (IJSValueReader reader, out IDictionary<string, T> value) =>
       // {
       //   var dictionary = new Dictionary<string, T>();
-      //   while (reader.GetNextObjectProperty(out string propertyName))
+      //   if (reader.ValueType == JSValueType.Object)
       //   {
-      //     dictionary.Add(propertyName, reader.ReadValue<T>());
+      //     while (reader.GetNextObjectProperty(out string propertyName))
+      //     {
+      //       dictionary.Add(propertyName, reader.ReadValue<T>());
+      //     }
       //   }
       //   value = dictionary;
       // }
@@ -386,8 +389,9 @@ namespace Microsoft.ReactNative.Managed
             Parameter(valueType.MakeByRefType(), out var value),
             Variable(DictionaryOf(keyType, typeArg), out var dictionary, New(DictionaryOf(keyType, typeArg))),
             Variable(typeof(string), out var propertyName),
-            While(reader.Call(GetNextObjectProperty, propertyName),
-              dictionary.Call("Add", propertyName, reader.CallExt(ReadValueOf(typeArg)))),
+            IfThen(Equal(reader.Property(ValueType), Constant(JSValueType.Array)),
+              ifTrue: While(reader.Call(GetNextObjectProperty, propertyName),
+                dictionary.Call("Add", propertyName, reader.CallExt(ReadValueOf(typeArg))))),
             value.Assign(dictionary))
         : null;
 
@@ -401,9 +405,12 @@ namespace Microsoft.ReactNative.Managed
       // (IJSValueReader reader, out IList<T> value) =>
       // {
       //   List<T> list = new List<T>();
-      //   while (reader.GetNextArrayItem())
+      //   if (reader.ValueType == JSValueType.Array)
       //   {
-      //     list.Add(reader.ReadValue<T>());
+      //     while (reader.GetNextArrayItem())
+      //     {
+      //       list.Add(reader.ReadValue<T>());
+      //     }
       //   }
       //   value = list;
       // }
@@ -413,8 +420,9 @@ namespace Microsoft.ReactNative.Managed
             Parameter(typeof(IJSValueReader), out var reader),
             Parameter(valueType.MakeByRefType(), out var value),
             Variable(ListOf(typeArg), out var list, New(ListOf(typeArg))),
-            While(reader.Call(GetNextArrayItem),
-              list.Call("Add", reader.CallExt(ReadValueOf(typeArg)))),
+            IfThen(Equal(reader.Property(ValueType), Constant(JSValueType.Array)),
+              ifTrue: While(reader.Call(GetNextArrayItem),
+                list.Call("Add", reader.CallExt(ReadValueOf(typeArg))))),
             (valueType == ListOf(typeArg)) ? value.Assign(list)
             : valueType.IsArray ? value.Assign(list.Call("ToArray"))
             : valueType.GetTypeInfo().IsInterface ? value.Assign(Convert(valueType, list))

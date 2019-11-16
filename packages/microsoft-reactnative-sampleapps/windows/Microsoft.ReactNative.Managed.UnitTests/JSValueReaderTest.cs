@@ -41,6 +41,7 @@ namespace Microsoft.ReactNative.Managed.UnitTests
         Quadrocopter,
     }
 
+#pragma warning disable CS0649
     class RobotTool
     {
         public string Name { get; set; }
@@ -53,6 +54,7 @@ namespace Microsoft.ReactNative.Managed.UnitTests
         public int X;
         public int Y;
     }
+#pragma warning restore CS0649
 
     class T2Extra
     {
@@ -128,10 +130,7 @@ namespace Microsoft.ReactNative.Managed.UnitTests
                 Shape2: 2,
                 Shape3: null,
                 Steps: [1, 2, 3],
-                Dimensions: {
-                    Width: 24,
-                    Height: 78
-                },
+                Dimensions: {Width: 24, Height: 78},
                 Badges: [2, ""Maverick"", true],
                 Tools: [{Name: ""Screwdriver"", Weight: 2, IsEnabled: true}, {Name: ""Electro-shocker"", Weight: 3, IsEnabled: false}],
                 Path: [{X: 5, Y: 6}, {X: 45, Y: 90}, {X: 15, Y: 16}],
