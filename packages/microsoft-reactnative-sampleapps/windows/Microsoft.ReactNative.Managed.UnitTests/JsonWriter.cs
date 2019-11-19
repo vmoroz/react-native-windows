@@ -1,6 +1,7 @@
 
 using Microsoft.ReactNative.Bridge;
 using Newtonsoft.Json.Linq;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -13,32 +14,32 @@ namespace Microsoft.ReactNative.Managed.UnitTests
             return m_result;
         }
 
-        public bool WriteNull()
+        public void WriteNull()
         {
-            return WriteValue(new JValue((object)null));
+            WriteValue(new JValue((object)null));
         }
 
-        public bool WriteBoolean(bool value)
+        public void WriteBoolean(bool value)
         {
-            return WriteValue(new JValue(value));
+            WriteValue(new JValue(value));
         }
 
-        public bool WriteInt64(long value)
+        public void WriteInt64(long value)
         {
-            return WriteValue(new JValue(value));
+            WriteValue(new JValue(value));
         }
 
-        public bool WriteDouble(double value)
+        public void WriteDouble(double value)
         {
-            return WriteValue(new JValue(value));
+            WriteValue(new JValue(value));
         }
 
-        public bool WriteString(string value)
+        public void WriteString(string value)
         {
-            return WriteValue(new JValue(value));
+            WriteValue(new JValue(value));
         }
 
-        public bool WriteObjectBegin()
+        public void WriteObjectBegin()
         {
             if (m_state == State.PropertyValue)
             {
@@ -50,29 +51,27 @@ namespace Microsoft.ReactNative.Managed.UnitTests
             }
             else if (m_state != State.Start)
             {
-                return false;
+                throw new InvalidOperationException();
             }
 
             m_dynamic = new JObject();
             m_state = State.PropertyName;
-
-            return true;
-
         }
 
-        public bool WritePropertyName(string name)
+        public void WritePropertyName(string name)
         {
             if (m_state == State.PropertyName)
             {
                 m_propertyName = name;
                 m_state = State.PropertyValue;
-                return true;
             }
-
-            return false;
+            else
+            {
+                throw new InvalidOperationException();
+            }
         }
 
-        public bool WriteObjectEnd()
+        public void WriteObjectEnd()
         {
             if (m_state == State.PropertyName)
             {
@@ -80,6 +79,7 @@ namespace Microsoft.ReactNative.Managed.UnitTests
                 {
                     m_result = m_dynamic;
                     m_state = State.Finish;
+                    return;
                 }
                 else
                 {
@@ -90,7 +90,7 @@ namespace Microsoft.ReactNative.Managed.UnitTests
                         m_dynamic = entry.Dynamic;
                         m_state = State.PropertyName;
                         m_stack.RemoveAt(m_stack.Count - 1);
-                        return true;
+                        return;
                     }
                     else if (entry.State == State.Array)
                     {
@@ -98,15 +98,15 @@ namespace Microsoft.ReactNative.Managed.UnitTests
                         m_dynamic = entry.Dynamic;
                         m_state = State.Array;
                         m_stack.RemoveAt(m_stack.Count - 1);
-                        return true;
+                        return;
                     }
                 }
             }
 
-            return false;
+            throw new InvalidOperationException();
         }
 
-        public bool WriteArrayBegin()
+        public void WriteArrayBegin()
         {
             if (m_state == State.PropertyValue)
             {
@@ -118,15 +118,14 @@ namespace Microsoft.ReactNative.Managed.UnitTests
             }
             else if (m_state != State.Start)
             {
-                return false;
+                throw new InvalidOperationException();
             }
 
             m_dynamic = new JArray();
             m_state = State.Array;
-            return true;
         }
 
-        public bool WriteArrayEnd()
+        public void WriteArrayEnd()
         {
             if (m_state == State.Array)
             {
@@ -134,6 +133,7 @@ namespace Microsoft.ReactNative.Managed.UnitTests
                 {
                     m_result = m_dynamic;
                     m_state = State.Finish;
+                    return;
                 }
                 else
                 {
@@ -144,7 +144,7 @@ namespace Microsoft.ReactNative.Managed.UnitTests
                         m_dynamic = entry.Dynamic;
                         m_state = State.PropertyName;
                         m_stack.RemoveAt(m_stack.Count - 1);
-                        return true;
+                        return;
                     }
                     else if (entry.State == State.Array)
                     {
@@ -152,12 +152,12 @@ namespace Microsoft.ReactNative.Managed.UnitTests
                         m_dynamic = entry.Dynamic;
                         m_state = State.Array;
                         m_stack.RemoveAt(m_stack.Count - 1);
-                        return true;
+                        return;
                     }
                 }
             }
 
-            return false;
+            throw new InvalidOperationException();
         }
 
         private enum State { Start, PropertyName, PropertyValue, Array, Finish };

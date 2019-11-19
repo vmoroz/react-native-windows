@@ -266,8 +266,8 @@ namespace Microsoft.ReactNative.Managed
       switch (Type)
       {
         case JSValueType.Null: writer.WriteNull(); break;
-        case JSValueType.Object: WriteObject(writer); break;
-        case JSValueType.Array: WriteArray(writer); break;
+        case JSValueType.Object: WriteObject(writer, Object); break;
+        case JSValueType.Array: WriteArray(writer, Array); break;
         case JSValueType.String: writer.WriteString(String); break;
         case JSValueType.Boolean: writer.WriteBoolean(Boolean); break;
         case JSValueType.Int64: writer.WriteInt64(Int64); break;
@@ -275,10 +275,10 @@ namespace Microsoft.ReactNative.Managed
       }
     }
 
-    private void WriteObject(IJSValueWriter writer)
+    public static void WriteObject(IJSValueWriter writer, IEnumerable<KeyValuePair<string, JSValue>> value)
     {
       writer.WriteObjectBegin();
-      foreach (var keyValue in Object)
+      foreach (var keyValue in value)
       {
         writer.WritePropertyName(keyValue.Key);
         keyValue.Value.WriteTo(writer);
@@ -286,12 +286,12 @@ namespace Microsoft.ReactNative.Managed
       writer.WriteObjectEnd();
     }
 
-    private void WriteArray(IJSValueWriter writer)
+    public static void WriteArray(IJSValueWriter writer, IEnumerable<JSValue> value)
     {
       writer.WriteArrayBegin();
-      foreach (var value in Array)
+      foreach (var item in value)
       {
-        value.WriteTo(writer);
+        item.WriteTo(writer);
       }
       writer.WriteArrayEnd();
     }
