@@ -184,25 +184,10 @@ namespace Microsoft.ReactNative.Managed
     static MethodInfo GetNextObjectProperty =>
       typeof(IJSValueReader).GetMethod(nameof(IJSValueReader.GetNextObjectProperty));
 
-    static MethodInfo GetNextArrayItem =>
-      typeof(IJSValueReader).GetMethod(nameof(IJSValueReader.GetNextArrayItem));
-
-    private static MethodInfo ReadEnumOf(Type typeArg) =>
-      typeof(JSValueReaderGenerator).GetMethod(nameof(ReadEnum)).MakeGenericMethod(typeArg);
-
     private static MethodInfo MethodOf(string methodName, params Type[] typeArgs) =>
       typeof(JSValueReaderGenerator).GetMethod(methodName).MakeGenericMethod(typeArgs);
 
-    private static MethodInfo ReadNullableOf(Type typeArg) =>
-      typeof(JSValueReaderGenerator).GetMethod(nameof(ReadNullable)).MakeGenericMethod(typeArg);
-
     static string ValueType => nameof(IJSValueReader.ValueType);
-
-    static Type DictionaryOf(Type keyType, Type valueType) => typeof(Dictionary<,>).MakeGenericType(keyType, valueType);
-
-    static Type ListOf(Type itemType) => typeof(List<>).MakeGenericType(itemType);
-
-    static Type IEnumerableOf(Type itemType) => typeof(IEnumerable<>).MakeGenericType(itemType);
 
     static TypeWrapper ReadValueDelegateOf(Type typeArg) =>
       new TypeWrapper(typeof(ReadValueDelegate<>).MakeGenericType(typeArg));
@@ -222,34 +207,6 @@ namespace Microsoft.ReactNative.Managed
     }
 
     static MethodInfo JSValueReadFrom => typeof(JSValue).GetMethod(nameof(JSValue.ReadFrom));
-
-    public static bool TryGetInterfaceTypeArg(Type type, Type interfaceType, out Type typeArg)
-    {
-      var typeArgQuery =
-        from intfType in type.GetInterfaces().Concat(new[] { type })
-        let intfTypeInfo = intfType.GetTypeInfo()
-        where intfTypeInfo.IsInterface
-        && intfTypeInfo.IsGenericType
-        && intfTypeInfo.GetGenericTypeDefinition() == interfaceType
-        select intfTypeInfo.GenericTypeArguments[0];
-      typeArg = typeArgQuery.FirstOrDefault();
-      return typeArg != null;
-    }
-
-    public static bool TryGetInterfaceTypeArg(Type type, Type interfaceType, out Type typeArg0, out Type typeArg1)
-    {
-      var typeArgQuery =
-        from intfType in type.GetInterfaces().Concat(new[] { type })
-        let intfTypeInfo = intfType.GetTypeInfo()
-        where intfTypeInfo.IsInterface
-        && intfTypeInfo.IsGenericType
-        && intfTypeInfo.GetGenericTypeDefinition() == interfaceType
-        select intfTypeInfo;
-      var typeInfo = typeArgQuery.FirstOrDefault();
-      typeArg0 = typeInfo?.GenericTypeArguments[0];
-      typeArg1 = typeInfo?.GenericTypeArguments[1];
-      return typeInfo != null;
-    }
 
     public static bool TryGetTypeArgs(Type type, Type genericType, out Type typeArg)
     {
@@ -357,7 +314,7 @@ namespace Microsoft.ReactNative.Managed
     {
       // Creates a delegate from the ReadEnum method
       readDelegate = valueType.GetTypeInfo().IsEnum
-        ? ReadEnumOf(valueType).CreateDelegate(typeof(ReadValueDelegate<>).MakeGenericType(valueType))
+        ? MethodOf(nameof(ReadEnum), valueType).CreateDelegate(typeof(ReadValueDelegate<>).MakeGenericType(valueType))
         : null;
 
       return readDelegate != null;
@@ -379,7 +336,7 @@ namespace Microsoft.ReactNative.Managed
     {
       // Creates a delegate from the ReadNullable method
       readDelegate = TryGetTypeArgs(valueType, typeof(Nullable<>), out Type typeArg)
-        ? ReadNullableOf(typeArg).CreateDelegate(typeof(ReadValueDelegate<>).MakeGenericType(valueType))
+        ? MethodOf(nameof(ReadNullable), typeArg).CreateDelegate(typeof(ReadValueDelegate<>).MakeGenericType(valueType))
         : null;
 
       return readDelegate != null;
