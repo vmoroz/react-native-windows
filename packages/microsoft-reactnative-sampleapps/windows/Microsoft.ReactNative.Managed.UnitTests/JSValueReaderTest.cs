@@ -73,22 +73,26 @@ namespace Microsoft.ReactNative.Managed.UnitTests
         public static void ReadValue(this IJSValueReader reader, out RobotInfo value)
         {
             value = new RobotInfo();
-            while (reader.GetNextObjectProperty(out string propertyName))
+            if (reader.ValueType == JSValueType.Object)
             {
-                switch (propertyName)
+                while (reader.GetNextObjectProperty(out string propertyName))
                 {
-                    case nameof(value.Model): value.Model = reader.ReadValue<RobotModel>(); break;
-                    case nameof(value.Name): value.Name = reader.ReadValue<string>(); break;
-                    case nameof(value.Age): value.Age = reader.ReadValue<int>(); break;
-                    case nameof(value.Shape): value.Shape = reader.ReadValue<RobotShape>(); break;
-                    case nameof(value.Shape2): value.Shape2 = reader.ReadValue<RobotShape?>(); break;
-                    case nameof(value.Shape3): value.Shape3 = reader.ReadValue<RobotShape?>(); break;
-                    case nameof(value.Steps): value.Steps = reader.ReadValue<IList<int>>(); break;
-                    case nameof(value.Dimensions): value.Dimensions = reader.ReadValue<IDictionary<string, int>>(); break;
-                    case nameof(value.Badges): value.Badges = reader.ReadValue<Tuple<int, string, bool>>(); break;
-                    case nameof(value.Tools): value.Tools = reader.ReadValue<RobotTool[]>(); break;
-                    case nameof(value.Path): value.Path = reader.ReadValue<RobotPoint[]>(); break;
-                    case nameof(value.Extra): value.Extra = reader.ReadValue<OneOf<T2Extra, R2D2Extra>>(); break;
+                    switch (propertyName)
+                    {
+                        case nameof(value.Model): value.Model = reader.ReadValue<RobotModel>(); break;
+                        case nameof(value.Name): value.Name = reader.ReadValue<string>(); break;
+                        case nameof(value.Age): value.Age = reader.ReadValue<int>(); break;
+                        case nameof(value.Shape): value.Shape = reader.ReadValue<RobotShape>(); break;
+                        case nameof(value.Shape2): value.Shape2 = reader.ReadValue<RobotShape?>(); break;
+                        case nameof(value.Shape3): value.Shape3 = reader.ReadValue<RobotShape?>(); break;
+                        case nameof(value.Steps): value.Steps = reader.ReadValue<IList<int>>(); break;
+                        case nameof(value.Dimensions): value.Dimensions = reader.ReadValue<IDictionary<string, int>>(); break;
+                        case nameof(value.Badges): value.Badges = reader.ReadValue<Tuple<int, string, bool>>(); break;
+                        case nameof(value.Tools): value.Tools = reader.ReadValue<RobotTool[]>(); break;
+                        case nameof(value.Path): value.Path = reader.ReadValue<RobotPoint[]>(); break;
+                        case nameof(value.Extra): value.Extra = reader.ReadValue<OneOf<T2Extra, R2D2Extra>>(); break;
+                        default: reader.ReadValue<JSValue>(); break;
+                    }
                 }
             }
         }
@@ -96,8 +100,7 @@ namespace Microsoft.ReactNative.Managed.UnitTests
         // Reading RobotModel enum value. It could be generated instead.
         public static void ReadValue(this IJSValueReader reader, out RobotModel value)
         {
-            reader.ReadValue(out int model);
-            value = (RobotModel)model;
+            value = (RobotModel)reader.ReadValue<int>();
         }
 
         // Reading discriminating union requires using JSValue.
