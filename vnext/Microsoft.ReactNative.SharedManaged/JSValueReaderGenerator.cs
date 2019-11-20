@@ -7,21 +7,130 @@ using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading;
+using Windows.UI.Composition;
 using static System.Linq.Expressions.Expression;
 
 namespace Microsoft.ReactNative.Managed
 {
   static class JSValueReaderGenerator
   {
-    private static Lazy<IReadOnlyDictionary<Type, MethodInfo>> s_readValueExtensionMethods =
-      new Lazy<IReadOnlyDictionary<Type, MethodInfo>>(
-        () => GetReadValueExtensionMethods(typeof(IJSValueReader)),
-        LazyThreadSafetyMode.PublicationOnly);
+    private static readonly Lazy<KeyValuePair<Type, MethodInfo>[]> s_allMethods;
+    private static readonly Lazy<IReadOnlyDictionary<Type, MethodInfo>> s_nonGenericMethods;
+    private static readonly Lazy<IReadOnlyDictionary<Type, SortedList<Type, MethodInfo>>> s_genericMethods;
 
-    private static Lazy<IReadOnlyDictionary<Type, MethodInfo>> s_jsValueReadValueExtensionMethods =
-      new Lazy<IReadOnlyDictionary<Type, MethodInfo>>(
-        () => GetReadValueExtensionMethods(typeof(JSValue)),
-        LazyThreadSafetyMode.PublicationOnly);
+    // Compare two types by putting more specific types before more generic.
+    // While we use it to compare types with the same generic type base,
+    // we do more thorough comparison because the same method is called
+    // recursively for the generic type arguments.
+    class GenericTypeComparer : IComparer<Type>
+    {
+      public static readonly GenericTypeComparer Default = new GenericTypeComparer();
+
+      public int Compare(Type x, Type y)
+      {
+        var xTypeInfo = x.GetTypeInfo();
+        var yTypeInfo = y.GetTypeInfo();
+
+        // Generic parameters are less specific and must appear after other types. E.g. string before T.
+        int result = Comparer<bool>.Default.Compare(x.IsGenericParameter, y.IsGenericParameter);
+        if (result != 0) return result;
+
+        // Compare generic parameters. E.g. T vs U. We use default type order.
+        if (x.IsGenericParameter) return Comparer<Type>.Default.Compare(x, y);
+
+        // We consider arrays to be more specific than non-arrays.
+        // Note the minus '-' sign to reverse order.
+        result = -Comparer<bool>.Default.Compare(x.IsArray, y.IsArray);
+        if (result != 0) return result;
+
+        // Compare arrays by their element types.
+        if (x.IsArray) return Compare(x.GetElementType(), y.GetElementType());
+
+        // Generic types are more specific and must appear before non-generic types.
+        // E.g. IDictionary<T, U> before IDictionary. Note the minus '-' sign to reverse order.
+        result = -Comparer<bool>.Default.Compare(xTypeInfo.IsGenericType, yTypeInfo.IsGenericType);
+        if (result != 0) return result;
+
+        // Compare non-generic types. E.g string vs int. We use default type order.
+        if (!xTypeInfo.IsGenericType) return Comparer<Type>.Default.Compare(x, y);
+
+        // We consider types with more generic parameters to be more specific than types with less generic parameters.
+        // E.g. we want to match IDictionary<string, T> before IList<KeyValuePair<string, T>>.
+        var xArgs = x.GetGenericArguments();
+        var yArgs = y.GetGenericArguments();
+        // Note minus sign '-' to order integers in reverse order. E.g. 7 before 5.
+        result = -Comparer<int>.Default.Compare(xArgs.Length, yArgs.Length); 
+        if (result != 0) return result;
+
+        // If number of generic arguments is the same, then we use the order generic type definitions.
+        // E.g. List<> vs IList<>.
+        result = Comparer<Type>.Default.Compare(xTypeInfo.GetGenericTypeDefinition(), yTypeInfo.GetGenericTypeDefinition());
+        if (result != 0) return result;
+
+        // We have the same generic type definitions. Recursively compare their generic arguments.
+        for (int i = 0; i < xArgs.Length; ++i)
+        {
+          result = Compare(xArgs[i], yArgs[i]);
+          if (result != 0) return result;
+        }
+
+        return 0;
+      }
+    }
+
+    static JSValueReaderGenerator()
+    {
+      // Get all extension ReadValue methods for IJSValueReader and JSValue.
+      // The first parameter must be IJSValueReader or JSValue.
+      // The second parameter must be an 'out' parameter and must not be a generic parameter T.
+      // This is to avoid endless recursion because ReadValue with generic parameter T
+      // is the one who calls the JSValueReaderGenerator.
+      s_allMethods = new Lazy<KeyValuePair<Type, MethodInfo>[]>(() =>
+      {
+        var extensionMethods = 
+          from type in typeof(JSValueReader).GetTypeInfo().Assembly.GetTypes()
+          let typeInfo = type.GetTypeInfo()
+          where typeInfo.IsSealed && !typeInfo.IsGenericType && !typeInfo.IsNested
+          from member in type.GetMember(nameof(JSValueReader.ReadValue), BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+          let method = member as MethodInfo
+          where (method != null) && method.IsDefined(typeof(ExtensionAttribute), inherit: false)
+          let parameters = method.GetParameters()
+          where parameters.Length == 2
+            && (parameters[0].ParameterType == typeof(IJSValueReader)
+             || parameters[0].ParameterType == typeof(JSValue))
+            && parameters[1].IsOut
+          let dataType = parameters[1].ParameterType.GetElementType()
+          where !dataType.IsGenericParameter
+          select new KeyValuePair<Type, MethodInfo>(dataType, method);
+        return extensionMethods.ToArray();
+      });
+
+      // Get all non-generic ReadValue extension methods.
+      // They are easy to match and we can put them in a dictionary.
+      s_nonGenericMethods = new Lazy<IReadOnlyDictionary<Type, MethodInfo>>(() =>
+        s_allMethods.Value.Where(p => !p.Value.IsGenericMethod).ToDictionary(p => p.Key, p => p.Value));
+
+      // Get all generic ReadValue extension methods.
+      // Group them by generic type definitions and sort them by having more specific methods getting first.
+      // The matching for generic types is more complicated: we first match the generic type definition,
+      // and then walk the sorted list and try to match types one by one.
+      // Note that the parameter could be an array of generic type. The array is not a generic type. 
+      s_genericMethods = new Lazy<IReadOnlyDictionary<Type, SortedList<Type, MethodInfo>>>(() =>
+      {
+        var genericMethods =
+          from pair in s_allMethods.Value
+          where pair.Value.IsGenericMethod
+          let type = pair.Key
+          let keyType = type.GetTypeInfo().IsGenericType ? type.GetGenericTypeDefinition()
+            : type.IsArray ? typeof(Array)
+            : throw new InvalidOperationException($"Unsupported argument type {type}")
+          group pair by keyType into g
+          select new KeyValuePair<Type, SortedList<Type, MethodInfo>>(
+            g.Key, new SortedList<Type, MethodInfo>(
+              g.ToDictionary(p => p.Key, p => p.Value), GenericTypeComparer.Default));
+        return genericMethods.ToDictionary(p => p.Key, p => p.Value);
+      });
+    }
 
     public class VariableWrapper
     {
@@ -208,83 +317,160 @@ namespace Microsoft.ReactNative.Managed
 
     static MethodInfo JSValueReadFrom => typeof(JSValue).GetMethod(nameof(JSValue.ReadFrom));
 
-    public static bool TryGetTypeArgs(Type type, Type genericType, out Type typeArg)
+    // Try to match type to pattern with patternArgs.
+    // If successful return matchedArgs where each generic parameter T from patternArgs has a real type.
+    private static bool TryMatchGenericType(Type type, Type pattern, Type[] patternArgs, out Type[] matchedArgs)
     {
-      var typeInfo = type.GetTypeInfo();
-      typeArg = (typeInfo.IsGenericType && typeInfo.GetGenericTypeDefinition() == genericType)
-        ? typeInfo.GenericTypeArguments[0]
-        : null;
-      return typeArg != null;
-    }
+      matchedArgs = null;
+      var genericBindings = new Dictionary<Type, Type>(patternArgs.Length);
 
-    public static bool TryGetTypeArgs(Type type, Type genericType, out Type[] typeArgs)
-    {
-      var typeInfo = type.GetTypeInfo();
-      typeArgs = (typeInfo.IsGenericType && typeInfo.GetGenericTypeDefinition() == genericType)
-        ? typeInfo.GenericTypeArguments
-        : null;
-      return typeArgs != null;
-    }
+      // This local function is going to be called recursively for generic type arguments.
+      bool MatchType(Type testType, Type patternType)
+      {
+        if (testType == patternType) return true;
 
-    public static bool TryGetTypeArgsWithString(Type type, Type genericType, out Type typeArg)
-    {
-      typeArg = TryGetTypeArgs(type, genericType, out Type[] typeArgs) && typeArgs[0] == typeof(string)
-        ? typeArgs[1]
-        : null;
-      return typeArg != null;
-    }
+        // Match array types
+        if (testType.IsArray != patternType.IsArray) return false;
+        if (testType.IsArray && patternType.IsArray)
+        {
+          return MatchType(testType.GetElementType(), patternType.GetElementType());
+        }
 
-    public static bool TryGetArrayElementType(Type type, out Type elementType)
-    {
-      var typeInfo = type.GetTypeInfo();
-      elementType = typeInfo.IsArray ? typeInfo.GetElementType() : null;
-      return elementType != null;
+        // Match testType to generic parameter type such as T.
+        if (patternType.IsGenericParameter)
+        {
+          if (genericBindings.TryGetValue(patternType, out var existingBinding))
+          {
+            return testType == existingBinding;
+          }
+          else
+          {
+            genericBindings.Add(patternType, testType);
+            return true;
+          }
+        }
+
+        // Match generic types
+        var testTypeInfo = testType.GetTypeInfo();
+        var patternTypeInfo = patternType.GetTypeInfo();
+        if (testTypeInfo.IsGenericType && patternTypeInfo.IsGenericType)
+        {
+          Type[] testGenericArgs = testType.GetGenericArguments();
+          Type[] patternGenericArgs = pattern.GetGenericArguments();
+          if (testGenericArgs.Length == patternGenericArgs.Length)
+          {
+            for (int i = 0; i < testGenericArgs.Length; ++i)
+            {
+              if (!MatchType(testGenericArgs[i], patternGenericArgs[i]))
+              {
+                return false;
+              }
+            }
+
+            return true;
+          }
+        }
+
+        return false;
+      }
+
+      if (!MatchType(type, pattern)) return false;
+
+      if (patternArgs.Length != genericBindings.Count) return false;
+
+      // Check generic constraints
+      foreach (var genericArg in patternArgs)
+      {
+        // base class and interface constraints
+        var baseTypeConstraints = genericArg.GetTypeInfo().GetGenericParameterConstraints();
+        if (baseTypeConstraints.Length > 0)
+        {
+          var boundType = genericBindings[genericArg];
+          foreach (var baseType in baseTypeConstraints)
+          {
+            // TODO: what if baseType is based on a generic parameter? E.g. 'where T : U'
+            if (!boundType.GetTypeInfo().IsSubclassOf(baseType))
+            {
+              return false;
+            }
+          }
+        }
+
+        // TODO: Consider to add checks for generic parameter attributes: t.GenericParameterAttributes
+      }
+
+      matchedArgs = new Type[patternArgs.Length];
+      for (int i = 0; i < matchedArgs.Length; ++i)
+      {
+        matchedArgs[i] = genericBindings[patternArgs[i]];
+      }
+
+      return true;
     }
 
     public static Delegate GenerateReadValueDelegate(Type valueType)
     {
-      if (TryGenerateReadValueFromExtension(valueType, out Delegate readDelegate)
-        || TryGenerateReadValueFromJSValueExtension(valueType, out readDelegate)
-        || TryGenerateReadValueForEnum(valueType, out readDelegate)
-        || TryGenerateReadValueForNullable(valueType, out readDelegate)
-        || TryGenerateReadValueForDictionary(valueType, out readDelegate)
-        || TryGenerateReadValueForList(valueType, out readDelegate)
-        || TryGenerateReadValueForTuple(valueType, out readDelegate)
-        || TryGenerateReadValueForClass(valueType, out readDelegate))
+      return GenerateFromExtension(valueType)
+        ?? GenerateFromGenericExtension(valueType)
+        ?? GenerateReadValueForEnum(valueType)
+        ?? GenerateReadValueForClass(valueType)
+        ?? throw new Exception($"Cannot generate ReadValue delegate for type {valueType}"); 
+    }
+
+    // Creates a delegate from the ReadValue non-generic extension method
+    private static Delegate GenerateFromExtension(Type valueType)
+    {
+      if (s_nonGenericMethods.Value.TryGetValue(valueType, out MethodInfo methodInfo))
       {
-        return readDelegate;
+        var extendedType = methodInfo.GetParameters()[0].ParameterType;
+        if (extendedType == typeof(IJSValueReader))
+        {
+          return methodInfo.CreateDelegate(typeof(ReadValueDelegate<>).MakeGenericType(valueType));
+        }
+        else if (extendedType == typeof(JSValue))
+        {
+          return GenerateFromJSValueExtension(valueType, methodInfo);
+        }
       }
 
-      throw new Exception($"Cannot generate ReadValue delegate for type {valueType}");
+      return null;
     }
 
-    private static Dictionary<Type, MethodInfo> GetReadValueExtensionMethods(Type extendedType)
+    private static Delegate GenerateFromGenericExtension(Type valueType)
     {
-      var extensionMethods =
-        from type in typeof(JSValueReader).GetTypeInfo().Assembly.GetTypes()
-        let typeInfo = type.GetTypeInfo()
-        where typeInfo.IsSealed && !typeInfo.IsGenericType && !typeInfo.IsNested
-        from method in type.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
-        where method.IsDefined(typeof(ExtensionAttribute), inherit: false) && method.Name == nameof(JSValueReader.ReadValue)
-        let parameters = method.GetParameters()
-        where parameters.Length == 2
-        && parameters[0].ParameterType == extendedType
-        && parameters[1].IsOut
-        select new { valueType = parameters[1].ParameterType.GetElementType(), method };
-      return extensionMethods.ToDictionary(i => i.valueType, i => i.method);
-    }
-
-    private static bool TryGenerateReadValueFromExtension(Type valueType, out Delegate readDelegate)
-    {
-      // Creates a delegate from the ReadValue extension method
-      readDelegate = s_readValueExtensionMethods.Value.TryGetValue(valueType, out MethodInfo methodInfo)
-        ? methodInfo.CreateDelegate(typeof(ReadValueDelegate<>).MakeGenericType(valueType))
+      var keyType = valueType.GetTypeInfo().IsGenericType ? valueType.GetGenericTypeDefinition()
+        : valueType.IsArray ? typeof(Array)
         : null;
 
-      return readDelegate != null;
+      if (keyType != null
+        && s_genericMethods.Value.TryGetValue(keyType, out SortedList<Type, MethodInfo> candidateMethods))
+      {
+        foreach (var candidateMethod in candidateMethods)
+        {
+          var genericType = candidateMethod.Key;
+          var methodInfo = candidateMethod.Value;
+          var genericArgs = methodInfo.GetGenericArguments();
+          if (TryMatchGenericType(valueType, genericType, genericArgs, out Type[] typeArgs))
+          {
+            var genericMethod = methodInfo.MakeGenericMethod(typeArgs);
+            var extendedType = methodInfo.GetParameters()[0].ParameterType;
+            if (extendedType == typeof(IJSValueReader))
+            {
+              return genericMethod.CreateDelegate(typeof(ReadValueDelegate<>).MakeGenericType(valueType));
+            }
+            else if (extendedType == typeof(JSValue))
+            {
+              return GenerateFromJSValueExtension(valueType, genericMethod);
+            }
+          }
+        }
+      }
+
+      return null;
     }
 
-    private static bool TryGenerateReadValueFromJSValueExtension(Type valueType, out Delegate readDelegate)
+    // Creates a delegate from the JSValue ReadValue non-generic extension method
+    private static Delegate GenerateFromJSValueExtension(Type valueType, MethodInfo methodInfo)
     {
       // Generate code that looks like:
       //
@@ -294,357 +480,29 @@ namespace Microsoft.ReactNative.Managed
       //   jsValue.ReadValue(out value);
       // }
 
-      readDelegate = s_jsValueReadValueExtensionMethods.Value.TryGetValue(valueType, out MethodInfo jsValueReadValue)
-        ? ReadValueDelegateOf(valueType).CompileLambda(
-            Parameter(typeof(IJSValueReader), out var reader),
-            Parameter(valueType.MakeByRefType(), out var value),
-            Variable(typeof(JSValue), out var jsValue, Call(JSValueReadFrom, reader)),
-            jsValue.CallExt(jsValueReadValue, value))
-        : null;
-
-      return readDelegate != null;
+      return ReadValueDelegateOf(valueType).CompileLambda(
+        Parameter(typeof(IJSValueReader), out var reader),
+        Parameter(valueType.MakeByRefType(), out var value),
+        Variable(typeof(JSValue), out var jsValue, Call(JSValueReadFrom, reader)),
+        jsValue.CallExt(methodInfo, value));
     }
 
+    // It cannot be an extension method because it would conflict with the generic
+    // extension method that uses T value type.
     public static void ReadEnum<TEnum>(IJSValueReader reader, out TEnum value) where TEnum : Enum
     {
       value = (TEnum)(object)reader.ReadValue<int>();
     }
 
-    private static bool TryGenerateReadValueForEnum(Type valueType, out Delegate readDelegate)
+    private static Delegate GenerateReadValueForEnum(Type valueType)
     {
       // Creates a delegate from the ReadEnum method
-      readDelegate = valueType.GetTypeInfo().IsEnum
+      return valueType.GetTypeInfo().IsEnum
         ? MethodOf(nameof(ReadEnum), valueType).CreateDelegate(typeof(ReadValueDelegate<>).MakeGenericType(valueType))
         : null;
-
-      return readDelegate != null;
     }
 
-    public static void ReadNullable<T>(IJSValueReader reader, out T? value) where T : struct
-    {
-      if (reader.ValueType != JSValueType.Null)
-      {
-        value = reader.ReadValue<T>();
-      }
-      else
-      {
-        value = null;
-      }
-    }
-
-    private static bool TryGenerateReadValueForNullable(Type valueType, out Delegate readDelegate)
-    {
-      // Creates a delegate from the ReadNullable method
-      readDelegate = TryGetTypeArgs(valueType, typeof(Nullable<>), out Type typeArg)
-        ? MethodOf(nameof(ReadNullable), typeArg).CreateDelegate(typeof(ReadValueDelegate<>).MakeGenericType(valueType))
-        : null;
-
-      return readDelegate != null;
-    }
-
-    public static void ReadDictionary<T>(IJSValueReader reader, out Dictionary<string, T> value)
-    {
-      value = new Dictionary<string, T>();
-      if (reader.ValueType == JSValueType.Object)
-      {
-        while (reader.GetNextObjectProperty(out string propertyName))
-        {
-          value.Add(propertyName, reader.ReadValue<T>());
-        }
-      }
-    }
-
-    public static void ReadIDictionary<T>(IJSValueReader reader, out IDictionary<string, T> value)
-    {
-      ReadDictionary(reader, out Dictionary<string, T> dictionary);
-      value = dictionary;
-    }
-
-    public static void ReadICollectionOfKeyValuePair<T>(IJSValueReader reader, out ICollection<KeyValuePair<string, T>> value)
-    {
-      ReadDictionary(reader, out Dictionary<string, T> dictionary);
-      value = dictionary;
-    }
-
-    public static void ReadIEnumerableOfKeyValuePair<T>(IJSValueReader reader, out IEnumerable<KeyValuePair<string, T>> value)
-    {
-      ReadDictionary(reader, out Dictionary<string, T> dictionary);
-      value = dictionary;
-    }
-
-    public static void ReadReadOnlyDictionary<T>(IJSValueReader reader, out ReadOnlyDictionary<string, T> value)
-    {
-      ReadDictionary(reader, out Dictionary<string, T> dictionary);
-      value = new ReadOnlyDictionary<string, T>(dictionary);
-    }
-
-    public static void ReadIReadOnlyDictionary<T>(IJSValueReader reader, out IReadOnlyDictionary<string, T> value)
-    {
-      ReadReadOnlyDictionary(reader, out ReadOnlyDictionary<string, T> dictionary);
-      value = dictionary;
-    }
-
-    public static void ReadIReadOnlyCollectionOfKeyValuePair<T>(IJSValueReader reader, out IReadOnlyCollection<KeyValuePair<string, T>> value)
-    {
-      ReadReadOnlyDictionary(reader, out ReadOnlyDictionary<string, T> dictionary);
-      value = dictionary;
-    }
-
-    private static bool TryGenerateReadValueForDictionary(Type valueType, out Delegate readDelegate)
-    {
-      MethodInfo methodInfo = null;
-      if (TryGetTypeArgsWithString(valueType, typeof(Dictionary<,>), out Type typeArg))
-      {
-        methodInfo = MethodOf(nameof(ReadDictionary), typeArg);
-      }
-      else if (TryGetTypeArgsWithString(valueType, typeof(IDictionary<,>), out typeArg))
-      {
-        methodInfo = MethodOf(nameof(ReadIDictionary), typeArg);
-      }
-      else if (TryGetTypeArgs(valueType, typeof(ICollection<>), out Type pairType)
-        && TryGetTypeArgsWithString(pairType, typeof(KeyValuePair<,>), out typeArg))
-      {
-        methodInfo = MethodOf(nameof(ReadICollectionOfKeyValuePair), typeArg);
-      }
-      else if (TryGetTypeArgs(valueType, typeof(IEnumerable<>), out pairType)
-        && TryGetTypeArgsWithString(pairType, typeof(KeyValuePair<,>), out typeArg))
-      {
-        methodInfo = MethodOf(nameof(ReadIEnumerableOfKeyValuePair), typeArg);
-      }
-      else if (TryGetTypeArgsWithString(valueType, typeof(ReadOnlyDictionary<,>), out typeArg))
-      {
-        methodInfo = MethodOf(nameof(ReadReadOnlyDictionary), typeArg);
-      }
-      else if (TryGetTypeArgsWithString(valueType, typeof(IReadOnlyDictionary<,>), out typeArg))
-      {
-        methodInfo = MethodOf(nameof(ReadIReadOnlyDictionary), typeArg);
-      }
-      else if (TryGetTypeArgs(valueType, typeof(IReadOnlyCollection<>), out pairType)
-        && TryGetTypeArgsWithString(pairType, typeof(KeyValuePair<,>), out typeArg))
-      {
-        methodInfo = MethodOf(nameof(ReadIReadOnlyCollectionOfKeyValuePair), typeArg);
-      }
-
-      readDelegate = methodInfo?.CreateDelegate(typeof(ReadValueDelegate<>).MakeGenericType(valueType));
-      return readDelegate != null;
-    }
-
-    public static void ReadList<T>(IJSValueReader reader, out List<T> value)
-    {
-      value = new List<T>();
-      if (reader.ValueType == JSValueType.Array)
-      {
-        while (reader.GetNextArrayItem())
-        {
-          value.Add(reader.ReadValue<T>());
-        }
-      }
-    }
-
-    public static void ReadIList<T>(IJSValueReader reader, out IList<T> value)
-    {
-      ReadList(reader, out List<T> list);
-      value = list;
-    }
-
-    public static void ReadICollection<T>(IJSValueReader reader, out ICollection<T> value)
-    {
-      ReadList(reader, out List<T> list);
-      value = list;
-    }
-
-    public static void ReadIEnumerable<T>(IJSValueReader reader, out IEnumerable<T> value)
-    {
-      ReadList(reader, out List<T> list);
-      value = list;
-    }
-
-    public static void ReadReadOnlyCollection<T>(IJSValueReader reader, out ReadOnlyCollection<T> value)
-    {
-      ReadList(reader, out List<T> list);
-      value = new ReadOnlyCollection<T>(list);
-    }
-
-    public static void ReadIReadOnlyList<T>(IJSValueReader reader, out IReadOnlyList<T> value)
-    {
-      ReadReadOnlyCollection(reader, out ReadOnlyCollection<T> collection);
-      value = collection;
-    }
-
-    public static void ReadIReadOnlyCollection<T>(IJSValueReader reader, out IReadOnlyCollection<T> value)
-    {
-      ReadReadOnlyCollection(reader, out ReadOnlyCollection<T> collection);
-      value = collection;
-    }
-
-    public static void ReadArray<T>(IJSValueReader reader, out T[] value)
-    {
-      ReadList(reader, out List<T> list);
-      value = list.ToArray();
-    }
-
-    private static bool TryGenerateReadValueForList(Type valueType, out Delegate readDelegate)
-    {
-      MethodInfo methodInfo =
-        valueType.MatchMethodInfo(typeof(List<>), nameof(ReadList))
-        ?? valueType.MatchMethodInfo(typeof(IList<>), nameof(ReadIList))
-        ?? valueType.MatchMethodInfo(typeof(ICollection<>), nameof(ReadICollection))
-        ?? valueType.MatchMethodInfo(typeof(IEnumerable<>), nameof(ReadIEnumerable))
-        ?? valueType.MatchMethodInfo(typeof(ReadOnlyCollection<>), nameof(ReadReadOnlyCollection))
-        ?? valueType.MatchMethodInfo(typeof(IReadOnlyList<>), nameof(ReadIReadOnlyList))
-        ?? valueType.MatchMethodInfo(typeof(IReadOnlyCollection<>), nameof(ReadIReadOnlyCollection))
-        ?? valueType.MatchMethodInfo(typeof(IReadOnlyCollection<>), nameof(ReadArray))
-        ?? (TryGetArrayElementType(valueType, out var typeArg) ? MethodOf(nameof(ReadArray), typeArg) : null);
-
-      readDelegate = methodInfo?.CreateDelegate(typeof(ReadValueDelegate<>).MakeGenericType(valueType));
-      return readDelegate != null;
-    }
-
-    private static void SkipArrayToEnd(IJSValueReader reader)
-    {
-      while (reader.GetNextArrayItem())
-      {
-        reader.ReadValue<JSValue>(); // Read and ignore the value
-      }
-    }
-
-    public static void ReadTuple1<T1>(IJSValueReader reader, out Tuple<T1> value)
-    {
-      value = default;
-      if (reader.ValueType != JSValueType.Array) return;
-      if (!reader.GetNextArrayItem()) return;
-      T1 t1 = reader.ReadValue<T1>();
-      SkipArrayToEnd(reader);
-      value = new Tuple<T1>(t1);
-    }
-
-    public static void ReadTuple2<T1, T2>(IJSValueReader reader, out Tuple<T1, T2> value)
-    {
-      value = default;
-      if (reader.ValueType != JSValueType.Array) return;
-      if (!reader.GetNextArrayItem()) return;
-      T1 t1 = reader.ReadValue<T1>();
-      if (!reader.GetNextArrayItem()) return;
-      T2 t2 = reader.ReadValue<T2>();
-      SkipArrayToEnd(reader);
-      value = new Tuple<T1, T2>(t1, t2);
-    }
-
-    public static void ReadTuple3<T1, T2, T3>(IJSValueReader reader, out Tuple<T1, T2, T3> value)
-    {
-      value = default;
-      if (reader.ValueType != JSValueType.Array) return;
-      if (!reader.GetNextArrayItem()) return;
-      T1 t1 = reader.ReadValue<T1>();
-      if (!reader.GetNextArrayItem()) return;
-      T2 t2 = reader.ReadValue<T2>();
-      if (!reader.GetNextArrayItem()) return;
-      T3 t3 = reader.ReadValue<T3>();
-      SkipArrayToEnd(reader);
-      value = new Tuple<T1, T2, T3>(t1, t2, t3);
-    }
-
-    public static void ReadTuple4<T1, T2, T3, T4>(IJSValueReader reader, out Tuple<T1, T2, T3, T4> value)
-    {
-      value = default;
-      if (reader.ValueType != JSValueType.Array) return;
-      if (!reader.GetNextArrayItem()) return;
-      T1 t1 = reader.ReadValue<T1>();
-      if (!reader.GetNextArrayItem()) return;
-      T2 t2 = reader.ReadValue<T2>();
-      if (!reader.GetNextArrayItem()) return;
-      T3 t3 = reader.ReadValue<T3>();
-      if (!reader.GetNextArrayItem()) return;
-      T4 t4 = reader.ReadValue<T4>();
-      SkipArrayToEnd(reader);
-      value = new Tuple<T1, T2, T3, T4>(t1, t2, t3, t4);
-    }
-
-    public static void ReadTuple5<T1, T2, T3, T4, T5>(
-      IJSValueReader reader, out Tuple<T1, T2, T3, T4, T5> value)
-    {
-      value = default;
-      if (reader.ValueType != JSValueType.Array) return;
-      if (!reader.GetNextArrayItem()) return;
-      T1 t1 = reader.ReadValue<T1>();
-      if (!reader.GetNextArrayItem()) return;
-      T2 t2 = reader.ReadValue<T2>();
-      if (!reader.GetNextArrayItem()) return;
-      T3 t3 = reader.ReadValue<T3>();
-      if (!reader.GetNextArrayItem()) return;
-      T4 t4 = reader.ReadValue<T4>();
-      if (!reader.GetNextArrayItem()) return;
-      T5 t5 = reader.ReadValue<T5>();
-      SkipArrayToEnd(reader);
-      value = new Tuple<T1, T2, T3, T4, T5>(t1, t2, t3, t4, t5);
-    }
-
-    public static void ReadTuple6<T1, T2, T3, T4, T5, T6>(
-      IJSValueReader reader, out Tuple<T1, T2, T3, T4, T5, T6> value)
-    {
-      value = default;
-      if (reader.ValueType != JSValueType.Array) return;
-      if (!reader.GetNextArrayItem()) return;
-      T1 t1 = reader.ReadValue<T1>();
-      if (!reader.GetNextArrayItem()) return;
-      T2 t2 = reader.ReadValue<T2>();
-      if (!reader.GetNextArrayItem()) return;
-      T3 t3 = reader.ReadValue<T3>();
-      if (!reader.GetNextArrayItem()) return;
-      T4 t4 = reader.ReadValue<T4>();
-      if (!reader.GetNextArrayItem()) return;
-      T5 t5 = reader.ReadValue<T5>();
-      if (!reader.GetNextArrayItem()) return;
-      T6 t6 = reader.ReadValue<T6>();
-      SkipArrayToEnd(reader);
-      value = new Tuple<T1, T2, T3, T4, T5, T6>(t1, t2, t3, t4, t5, t6);
-    }
-
-    public static void ReadTuple7<T1, T2, T3, T4, T5, T6, T7>(
-      IJSValueReader reader, out Tuple<T1, T2, T3, T4, T5, T6, T7> value)
-    {
-      value = default;
-      if (reader.ValueType != JSValueType.Array) return;
-      if (!reader.GetNextArrayItem()) return;
-      T1 t1 = reader.ReadValue<T1>();
-      if (!reader.GetNextArrayItem()) return;
-      T2 t2 = reader.ReadValue<T2>();
-      if (!reader.GetNextArrayItem()) return;
-      T3 t3 = reader.ReadValue<T3>();
-      if (!reader.GetNextArrayItem()) return;
-      T4 t4 = reader.ReadValue<T4>();
-      if (!reader.GetNextArrayItem()) return;
-      T5 t5 = reader.ReadValue<T5>();
-      if (!reader.GetNextArrayItem()) return;
-      T6 t6 = reader.ReadValue<T6>();
-      if (!reader.GetNextArrayItem()) return;
-      T7 t7 = reader.ReadValue<T7>();
-      SkipArrayToEnd(reader);
-      value = new Tuple<T1, T2, T3, T4, T5, T6, T7>(t1, t2, t3, t4, t5, t6, t7);
-    }
-
-    private static MethodInfo MatchMethodInfo(this Type valueType, Type genericType, string methodName)
-    {
-      return TryGetTypeArgs(valueType, genericType, out Type[] typeArgs)
-        ? MethodOf(methodName, typeArgs)
-        : null;
-    }
-
-    private static bool TryGenerateReadValueForTuple(Type valueType, out Delegate readDelegate)
-    {
-      MethodInfo methodInfo =
-        valueType.MatchMethodInfo(typeof(Tuple<>), nameof(ReadTuple1))
-        ?? valueType.MatchMethodInfo(typeof(Tuple<,>), nameof(ReadTuple2))
-        ?? valueType.MatchMethodInfo(typeof(Tuple<,,>), nameof(ReadTuple3))
-        ?? valueType.MatchMethodInfo(typeof(Tuple<,,,>), nameof(ReadTuple4))
-        ?? valueType.MatchMethodInfo(typeof(Tuple<,,,,>), nameof(ReadTuple5))
-        ?? valueType.MatchMethodInfo(typeof(Tuple<,,,,,>), nameof(ReadTuple6))
-        ?? valueType.MatchMethodInfo(typeof(Tuple<,,,,,,>), nameof(ReadTuple7));
-      readDelegate = methodInfo?.CreateDelegate(typeof(ReadValueDelegate<>).MakeGenericType(valueType));
-      return readDelegate != null;
-    }
-
-    private static bool TryGenerateReadValueForClass(Type valueType, out Delegate readDelegate)
+    private static Delegate GenerateReadValueForClass(Type valueType)
     {
       // Generate code that looks like:
       //
@@ -683,7 +541,7 @@ namespace Microsoft.ReactNative.Managed
           select new { property.Name, Type = property.PropertyType };
         var members = fields.Concat(properties).ToArray();
 
-        readDelegate = ReadValueDelegateOf(valueType).CompileLambda(
+        return ReadValueDelegateOf(valueType).CompileLambda(
           Parameter(typeof(IJSValueReader), out var reader),
           Parameter(valueType.MakeByRefType(), out var value),
           value.Assign(New(valueType)),
@@ -697,12 +555,9 @@ namespace Microsoft.ReactNative.Managed
                       value.AssignPropertyVoid(member.Name, reader.CallExt(ReadValueOf(member.Type))),
                       Constant(member.Name))).ToArray()) as Expression
                 : Default(typeof(void))))));
-
-        return true;
       }
 
-      readDelegate = null;
-      return false;
+      return null;
     }
   }
 }

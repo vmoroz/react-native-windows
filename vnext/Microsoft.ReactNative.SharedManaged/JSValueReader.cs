@@ -4,6 +4,7 @@
 using Microsoft.ReactNative.Bridge;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Threading;
 
 namespace Microsoft.ReactNative.Managed
@@ -146,6 +147,244 @@ namespace Microsoft.ReactNative.Managed
       value = JSValue.ReadArrayItemsFrom(reader);
     }
 
+    public static void ReadValue<T>(this IJSValueReader reader, out T? value) where T : struct
+    {
+      if (reader.ValueType != JSValueType.Null)
+      {
+        value = reader.ReadValue<T>();
+      }
+      else
+      {
+        value = null;
+      }
+    }
+
+    public static void ReadValue<T>(this IJSValueReader reader, out Dictionary<string, T> value)
+    {
+      value = new Dictionary<string, T>();
+      if (reader.ValueType == JSValueType.Object)
+      {
+        while (reader.GetNextObjectProperty(out string propertyName))
+        {
+          value.Add(propertyName, reader.ReadValue<T>());
+        }
+      }
+    }
+
+    public static void ReadValue<T>(this IJSValueReader reader, out IDictionary<string, T> value)
+    {
+      reader.ReadValue(out Dictionary<string, T> dictionary);
+      value = dictionary;
+    }
+
+    public static void ReadValue<T>(this IJSValueReader reader, out ICollection<KeyValuePair<string, T>> value)
+    {
+      reader.ReadValue(out Dictionary<string, T> dictionary);
+      value = dictionary;
+    }
+
+    public static void ReadValue<T>(this IJSValueReader reader, out IEnumerable<KeyValuePair<string, T>> value)
+    {
+      reader.ReadValue(out Dictionary<string, T> dictionary);
+      value = dictionary;
+    }
+
+    public static void ReadValue<T>(this IJSValueReader reader, out ReadOnlyDictionary<string, T> value)
+    {
+      reader.ReadValue(out Dictionary<string, T> dictionary);
+      value = new ReadOnlyDictionary<string, T>(dictionary);
+    }
+
+    public static void ReadValue<T>(this IJSValueReader reader, out IReadOnlyDictionary<string, T> value)
+    {
+      reader.ReadValue(out ReadOnlyDictionary<string, T> dictionary);
+      value = dictionary;
+    }
+
+    public static void ReadValue<T>(this IJSValueReader reader, out IReadOnlyCollection<KeyValuePair<string, T>> value)
+    {
+      reader.ReadValue(out ReadOnlyDictionary<string, T> dictionary);
+      value = dictionary;
+    }
+
+    public static void ReadValue<T>(this IJSValueReader reader, out List<T> value)
+    {
+      value = new List<T>();
+      if (reader.ValueType == JSValueType.Array)
+      {
+        while (reader.GetNextArrayItem())
+        {
+          value.Add(reader.ReadValue<T>());
+        }
+      }
+    }
+
+    public static void ReadValue<T>(this IJSValueReader reader, out IList<T> value)
+    {
+      ReadValue(reader, out List<T> list);
+      value = list;
+    }
+
+    public static void ReadValue<T>(this IJSValueReader reader, out ICollection<T> value)
+    {
+      ReadValue(reader, out List<T> list);
+      value = list;
+    }
+
+    public static void ReadValue<T>(this IJSValueReader reader, out IEnumerable<T> value)
+    {
+      ReadValue(reader, out List<T> list);
+      value = list;
+    }
+
+    public static void ReadValue<T>(this IJSValueReader reader, out ReadOnlyCollection<T> value)
+    {
+      ReadValue(reader, out List<T> list);
+      value = new ReadOnlyCollection<T>(list);
+    }
+
+    public static void ReadValue<T>(this IJSValueReader reader, out IReadOnlyList<T> value)
+    {
+      ReadValue(reader, out ReadOnlyCollection<T> collection);
+      value = collection;
+    }
+
+    public static void ReadValue<T>(this IJSValueReader reader, out IReadOnlyCollection<T> value)
+    {
+      ReadValue(reader, out ReadOnlyCollection<T> collection);
+      value = collection;
+    }
+
+    public static void ReadValue<T>(this IJSValueReader reader, out T[] value)
+    {
+      ReadValue(reader, out List<T> list);
+      value = list.ToArray();
+    }
+
+    private static void SkipArrayToEnd(this IJSValueReader reader)
+    {
+      while (reader.GetNextArrayItem())
+      {
+        reader.ReadValue<JSValue>(); // Read and ignore the value
+      }
+    }
+
+    public static void ReadValue<T1>(this IJSValueReader reader, out Tuple<T1> value)
+    {
+      value = default;
+      if (reader.ValueType != JSValueType.Array) return;
+      if (!reader.GetNextArrayItem()) return;
+      T1 t1 = reader.ReadValue<T1>();
+      reader.SkipArrayToEnd();
+      value = new Tuple<T1>(t1);
+    }
+
+    public static void ReadValue<T1, T2>(this IJSValueReader reader, out Tuple<T1, T2> value)
+    {
+      value = default;
+      if (reader.ValueType != JSValueType.Array) return;
+      if (!reader.GetNextArrayItem()) return;
+      T1 t1 = reader.ReadValue<T1>();
+      if (!reader.GetNextArrayItem()) return;
+      T2 t2 = reader.ReadValue<T2>();
+      reader.SkipArrayToEnd();
+      value = new Tuple<T1, T2>(t1, t2);
+    }
+
+    public static void ReadValue<T1, T2, T3>(this IJSValueReader reader, out Tuple<T1, T2, T3> value)
+    {
+      value = default;
+      if (reader.ValueType != JSValueType.Array) return;
+      if (!reader.GetNextArrayItem()) return;
+      T1 t1 = reader.ReadValue<T1>();
+      if (!reader.GetNextArrayItem()) return;
+      T2 t2 = reader.ReadValue<T2>();
+      if (!reader.GetNextArrayItem()) return;
+      T3 t3 = reader.ReadValue<T3>();
+      reader.SkipArrayToEnd();
+      value = new Tuple<T1, T2, T3>(t1, t2, t3);
+    }
+
+    public static void ReadValue<T1, T2, T3, T4>(this IJSValueReader reader, out Tuple<T1, T2, T3, T4> value)
+    {
+      value = default;
+      if (reader.ValueType != JSValueType.Array) return;
+      if (!reader.GetNextArrayItem()) return;
+      T1 t1 = reader.ReadValue<T1>();
+      if (!reader.GetNextArrayItem()) return;
+      T2 t2 = reader.ReadValue<T2>();
+      if (!reader.GetNextArrayItem()) return;
+      T3 t3 = reader.ReadValue<T3>();
+      if (!reader.GetNextArrayItem()) return;
+      T4 t4 = reader.ReadValue<T4>();
+      reader.SkipArrayToEnd();
+      value = new Tuple<T1, T2, T3, T4>(t1, t2, t3, t4);
+    }
+
+    public static void ReadValue<T1, T2, T3, T4, T5>(
+      this IJSValueReader reader, out Tuple<T1, T2, T3, T4, T5> value)
+    {
+      value = default;
+      if (reader.ValueType != JSValueType.Array) return;
+      if (!reader.GetNextArrayItem()) return;
+      T1 t1 = reader.ReadValue<T1>();
+      if (!reader.GetNextArrayItem()) return;
+      T2 t2 = reader.ReadValue<T2>();
+      if (!reader.GetNextArrayItem()) return;
+      T3 t3 = reader.ReadValue<T3>();
+      if (!reader.GetNextArrayItem()) return;
+      T4 t4 = reader.ReadValue<T4>();
+      if (!reader.GetNextArrayItem()) return;
+      T5 t5 = reader.ReadValue<T5>();
+      reader.SkipArrayToEnd();
+      value = new Tuple<T1, T2, T3, T4, T5>(t1, t2, t3, t4, t5);
+    }
+
+    public static void ReadValue<T1, T2, T3, T4, T5, T6>(
+      this IJSValueReader reader, out Tuple<T1, T2, T3, T4, T5, T6> value)
+    {
+      value = default;
+      if (reader.ValueType != JSValueType.Array) return;
+      if (!reader.GetNextArrayItem()) return;
+      T1 t1 = reader.ReadValue<T1>();
+      if (!reader.GetNextArrayItem()) return;
+      T2 t2 = reader.ReadValue<T2>();
+      if (!reader.GetNextArrayItem()) return;
+      T3 t3 = reader.ReadValue<T3>();
+      if (!reader.GetNextArrayItem()) return;
+      T4 t4 = reader.ReadValue<T4>();
+      if (!reader.GetNextArrayItem()) return;
+      T5 t5 = reader.ReadValue<T5>();
+      if (!reader.GetNextArrayItem()) return;
+      T6 t6 = reader.ReadValue<T6>();
+      reader.SkipArrayToEnd();
+      value = new Tuple<T1, T2, T3, T4, T5, T6>(t1, t2, t3, t4, t5, t6);
+    }
+
+    public static void ReadValue<T1, T2, T3, T4, T5, T6, T7>(
+      this IJSValueReader reader, out Tuple<T1, T2, T3, T4, T5, T6, T7> value)
+    {
+      value = default;
+      if (reader.ValueType != JSValueType.Array) return;
+      if (!reader.GetNextArrayItem()) return;
+      T1 t1 = reader.ReadValue<T1>();
+      if (!reader.GetNextArrayItem()) return;
+      T2 t2 = reader.ReadValue<T2>();
+      if (!reader.GetNextArrayItem()) return;
+      T3 t3 = reader.ReadValue<T3>();
+      if (!reader.GetNextArrayItem()) return;
+      T4 t4 = reader.ReadValue<T4>();
+      if (!reader.GetNextArrayItem()) return;
+      T5 t5 = reader.ReadValue<T5>();
+      if (!reader.GetNextArrayItem()) return;
+      T6 t6 = reader.ReadValue<T6>();
+      if (!reader.GetNextArrayItem()) return;
+      T7 t7 = reader.ReadValue<T7>();
+      reader.SkipArrayToEnd();
+      value = new Tuple<T1, T2, T3, T4, T5, T6, T7>(t1, t2, t3, t4, t5, t6, t7);
+    }
+
+
     public static void ReadValue<T>(this IJSValueReader reader, out T value)
     {
       JSValueReader<T>.ReadValue(reader, out value);
@@ -170,20 +409,33 @@ namespace Microsoft.ReactNative.Managed
 
     public static Delegate GetReadValueDelegate(Type valueType)
     {
+      // We want to generate the delegate only once even if we cannot insert it
+      // to s_readerDelegates from the first attempt.
       var generatedDelegate = new Lazy<Delegate>(
         () => JSValueReaderGenerator.GenerateReadValueDelegate(valueType));
 
+      // We try to add the generated ReadValue delegate in a loop
+      // in a lock-free thread-safe way. We do not change existing s_readerDelegates.
+      // Instead we clone it, update it, then replace the s_readerDelegates with the new one.
       while (true)
       {
-        var readerDelegates = s_readerDelegates;
+        var readerDelegates = s_readerDelegates; // Get the local pointer first.
         if (readerDelegates.TryGetValue(valueType, out Delegate readDelegate))
         {
           return readDelegate;
         }
 
         // The ReadValue delegate is not found. Generate it add try to add to the dictionary atomically.
+        // We clone the dictionary, update it, and then replace the existing one.
+        var newDelegate = generatedDelegate.Value; // Generates delegate when we are here a first time.
+
+        // This is a quick shortcut in case if s_readerDelegates changed while we generated the value.
+        // It helps to avoid cloning dictionary in a number of cases. 
+        if (readerDelegates != s_readerDelegates) continue;
+
+        // Clone the dictionary, update it, and try to replace s_readerDelegates.
         var updatedReaderDelegates = new Dictionary<Type, Delegate>(readerDelegates as IDictionary<Type, Delegate>);
-        updatedReaderDelegates.Add(valueType, generatedDelegate.Value);
+        updatedReaderDelegates.Add(valueType, newDelegate);
         Interlocked.CompareExchange(ref s_readerDelegates, updatedReaderDelegates, readerDelegates);
       }
     }
