@@ -127,14 +127,44 @@ namespace Microsoft.ReactNative.Managed
       value = JSValue.ReadFrom(reader);
     }
 
+    public static void ReadValue(this IJSValueReader reader, out Dictionary<string, JSValue> value)
+    {
+      value = JSValue.ReadObjectPropertiesFrom(reader);
+    }
+
     public static void ReadValue(this IJSValueReader reader, out IDictionary<string, JSValue> value)
     {
       value = JSValue.ReadObjectPropertiesFrom(reader);      
     }
 
-    public static void ReadValue(this IJSValueReader reader, out Dictionary<string, JSValue> value)
+    public static void ReadValue(this IJSValueReader reader, out ICollection<KeyValuePair<string, JSValue>> value)
     {
       value = JSValue.ReadObjectPropertiesFrom(reader);
+    }
+
+    public static void ReadValue(this IJSValueReader reader, out IEnumerable<KeyValuePair<string, JSValue>> value)
+    {
+      value = JSValue.ReadObjectPropertiesFrom(reader);
+    }
+
+    public static void ReadValue(this IJSValueReader reader, out ReadOnlyDictionary<string, JSValue> value)
+    {
+      value = new ReadOnlyDictionary<string, JSValue>(JSValue.ReadObjectPropertiesFrom(reader));
+    }
+
+    public static void ReadValue(this IJSValueReader reader, out IReadOnlyDictionary<string, JSValue> value)
+    {
+      value = new ReadOnlyDictionary<string, JSValue>(JSValue.ReadObjectPropertiesFrom(reader));
+    }
+
+    public static void ReadValue(this IJSValueReader reader, out IReadOnlyCollection<KeyValuePair<string, JSValue>> value)
+    {
+      value = new ReadOnlyDictionary<string, JSValue>(JSValue.ReadObjectPropertiesFrom(reader));
+    }
+
+    public static void ReadValue(this IJSValueReader reader, out List<JSValue> value)
+    {
+      value = JSValue.ReadArrayItemsFrom(reader);
     }
 
     public static void ReadValue(this IJSValueReader reader, out IList<JSValue> value)
@@ -142,9 +172,29 @@ namespace Microsoft.ReactNative.Managed
       value = JSValue.ReadArrayItemsFrom(reader);
     }
 
-    public static void ReadValue(this IJSValueReader reader, out List<JSValue> value)
+    public static void ReadValue(this IJSValueReader reader, out ICollection<JSValue> value)
     {
       value = JSValue.ReadArrayItemsFrom(reader);
+    }
+
+    public static void ReadValue(this IJSValueReader reader, out IEnumerable<JSValue> value)
+    {
+      value = JSValue.ReadArrayItemsFrom(reader);
+    }
+
+    public static void ReadValue(this IJSValueReader reader, out ReadOnlyCollection<JSValue> value)
+    {
+      value = new ReadOnlyCollection<JSValue>(JSValue.ReadArrayItemsFrom(reader));
+    }
+
+    public static void ReadValue(this IJSValueReader reader, out IReadOnlyList<JSValue> value)
+    {
+      value = new ReadOnlyCollection<JSValue>(JSValue.ReadArrayItemsFrom(reader));
+    }
+
+    public static void ReadValue(this IJSValueReader reader, out IReadOnlyCollection<JSValue> value)
+    {
+      value = new ReadOnlyCollection<JSValue>(JSValue.ReadArrayItemsFrom(reader));
     }
 
     public static void ReadValue<T>(this IJSValueReader reader, out T? value) where T : struct
@@ -394,6 +444,11 @@ namespace Microsoft.ReactNative.Managed
     {
       JSValueReader<T>.ReadValue(reader, out T value);
       return value;
+    }
+
+    public static void ReadValue<T>(this JSValue jsValue, out T value)
+    {
+      JSValueReader<T>.ReadValue(new JSValueTreeReader(jsValue), out value);
     }
 
     public static T ReadValue<T>(this JSValue jsValue)
