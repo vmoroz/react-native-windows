@@ -12,6 +12,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)AttributedViewManager.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)IJSValueTreeReader.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)JSValue.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)JSValueGenerator.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)JSValueReader.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)JSValueReaderGenerator.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)JSValueTreeReader.cs" />

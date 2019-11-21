@@ -4,9 +4,7 @@
 using Microsoft.ReactNative.Bridge;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-using System.Runtime.CompilerServices;
+using System.Collections.ObjectModel;
 using System.Threading;
 
 namespace Microsoft.ReactNative.Managed
@@ -49,17 +47,17 @@ namespace Microsoft.ReactNative.Managed
 
     public static void WriteValue(this IJSValueWriter writer, byte value)
     {
-      writer.WriteInt64((long)value);
+      writer.WriteInt64(value);
     }
 
     public static void WriteValue(this IJSValueWriter writer, ushort value)
     {
-      writer.WriteInt64((long)value);
+      writer.WriteInt64(value);
     }
 
     public static void WriteValue(this IJSValueWriter writer, uint value)
     {
-      writer.WriteInt64((long)value);
+      writer.WriteInt64(value);
     }
 
     public static void WriteValue(this IJSValueWriter writer, ulong value)
@@ -82,19 +80,39 @@ namespace Microsoft.ReactNative.Managed
       value.WriteTo(writer);
     }
 
-    public static void WriteValue(this IJSValueWriter writer, IDictionary<string, JSValue> value)
-    {
-      JSValue.WriteObject(writer, value);
-    }
-
     public static void WriteValue(this IJSValueWriter writer, Dictionary<string, JSValue> value)
     {
       JSValue.WriteObject(writer, value);
     }
 
-    public static void WriteValue(this IJSValueWriter writer, IList<JSValue> value)
+    public static void WriteValue(this IJSValueWriter writer, IDictionary<string, JSValue> value)
     {
-      JSValue.WriteArray(writer, value);
+      JSValue.WriteObject(writer, value);
+    }
+
+    public static void WriteValue(this IJSValueWriter writer, ICollection<KeyValuePair<string, JSValue>> value)
+    {
+      JSValue.WriteObject(writer, value);
+    }
+
+    public static void WriteValue(this IJSValueWriter writer, IEnumerable<KeyValuePair<string, JSValue>> value)
+    {
+      JSValue.WriteObject(writer, value);
+    }
+
+    public static void WriteValue(this IJSValueWriter writer, ReadOnlyDictionary<string, JSValue> value)
+    {
+      JSValue.WriteObject(writer, value);
+    }
+
+    public static void WriteValue(this IJSValueWriter writer, IReadOnlyDictionary<string, JSValue> value)
+    {
+      JSValue.WriteObject(writer, value);
+    }
+
+    public static void WriteValue(this IJSValueWriter writer, IReadOnlyCollection<KeyValuePair<string, JSValue>> value)
+    {
+      JSValue.WriteObject(writer, value);
     }
 
     public static void WriteValue(this IJSValueWriter writer, List<JSValue> value)
@@ -102,12 +120,273 @@ namespace Microsoft.ReactNative.Managed
       JSValue.WriteArray(writer, value);
     }
 
+    public static void WriteValue(this IJSValueWriter writer, IList<JSValue> value)
+    {
+      JSValue.WriteArray(writer, value);
+    }
+
+    public static void WriteValue(this IJSValueWriter writer, ICollection<JSValue> value)
+    {
+      JSValue.WriteArray(writer, value);
+    }
+
+    public static void WriteValue(this IJSValueWriter writer, IEnumerable<JSValue> value)
+    {
+      JSValue.WriteArray(writer, value);
+    }
+
+    public static void WriteValue(this IJSValueWriter writer, ReadOnlyCollection<JSValue> value)
+    {
+      JSValue.WriteArray(writer, value);
+    }
+
+    public static void WriteValue(this IJSValueWriter writer, IReadOnlyList<JSValue> value)
+    {
+      JSValue.WriteArray(writer, value);
+    }
+
+    public static void WriteValue(this IJSValueWriter writer, IReadOnlyCollection<JSValue> value)
+    {
+      JSValue.WriteArray(writer, value);
+    }
+
+    public static void WriteValue<T>(this IJSValueWriter writer, T? value) where T : struct
+    {
+      if (value.HasValue)
+      {
+        writer.WriteValue(value.Value);
+      }
+      else
+      {
+        writer.WriteNull();
+      }
+    }
+
+    public static void WriteValue<T>(this IJSValueWriter writer, Dictionary<string, T> value)
+    {
+      writer.WriteValue(value as IEnumerable<KeyValuePair<string, T>>);
+    }
+
+    public static void WriteValue<T>(this IJSValueWriter writer, IDictionary<string, T> value)
+    {
+      writer.WriteValue(value as IEnumerable<KeyValuePair<string, T>>);
+    }
+
+    public static void WriteValue<T>(this IJSValueWriter writer, ICollection<KeyValuePair<string, T>> value)
+    {
+      writer.WriteValue(value as IEnumerable<KeyValuePair<string, T>>);
+    }
+
+    public static void WriteValue<T>(this IJSValueWriter writer, IEnumerable<KeyValuePair<string, T>> value)
+    {
+      if (value != null)
+      {
+        writer.WriteObjectBegin();
+        foreach (var pair in value)
+        {
+          writer.WriteObjectProperty(pair.Key, pair.Value);
+        }
+        writer.WriteObjectEnd();
+      }
+      else
+      {
+        writer.WriteNull();
+      }
+    }
+
+    public static void WriteValue<T>(this IJSValueWriter writer, ReadOnlyDictionary<string, T> value)
+    {
+      writer.WriteValue(value as IEnumerable<KeyValuePair<string, T>>);
+    }
+
+    public static void WriteValue<T>(this IJSValueWriter writer, IReadOnlyDictionary<string, T> value)
+    {
+      writer.WriteValue(value as IEnumerable<KeyValuePair<string, T>>);
+    }
+
+    public static void WriteValue<T>(this IJSValueWriter writer, IReadOnlyCollection<KeyValuePair<string, T>> value)
+    {
+      writer.WriteValue(value as IEnumerable<KeyValuePair<string, T>>);
+    }
+
+    public static void WriteValue<T>(this IJSValueWriter writer, List<T> value)
+    {
+      writer.WriteValue(value as IEnumerable<T>);
+    }
+
+    public static void WriteValue<T>(this IJSValueWriter writer, IList<T> value)
+    {
+      writer.WriteValue(value as IEnumerable<T>);
+    }
+
+    public static void WriteValue<T>(this IJSValueWriter writer, ICollection<T> value)
+    {
+      writer.WriteValue(value as IEnumerable<T>);
+    }
+
+    public static void WriteValue<T>(this IJSValueWriter writer, IEnumerable<T> value)
+    {
+      if (value != null)
+      {
+        writer.WriteArrayBegin();
+        foreach (var item in value)
+        {
+          writer.WriteValue(item);
+        }
+
+        writer.WriteArrayEnd();
+      }
+      else
+      {
+        writer.WriteNull();
+      }
+    }
+
+    public static void WriteValue<T>(this IJSValueWriter writer, ReadOnlyCollection<T> value)
+    {
+      writer.WriteValue(value as IEnumerable<T>);
+    }
+
+    public static void WriteValue<T>(this IJSValueWriter writer, IReadOnlyList<T> value)
+    {
+      writer.WriteValue(value as IEnumerable<T>);
+    }
+
+    public static void WriteValue<T>(this IJSValueWriter writer, IReadOnlyCollection<T> value)
+    {
+      writer.WriteValue(value as IEnumerable<T>);
+    }
+
+    public static void WriteValue<T>(this IJSValueWriter writer, T[] value)
+    {
+      writer.WriteValue(value as IEnumerable<T>);
+    }
+
+    public static void WriteValue<T1>(this IJSValueWriter writer, Tuple<T1> value)
+    {
+      if (value != null)
+      {
+        writer.WriteArrayBegin();
+        writer.WriteValue(value.Item1);
+        writer.WriteArrayEnd();
+      }
+      else
+      {
+        writer.WriteNull();
+      }
+    }
+
+    public static void WriteValue<T1, T2>(this IJSValueWriter writer, Tuple<T1, T2> value)
+    {
+      if (value != null)
+      {
+        writer.WriteArrayBegin();
+        writer.WriteValue(value.Item1);
+        writer.WriteValue(value.Item2);
+        writer.WriteArrayEnd();
+      }
+      else
+      {
+        writer.WriteNull();
+      }
+    }
+
+    public static void WriteValue<T1, T2, T3>(this IJSValueWriter writer, Tuple<T1, T2, T3> value)
+    {
+      if (value != null)
+      {
+        writer.WriteArrayBegin();
+        writer.WriteValue(value.Item1);
+        writer.WriteValue(value.Item2);
+        writer.WriteValue(value.Item3);
+        writer.WriteArrayEnd();
+      }
+      else
+      {
+        writer.WriteNull();
+      }
+    }
+
+    public static void WriteValue<T1, T2, T3, T4>(this IJSValueWriter writer, Tuple<T1, T2, T3, T4> value)
+    {
+      if (value != null)
+      {
+        writer.WriteArrayBegin();
+        writer.WriteValue(value.Item1);
+        writer.WriteValue(value.Item2);
+        writer.WriteValue(value.Item3);
+        writer.WriteValue(value.Item4);
+        writer.WriteArrayEnd();
+      }
+      else
+      {
+        writer.WriteNull();
+      }
+    }
+
+    public static void WriteValue<T1, T2, T3, T4, T5>(this IJSValueWriter writer, Tuple<T1, T2, T3, T4, T5> value)
+    {
+      if (value != null)
+      {
+        writer.WriteArrayBegin();
+        writer.WriteValue(value.Item1);
+        writer.WriteValue(value.Item2);
+        writer.WriteValue(value.Item3);
+        writer.WriteValue(value.Item4);
+        writer.WriteValue(value.Item5);
+        writer.WriteArrayEnd();
+      }
+      else
+      {
+        writer.WriteNull();
+      }
+    }
+
+    public static void WriteValue<T1, T2, T3, T4, T5, T6>(this IJSValueWriter writer, Tuple<T1, T2, T3, T4, T5, T6> value)
+    {
+      if (value != null)
+      {
+        writer.WriteArrayBegin();
+        writer.WriteValue(value.Item1);
+        writer.WriteValue(value.Item2);
+        writer.WriteValue(value.Item3);
+        writer.WriteValue(value.Item4);
+        writer.WriteValue(value.Item5);
+        writer.WriteValue(value.Item6);
+        writer.WriteArrayEnd();
+      }
+      else
+      {
+        writer.WriteNull();
+      }
+    }
+
+    public static void WriteValue<T1, T2, T3, T4, T5, T6, T7>(this IJSValueWriter writer, Tuple<T1, T2, T3, T4, T5, T6, T7> value)
+    {
+      if (value != null)
+      {
+        writer.WriteArrayBegin();
+        writer.WriteValue(value.Item1);
+        writer.WriteValue(value.Item2);
+        writer.WriteValue(value.Item3);
+        writer.WriteValue(value.Item4);
+        writer.WriteValue(value.Item5);
+        writer.WriteValue(value.Item6);
+        writer.WriteValue(value.Item7);
+        writer.WriteArrayEnd();
+      }
+      else
+      {
+        writer.WriteNull();
+      }
+    }
+
     public static void WriteValue<T>(this IJSValueWriter writer, T value)
     {
       JSValueWriter<T>.WriteValue(writer, value);
     }
 
-    public static void WriteProperty<T>(this IJSValueWriter writer, string name, T value)
+    public static void WriteObjectProperty<T>(this IJSValueWriter writer, string name, T value)
     {
       writer.WritePropertyName(name);
       writer.WriteValue<T>(value);
@@ -120,20 +399,32 @@ namespace Microsoft.ReactNative.Managed
 
     public static Delegate GetWriteValueDelegate(Type valueType)
     {
+      // We want to generate the delegate only once even if we cannot insert it
+      // to s_writerDelegates from the first attempt.
       var generatedDelegate = new Lazy<Delegate>(
         () => JSValueWriterGenerator.GenerateWriteValueDelegate(valueType));
 
+      // We try to add the generated WriteValue delegate in a loop
+      // in a lock-free thread-safe way. We do not change existing s_writerDelegates.
+      // Instead we clone it, update the clone, then replace the s_writerDelegates with the updated clone.
       while (true)
       {
-        var writerDelegates = s_writerDelegates;
+        var writerDelegates = s_writerDelegates; // Get the local pointer first.
         if (writerDelegates.TryGetValue(valueType, out Delegate writeDelegate))
         {
           return writeDelegate;
         }
 
-        // The ReadValue delegate is not found. Generate it add try to add to the dictionary atomically.
+        // The WriteValue delegate is not found. Generate it add try to add to the dictionary atomically.
+        var newDelegate = generatedDelegate.Value; // Generates delegate when we are here a first time.
+
+        // This is a quick shortcut in case if s_writerDelegates changed while we generated the value.
+        // It helps to avoid cloning dictionary in a number of cases. 
+        if (writerDelegates != s_writerDelegates) continue;
+
+        // Clone the dictionary, update the clone, and try to replace the s_writerDelegates.
         var updatedWriterDelegates = new Dictionary<Type, Delegate>(writerDelegates as IDictionary<Type, Delegate>);
-        updatedWriterDelegates.Add(valueType, generatedDelegate.Value);
+        updatedWriterDelegates.Add(valueType, newDelegate);
         Interlocked.CompareExchange(ref s_writerDelegates, updatedWriterDelegates, writerDelegates);
       }
     }

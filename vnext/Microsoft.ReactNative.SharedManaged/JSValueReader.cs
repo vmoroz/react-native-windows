@@ -434,7 +434,6 @@ namespace Microsoft.ReactNative.Managed
       value = new Tuple<T1, T2, T3, T4, T5, T6, T7>(t1, t2, t3, t4, t5, t6, t7);
     }
 
-
     public static void ReadValue<T>(this IJSValueReader reader, out T value)
     {
       JSValueReader<T>.ReadValue(reader, out value);
@@ -471,7 +470,7 @@ namespace Microsoft.ReactNative.Managed
 
       // We try to add the generated ReadValue delegate in a loop
       // in a lock-free thread-safe way. We do not change existing s_readerDelegates.
-      // Instead we clone it, update it, then replace the s_readerDelegates with the new one.
+      // Instead we clone it, update the clone, then replace the s_readerDelegates with the updated clone.
       while (true)
       {
         var readerDelegates = s_readerDelegates; // Get the local pointer first.
@@ -481,14 +480,13 @@ namespace Microsoft.ReactNative.Managed
         }
 
         // The ReadValue delegate is not found. Generate it add try to add to the dictionary atomically.
-        // We clone the dictionary, update it, and then replace the existing one.
         var newDelegate = generatedDelegate.Value; // Generates delegate when we are here a first time.
 
         // This is a quick shortcut in case if s_readerDelegates changed while we generated the value.
         // It helps to avoid cloning dictionary in a number of cases. 
         if (readerDelegates != s_readerDelegates) continue;
 
-        // Clone the dictionary, update it, and try to replace s_readerDelegates.
+        // Clone the dictionary, update the clone, and try to replace the s_readerDelegates.
         var updatedReaderDelegates = new Dictionary<Type, Delegate>(readerDelegates as IDictionary<Type, Delegate>);
         updatedReaderDelegates.Add(valueType, newDelegate);
         Interlocked.CompareExchange(ref s_readerDelegates, updatedReaderDelegates, readerDelegates);
