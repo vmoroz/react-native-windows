@@ -255,36 +255,36 @@ namespace Microsoft.ReactNative.Managed.UnitTests
             writer.WriteValue(robot);
             JToken jValue = writer.TakeValue();
 
-            Assert.AreEqual(RobotModel.R2D2, (RobotModel)(int)jValue["Model"]);
-            Assert.AreEqual("Bob", (string)jValue["Name"]);
-            Assert.AreEqual(42, (int)jValue["Age"]);
-            Assert.AreEqual(RobotShape.Trashcan, (RobotShape)(int)jValue["Shape"]);
-            Assert.AreEqual(RobotShape.Beercan, (RobotShape)(int)jValue["Shape2"]);
+            Assert.AreEqual((int)RobotModel.R2D2, jValue["Model"]);
+            Assert.AreEqual("Bob", jValue["Name"]);
+            Assert.AreEqual(42, jValue["Age"]);
+            Assert.AreEqual((int)RobotShape.Trashcan, jValue["Shape"]);
+            Assert.AreEqual((int)RobotShape.Beercan, jValue["Shape2"]);
             Assert.AreEqual(JTokenType.Null, jValue["Shape3"].Type);
-            Assert.AreEqual(3, ((JArray)jValue["Steps"]).Count);
-            Assert.AreEqual(1, ((JArray)jValue["Steps"])[0]);
-            Assert.AreEqual(2, ((JArray)jValue["Steps"])[1]);
-            Assert.AreEqual(3, ((JArray)jValue["Steps"])[2]);
-            Assert.AreEqual(2, ((JObject)jValue["Dimensions"]).Count);
-            Assert.AreEqual(24, ((JObject)jValue["Dimensions"])["Width"]);
-            Assert.AreEqual(78, ((JObject)jValue["Dimensions"])["Height"]);
-            Assert.AreEqual(2, (int)((JArray)jValue["Badges"])[0]);
-            Assert.AreEqual("Maverick", (string)((JArray)jValue["Badges"])[1]);
-            Assert.AreEqual(true, (bool)((JArray)jValue["Badges"])[2]);
-            Assert.AreEqual(2, ((JArray)jValue["Tools"]).Count);
-            Assert.AreEqual("Screwdriver", (string)((JObject)((JArray)jValue["Tools"])[0])["Name"]);
-            Assert.AreEqual(2, (int)((JObject)((JArray)jValue["Tools"])[0])["Weight"]);
-            Assert.AreEqual(true, (bool)((JObject)((JArray)jValue["Tools"])[0])["IsEnabled"]);
-            Assert.AreEqual("Electro-shocker", (string)((JObject)((JArray)jValue["Tools"])[1])["Name"]);
-            Assert.AreEqual(3, (int)((JObject)((JArray)jValue["Tools"])[1])["Weight"]);
-            Assert.AreEqual(false, (bool)((JObject)((JArray)jValue["Tools"])[1])["IsEnabled"]);
-            Assert.AreEqual(3, ((JArray)jValue["Path"]).Count);
-            Assert.AreEqual(5, (int)((JObject)((JArray)jValue["Path"])[0])["X"]);
-            Assert.AreEqual(6, (int)((JObject)((JArray)jValue["Path"])[0])["Y"]);
-            Assert.AreEqual(45, (int)((JObject)((JArray)jValue["Path"])[1])["X"]);
-            Assert.AreEqual(90, (int)((JObject)((JArray)jValue["Path"])[1])["Y"]);
-            Assert.AreEqual(15, (int)((JObject)((JArray)jValue["Path"])[2])["X"]);
-            Assert.AreEqual(16, (int)((JObject)((JArray)jValue["Path"])[2])["Y"]);
+            Assert.AreEqual(3, (jValue["Steps"] as JArray).Count);
+            Assert.AreEqual(1, jValue["Steps"][0]);
+            Assert.AreEqual(2, jValue["Steps"][1]);
+            Assert.AreEqual(3, jValue["Steps"][2]);
+            Assert.AreEqual(2, (jValue["Dimensions"] as JObject).Count);
+            Assert.AreEqual(24, jValue["Dimensions"]["Width"]);
+            Assert.AreEqual(78, jValue["Dimensions"]["Height"]);
+            Assert.AreEqual(2, jValue["Badges"][0]);
+            Assert.AreEqual("Maverick", jValue["Badges"][1]);
+            Assert.AreEqual(true, jValue["Badges"][2]);
+            Assert.AreEqual(2, (jValue["Tools"] as JArray).Count);
+            Assert.AreEqual("Screwdriver", jValue["Tools"][0]["Name"]);
+            Assert.AreEqual(2, jValue["Tools"][0]["Weight"]);
+            Assert.AreEqual(true, jValue["Tools"][0]["IsEnabled"]);
+            Assert.AreEqual("Electro-shocker", jValue["Tools"][1]["Name"]);
+            Assert.AreEqual(3, jValue["Tools"][1]["Weight"]);
+            Assert.AreEqual(false, jValue["Tools"][1]["IsEnabled"]);
+            Assert.AreEqual(3, (jValue["Path"] as JArray).Count);
+            Assert.AreEqual(5, jValue["Path"][0]["X"]);
+            Assert.AreEqual(6, jValue["Path"][0]["Y"]);
+            Assert.AreEqual(45, jValue["Path"][1]["X"]);
+            Assert.AreEqual(90, jValue["Path"][1]["Y"]);
+            Assert.AreEqual(15, jValue["Path"][2]["X"]);
+            Assert.AreEqual(16, jValue["Path"][2]["Y"]);
             Assert.AreEqual("Episode 2", jValue["Extra"]["MovieSeries"]);
         }
 
@@ -440,6 +440,34 @@ namespace Microsoft.ReactNative.Managed.UnitTests
                 ++properyCount;
             }
             Assert.AreEqual(9, properyCount);
+        }
+
+        [TestMethod]
+        public void TestWriteValueDefaultExtensions()
+        {
+            var writer = new JsonWriter();
+            writer.WriteObjectBegin();
+            writer.WriteObjectProperty("StringValue1", "");
+            writer.WriteObjectProperty("StringValue2", "5");
+            writer.WriteObjectProperty("StringValue3", "Hello");
+            writer.WriteObjectProperty("BoolValue1", false);
+            writer.WriteObjectProperty("BoolValue2", true);
+            writer.WriteObjectProperty("IntValue1", 0);
+            writer.WriteObjectProperty("IntValue2", 42);
+            writer.WriteObjectProperty("FloatValue", 3.14);
+            writer.WriteObjectProperty("NullValue", JSValue.Null);
+            writer.WriteObjectEnd();
+            JToken jValue = writer.TakeValue();
+
+            Assert.AreEqual("", jValue["StringValue1"]);
+            Assert.AreEqual("5", jValue["StringValue2"]);
+            Assert.AreEqual("Hello", jValue["StringValue3"]);
+            Assert.AreEqual(false, jValue["BoolValue1"]);
+            Assert.AreEqual(true, jValue["BoolValue2"]);
+            Assert.AreEqual(0, jValue["IntValue1"]);
+            Assert.AreEqual(42, jValue["IntValue2"]);
+            Assert.AreEqual(3.14, jValue["FloatValue"]);
+            Assert.AreEqual(JTokenType.Null, jValue["NullValue"].Type);
         }
     }
 }
