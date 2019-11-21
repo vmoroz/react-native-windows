@@ -1,3 +1,5 @@
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// Licensed under the MIT License.
 
 using Microsoft.ReactNative.Bridge;
 using Newtonsoft.Json.Linq;
@@ -9,6 +11,12 @@ namespace Microsoft.ReactNative.Managed.UnitTests
 {
     class JsonWriter : IJSValueWriter
     {
+        private State m_state = State.Start;
+        private List<StackEntry> m_stack = new List<StackEntry>();
+        private JToken m_dynamic;
+        private string m_propertyName;
+        private JToken m_result;
+
         public JToken TakeValue()
         {
             return m_result;
@@ -183,28 +191,17 @@ namespace Microsoft.ReactNative.Managed.UnitTests
             public string PropertyName;
         }
 
-        private bool WriteValue(JToken value)
+        private void WriteValue(JToken value)
         {
             if (m_state == State.PropertyValue)
             {
                 m_dynamic[m_propertyName] = value;
                 m_state = State.PropertyName;
-                return true;
             }
             else if (m_state == State.Array)
             {
                 ((JArray)m_dynamic).Add(value);
-                return true;
             }
-
-            return false;
-
         }
-
-        private State m_state = State.Start;
-        private List<StackEntry> m_stack = new List<StackEntry>();
-        private JToken m_dynamic;
-        private string m_propertyName;
-        private JToken m_result;
     }
 }

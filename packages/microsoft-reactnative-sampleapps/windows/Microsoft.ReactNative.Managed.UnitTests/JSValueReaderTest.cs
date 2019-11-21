@@ -69,7 +69,7 @@ namespace Microsoft.ReactNative.Managed.UnitTests
 
     static class RobotSerialization
     {
-        // Reading RobotModel enum value. It could be generated instead.
+        // Reading RobotInfo value. It could be generated instead.
         public static void ReadValue(this IJSValueReader reader, out RobotInfo value)
         {
             value = new RobotInfo();
@@ -97,10 +97,42 @@ namespace Microsoft.ReactNative.Managed.UnitTests
             }
         }
 
+        // Reading RobotInfo value. It could be generated instead.
+        public static void WriteValue(this IJSValueWriter writer, RobotInfo value)
+        {
+            if (value != null)
+            {
+                writer.WriteObjectBegin();
+                writer.WriteObjectProperty(nameof(value.Model), value.Model);
+                writer.WriteObjectProperty(nameof(value.Name), value.Name);
+                writer.WriteObjectProperty(nameof(value.Age), value.Age);
+                writer.WriteObjectProperty(nameof(value.Shape), value.Shape);
+                writer.WriteObjectProperty(nameof(value.Shape2), value.Shape2);
+                writer.WriteObjectProperty(nameof(value.Shape3), value.Shape3);
+                writer.WriteObjectProperty(nameof(value.Steps), value.Steps);
+                writer.WriteObjectProperty(nameof(value.Dimensions), value.Dimensions);
+                writer.WriteObjectProperty(nameof(value.Badges), value.Badges);
+                writer.WriteObjectProperty(nameof(value.Tools), value.Tools);
+                writer.WriteObjectProperty(nameof(value.Path), value.Path);
+                writer.WriteObjectProperty(nameof(value.Extra), value.Extra);
+                writer.WriteObjectEnd();
+            }
+            else
+            {
+                writer.WriteNull();
+            }
+        }
+
         // Reading RobotModel enum value. It could be generated instead.
         public static void ReadValue(this IJSValueReader reader, out RobotModel value)
         {
             value = (RobotModel)reader.ReadValue<int>();
+        }
+
+        // Writing RobotModel enum value. It could be generated instead.
+        public static void WriteValue(this IJSValueWriter writer, RobotModel value)
+        {
+            writer.WriteValue((int)value);
         }
 
         // Reading discriminating union requires using JSValue.
@@ -116,6 +148,23 @@ namespace Microsoft.ReactNative.Managed.UnitTests
                     case RobotModel.R2D2: value = jsValue.ReadValue<R2D2Extra>(); break;
                 }
             }
+        }
+
+        // Writing discriminating union is simpler than reading.
+        public static void WriteValue(this IJSValueWriter writer, OneOf<T2Extra, R2D2Extra> value)
+        {
+            writer.WriteObjectBegin();
+            if (value.TryGet(out T2Extra t2))
+            {
+                writer.WriteObjectProperty("Kind", RobotModel.T2);
+                writer.WriteObjectProperties(t2);
+            }
+            else if (value.TryGet(out R2D2Extra r2d2))
+            {
+                writer.WriteObjectProperty("Kind", RobotModel.R2D2);
+                writer.WriteObjectProperties(r2d2);
+            }
+            writer.WriteObjectEnd();
         }
     }
 
@@ -174,6 +223,69 @@ namespace Microsoft.ReactNative.Managed.UnitTests
             Assert.AreEqual(16, robot.Path[2].Y);
             Assert.AreEqual(true, robot.Extra.TryGet<R2D2Extra>(out var r2d2Extra));
             Assert.AreEqual("Episode 2", r2d2Extra.MovieSeries);
+        }
+
+        [TestMethod]
+        public void TestWriteCustomType()
+        {
+            var robot = new RobotInfo
+            {
+                Model = RobotModel.R2D2,
+                Name = "Bob",
+                Age = 42,
+                Shape = RobotShape.Trashcan,
+                Shape2 = RobotShape.Beercan,
+                Shape3 = null,
+                Steps = new List<int> { 1, 2, 3 },
+                Dimensions = new Dictionary<string, int> { ["Width"] = 24, ["Height"] = 78 },
+                Badges = Tuple.Create(2, "Maverick", true),
+                Tools = new RobotTool[] {
+                    new RobotTool { Name = "Screwdriver", Weight = 2, IsEnabled = true},
+                    new RobotTool { Name = "Electro-shocker", Weight = 3, IsEnabled = false}
+                },
+                Path = new RobotPoint[] {
+                    new RobotPoint {X = 5, Y = 6},
+                    new RobotPoint { X = 45, Y = 90},
+                    new RobotPoint { X = 15, Y = 16}
+                },
+                Extra = new R2D2Extra { MovieSeries = "Episode 2" }
+            };
+
+            var writer = new JsonWriter();
+            writer.WriteValue(robot);
+            JToken jValue = writer.TakeValue();
+
+            Assert.AreEqual(RobotModel.R2D2, (RobotModel)(int)jValue["Model"]);
+            Assert.AreEqual("Bob", (string)jValue["Name"]);
+            Assert.AreEqual(42, (int)jValue["Age"]);
+            Assert.AreEqual(RobotShape.Trashcan, (RobotShape)(int)jValue["Shape"]);
+            Assert.AreEqual(RobotShape.Beercan, (RobotShape)(int)jValue["Shape2"]);
+            Assert.AreEqual(JTokenType.Null, jValue["Shape3"].Type);
+            Assert.AreEqual(3, ((JArray)jValue["Steps"]).Count);
+            Assert.AreEqual(1, ((JArray)jValue["Steps"])[0]);
+            Assert.AreEqual(2, ((JArray)jValue["Steps"])[1]);
+            Assert.AreEqual(3, ((JArray)jValue["Steps"])[2]);
+            Assert.AreEqual(2, ((JObject)jValue["Dimensions"]).Count);
+            Assert.AreEqual(24, ((JObject)jValue["Dimensions"])["Width"]);
+            Assert.AreEqual(78, ((JObject)jValue["Dimensions"])["Height"]);
+            Assert.AreEqual(2, (int)((JArray)jValue["Badges"])[0]);
+            Assert.AreEqual("Maverick", (string)((JArray)jValue["Badges"])[1]);
+            Assert.AreEqual(true, (bool)((JArray)jValue["Badges"])[2]);
+            Assert.AreEqual(2, ((JArray)jValue["Tools"]).Count);
+            Assert.AreEqual("Screwdriver", (string)((JObject)((JArray)jValue["Tools"])[0])["Name"]);
+            Assert.AreEqual(2, (int)((JObject)((JArray)jValue["Tools"])[0])["Weight"]);
+            Assert.AreEqual(true, (bool)((JObject)((JArray)jValue["Tools"])[0])["IsEnabled"]);
+            Assert.AreEqual("Electro-shocker", (string)((JObject)((JArray)jValue["Tools"])[1])["Name"]);
+            Assert.AreEqual(3, (int)((JObject)((JArray)jValue["Tools"])[1])["Weight"]);
+            Assert.AreEqual(false, (bool)((JObject)((JArray)jValue["Tools"])[1])["IsEnabled"]);
+            Assert.AreEqual(3, ((JArray)jValue["Path"]).Count);
+            Assert.AreEqual(5, (int)((JObject)((JArray)jValue["Path"])[0])["X"]);
+            Assert.AreEqual(6, (int)((JObject)((JArray)jValue["Path"])[0])["Y"]);
+            Assert.AreEqual(45, (int)((JObject)((JArray)jValue["Path"])[1])["X"]);
+            Assert.AreEqual(90, (int)((JObject)((JArray)jValue["Path"])[1])["Y"]);
+            Assert.AreEqual(15, (int)((JObject)((JArray)jValue["Path"])[2])["X"]);
+            Assert.AreEqual(16, (int)((JObject)((JArray)jValue["Path"])[2])["Y"]);
+            Assert.AreEqual("Episode 2", jValue["Extra"]["MovieSeries"]);
         }
 
         [TestMethod]

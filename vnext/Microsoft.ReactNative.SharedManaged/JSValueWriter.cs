@@ -392,6 +392,16 @@ namespace Microsoft.ReactNative.Managed
       writer.WriteValue<T>(value);
     }
 
+    public static void WriteObjectProperties<T>(this IJSValueWriter writer, T value)
+    {
+      var treeWriter = new JSValueTreeWriter();
+      treeWriter.WriteValue(value);
+      foreach (var property in treeWriter.TakeValue().Object)
+      {
+        writer.WriteObjectProperty(property.Key, property.Value);
+      }
+    }
+
     public static WriteValueDelegate<T> GetWriteValueDelegate<T>()
     {
       return (WriteValueDelegate<T>)GetWriteValueDelegate(typeof(T));

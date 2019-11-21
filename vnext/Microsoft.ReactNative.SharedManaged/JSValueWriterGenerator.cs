@@ -5,6 +5,7 @@ using Microsoft.ReactNative.Bridge;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using static Microsoft.ReactNative.Managed.JSValueGenerator;
@@ -80,14 +81,15 @@ namespace Microsoft.ReactNative.Managed
     {
       var writeObjectProperty =
         from member in typeof(JSValueWriter).GetMember(
-          nameof(JSValueWriter.WriteValue), BindingFlags.Static | BindingFlags.Public)
+          nameof(JSValueWriter.WriteObjectProperty), BindingFlags.Static | BindingFlags.Public)
         let method = member as MethodInfo
         where method != null
           && method.IsGenericMethod
           && method.IsDefined(typeof(ExtensionAttribute), inherit: false)
         let parameters = method.GetParameters()
-        where parameters.Length == 2
+        where parameters.Length == 3
         && parameters[0].ParameterType == typeof(IJSValueWriter)
+        && parameters[1].ParameterType == typeof(string)
         select method;
       return writeObjectProperty.First().MakeGenericMethod(typeArg);
     }
@@ -162,7 +164,7 @@ namespace Microsoft.ReactNative.Managed
       //
       // (IJSValueWriter writer, Type value) =>
       // {
-      //   if (value != null)
+      //   if (value != null) // do not check for structs
       //   {
       //     writer.WriteObjectBegin();
       //     writer.WriteObjectProperty("Field1", value.Field1);
@@ -180,7 +182,7 @@ namespace Microsoft.ReactNative.Managed
       var valueTypeInfo = valueType.GetTypeInfo();
       bool isStruct = valueTypeInfo.IsValueType && !valueTypeInfo.IsEnum;
       bool isClass = valueTypeInfo.IsClass;
-      if (isStruct || (isClass && valueType.GetConstructor(Type.EmptyTypes) != null))
+      if (isStruct || isClass)
       {
         var fields =
           from field in valueType.GetFields(BindingFlags.Public | BindingFlags.Instance)
@@ -196,13 +198,19 @@ namespace Microsoft.ReactNative.Managed
         return WriteValueDelegateOf(valueType).CompileLambda(
           Parameter(typeof(IJSValueWriter), out var writer),
           Parameter(valueType, out var value),
-          IfThenElse(NotEqual(value, Constant(null)),
-              ifTrue: Block(
+          isStruct
+            ? Block(
                 writer.Call(WriteObjectBegin),
                 Block(members.Select(member =>
                   writer.CallExt(WriteObjectPropertyOf(member.Type), Constant(member.Name), value.Property(member.Name)))),
-                writer.Call(WriteObjectEnd)),
-              ifFalse: writer.Call(WriteNull)));
+                writer.Call(WriteObjectEnd)) as Expression
+            : IfThenElse(NotEqual(value, Constant(null)),
+                ifTrue: Block(
+                  writer.Call(WriteObjectBegin),
+                  Block(members.Select(member =>
+                    writer.CallExt(WriteObjectPropertyOf(member.Type), Constant(member.Name), value.Property(member.Name)))),
+                  writer.Call(WriteObjectEnd)),
+                ifFalse: writer.Call(WriteNull)));
       }
 
       return null;
