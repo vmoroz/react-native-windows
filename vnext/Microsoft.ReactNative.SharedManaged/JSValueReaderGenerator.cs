@@ -28,7 +28,7 @@ namespace Microsoft.ReactNative.Managed
       // is the one who calls the JSValueReaderGenerator.
       s_allMethods = new Lazy<KeyValuePair<Type, MethodInfo>[]>(() =>
       {
-        var extensionMethods = 
+        var extensionMethods =
           from type in typeof(JSValueReader).GetTypeInfo().Assembly.GetTypes()
           let typeInfo = type.GetTypeInfo()
           where typeInfo.IsSealed && !typeInfo.IsGenericType && !typeInfo.IsNested
@@ -86,16 +86,18 @@ namespace Microsoft.ReactNative.Managed
 
     static MethodInfo ReadValueOf(Type typeArg)
     {
-      var readValueGenericMethod = (
-          from method in typeof(JSValueReader).GetMethods(BindingFlags.Static | BindingFlags.Public)
-          where method.IsGenericMethod && method.IsDefined(typeof(ExtensionAttribute), inherit: false)
-          && method.Name == nameof(JSValueReader.ReadValue)
-          let parameters = method.GetParameters()
-          where parameters.Length == 1
+      var readValueNoParamMethod =
+        from member in typeof(JSValueReader).GetMember(
+          nameof(JSValueReader.ReadValue), BindingFlags.Static | BindingFlags.Public)
+        let method = member as MethodInfo
+        where method != null
+          && method.IsGenericMethod
+          && method.IsDefined(typeof(ExtensionAttribute), inherit: false)
+        let parameters = method.GetParameters()
+        where parameters.Length == 1
           && parameters[0].ParameterType == typeof(IJSValueReader)
-          select method
-        ).First();
-      return readValueGenericMethod.MakeGenericMethod(typeArg);
+        select method;
+      return readValueNoParamMethod.First().MakeGenericMethod(typeArg);
     }
 
     static MethodInfo JSValueReadFrom => typeof(JSValue).GetMethod(nameof(JSValue.ReadFrom));
@@ -106,7 +108,7 @@ namespace Microsoft.ReactNative.Managed
         ?? GenerateReadValueFromGenericExtension(valueType)
         ?? GenerateReadValueForEnum(valueType)
         ?? GenerateReadValueForClass(valueType)
-        ?? throw new Exception($"Cannot generate ReadValue delegate for type {valueType}"); 
+        ?? throw new Exception($"Cannot generate ReadValue delegate for type {valueType}");
     }
 
     // Creates a delegate from the ReadValue non-generic extension method

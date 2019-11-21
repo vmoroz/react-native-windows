@@ -5,11 +5,10 @@ using Microsoft.ReactNative.Bridge;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using static System.Linq.Expressions.Expression;
 using static Microsoft.ReactNative.Managed.JSValueGenerator;
+using static System.Linq.Expressions.Expression;
 
 namespace Microsoft.ReactNative.Managed
 {
@@ -79,16 +78,18 @@ namespace Microsoft.ReactNative.Managed
 
     static MethodInfo WriteObjectPropertyOf(Type typeArg)
     {
-      var writeObjectPropertyGenericMethod = (
-          from method in typeof(JSValueWriter).GetMethods(BindingFlags.Static | BindingFlags.Public)
-          where method.IsGenericMethod && method.IsDefined(typeof(ExtensionAttribute), inherit: false)
-          && method.Name == nameof(JSValueWriter.WriteObjectProperty)
-          let parameters = method.GetParameters()
-          where parameters.Length == 2
-          && parameters[0].ParameterType == typeof(IJSValueWriter)
-          select method
-        ).First();
-      return writeObjectPropertyGenericMethod.MakeGenericMethod(typeArg);
+      var writeObjectProperty =
+        from member in typeof(JSValueWriter).GetMember(
+          nameof(JSValueWriter.WriteValue), BindingFlags.Static | BindingFlags.Public)
+        let method = member as MethodInfo
+        where method != null
+          && method.IsGenericMethod
+          && method.IsDefined(typeof(ExtensionAttribute), inherit: false)
+        let parameters = method.GetParameters()
+        where parameters.Length == 2
+        && parameters[0].ParameterType == typeof(IJSValueWriter)
+        select method;
+      return writeObjectProperty.First().MakeGenericMethod(typeArg);
     }
 
     static MethodInfo WriteObjectBegin => typeof(IJSValueWriter).GetMethod(nameof(IJSValueWriter.WriteObjectBegin));
