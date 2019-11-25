@@ -71,10 +71,26 @@ namespace Microsoft.ReactNative.Managed
       });
     }
 
+    public static MethodInfo WriteValueOf(Type typeArg)
+    {
+      var readValueNoParamMethod =
+        from member in typeof(JSValueWriter).GetMember(
+          nameof(JSValueWriter.WriteValue), BindingFlags.Static | BindingFlags.Public)
+        let method = member as MethodInfo
+        where method != null
+          && method.IsGenericMethod
+          && method.IsDefined(typeof(ExtensionAttribute), inherit: false)
+        let parameters = method.GetParameters()
+        where parameters.Length == 2
+          && parameters[0].ParameterType == typeof(IJSValueWriter)
+        select method;
+      return readValueNoParamMethod.First().MakeGenericMethod(typeArg);
+    }
+
     public static MethodInfo WriteArgsOf(params Type[] typeArgs)
     {
       var writeArgsMethod =
-        from member in typeof(JSValueReader).GetMember(
+        from member in typeof(JSValueWriter).GetMember(
           nameof(JSValueWriter.WriteArgs), BindingFlags.Static | BindingFlags.Public)
         let method = member as MethodInfo
         let isGeneric = method.IsGenericMethod
@@ -90,7 +106,7 @@ namespace Microsoft.ReactNative.Managed
     public static MethodInfo WriteErrorOf(Type typeArg)
     {
       var writeErrorMethod =
-        from member in typeof(JSValueReader).GetMember(
+        from member in typeof(JSValueWriter).GetMember(
           nameof(JSValueWriter.WriteError), BindingFlags.Static | BindingFlags.Public)
         let method = member as MethodInfo
         let isGeneric = method.IsGenericMethod
