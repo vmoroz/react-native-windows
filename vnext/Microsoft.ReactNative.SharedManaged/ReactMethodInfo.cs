@@ -65,21 +65,6 @@ namespace Microsoft.ReactNative.Managed
       return result;
     }
 
-    static VariableWrapper[] MethodArgs(
-      ParameterInfo[] parameters,
-      int callbackCount,
-      out Type[] argTypes,
-      out VariableWrapper[] args,
-      out Type resolveArgType,
-      out Type rejectArgType)
-    {
-      argTypes = parameters.Take(parameters.Length - callbackCount).Select(p => p.ParameterType).ToArray();
-      args = argTypes.Select(t => Variable(t, out _)).ToArray();
-      resolveArgType = (callbackCount > 0) ? parameters[parameters.Length - callbackCount].ParameterType : default;
-      rejectArgType = (callbackCount > 1) ? parameters[parameters.Length - callbackCount + 1].ParameterType : default;
-      return args;
-    } 
-
     private ReactMethodImpl MakeFireAndForgetMethod(MethodInfo methodInfo, ParameterInfo[] parameters)
     {
       // Generate code that looks like:
