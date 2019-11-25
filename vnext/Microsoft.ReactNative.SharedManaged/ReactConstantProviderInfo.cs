@@ -6,21 +6,26 @@ using System;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Threading;
-using ReflectionMethodInfo = System.Reflection.MethodInfo;
+using static Microsoft.ReactNative.Managed.JSValueGenerator;
+using static System.Linq.Expressions.Expression;
 
 namespace Microsoft.ReactNative.Managed
 {
   class ReactConstantProviderInfo
   {
-    public ReactConstantProviderInfo(ReflectionMethodInfo methodInfo)
+    public ReactConstantProviderInfo(MethodInfo methodInfo)
     {
       ConstantProviderImpl = new Lazy<ReactConstantProviderImpl>(() => MakeConstantProvider(methodInfo), LazyThreadSafetyMode.PublicationOnly);
     }
 
-    private ReactConstantProviderImpl MakeConstantProvider(ReflectionMethodInfo methodInfo)
+    private ReactConstantProviderImpl MakeConstantProvider(MethodInfo methodInfo)
     {
-      ParameterExpression moduleParameter = Expression.Parameter(typeof(object), "module");
-      ParameterExpression constantProviderParameter = Expression.Parameter(typeof(ReactConstantProvider), "constantProvider");
+      // Generate code that looks like:
+      //
+      // (object module, ReactConstantProvider constantProvider) =>
+      // {
+      //   (module as MyModule).constantProviderMethod(constantProvider);
+      // });
 
       ParameterInfo[] parameters = methodInfo.GetParameters();
       if (parameters.Length != 1 || parameters[0].ParameterType != typeof(ReactConstantProvider))
@@ -30,11 +35,10 @@ namespace Microsoft.ReactNative.Managed
       }
 
       bool isStatic = methodInfo.IsStatic;
-
-      var constantProviderCall = Expression.Call(isStatic ? null : Expression.Convert(moduleParameter, methodInfo.DeclaringType), methodInfo, constantProviderParameter);
-      var lambda = Expression.Lambda<ReactConstantProviderImpl>(constantProviderCall, moduleParameter, constantProviderParameter);
-
-      return lambda.Compile();
+      return CompileLambda<ReactConstantProviderImpl>(
+        Parameter(typeof(object), out var module),
+        Parameter(typeof(ReactConstantProvider), out var constantProvider),
+        Call(isStatic ? null : module.CastTo(methodInfo.DeclaringType), methodInfo, constantProvider));
     }
 
     public delegate void ReactConstantProviderImpl(object module, ReactConstantProvider constantProvider);
