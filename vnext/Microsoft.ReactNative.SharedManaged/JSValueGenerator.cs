@@ -176,6 +176,17 @@ namespace Microsoft.ReactNative.Managed
         };
       }
 
+      public static VariableWrapper CreateVariable(Type type)
+      {
+        return new VariableWrapper
+        {
+          Type = type,
+          AsExpression = Expression.Variable(type),
+          Init = null,
+          IsParameter = false
+        };
+      }
+
       public static VariableWrapper CreateParameter(Type type)
       {
         return new VariableWrapper
@@ -226,6 +237,23 @@ namespace Microsoft.ReactNative.Managed
         return Expression.Call(method, AsExpression, arg0, arg1);
       }
 
+      public Expression CallExt(MethodInfo method, params Expression[] args)
+      {
+        return Expression.Call(method, Enumerable.Repeat(AsExpression, 1).Concat(args));
+      }
+
+      public Expression CallExt(MethodInfo method, params VariableWrapper[] args)
+      {
+        return Expression.Call(method,
+          Enumerable.Repeat(this, 1).Concat(args).Select(v => v.AsExpression));
+      }
+
+      // It can be used only for delegate types
+      public Expression Invoke(params Expression[] args)
+      {
+        return Expression.Invoke(AsExpression, args);
+      }
+
       public Expression Property(string propertyName)
       {
         return PropertyOrField(AsExpression, propertyName);
@@ -240,6 +268,11 @@ namespace Microsoft.ReactNative.Managed
       {
         return Expression.Block(AssignProperty(propertyName, value), Default(typeof(void)));
       }
+
+      public Expression CastTo(Type type)
+      {
+        return Convert(AsExpression, type);
+      }
     }
 
     public class TypeWrapper
@@ -253,29 +286,7 @@ namespace Microsoft.ReactNative.Managed
 
       public Delegate CompileLambda(params object[] expressions)
       {
-        var parameters = new List<VariableWrapper>();
-        var variables = new List<VariableWrapper>();
-        var body = new List<Expression>();
-
-        foreach (var item in expressions)
-        {
-          switch (item)
-          {
-            case VariableWrapper parameter when parameter.IsParameter: parameters.Add(parameter); break;
-            case VariableWrapper variable when !variable.IsParameter:
-              variables.Add(variable);
-              if (variable.Init != null)
-              {
-                body.Add(variable.Assign(variable.Init));
-              }
-              break;
-            case Expression expression: body.Add(expression); break;
-          }
-        }
-
-        var block = Expression.Block(variables.Select(v => v.AsExpression), body);
-        var lambda = Lambda(Type, block, parameters.Select(p => p.AsExpression));
-        return lambda.Compile();
+        return AutoLambda(Type, expressions).Compile();
       }
     }
 
@@ -291,25 +302,63 @@ namespace Microsoft.ReactNative.Managed
 
     public static BlockExpression AutoBlock(params object[] expressions)
     {
-      var variables = new List<VariableWrapper>();
-      var body = new List<Expression>();
+      ParseExpressions(expressions, out var body, out _, out var variables);
+      return Block(variables, body);
+    }
 
-      foreach (var item in expressions)
+    public static LambdaExpression AutoLambda(Type delegateType, params object[] expressions)
+    {
+      ParseExpressions(expressions, out var body, out var parameters, out var variables);
+
+      var lambdaBody = (body.Length == 1 && variables.Length == 0)
+        ? body[0]
+        : Block(variables, body);
+
+      return Lambda(delegateType, lambdaBody, parameters);
+    }
+
+    public static LambdaExpression AutoLambda<TDelegate>(params object[] expressions)
+    {
+      return AutoLambda(typeof(TDelegate), expressions);
+    }
+
+    private static void ParseExpressions(object[] expressions,
+      out Expression[] body, out ParameterExpression[] parameters, out ParameterExpression[] variables)
+    {
+      var bodyList = new List<Expression>();
+      var parameterList = new List<ParameterExpression>();
+      var variableList = new List<ParameterExpression>();
+
+      void ParseArray(object[] exprs)
       {
-        switch (item)
+        foreach (var expr in exprs)
         {
-          case VariableWrapper variable:
-            variables.Add(variable);
-            if (variable.Init != null)
-            {
-              body.Add(variable.Assign(variable.Init));
-            }
-            break;
-          case Expression expression: body.Add(expression); break;
+          switch (expr)
+          {
+            case VariableWrapper parameter when parameter.IsParameter:
+              parameterList.Add(parameter);
+              break;
+            case VariableWrapper variable when !variable.IsParameter:
+              variableList.Add(variable);
+              if (variable.Init != null)
+              {
+                bodyList.Add(variable.Assign(variable.Init));
+              }
+              break;
+            case Expression expression:
+              bodyList.Add(expression);
+              break;
+            case object[] items:
+              ParseArray(items);
+              break;
+          }
         }
       }
 
-      return Block(variables.Select(v => v.AsExpression), body);
+      ParseArray(expressions);
+      body = bodyList.ToArray();
+      parameters = parameterList.ToArray();
+      variables = variableList.ToArray();
     }
 
     public static Expression While(Expression condition, Expression body)
@@ -319,6 +368,21 @@ namespace Microsoft.ReactNative.Managed
 
       // Execute loop while condition is true.
       return Loop(IfThenElse(condition, body, Break(breakLabel)), breakLabel);
+    }
+
+    public static MethodCallExpression Call(this Expression instance, MethodInfo method, params object[] arguments)
+    {
+      var args = arguments
+        .Select(a => a as Expression
+          ?? (a as VariableWrapper)?.AsExpression)
+        .Where(a => a != null).ToArray();
+      return Expression.Call(instance, method, args);
+    }
+
+    public static TDelegate CompileLambda<TDelegate>(params object[] expressions) where TDelegate : Delegate
+    {
+      var typeWrapper = new TypeWrapper(typeof(TDelegate));
+      return (TDelegate)typeWrapper.CompileLambda(expressions);
     }
   }
 }

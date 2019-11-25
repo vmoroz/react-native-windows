@@ -71,6 +71,38 @@ namespace Microsoft.ReactNative.Managed
       });
     }
 
+    public static MethodInfo WriteArgsOf(params Type[] typeArgs)
+    {
+      var writeArgsMethod =
+        from member in typeof(JSValueReader).GetMember(
+          nameof(JSValueWriter.WriteArgs), BindingFlags.Static | BindingFlags.Public)
+        let method = member as MethodInfo
+        let isGeneric = method.IsGenericMethod
+        where method != null
+          && method.IsDefined(typeof(ExtensionAttribute), inherit: false)
+        let parameters = method.GetParameters()
+        where parameters.Length == typeArgs.Length + 1
+          && parameters[0].ParameterType == typeof(IJSValueWriter)
+        select isGeneric ? method.MakeGenericMethod(typeArgs) : method;
+      return writeArgsMethod.First();
+    }
+
+    public static MethodInfo WriteErrorOf(Type typeArg)
+    {
+      var writeErrorMethod =
+        from member in typeof(JSValueReader).GetMember(
+          nameof(JSValueWriter.WriteError), BindingFlags.Static | BindingFlags.Public)
+        let method = member as MethodInfo
+        let isGeneric = method.IsGenericMethod
+        where method != null
+          && method.IsDefined(typeof(ExtensionAttribute), inherit: false)
+        let parameters = method.GetParameters()
+        where parameters.Length == 2
+          && parameters[0].ParameterType == typeof(IJSValueWriter)
+        select method.MakeGenericMethod(typeArg);
+      return writeErrorMethod.First();
+    }
+
     private static MethodInfo MethodOf(string methodName, params Type[] typeArgs) =>
       typeof(JSValueWriterGenerator).GetMethod(methodName).MakeGenericMethod(typeArgs);
 
@@ -164,7 +196,7 @@ namespace Microsoft.ReactNative.Managed
       //
       // (IJSValueWriter writer, Type value) =>
       // {
-      //   if (value != null) // do not check for structs
+      //   if (value != null) // we do not check it for structs
       //   {
       //     writer.WriteObjectBegin();
       //     writer.WriteObjectProperty("Field1", value.Field1);

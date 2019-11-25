@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 using Microsoft.ReactNative.Bridge;
+using Microsoft.ReactNative.Managed.UnitTests;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -400,6 +401,101 @@ namespace Microsoft.ReactNative.Managed
       {
         writer.WriteObjectProperty(property.Key, property.Value);
       }
+    }
+
+    public static IJSValueWriter WriteArgs(this IJSValueWriter writer)
+    {
+      writer.WriteArrayBegin();
+      writer.WriteArrayEnd();
+      return writer;
+    }
+
+    public static IJSValueWriter WriteArgs<T1>(this IJSValueWriter writer, T1 arg1)
+    {
+      writer.WriteArrayBegin();
+      writer.WriteValue(arg1);
+      writer.WriteArrayEnd();
+      return writer;
+    }
+
+    public static IJSValueWriter WriteArgs<T1, T2>(this IJSValueWriter writer, T1 arg1, T2 arg2)
+    {
+      writer.WriteArrayBegin();
+      writer.WriteValue(arg1);
+      writer.WriteValue(arg2);
+      writer.WriteArrayEnd();
+      return writer;
+    }
+
+    public static IJSValueWriter WriteArgs<T1, T2, T3>(this IJSValueWriter writer, T1 arg1, T2 arg2, T3 arg3)
+    {
+      writer.WriteArrayBegin();
+      writer.WriteValue(arg1);
+      writer.WriteValue(arg2);
+      writer.WriteValue(arg3);
+      writer.WriteArrayEnd();
+      return writer;
+    }
+
+    public static IJSValueWriter WriteArgs<T1, T2, T3, T4>(this IJSValueWriter writer,
+      T1 arg1, T2 arg2, T3 arg3, T4 arg4)
+    {
+      writer.WriteArrayBegin();
+      writer.WriteValue(arg1);
+      writer.WriteValue(arg2);
+      writer.WriteValue(arg3);
+      writer.WriteValue(arg4);
+      writer.WriteArrayEnd();
+      return writer;
+    }
+
+    public static IJSValueWriter WriteArgs<T1, T2, T3, T4, T5>(this IJSValueWriter writer,
+      T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5)
+    {
+      writer.WriteArrayBegin();
+      writer.WriteValue(arg1);
+      writer.WriteValue(arg2);
+      writer.WriteValue(arg3);
+      writer.WriteValue(arg4);
+      writer.WriteValue(arg5);
+      writer.WriteArrayEnd();
+      return writer;
+    }
+
+    public static IJSValueWriter WriteArgs<T1, T2, T3, T4, T5, T6>(this IJSValueWriter writer,
+      T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6)
+    {
+      writer.WriteArrayBegin();
+      writer.WriteValue(arg1);
+      writer.WriteValue(arg2);
+      writer.WriteValue(arg3);
+      writer.WriteValue(arg4);
+      writer.WriteValue(arg5);
+      writer.WriteValue(arg6);
+      writer.WriteArrayEnd();
+      return writer;
+    }
+
+    public static IJSValueWriter WriteArgs<T1, T2, T3, T4, T5, T6, T7>(this IJSValueWriter writer,
+      T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7)
+    {
+      writer.WriteArrayBegin();
+      writer.WriteValue(arg1);
+      writer.WriteValue(arg2);
+      writer.WriteValue(arg3);
+      writer.WriteValue(arg4);
+      writer.WriteValue(arg5);
+      writer.WriteValue(arg6);
+      writer.WriteValue(arg7);
+      writer.WriteArrayEnd();
+      return writer;
+    }
+
+    public static IJSValueWriter WriteError<T>(this IJSValueWriter writer, T error)
+    {
+      return (error is string errorMessage)
+       ? writer.WriteArgs(new Dictionary<string, string> { ["message"] = errorMessage })
+       : writer.WriteArgs(error);
     }
 
     public static WriteValueDelegate<T> GetWriteValueDelegate<T>()

@@ -73,6 +73,22 @@ namespace Microsoft.ReactNative.Managed
       });
     }
 
+    public static MethodInfo ReadArgsOf(Type[] typeArgs)
+    {
+      var readArgsMethod =
+        from member in typeof(JSValueReader).GetMember(
+          nameof(JSValueReader.ReadArgs), BindingFlags.Static | BindingFlags.Public)
+        let method = member as MethodInfo
+        let isGeneric = method.IsGenericMethod
+        where method != null
+          && method.IsDefined(typeof(ExtensionAttribute), inherit: false)
+        let parameters = method.GetParameters()
+        where parameters.Length == typeArgs.Length + 1
+          && parameters[0].ParameterType == typeof(IJSValueReader)
+        select isGeneric ? method.MakeGenericMethod(typeArgs) : method;
+      return readArgsMethod.First();
+    }
+
     static MethodInfo GetNextObjectProperty =>
       typeof(IJSValueReader).GetMethod(nameof(IJSValueReader.GetNextObjectProperty));
 

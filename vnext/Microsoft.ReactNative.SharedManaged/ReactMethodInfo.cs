@@ -2,19 +2,20 @@
 // Licensed under the MIT License.
 
 using Microsoft.ReactNative.Bridge;
-using Microsoft.ReactNative.Managed.Linq;
 using System;
-using System.Collections.Generic;
-using System.Linq.Expressions;
+using System.Linq;
 using System.Reflection;
 using System.Threading;
-using ReflectionMethodInfo = System.Reflection.MethodInfo;
+using static Microsoft.ReactNative.Managed.JSValueGenerator;
+using static Microsoft.ReactNative.Managed.JSValueReaderGenerator;
+using static Microsoft.ReactNative.Managed.JSValueWriterGenerator;
+using static System.Linq.Expressions.Expression;
 
 namespace Microsoft.ReactNative.Managed
 {
   class ReactMethodInfo
   {
-    public ReactMethodInfo(ReflectionMethodInfo methodInfo, ReactMethodAttribute methodAttribute)
+    public ReactMethodInfo(MethodInfo methodInfo, ReactMethodAttribute methodAttribute)
     {
       MethodName = methodAttribute.MethodName ?? methodInfo.Name;
 
@@ -48,258 +49,120 @@ namespace Microsoft.ReactNative.Managed
       }
     }
 
-    private ReactMethodImpl MakeFireAndForgetMethod(ReflectionMethodInfo methodInfo, ParameterInfo[] parameters)
+    static VariableWrapper[] MethodParameters(
+      out VariableWrapper module,
+      out VariableWrapper inputReader,
+      out VariableWrapper outputWriter,
+      out VariableWrapper resolve,
+      out VariableWrapper reject)
     {
-      // Input parameters for generated lambda
-      ParameterExpression moduleParameter = Expression.Parameter(typeof(object), "module");
-      ParameterExpression inputReaderParameter = Expression.Parameter(typeof(IJSValueReader), "inputReader");
-      ParameterExpression outputWriterParameter = Expression.Parameter(typeof(IJSValueWriter), "outputWriter");
-      ParameterExpression resolveParameter = Expression.Parameter(typeof(MethodResultCallback), "resolve");
-      ParameterExpression rejectParameter = Expression.Parameter(typeof(MethodResultCallback), "reject");
-
-      // Input variables to read from inputReader
-      ParameterExpression[] inputVariables = new ParameterExpression[parameters.Length];
-      for (int i = 0; i < inputVariables.Length; ++i)
-      {
-        inputVariables[i] = Expression.Variable(parameters[i].ParameterType, parameters[i].Name);
-      }
-
-      // Statements of the generated lambda
-      List<Expression> statements = new List<Expression>();
-
-      // Generate code to read input variables from the inputReader
-      var callReadNext = Expression.Call(inputReaderParameter, typeof(IJSValueReader).GetMethod("ReadNext"));
-      statements.Add(callReadNext);
-      foreach (ParameterExpression variable in inputVariables)
-      {
-        statements.Add(callReadNext);
-        statements.Add(Expression.Call(null, JSValueReader.GetReadValueMethod(variable.Type), inputReaderParameter, variable));
-      }
-
-      // Generate code to call the method
-      statements.Add(Expression.Call(
-          Expression.Convert(moduleParameter, methodInfo.DeclaringType),
-          methodInfo,
-          inputVariables));
-
-      // Generate the lambda to return
-      var lambda = Expression.Lambda<ReactMethodImpl>(
-          Expression.Block(inputVariables, statements),
-          moduleParameter, inputReaderParameter, outputWriterParameter, resolveParameter, rejectParameter);
-
-      // Compile and return the lambda
-      return lambda.Compile();
+      var result = new VariableWrapper[5];
+      result[0] = Parameter(typeof(object), out module);
+      result[1] = Parameter(typeof(IJSValueReader), out inputReader);
+      result[2] = Parameter(typeof(IJSValueWriter), out outputWriter);
+      result[3] = Parameter(typeof(MethodResultCallback), out resolve);
+      result[4] = Parameter(typeof(MethodResultCallback), out reject);
+      return result;
     }
 
-    private ReactMethodImpl MakeCallbackMethod(ReflectionMethodInfo methodInfo, ParameterInfo[] parameters)
+    static VariableWrapper[] MethodArgs(
+      ParameterInfo[] parameters,
+      int callbackCount,
+      out Type[] argTypes,
+      out VariableWrapper[] args,
+      out Type resolveArgType,
+      out Type rejectArgType)
     {
-      // The last variable is a delegate
+      argTypes = parameters.Take(parameters.Length - callbackCount).Select(p => p.ParameterType).ToArray();
+      args = argTypes.Select(t => Variable(t, out _)).ToArray();
+      resolveArgType = (callbackCount > 0) ? parameters[parameters.Length - callbackCount].ParameterType : default;
+      rejectArgType = (callbackCount > 1) ? parameters[parameters.Length - callbackCount + 1].ParameterType : default;
+      return args;
+    } 
 
-      // Input parameters for generated lambda
-      ParameterExpression moduleParameter = Expression.Parameter(typeof(object), "module");
-      ParameterExpression inputReaderParameter = Expression.Parameter(typeof(IJSValueReader), "inputReader");
-      ParameterExpression outputWriterParameter = Expression.Parameter(typeof(IJSValueWriter), "outputWriter");
-      ParameterExpression resolveParameter = Expression.Parameter(typeof(MethodResultCallback), "resolve");
-      ParameterExpression rejectParameter = Expression.Parameter(typeof(MethodResultCallback), "reject");
+    private ReactMethodImpl MakeFireAndForgetMethod(MethodInfo methodInfo, ParameterInfo[] parameters)
+    {
+      // Generate code that looks like:
+      //
+      // (object module, IJSValueReader inputReader, IJSValueWriter outputWriter,
+      //    MethodResultCallback resolve, MethodResultCallback reject) =>
+      // {
+      //   inputReader.ReadArgs(out ArgType0 arg0, out ArgType1 arg1);
+      //   (module as ModuleType).Method(arg0, arg1);
+      // }
 
-      // Input variables to read from inputReader
-      ParameterExpression[] inputVariables = new ParameterExpression[parameters.Length - 1];
-      for (int i = 0; i < inputVariables.Length; ++i)
-      {
-        inputVariables[i] = Expression.Variable(parameters[i].ParameterType, parameters[i].Name);
-      }
-
-      // Generate the resolve delegate
-      var inputResolveParameter = parameters[parameters.Length - 1];
-      var resolveMethodInfo = inputResolveParameter.ParameterType.GetMethod("Invoke");
-      ParameterInfo[] resolveMethodParameters = resolveMethodInfo.GetParameters();
-      if (resolveMethodParameters.Length != 1)
-      {
-        throw new ArgumentException($"Resolve callback type must have one parameter. Method: {MethodName}, Parameter: {inputResolveParameter.Name}");
-      }
-      Type resolveParameterType = resolveMethodParameters[0].ParameterType;
-      ParameterExpression resolveLambdaParameter = Expression.Parameter(resolveParameterType, "value");
-
-      List<Expression> resolveStatements = new List<Expression>();
-      resolveStatements.Add(Expression.Call(outputWriterParameter, typeof(IJSValueWriter).GetMethod("WriteArrayBegin")));
-      resolveStatements.Add(Expression.Call(null, JSValueWriter.GetWriteValueMethod(resolveParameterType), outputWriterParameter, resolveLambdaParameter));
-      resolveStatements.Add(Expression.Call(outputWriterParameter, typeof(IJSValueWriter).GetMethod("WriteArrayEnd")));
-      resolveStatements.Add(Expression.Invoke(resolveParameter, outputWriterParameter));
-      var resolveLambda = Expression.Lambda(inputResolveParameter.ParameterType, Expression.Block(resolveStatements), resolveLambdaParameter);
-
-      // Statements of the generated lambda
-      List<Expression> statements = new List<Expression>();
-
-      // Generate code to read input variables from the inputReader
-      var callReadNext = Expression.Call(inputReaderParameter, typeof(IJSValueReader).GetMethod("ReadNext"));
-      statements.Add(callReadNext);
-      foreach (ParameterExpression variable in inputVariables)
-      {
-        statements.Add(callReadNext);
-        statements.Add(Expression.Call(null, JSValueReader.GetReadValueMethod(variable.Type), inputReaderParameter, variable));
-      }
-
-      // Generate code to call the method
-      statements.Add(Expression.Call(
-          Expression.Convert(moduleParameter, methodInfo.DeclaringType),
-          methodInfo,
-          (inputVariables as IEnumerable<Expression>).Append(resolveLambda)));
-
-      // Generate the lambda to return
-      var lambda = Expression.Lambda<ReactMethodImpl>(
-          Expression.Block(inputVariables, statements),
-          moduleParameter, inputReaderParameter, outputWriterParameter, resolveParameter, rejectParameter);
-
-      // Compile and return the lambda
-      return lambda.Compile();
+      return CompileLambda<ReactMethodImpl>(
+        MethodParameters(out var module, out var inputReader, out _, out _, out _),
+        MethodArgs(parameters, callbackCount: 0, out var argTypes, out var args, out _, out _),
+        inputReader.CallExt(ReadArgsOf(argTypes), args),
+        module.CastTo(methodInfo.DeclaringType).Call(methodInfo, args));
     }
 
-    private ReactMethodImpl MakePromiseMethod(ReflectionMethodInfo methodInfo, ParameterInfo[] parameters)
+    private ReactMethodImpl MakeCallbackMethod(MethodInfo methodInfo, ParameterInfo[] parameters)
     {
-      // The last two variables are delegates
+      // Generate code that looks like:
+      //
+      // (object module, IJSValueReader inputReader, IJSValueWriter outputWriter,
+      //    MethodResultCallback resolve, MethodResultCallback reject) =>
+      // {
+      //   inputReader.ReadArgs(out ArgType0 arg0, out ArgType1 arg1);
+      //   (module as ModuleType).Method(arg0, arg1,
+      //     result => resolve(outputWriter.WriteArgs(result)));
+      // }
 
-      // Input parameters for generated lambda
-      ParameterExpression moduleParameter = Expression.Parameter(typeof(object), "module");
-      ParameterExpression inputReaderParameter = Expression.Parameter(typeof(IJSValueReader), "inputReader");
-      ParameterExpression outputWriterParameter = Expression.Parameter(typeof(IJSValueWriter), "outputWriter");
-      ParameterExpression resolveParameter = Expression.Parameter(typeof(MethodResultCallback), "resolve");
-      ParameterExpression rejectParameter = Expression.Parameter(typeof(MethodResultCallback), "reject");
-
-      // Input variables to read from inputReader
-      ParameterExpression[] inputVariables = new ParameterExpression[parameters.Length - 2];
-      for (int i = 0; i < inputVariables.Length; ++i)
-      {
-        inputVariables[i] = Expression.Variable(parameters[i].ParameterType, parameters[i].Name);
-      }
-
-      // Generate the resolve delegate
-      var inputResolveParameter = parameters[parameters.Length - 2];
-      var resolveMethodInfo = inputResolveParameter.ParameterType.GetMethod("Invoke");
-      ParameterInfo[] resolveMethodParameters = resolveMethodInfo.GetParameters();
-      if (resolveMethodParameters.Length != 1)
-      {
-        throw new ArgumentException($"Resolve callback type must have one parameter. Method: {MethodName}, Parameter: {inputResolveParameter.Name}");
-      }
-      Type resolveParameterType = resolveMethodParameters[0].ParameterType;
-      ParameterExpression resolveLambdaParameter = Expression.Parameter(resolveParameterType, "value");
-
-      List<Expression> resolveStatements = new List<Expression>();
-      resolveStatements.Add(Expression.Call(outputWriterParameter, typeof(IJSValueWriter).GetMethod("WriteArrayBegin")));
-      resolveStatements.Add(Expression.Call(null, JSValueWriter.GetWriteValueMethod(resolveParameterType), outputWriterParameter, resolveLambdaParameter));
-      resolveStatements.Add(Expression.Call(outputWriterParameter, typeof(IJSValueWriter).GetMethod("WriteArrayEnd")));
-      resolveStatements.Add(Expression.Invoke(resolveParameter, outputWriterParameter));
-      var resolveLambda = Expression.Lambda(inputResolveParameter.ParameterType, Expression.Block(resolveStatements), resolveLambdaParameter);
-
-      // Generate the reject delegate
-      var inputRejectParameter = parameters[parameters.Length - 1];
-      var rejectMethodInfo = inputRejectParameter.ParameterType.GetMethod("Invoke");
-      ParameterInfo[] rejectMethodParameters = rejectMethodInfo.GetParameters();
-      if (rejectMethodParameters.Length != 1)
-      {
-        throw new ArgumentException($"Reject callback type must have one parameter. Method: {MethodName}, Parameter: {inputRejectParameter.Name}");
-      }
-      Type rejectParameterType = rejectMethodParameters[0].ParameterType;
-      ParameterExpression rejectLambdaParameter = Expression.Parameter(rejectParameterType, "error");
-
-      List<Expression> rejectStatements = new List<Expression>();
-      rejectStatements.Add(Expression.Call(outputWriterParameter, typeof(IJSValueWriter).GetMethod("WriteArrayBegin")));
-      if (rejectLambdaParameter.Type == typeof(string))
-      {
-        rejectStatements.Add(Expression.Call(outputWriterParameter, typeof(IJSValueWriter).GetMethod("WriteObjectBegin")));
-        rejectStatements.Add(Expression.Call(outputWriterParameter, typeof(IJSValueWriter).GetMethod("WritePropertyName"), Expression.Constant("message")));
-        rejectStatements.Add(Expression.Call(null, JSValueWriter.GetWriteValueMethod(rejectParameterType), outputWriterParameter, rejectLambdaParameter));
-        rejectStatements.Add(Expression.Call(outputWriterParameter, typeof(IJSValueWriter).GetMethod("WriteObjectEnd")));
-      }
-      else
-      {
-        rejectStatements.Add(Expression.Call(null, JSValueWriter.GetWriteValueMethod(rejectParameterType), outputWriterParameter, rejectLambdaParameter));
-      }
-      rejectStatements.Add(Expression.Call(outputWriterParameter, typeof(IJSValueWriter).GetMethod("WriteArrayEnd")));
-      rejectStatements.Add(Expression.Invoke(rejectParameter, outputWriterParameter));
-      var rejectLambda = Expression.Lambda(inputRejectParameter.ParameterType, Expression.Block(rejectStatements), rejectLambdaParameter);
-
-      // Statements of the generated lambda
-      List<Expression> statements = new List<Expression>();
-
-      // Generate code to read input variables from the inputReader
-      var callReadNext = Expression.Call(inputReaderParameter, typeof(IJSValueReader).GetMethod("ReadNext"));
-      statements.Add(callReadNext);
-      foreach (ParameterExpression variable in inputVariables)
-      {
-        statements.Add(callReadNext);
-        statements.Add(Expression.Call(null, JSValueReader.GetReadValueMethod(variable.Type), inputReaderParameter, variable));
-      }
-
-      // Generate code to call the method
-      statements.Add(Expression.Call(
-          Expression.Convert(moduleParameter, methodInfo.DeclaringType),
-          methodInfo,
-          (inputVariables as IEnumerable<Expression>).Append(resolveLambda).Append(rejectLambda)));
-
-      // Generate the lambda to return
-      var lambda = Expression.Lambda<ReactMethodImpl>(
-          Expression.Block(inputVariables, statements),
-          moduleParameter, inputReaderParameter, outputWriterParameter, resolveParameter, rejectParameter);
-
-      // Compile and return the lambda
-      return lambda.Compile();
+      // The last parameter in parameters is a 'resolve' delegate
+      return CompileLambda<ReactMethodImpl>(
+        MethodParameters(out var module, out var inputReader, out var outputWriter, out var resolve, out _),
+        MethodArgs(parameters, callbackCount: 1, out var argTypes, out var args, out var resolveArgType, out _),
+        inputReader.CallExt(ReadArgsOf(argTypes), args),
+        module.CastTo(methodInfo.DeclaringType).Call(methodInfo, args,
+          AutoLambda(ResultCallbackOf(resolveArgType), Parameter(resolveArgType, out var result),
+            resolve.Invoke(outputWriter.CallExt(WriteArgsOf(resolveArgType), result)))));
     }
 
-    private ReactMethodImpl MakeReturningMethod(ReflectionMethodInfo methodInfo, Type returnType, ParameterInfo[] parameters)
+    private ReactMethodImpl MakePromiseMethod(MethodInfo methodInfo, ParameterInfo[] parameters)
     {
+      // Generate code that looks like:
+      //
+      // (object module, IJSValueReader inputReader, IJSValueWriter outputWriter,
+      //    MethodResultCallback resolve, MethodResultCallback reject) =>
+      // {
+      //   inputReader.ReadArgs(out ArgType0 arg0, out ArgType1 arg1);
+      //     (module as ModuleType).Method(arg0, arg1,
+      //       result => resolve(outputWriter.WriteArgs(result)),
+      //       error => reject(outputWriter.WriteError(error)));
+      // }
+
+      // The last two parameters in parameters are resolve and reject delegates
+      return CompileLambda<ReactMethodImpl>(
+        MethodParameters(out var module, out var inputReader, out var outputWriter, out var resolve, out var reject),
+        MethodArgs(parameters, callbackCount: 2, out var argTypes, out var args, out var resolveArgType, out var rejectArgType),
+        inputReader.CallExt(ReadArgsOf(argTypes), args),
+        module.CastTo(methodInfo.DeclaringType).Call(methodInfo, args,
+          AutoLambda(ResultCallbackOf(resolveArgType), Parameter(resolveArgType, out var result),
+            resolve.Invoke(outputWriter.CallExt(WriteArgsOf(resolveArgType), result))),
+          AutoLambda(ResultCallbackOf(resolveArgType), Parameter(rejectArgType, out var error),
+            reject.Invoke(outputWriter.CallExt(WriteErrorOf(rejectArgType), error)))));
+    }
+
+    private ReactMethodImpl MakeReturningMethod(MethodInfo methodInfo, Type returnType, ParameterInfo[] parameters)
+    {
+      // Generate code that looks like:
+      //
+      // (object module, IJSValueReader inputReader, IJSValueWriter outputWriter,
+      //    MethodResultCallback resolve, MethodResultCallback reject) =>
+      // {
+      //   inputReader.ReadArgs(out ArgType0 arg0, out ArgType1 arg1);
+      //   resolve(outputWriter.WriteArgs((module as ModuleType).Method(arg0, arg1)));
+      // }
+
       // It is like the MakeCallbackMethod but callback is not passed as a parameter.
-
-      // Input parameters for generated lambda
-      ParameterExpression moduleParameter = Expression.Parameter(typeof(object), "module");
-      ParameterExpression inputReaderParameter = Expression.Parameter(typeof(IJSValueReader), "inputReader");
-      ParameterExpression outputWriterParameter = Expression.Parameter(typeof(IJSValueWriter), "outputWriter");
-      ParameterExpression resolveParameter = Expression.Parameter(typeof(MethodResultCallback), "resolve");
-      ParameterExpression rejectParameter = Expression.Parameter(typeof(MethodResultCallback), "reject");
-
-      // Input variables to read from inputReader
-      ParameterExpression[] inputVariables = new ParameterExpression[parameters.Length];
-      for (int i = 0; i < parameters.Length; ++i)
-      {
-        inputVariables[i] = Expression.Variable(parameters[i].ParameterType, parameters[i].Name);
-      }
-
-      // The result variable to store method call result
-      var resultVariable = Expression.Variable(returnType);
-
-      // Statements of the generated lambda
-      List<Expression> statements = new List<Expression>();
-
-      // Generate code to read input variables from the inputReader
-      var callReadNext = Expression.Call(inputReaderParameter, typeof(IJSValueReader).GetMethod("ReadNext"));
-      statements.Add(callReadNext);
-      foreach (ParameterExpression variable in inputVariables)
-      {
-        statements.Add(callReadNext);
-        statements.Add(Expression.Call(null, JSValueReader.GetReadValueMethod(variable.Type), inputReaderParameter, variable));
-      }
-
-      // Generate code to call the method
-      statements.Add(Expression.Assign(resultVariable,
-          Expression.Call(
-              Expression.Convert(moduleParameter, methodInfo.DeclaringType),
-              methodInfo,
-              inputVariables)));
-
-      // Generate code to write result to outputWriter
-      statements.Add(Expression.Call(outputWriterParameter, typeof(IJSValueWriter).GetMethod("WriteArrayBegin")));
-      statements.Add(Expression.Call(null, JSValueWriter.GetWriteValueMethod(resultVariable.Type), outputWriterParameter, resultVariable));
-      statements.Add(Expression.Call(outputWriterParameter, typeof(IJSValueWriter).GetMethod("WriteArrayEnd")));
-
-      // Generate code to call resolve callback
-      statements.Add(Expression.Invoke(resolveParameter, outputWriterParameter));
-
-      // Generate the lambda to return
-      var lambda = Expression.Lambda<ReactMethodImpl>(
-          Expression.Block(inputVariables.Append(resultVariable), statements),
-          moduleParameter, inputReaderParameter, outputWriterParameter, resolveParameter, rejectParameter);
-
-      // Compile and return the lambda
-      return lambda.Compile();
+      return CompileLambda<ReactMethodImpl>(
+        MethodParameters(out var module, out var inputReader, out var outputWriter, out var resolve, out _),
+        MethodArgs(parameters, callbackCount: 1, out var argTypes, out var args, out var resolveArgType, out _),
+        inputReader.CallExt(ReadArgsOf(argTypes), args),
+        resolve.Invoke(outputWriter.CallExt(WriteArgsOf(resolveArgType),
+          module.CastTo(methodInfo.DeclaringType).Call(methodInfo, args))));
     }
 
     public delegate void ReactMethodImpl(
@@ -309,11 +172,15 @@ namespace Microsoft.ReactNative.Managed
         MethodResultCallback resolve,
         MethodResultCallback reject);
 
-    public string MethodName { get; private set; }
+    private delegate void ResultCallback<T>(T result);
 
-    public MethodReturnType MethodReturnType { get; private set; }
+    private Type ResultCallbackOf(Type type) => typeof(ResultCallback<>).MakeGenericType(type);
 
-    public Lazy<ReactMethodImpl> MethodImpl { get; private set; }
+    public string MethodName { get; }
+
+    public MethodReturnType MethodReturnType { get;  }
+
+    public Lazy<ReactMethodImpl> MethodImpl { get; }
 
     public void AddToModuleBuilder(IReactModuleBuilder moduleBuilder, object module)
     {

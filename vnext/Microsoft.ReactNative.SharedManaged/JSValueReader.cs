@@ -134,7 +134,7 @@ namespace Microsoft.ReactNative.Managed
 
     public static void ReadValue(this IJSValueReader reader, out IDictionary<string, JSValue> value)
     {
-      value = JSValue.ReadObjectPropertiesFrom(reader);      
+      value = JSValue.ReadObjectPropertiesFrom(reader);
     }
 
     public static void ReadValue(this IJSValueReader reader, out ICollection<KeyValuePair<string, JSValue>> value)
@@ -311,127 +311,193 @@ namespace Microsoft.ReactNative.Managed
       value = list.ToArray();
     }
 
-    private static void SkipArrayToEnd(this IJSValueReader reader)
+    public static bool SkipArrayToEnd(this IJSValueReader reader)
     {
       while (reader.GetNextArrayItem())
       {
         reader.ReadValue<JSValue>(); // Read and ignore the value
       }
+
+      return true;
     }
 
     public static void ReadValue<T1>(this IJSValueReader reader, out Tuple<T1> value)
     {
-      value = default;
-      if (reader.ValueType != JSValueType.Array) return;
-      if (!reader.GetNextArrayItem()) return;
-      T1 t1 = reader.ReadValue<T1>();
-      reader.SkipArrayToEnd();
-      value = new Tuple<T1>(t1);
+      value = (reader.ValueType == JSValueType.Array
+        && reader.TryReadArrayItem(out T1 t1)
+        && reader.SkipArrayToEnd())
+      ? new Tuple<T1>(t1)
+      : default;
     }
 
     public static void ReadValue<T1, T2>(this IJSValueReader reader, out Tuple<T1, T2> value)
     {
-      value = default;
-      if (reader.ValueType != JSValueType.Array) return;
-      if (!reader.GetNextArrayItem()) return;
-      T1 t1 = reader.ReadValue<T1>();
-      if (!reader.GetNextArrayItem()) return;
-      T2 t2 = reader.ReadValue<T2>();
-      reader.SkipArrayToEnd();
-      value = new Tuple<T1, T2>(t1, t2);
+      value = (reader.ValueType == JSValueType.Array
+        && reader.TryReadArrayItem(out T1 t1)
+        && reader.TryReadArrayItem(out T2 t2)
+        && reader.SkipArrayToEnd())
+      ? new Tuple<T1, T2>(t1, t2)
+      : default;
     }
 
     public static void ReadValue<T1, T2, T3>(this IJSValueReader reader, out Tuple<T1, T2, T3> value)
     {
-      value = default;
-      if (reader.ValueType != JSValueType.Array) return;
-      if (!reader.GetNextArrayItem()) return;
-      T1 t1 = reader.ReadValue<T1>();
-      if (!reader.GetNextArrayItem()) return;
-      T2 t2 = reader.ReadValue<T2>();
-      if (!reader.GetNextArrayItem()) return;
-      T3 t3 = reader.ReadValue<T3>();
-      reader.SkipArrayToEnd();
-      value = new Tuple<T1, T2, T3>(t1, t2, t3);
+      value = (reader.ValueType == JSValueType.Array
+        && reader.TryReadArrayItem(out T1 t1)
+        && reader.TryReadArrayItem(out T2 t2)
+        && reader.TryReadArrayItem(out T3 t3)
+        && reader.SkipArrayToEnd())
+      ? new Tuple<T1, T2, T3>(t1, t2, t3)
+      : default;
     }
 
     public static void ReadValue<T1, T2, T3, T4>(this IJSValueReader reader, out Tuple<T1, T2, T3, T4> value)
     {
-      value = default;
-      if (reader.ValueType != JSValueType.Array) return;
-      if (!reader.GetNextArrayItem()) return;
-      T1 t1 = reader.ReadValue<T1>();
-      if (!reader.GetNextArrayItem()) return;
-      T2 t2 = reader.ReadValue<T2>();
-      if (!reader.GetNextArrayItem()) return;
-      T3 t3 = reader.ReadValue<T3>();
-      if (!reader.GetNextArrayItem()) return;
-      T4 t4 = reader.ReadValue<T4>();
-      reader.SkipArrayToEnd();
-      value = new Tuple<T1, T2, T3, T4>(t1, t2, t3, t4);
+      value = (reader.ValueType == JSValueType.Array
+        && reader.TryReadArrayItem(out T1 t1)
+        && reader.TryReadArrayItem(out T2 t2)
+        && reader.TryReadArrayItem(out T3 t3)
+        && reader.TryReadArrayItem(out T4 t4)
+        && reader.SkipArrayToEnd())
+      ? new Tuple<T1, T2, T3, T4>(t1, t2, t3, t4)
+      : default;
     }
 
     public static void ReadValue<T1, T2, T3, T4, T5>(
       this IJSValueReader reader, out Tuple<T1, T2, T3, T4, T5> value)
     {
-      value = default;
-      if (reader.ValueType != JSValueType.Array) return;
-      if (!reader.GetNextArrayItem()) return;
-      T1 t1 = reader.ReadValue<T1>();
-      if (!reader.GetNextArrayItem()) return;
-      T2 t2 = reader.ReadValue<T2>();
-      if (!reader.GetNextArrayItem()) return;
-      T3 t3 = reader.ReadValue<T3>();
-      if (!reader.GetNextArrayItem()) return;
-      T4 t4 = reader.ReadValue<T4>();
-      if (!reader.GetNextArrayItem()) return;
-      T5 t5 = reader.ReadValue<T5>();
-      reader.SkipArrayToEnd();
-      value = new Tuple<T1, T2, T3, T4, T5>(t1, t2, t3, t4, t5);
+      value = (reader.ValueType == JSValueType.Array
+        && reader.TryReadArrayItem(out T1 t1)
+        && reader.TryReadArrayItem(out T2 t2)
+        && reader.TryReadArrayItem(out T3 t3)
+        && reader.TryReadArrayItem(out T4 t4)
+        && reader.TryReadArrayItem(out T5 t5)
+        && reader.SkipArrayToEnd())
+      ? new Tuple<T1, T2, T3, T4, T5>(t1, t2, t3, t4, t5)
+      : default;
     }
 
     public static void ReadValue<T1, T2, T3, T4, T5, T6>(
       this IJSValueReader reader, out Tuple<T1, T2, T3, T4, T5, T6> value)
     {
-      value = default;
-      if (reader.ValueType != JSValueType.Array) return;
-      if (!reader.GetNextArrayItem()) return;
-      T1 t1 = reader.ReadValue<T1>();
-      if (!reader.GetNextArrayItem()) return;
-      T2 t2 = reader.ReadValue<T2>();
-      if (!reader.GetNextArrayItem()) return;
-      T3 t3 = reader.ReadValue<T3>();
-      if (!reader.GetNextArrayItem()) return;
-      T4 t4 = reader.ReadValue<T4>();
-      if (!reader.GetNextArrayItem()) return;
-      T5 t5 = reader.ReadValue<T5>();
-      if (!reader.GetNextArrayItem()) return;
-      T6 t6 = reader.ReadValue<T6>();
-      reader.SkipArrayToEnd();
-      value = new Tuple<T1, T2, T3, T4, T5, T6>(t1, t2, t3, t4, t5, t6);
+      value = (reader.ValueType == JSValueType.Array
+        && reader.TryReadArrayItem(out T1 t1)
+        && reader.TryReadArrayItem(out T2 t2)
+        && reader.TryReadArrayItem(out T3 t3)
+        && reader.TryReadArrayItem(out T4 t4)
+        && reader.TryReadArrayItem(out T5 t5)
+        && reader.TryReadArrayItem(out T6 t6)
+        && reader.SkipArrayToEnd())
+      ? new Tuple<T1, T2, T3, T4, T5, T6>(t1, t2, t3, t4, t5, t6)
+      : default;
     }
 
     public static void ReadValue<T1, T2, T3, T4, T5, T6, T7>(
       this IJSValueReader reader, out Tuple<T1, T2, T3, T4, T5, T6, T7> value)
     {
-      value = default;
-      if (reader.ValueType != JSValueType.Array) return;
-      if (!reader.GetNextArrayItem()) return;
-      T1 t1 = reader.ReadValue<T1>();
-      if (!reader.GetNextArrayItem()) return;
-      T2 t2 = reader.ReadValue<T2>();
-      if (!reader.GetNextArrayItem()) return;
-      T3 t3 = reader.ReadValue<T3>();
-      if (!reader.GetNextArrayItem()) return;
-      T4 t4 = reader.ReadValue<T4>();
-      if (!reader.GetNextArrayItem()) return;
-      T5 t5 = reader.ReadValue<T5>();
-      if (!reader.GetNextArrayItem()) return;
-      T6 t6 = reader.ReadValue<T6>();
-      if (!reader.GetNextArrayItem()) return;
-      T7 t7 = reader.ReadValue<T7>();
-      reader.SkipArrayToEnd();
-      value = new Tuple<T1, T2, T3, T4, T5, T6, T7>(t1, t2, t3, t4, t5, t6, t7);
+      value = (reader.ValueType == JSValueType.Array
+        && reader.TryReadArrayItem(out T1 t1)
+        && reader.TryReadArrayItem(out T2 t2)
+        && reader.TryReadArrayItem(out T3 t3)
+        && reader.TryReadArrayItem(out T4 t4)
+        && reader.TryReadArrayItem(out T5 t5)
+        && reader.TryReadArrayItem(out T6 t6)
+        && reader.TryReadArrayItem(out T7 t7)
+        && reader.SkipArrayToEnd())
+      ? new Tuple<T1, T2, T3, T4, T5, T6, T7>(t1, t2, t3, t4, t5, t6, t7)
+      : default;
+    }
+
+    public static bool TryReadArrayItem<T>(this IJSValueReader reader, out T value)
+    {
+      bool result = reader.GetNextArrayItem();
+      value = result ? reader.ReadValue<T>() : default;
+      return result;
+    }
+
+    public static bool GetNextArrayItem(this IJSValueReader reader, ref bool success)
+    {
+      return success = success && reader.GetNextArrayItem();
+    }
+
+    public static void ReadArgs(this IJSValueReader reader)
+    {
+      bool success = reader.ValueType == JSValueType.Array;
+      _ = success && reader.SkipArrayToEnd();
+    }
+
+    public static void ReadArgs<T1>(this IJSValueReader reader, out T1 arg1)
+    {
+      bool success = reader.ValueType == JSValueType.Array;
+      arg1 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T1>() : default;
+      _ = success && reader.SkipArrayToEnd();
+    }
+
+    public static void ReadArgs<T1, T2>(this IJSValueReader reader, out T1 arg1, out T2 arg2)
+    {
+      bool success = reader.ValueType == JSValueType.Array;
+      arg1 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T1>() : default;
+      arg2 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T2>() : default;
+      _ = success && reader.SkipArrayToEnd();
+    }
+
+    public static void ReadArgs<T1, T2, T3>(this IJSValueReader reader, out T1 arg1, out T2 arg2, out T3 arg3)
+    {
+      bool success = reader.ValueType == JSValueType.Array;
+      arg1 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T1>() : default;
+      arg2 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T2>() : default;
+      arg3 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T3>() : default;
+      _ = success && reader.SkipArrayToEnd();
+    }
+
+    public static void ReadArgs<T1, T2, T3, T4>(this IJSValueReader reader,
+      out T1 arg1, out T2 arg2, out T3 arg3, out T4 arg4)
+    {
+      bool success = reader.ValueType == JSValueType.Array;
+      arg1 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T1>() : default;
+      arg2 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T2>() : default;
+      arg3 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T3>() : default;
+      arg4 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T4>() : default;
+      _ = success && reader.SkipArrayToEnd();
+    }
+
+    public static void ReadArgs<T1, T2, T3, T4, T5>(this IJSValueReader reader,
+      out T1 arg1, out T2 arg2, out T3 arg3, out T4 arg4, out T5 arg5)
+    {
+      bool success = reader.ValueType == JSValueType.Array;
+      arg1 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T1>() : default;
+      arg2 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T2>() : default;
+      arg3 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T3>() : default;
+      arg4 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T4>() : default;
+      arg5 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T5>() : default;
+      _ = success && reader.SkipArrayToEnd();
+    }
+
+    public static void ReadArgs<T1, T2, T3, T4, T5, T6>(this IJSValueReader reader,
+      out T1 arg1, out T2 arg2, out T3 arg3, out T4 arg4, out T5 arg5, out T6 arg6)
+    {
+      bool success = reader.ValueType == JSValueType.Array;
+      arg1 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T1>() : default;
+      arg2 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T2>() : default;
+      arg3 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T3>() : default;
+      arg4 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T4>() : default;
+      arg5 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T5>() : default;
+      arg6 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T6>() : default;
+      _ = success && reader.SkipArrayToEnd();
+    }
+
+    public static void ReadArgs<T1, T2, T3, T4, T5, T6, T7>(this IJSValueReader reader,
+      out T1 arg1, out T2 arg2, out T3 arg3, out T4 arg4, out T5 arg5, out T6 arg6, out T7 arg7)
+    {
+      bool success = reader.ValueType == JSValueType.Array;
+      arg1 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T1>() : default;
+      arg2 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T2>() : default;
+      arg3 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T3>() : default;
+      arg4 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T4>() : default;
+      arg5 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T5>() : default;
+      arg6 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T6>() : default;
+      arg7 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T7>() : default;
+      _ = success && reader.SkipArrayToEnd();
     }
 
     public static void ReadValue<T>(this IJSValueReader reader, out T value)
