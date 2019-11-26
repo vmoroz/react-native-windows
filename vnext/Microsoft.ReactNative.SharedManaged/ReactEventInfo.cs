@@ -6,7 +6,9 @@ using System;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Threading;
-using ReflectionMethodInfo = System.Reflection.MethodInfo;
+using static Microsoft.ReactNative.Managed.JSValueGenerator;
+using static Microsoft.ReactNative.Managed.JSValueWriterGenerator;
+using static System.Linq.Expressions.Expression;
 
 namespace Microsoft.ReactNative.Managed
 {
@@ -21,7 +23,7 @@ namespace Microsoft.ReactNative.Managed
       {
         throw new ArgumentException("React event must be a delegate", propertyInfo.Name);
       }
-      ReflectionMethodInfo eventDelegateMethod = propertyType.GetMethod("Invoke");
+      MethodInfo eventDelegateMethod = propertyType.GetMethod("Invoke");
       ParameterInfo[] parameters = eventDelegateMethod.GetParameters();
       if (parameters.Length != 1)
       {
@@ -32,39 +34,23 @@ namespace Microsoft.ReactNative.Managed
 
     private ReactEventImpl MakeEvent(PropertyInfo propertyInfo, ParameterInfo parameter)
     {
-      // We need to create a delegate that can assign correct delegate to the event property.
-      // This is the shape of the generated code:
+      // Generate code that looks like:
       //
-      //(object module, RaiseEvent raiseEvent) =>
-      //{
-      //  ((MyModule)module).eventProperty = (ArgType arg) =>
-      //  {
-      //    raiseEvent((IJSValueWriter argWriter) => WriteValue(argWriter, arg));
-      //  };
-      //});
-      //
+      // (object module, ReactEventHandler raiseEvent) =>
+      // {
+      //   (module as MyModule).eventProperty = (ArgType arg) =>
+      //     raiseEvent((IJSValueWriter argWriter) => argWriter.WriteArgs(arg));
+      // });
 
-      // Input parameters for generated lambda
-      ParameterExpression moduleParameter = Expression.Parameter(typeof(object), "module");
-      ParameterExpression raiseEventParameter = Expression.Parameter(typeof(ReactEventHandler), "eventHandler");
-
-      // Create a lambda to be passed to raiseEvent
-      ParameterExpression argParameter = Expression.Parameter(parameter.ParameterType, "arg");
-      ParameterExpression argWriterParameter = Expression.Parameter(typeof(IJSValueWriter), "argWriter");
-      var writeValueCall = Expression.Call(null, JSValueWriter.GetWriteValueMethod(parameter.ParameterType), argWriterParameter, argParameter);
-      var eventHandlerLambda = Expression.Lambda<ReactArgWriter>(writeValueCall, argWriterParameter);
-
-      // Create a lambda that we assign to the event property
-      var raiseEventCall = Expression.Invoke(raiseEventParameter, eventHandlerLambda);
-      var eventLambda = Expression.Lambda(propertyInfo.PropertyType, raiseEventCall, argParameter);
-
-      // Create lambda that we return and which assigns the event property
-      var eventProperty = Expression.Property(Expression.Convert(moduleParameter, propertyInfo.DeclaringType), propertyInfo);
-      var eventPropertyAssignment = Expression.Assign(eventProperty, eventLambda);
-      var lambda = Expression.Lambda<ReactEventImpl>(eventPropertyAssignment, moduleParameter, raiseEventParameter);
-
-      // Compile and return the lambda
-      return lambda.Compile();
+      Type ArgType = parameter.ParameterType;
+      return CompileLambda<ReactEventImpl>(
+        Parameter(typeof(object), out var module),
+        Parameter(typeof(ReactEventHandler), out var raiseEvent),
+        module.SetProperty(propertyInfo, AutoLambda(ActionOf(ArgType),
+          Parameter(ArgType, out var arg),
+          raiseEvent.Invoke(AutoLambda(ActionOf<IJSValueWriter>(),
+            Parameter(typeof(IJSValueWriter), out var argWriter),
+            argWriter.CallExt(WriteArgsOf(ArgType), argWriter))))));
     }
 
     public delegate void ReactEventImpl(object module, ReactEventHandler eventHandler);

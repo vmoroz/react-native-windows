@@ -262,7 +262,7 @@ namespace Microsoft.ReactNative.Managed
                 (members.Length != 0)
                 ? Switch(propertyName,
                     members.Select(member => SwitchCase(
-                      value.AssignPropertyVoid(member.Name, reader.CallExt(ReadValueOf(member.Type))),
+                      value.SetPropertyStatement(member.Name, reader.CallExt(ReadValueOf(member.Type))),
                       Constant(member.Name))).ToArray()) as Expression
                 : Default(typeof(void))))));
       }

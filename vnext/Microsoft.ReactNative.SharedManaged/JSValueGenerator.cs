@@ -259,14 +259,24 @@ namespace Microsoft.ReactNative.Managed
         return PropertyOrField(AsExpression, propertyName);
       }
 
-      public Expression AssignProperty(string propertyName, Expression value)
+      public Expression Property(PropertyInfo propertyInfo)
+      {
+        return Expression.Property(propertyInfo.GetGetMethod().IsStatic ? null : AsExpression, propertyInfo);
+      }
+
+      public Expression SetProperty(string propertyName, Expression value)
       {
         return Expression.Assign(Property(propertyName), value);
       }
 
-      public Expression AssignPropertyVoid(string propertyName, Expression value)
+      public Expression SetPropertyStatement(string propertyName, Expression value)
       {
-        return Expression.Block(AssignProperty(propertyName, value), Default(typeof(void)));
+        return Block(SetProperty(propertyName, value), Default(typeof(void)));
+      }
+
+      public Expression SetProperty(PropertyInfo propertyInfo, Expression value)
+      {
+        return Expression.Assign(Property(propertyInfo), value);
       }
 
       public Expression CastTo(Type type)
@@ -288,6 +298,8 @@ namespace Microsoft.ReactNative.Managed
       {
         return AutoLambda(Type, expressions).Compile();
       }
+
+      public static implicit operator Type(TypeWrapper wrapper) => wrapper.Type;
     }
 
     public static VariableWrapper Variable(Type type, out VariableWrapper variable, Expression init = null)
@@ -399,5 +411,16 @@ namespace Microsoft.ReactNative.Managed
       rejectArgType = (callbackCount > 1) ? parameters[parameters.Length - callbackCount + 1].ParameterType : default;
       return args;
     }
+
+    public static TypeWrapper ActionOf(params Type[] argTypes)
+    {
+      switch (argTypes.Length)
+      {
+        case 1: return new TypeWrapper(typeof(Action<>).MakeGenericType(argTypes));
+        default: throw new NotImplementedException($"Not supported argTypes count: {argTypes.Length}");
+      }
+    }
+
+    public static TypeWrapper ActionOf<T1>() => ActionOf(typeof(T1));
   }
 }
