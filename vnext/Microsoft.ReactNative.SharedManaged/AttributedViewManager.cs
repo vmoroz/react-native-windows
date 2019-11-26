@@ -1,14 +1,12 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
+using Microsoft.ReactNative.Bridge;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
-using Windows.UI;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Media;
-
-using Microsoft.ReactNative.Bridge;
 
 namespace Microsoft.ReactNative.Managed
 {

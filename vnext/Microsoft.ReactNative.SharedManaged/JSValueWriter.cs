@@ -2,7 +2,6 @@
 // Licensed under the MIT License.
 
 using Microsoft.ReactNative.Bridge;
-using Microsoft.ReactNative.Managed.UnitTests;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
