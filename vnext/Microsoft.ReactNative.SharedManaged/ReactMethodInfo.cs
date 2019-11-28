@@ -20,32 +20,44 @@ namespace Microsoft.ReactNative.Managed
 
       Type returnType = methodInfo.ReturnType;
       ParameterInfo[] parameters = methodInfo.GetParameters();
+      Type lastParameterType = parameters.Length > 0 ? parameters[parameters.Length - 1].ParameterType : null;
+      Type secondToLastParameterType = parameters.Length > 1 ? parameters[parameters.Length - 2].ParameterType : null;
+      Func<ReactMethodImpl> createMethod;
+      bool isPromise(Type type) => type != null
+        && type.GetTypeInfo().IsGenericType
+        && type.GetTypeInfo().GetGenericTypeDefinition() == typeof(IReactPromise<>);
+      bool isCallback(Type type) => type != null && typeof(Delegate).IsAssignableFrom(type);
+
       if (returnType != typeof(void))
       {
         MethodReturnType = MethodReturnType.Callback;
-        MethodImpl = new Lazy<ReactMethodImpl>(() => MakeReturningMethod(methodInfo, returnType, parameters), LazyThreadSafetyMode.PublicationOnly);
+        createMethod = () => MakeReturningMethod(methodInfo, returnType, parameters);
       }
-      else
+      else if (isPromise(lastParameterType))
       {
-        if (parameters.Length > 0 && typeof(Delegate).IsAssignableFrom(parameters[parameters.Length - 1].ParameterType))
+        MethodReturnType = MethodReturnType.Promise;
+        createMethod = () => MakePromiseMethod(methodInfo, parameters);
+      }
+      else if (isCallback(lastParameterType))
+      {
+        if (isCallback(secondToLastParameterType))
         {
-          if (parameters.Length > 1 && typeof(Delegate).IsAssignableFrom(parameters[parameters.Length - 2].ParameterType))
-          {
-            MethodReturnType = MethodReturnType.Promise;
-            MethodImpl = new Lazy<ReactMethodImpl>(() => MakePromiseMethod(methodInfo, parameters), LazyThreadSafetyMode.PublicationOnly);
-          }
-          else
-          {
-            MethodReturnType = MethodReturnType.Callback;
-            MethodImpl = new Lazy<ReactMethodImpl>(() => MakeCallbackMethod(methodInfo, parameters), LazyThreadSafetyMode.PublicationOnly);
-          }
+          MethodReturnType = MethodReturnType.TwoCallbacks;
+          createMethod = () => MakeTwoCallbacksMethod(methodInfo, parameters);
         }
         else
         {
-          MethodReturnType = MethodReturnType.Void;
-          MethodImpl = new Lazy<ReactMethodImpl>(() => MakeFireAndForgetMethod(methodInfo, parameters), LazyThreadSafetyMode.PublicationOnly);
+          MethodReturnType = MethodReturnType.Callback;
+          createMethod = () => MakeCallbackMethod(methodInfo, parameters);
         }
       }
+      else
+      {
+        MethodReturnType = MethodReturnType.Void;
+        createMethod = () => MakeFireAndForgetMethod(methodInfo, parameters);
+      }
+
+      MethodImpl = new Lazy<ReactMethodImpl>(createMethod, LazyThreadSafetyMode.PublicationOnly);
     }
 
     static VariableWrapper[] MethodParameters(
@@ -64,6 +76,10 @@ namespace Microsoft.ReactNative.Managed
       return result;
     }
 
+    static ConstructorInfo ReactPromiseCtorOf(Type type) =>
+      typeof(ReactPromise<>).MakeGenericType(type).GetConstructor(new Type[] {
+        typeof(IJSValueWriter), typeof(MethodResultCallback), typeof(MethodResultCallback) });
+
     private ReactMethodImpl MakeFireAndForgetMethod(MethodInfo methodInfo, ParameterInfo[] parameters)
     {
       // Generate code that looks like:
@@ -77,7 +93,7 @@ namespace Microsoft.ReactNative.Managed
 
       return CompileLambda<ReactMethodImpl>(
         MethodParameters(out var module, out var inputReader, out _, out _, out _),
-        MethodArgs(parameters, callbackCount: 0, out var argTypes, out var args, out _, out _),
+        MethodArgs(parameters, out var argTypes, out var args),
         inputReader.CallExt(ReadArgsOf(argTypes), args),
         module.CastTo(methodInfo.DeclaringType).Call(methodInfo, args));
     }
@@ -97,12 +113,41 @@ namespace Microsoft.ReactNative.Managed
       // The last parameter in parameters is a 'resolve' delegate
       return CompileLambda<ReactMethodImpl>(
         MethodParameters(out var module, out var inputReader, out var outputWriter, out var resolve, out _),
-        MethodArgs(parameters, callbackCount: 1, out var argTypes, out var args, out var resolveArgType, out _),
+        MethodArgs(parameters, out var argTypes, out var args,
+          out var resolveCallbackType, out var resolveArgType),
         inputReader.CallExt(ReadArgsOf(argTypes), args),
         module.CastTo(methodInfo.DeclaringType).Call(methodInfo, args,
-          AutoLambda(ResultCallbackOf(resolveArgType), Parameter(resolveArgType, out var result),
+          AutoLambda(resolveCallbackType, Parameter(resolveArgType, out var result),
             resolve.Invoke(outputWriter.CallExt(WriteArgsOf(resolveArgType), result)))));
     }
+
+    private ReactMethodImpl MakeTwoCallbacksMethod(MethodInfo methodInfo, ParameterInfo[] parameters)
+    {
+      // Generate code that looks like:
+      //
+      // (object module, IJSValueReader inputReader, IJSValueWriter outputWriter,
+      //    MethodResultCallback resolve, MethodResultCallback reject) =>
+      // {
+      //   inputReader.ReadArgs(out ArgType0 arg0, out ArgType1 arg1);
+      //   (module as ModuleType).Method(arg0, arg1,
+      //     result => resolve(outputWriter.WriteArgs(result)),
+      //     error => reject(outputWriter.WriteError(error)));
+      // }
+
+      // The last two parameters in parameters are resolve and reject delegates
+      return CompileLambda<ReactMethodImpl>(
+        MethodParameters(out var module, out var inputReader, out var outputWriter, out var resolve, out var reject),
+        MethodArgs(parameters, out var argTypes, out var args,
+          out var resolveCallbackType, out var resolveArgType,
+          out var rejectCallbackType, out var rejectArgType),
+        inputReader.CallExt(ReadArgsOf(argTypes), args),
+        module.CastTo(methodInfo.DeclaringType).Call(methodInfo, args,
+          AutoLambda(resolveCallbackType, Parameter(resolveArgType, out var result),
+            resolve.Invoke(outputWriter.CallExt(WriteArgsOf(resolveArgType), result))),
+          AutoLambda(rejectCallbackType, Parameter(rejectArgType, out var error),
+            reject.Invoke(outputWriter.CallExt(WriteErrorOf(rejectArgType), error)))));
+    }
+
 
     private ReactMethodImpl MakePromiseMethod(MethodInfo methodInfo, ParameterInfo[] parameters)
     {
@@ -112,21 +157,17 @@ namespace Microsoft.ReactNative.Managed
       //    MethodResultCallback resolve, MethodResultCallback reject) =>
       // {
       //   inputReader.ReadArgs(out ArgType0 arg0, out ArgType1 arg1);
-      //     (module as ModuleType).Method(arg0, arg1,
-      //       result => resolve(outputWriter.WriteArgs(result)),
-      //       error => reject(outputWriter.WriteError(error)));
+      //   (module as ModuleType).Method(arg0, arg1,
+      //     new ReactPromise<TValue>(outputWriter, resolve, reject));
       // }
 
       // The last two parameters in parameters are resolve and reject delegates
       return CompileLambda<ReactMethodImpl>(
         MethodParameters(out var module, out var inputReader, out var outputWriter, out var resolve, out var reject),
-        MethodArgs(parameters, callbackCount: 2, out var argTypes, out var args, out var resolveArgType, out var rejectArgType),
+        MethodArgs(parameters, out var argTypes, out var args, out var promiseResultType),
         inputReader.CallExt(ReadArgsOf(argTypes), args),
         module.CastTo(methodInfo.DeclaringType).Call(methodInfo, args,
-          AutoLambda(ResultCallbackOf(resolveArgType), Parameter(resolveArgType, out var result),
-            resolve.Invoke(outputWriter.CallExt(WriteArgsOf(resolveArgType), result))),
-          AutoLambda(ResultCallbackOf(resolveArgType), Parameter(rejectArgType, out var error),
-            reject.Invoke(outputWriter.CallExt(WriteErrorOf(rejectArgType), error)))));
+          New(ReactPromiseCtorOf(promiseResultType), outputWriter, resolve, reject)));
     }
 
     private ReactMethodImpl MakeReturningMethod(MethodInfo methodInfo, Type returnType, ParameterInfo[] parameters)
@@ -143,9 +184,9 @@ namespace Microsoft.ReactNative.Managed
       // It is like the MakeCallbackMethod but callback is not passed as a parameter.
       return CompileLambda<ReactMethodImpl>(
         MethodParameters(out var module, out var inputReader, out var outputWriter, out var resolve, out _),
-        MethodArgs(parameters, callbackCount: 1, out var argTypes, out var args, out var resolveArgType, out _),
+        MethodArgs(parameters, out var argTypes, out var args),
         inputReader.CallExt(ReadArgsOf(argTypes), args),
-        resolve.Invoke(outputWriter.CallExt(WriteArgsOf(resolveArgType),
+        resolve.Invoke(outputWriter.CallExt(WriteArgsOf(returnType),
           module.CastTo(methodInfo.DeclaringType).Call(methodInfo, args))));
     }
 
@@ -156,13 +197,9 @@ namespace Microsoft.ReactNative.Managed
         MethodResultCallback resolve,
         MethodResultCallback reject);
 
-    private delegate void ResultCallback<T>(T result);
-
-    private Type ResultCallbackOf(Type type) => typeof(ResultCallback<>).MakeGenericType(type);
-
     public string MethodName { get; }
 
-    public MethodReturnType MethodReturnType { get;  }
+    public MethodReturnType MethodReturnType { get; }
 
     public Lazy<ReactMethodImpl> MethodImpl { get; }
 

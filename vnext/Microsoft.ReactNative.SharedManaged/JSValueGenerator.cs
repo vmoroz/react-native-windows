@@ -384,11 +384,23 @@ namespace Microsoft.ReactNative.Managed
 
     public static MethodCallExpression Call(this Expression instance, MethodInfo method, params object[] arguments)
     {
-      var args = arguments
-        .Select(a => a as Expression
-          ?? (a as VariableWrapper)?.AsExpression)
-        .Where(a => a != null).ToArray();
-      return Expression.Call(instance, method, args);
+      var args = new List<Expression>();
+
+      void ParseArgs(object[] argObjects)
+      {
+        foreach (var arg in argObjects)
+        {
+          switch (arg)
+          {
+            case object[] items: ParseArgs(items); break;
+            case VariableWrapper variable: args.Add(variable.AsExpression); break;
+            case Expression expr: args.Add(expr); break;
+          }
+        }
+      }
+
+      ParseArgs(arguments);
+      return Expression.Call(method.IsStatic ? null : instance, method, args);
     }
 
     public static TDelegate CompileLambda<TDelegate>(params object[] expressions) where TDelegate : Delegate
@@ -399,16 +411,55 @@ namespace Microsoft.ReactNative.Managed
 
     public static VariableWrapper[] MethodArgs(
       ParameterInfo[] parameters,
-      int callbackCount,
+      out Type[] argTypes,
+      out VariableWrapper[] args)
+    {
+      argTypes = parameters.Select(p => p.ParameterType).ToArray();
+      args = argTypes.Select(t => Variable(t, out _)).ToArray();
+      return args;
+    }
+
+    public static VariableWrapper[] MethodArgs(
+      ParameterInfo[] parameters,
       out Type[] argTypes,
       out VariableWrapper[] args,
+      out Type promiseResultType)
+    {
+      argTypes = parameters.Take(parameters.Length - 1).Select(p => p.ParameterType).ToArray();
+      args = argTypes.Select(t => Variable(t, out _)).ToArray();
+      promiseResultType = parameters[parameters.Length - 1].ParameterType.GetGenericArguments()[0];
+      return args;
+    }
+
+    public static VariableWrapper[] MethodArgs(
+      ParameterInfo[] parameters,
+      out Type[] argTypes,
+      out VariableWrapper[] args,
+      out Type resolveCallbackType,
+      out Type resolveArgType)
+    {
+      argTypes = parameters.Take(parameters.Length - 1).Select(p => p.ParameterType).ToArray();
+      args = argTypes.Select(t => Variable(t, out _)).ToArray();
+      resolveCallbackType = parameters[parameters.Length - 1].ParameterType;
+      resolveArgType = resolveCallbackType.GetMethod("Invoke").GetParameters()[0].ParameterType;
+      return args;
+    }
+
+    public static VariableWrapper[] MethodArgs(
+      ParameterInfo[] parameters,
+      out Type[] argTypes,
+      out VariableWrapper[] args,
+      out Type resolveCallbackType,
       out Type resolveArgType,
+      out Type rejectCallbackType,
       out Type rejectArgType)
     {
-      argTypes = parameters.Take(parameters.Length - callbackCount).Select(p => p.ParameterType).ToArray();
+      argTypes = parameters.Take(parameters.Length - 2).Select(p => p.ParameterType).ToArray();
       args = argTypes.Select(t => Variable(t, out _)).ToArray();
-      resolveArgType = (callbackCount > 0) ? parameters[parameters.Length - callbackCount].ParameterType : default;
-      rejectArgType = (callbackCount > 1) ? parameters[parameters.Length - callbackCount + 1].ParameterType : default;
+      resolveCallbackType = parameters[parameters.Length - 2].ParameterType;
+      resolveArgType = resolveCallbackType.GetMethod("Invoke").GetParameters()[0].ParameterType;
+      rejectCallbackType = parameters[parameters.Length - 1].ParameterType;
+      rejectArgType = rejectCallbackType.GetMethod("Invoke").GetParameters()[0].ParameterType;
       return args;
     }
 

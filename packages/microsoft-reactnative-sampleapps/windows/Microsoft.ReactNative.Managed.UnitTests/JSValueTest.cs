@@ -5,13 +5,6 @@ using Microsoft.ReactNative.Bridge;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json.Linq;
 
-// Serialization and deserialization of C# types.
-// For a struct or field we serialize public fields and properties.
-// For any IEnumerable type we serialize it content.
-// For any ICollection we can create deserialization for content.
-// For IDictonary we serialize/deserialize as object.
-// Simple types: numbers, Boolean, String.
-// 
 namespace Microsoft.ReactNative.Managed.UnitTests
 {
     [TestClass]
