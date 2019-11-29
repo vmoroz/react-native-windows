@@ -274,6 +274,42 @@ namespace Microsoft.ReactNative.Managed.UnitTests
             promise.Reject(new ReactError { Message = "Promise rejected" });
         }
 
+        [ReactSyncMethod]
+        public int AddSync(int x, int y)
+        {
+            return x + y;
+        }
+
+        [ReactSyncMethod]
+        public int NegateSync(int x)
+        {
+            return -x;
+        }
+
+        [ReactSyncMethod]
+        public string SayHelloSync()
+        {
+            return "Hello";
+        }
+
+        [ReactSyncMethod]
+        public static int StaticAddSync(int x, int y)
+        {
+            return x + y;
+        }
+
+        [ReactSyncMethod]
+        public static int StaticNegateSync(int x)
+        {
+            return -x;
+        }
+
+        [ReactSyncMethod]
+        public static string StaticSayHelloSync()
+        {
+            return "Hello";
+        }
+
         public string Message { get; set; }
         public static string StaticMessage { get; set; }
     }
@@ -634,6 +670,48 @@ namespace Microsoft.ReactNative.Managed.UnitTests
                 (string result) => Assert.AreEqual("Hello_3", result),
                 (JSValue error) => Assert.AreEqual("Promise rejected", error.Object["message"].String));
             Assert.IsTrue(m_moduleBuilder.IsRejectCallbackCalled);
+        }
+
+        [TestMethod]
+        public void TestMethodSyncCall_AddSync()
+        {
+            m_moduleBuilder.CallSync(nameof(SimpleNativeModule.AddSync), 3, 5, out int result);
+            Assert.AreEqual(8, result);
+        }
+
+        [TestMethod]
+        public void TestMethodSyncCall_NegateSync()
+        {
+            m_moduleBuilder.CallSync(nameof(SimpleNativeModule.NegateSync), 3, out int result);
+            Assert.AreEqual(-3, result);
+        }
+
+        [TestMethod]
+        public void TestMethodSyncCall_SayHelloSync()
+        {
+            m_moduleBuilder.CallSync(nameof(SimpleNativeModule.SayHelloSync), out string result);
+            Assert.AreEqual("Hello", result);
+        }
+
+        [TestMethod]
+        public void TestMethodSyncCall_StaticAddSync()
+        {
+            m_moduleBuilder.CallSync(nameof(SimpleNativeModule.StaticAddSync), 3, 5, out int result);
+            Assert.AreEqual(8, result);
+        }
+
+        [TestMethod]
+        public void TestMethodSyncCall_StaticNegateSync()
+        {
+            m_moduleBuilder.CallSync(nameof(SimpleNativeModule.StaticNegateSync), 3, out int result);
+            Assert.AreEqual(-3, result);
+        }
+
+        [TestMethod]
+        public void TestMethodSyncCall_StaticSayHelloSync()
+        {
+            m_moduleBuilder.CallSync(nameof(SimpleNativeModule.StaticSayHelloSync), out string result);
+            Assert.AreEqual("Hello", result);
         }
     }
 }

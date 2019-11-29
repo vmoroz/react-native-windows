@@ -93,6 +93,34 @@ namespace Microsoft.ReactNative.Managed.UnitTests
             GetMethod2(methodName)?.Invoke(ArgReader(arg1, arg2, arg3), ArgWriter(),
                 ResolveCallback(resolve), RejectCallback(reject));
 
+        public void CallSync<TResult>(string methodName, out TResult result)
+        {
+            var writer = ArgWriter();
+            GetSyncMethod(methodName)?.Invoke(ArgReader(), writer);
+            result = GetResult<TResult>(writer);
+        }
+
+        public void CallSync<T1, TResult>(string methodName, T1 arg1, out TResult result)
+        {
+            var writer = ArgWriter();
+            GetSyncMethod(methodName)?.Invoke(ArgReader(arg1), writer);
+            result = GetResult<TResult>(writer);
+        }
+
+        public void CallSync<T1, T2, TResult>(string methodName, T1 arg1, T2 arg2, out TResult result)
+        {
+            var writer = ArgWriter();
+            GetSyncMethod(methodName)?.Invoke(ArgReader(arg1, arg2), writer);
+            result = GetResult<TResult>(writer);
+        }
+
+        public void CallSync<T1, T2, T3, TResult>(string methodName, T1 arg1, T2 arg2, T3 arg3, out TResult result)
+        {
+            var writer = ArgWriter();
+            GetSyncMethod(methodName)?.Invoke(ArgReader(arg1, arg2, arg3), writer);
+            result = GetResult<TResult>(writer);
+        }
+
         private MethodDelegate GetMethod0(string methodName) =>
             (m_methods.TryGetValue(methodName, out var tuple) && tuple.Item1 == MethodReturnType.Void) ? tuple.Item2 : null;
 
@@ -103,13 +131,14 @@ namespace Microsoft.ReactNative.Managed.UnitTests
             (m_methods.TryGetValue(methodName, out var tuple)
             && (tuple.Item1 == MethodReturnType.TwoCallbacks) || tuple.Item1 == MethodReturnType.Promise) ? tuple.Item2 : null;
 
+        private SyncMethodDelegate GetSyncMethod(string methodName) =>
+            m_syncMethods.TryGetValue(methodName, out var syncMethod) ? syncMethod : null;
+
         private MethodResultCallback ResolveCallback<T>(Action<T> resolve)
         {
             return (IJSValueWriter writer) =>
             {
-                var resulReader = new JSValueTreeReader((writer as JSValueTreeWriter).TakeValue());
-                resulReader.ReadArgs(out T result);
-                resolve(result);
+                resolve(GetResult<T>(writer));
                 IsResolveCallbackCalled = true;
             };
         }
@@ -118,11 +147,16 @@ namespace Microsoft.ReactNative.Managed.UnitTests
         {
             return (IJSValueWriter writer) =>
             {
-                var resulReader = new JSValueTreeReader((writer as JSValueTreeWriter).TakeValue());
-                resulReader.ReadArgs(out T result);
-                resolve(result);
+                resolve(GetResult<T>(writer));
                 IsRejectCallbackCalled = true;
             };
+        }
+
+        private static T GetResult<T>(IJSValueWriter writer)
+        {
+            var resulReader = new JSValueTreeReader((writer as JSValueTreeWriter).TakeValue());
+            resulReader.ReadArgs(out T result);
+            return result;
         }
 
         private static IJSValueWriter ArgWriter() => new JSValueTreeWriter();
