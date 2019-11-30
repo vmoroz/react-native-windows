@@ -310,6 +310,9 @@ namespace Microsoft.ReactNative.Managed.UnitTests
             return "Hello";
         }
 
+        [ReactConstant]
+        public readonly string Constant1 = "MyConstant1";
+
         public string Message { get; set; }
         public static string StaticMessage { get; set; }
     }
@@ -712,6 +715,13 @@ namespace Microsoft.ReactNative.Managed.UnitTests
         {
             m_moduleBuilder.CallSync(nameof(SimpleNativeModule.StaticSayHelloSync), out string result);
             Assert.AreEqual("Hello", result);
+        }
+
+        [TestMethod]
+        public void TestConstants()
+        {
+            var constants = m_moduleBuilder.GetConstants();
+            Assert.AreEqual("MyConstant1", constants[nameof(SimpleNativeModule.Constant1)].String);
         }
     }
 }

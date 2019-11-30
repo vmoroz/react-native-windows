@@ -83,6 +83,7 @@ namespace Microsoft.ReactNative.Managed
         let parameters = method.GetParameters()
         where parameters.Length == 2
           && parameters[0].ParameterType == typeof(IJSValueWriter)
+          && parameters[1].ParameterType.IsGenericParameter
         select method;
       return readValueNoParamMethod.First().MakeGenericMethod(typeArg);
     }

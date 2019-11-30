@@ -4,10 +4,6 @@
 using Microsoft.ReactNative.Bridge;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Windows.AI.MachineLearning;
 
 namespace Microsoft.ReactNative.Managed.UnitTests
 {
@@ -173,5 +169,17 @@ namespace Microsoft.ReactNative.Managed.UnitTests
 
         private static IJSValueReader CreateArgReader(Func<IJSValueWriter, IJSValueWriter> argWriter) =>
             new JSValueTreeReader((argWriter(new JSValueTreeWriter()) as JSValueTreeWriter).TakeValue());
+
+        public IReadOnlyDictionary<string, JSValue> GetConstants()
+        {
+            var constantWriter = new JSValueTreeWriter();
+            constantWriter.WriteObjectBegin();
+            foreach (var constantProvider in m_constProviders)
+            {
+                constantProvider(constantWriter);
+            }
+            constantWriter.WriteObjectEnd();
+            return constantWriter.TakeValue().Object;
+        }
     }
 }
