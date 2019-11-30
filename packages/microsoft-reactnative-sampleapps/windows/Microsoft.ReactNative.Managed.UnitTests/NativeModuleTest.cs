@@ -313,6 +313,29 @@ namespace Microsoft.ReactNative.Managed.UnitTests
         [ReactConstant]
         public readonly string Constant1 = "MyConstant1";
 
+        [ReactConstant("const2")]
+        public static readonly string Constant2 = "MyConstant2";
+
+        [ReactConstant("const3")]
+        public Point Constant3 => new Point { X = 2, Y = 3 };
+
+        [ReactConstant]
+        public static Point Constant4 => new Point { X = 3, Y = 4 };
+
+        [ReactConstantProvider]
+        public void Constant5(ReactConstantProvider provider)
+        {
+            provider.Add("const51", new Point { X = 12, Y = 14 });
+            provider.Add("const52", "MyConstant52");
+        }
+
+        [ReactConstantProvider]
+        public static void Constant6(ReactConstantProvider provider)
+        {
+            provider.Add("const61", new Point { X = 15, Y = 17 });
+            provider.Add("const62", "MyConstant62");
+        }
+
         public string Message { get; set; }
         public static string StaticMessage { get; set; }
     }
@@ -722,6 +745,13 @@ namespace Microsoft.ReactNative.Managed.UnitTests
         {
             var constants = m_moduleBuilder.GetConstants();
             Assert.AreEqual("MyConstant1", constants[nameof(SimpleNativeModule.Constant1)].String);
+            Assert.AreEqual("MyConstant2", constants["const2"].String);
+            Assert.AreEqual(new Point { X = 2, Y = 3 }, constants["const3"].To<Point>());
+            Assert.AreEqual(new Point { X = 3, Y = 4 }, constants[nameof(SimpleNativeModule.Constant4)].To<Point>());
+            Assert.AreEqual(new Point { X = 12, Y = 14 }, constants["const51"].To<Point>());
+            Assert.AreEqual("MyConstant52", constants["const52"].String);
+            Assert.AreEqual(new Point { X = 15, Y = 17 }, constants["const61"].To<Point>());
+            Assert.AreEqual("MyConstant62", constants["const62"].String);
         }
     }
 }

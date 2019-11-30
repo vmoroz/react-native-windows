@@ -77,6 +77,15 @@ namespace Microsoft.ReactNative.Managed
     public long Int64 => m_simpleValue.Int64Value;
     public double Double => m_simpleValue.DoubleValue;
 
+    public T To<T>() => (new JSValueTreeReader(this)).ReadValue<T>();
+
+    public JSValue From<T>(T value)
+    {
+      var writer = new JSValueTreeWriter();
+      writer.WriteValue(value);
+      return writer.TakeValue();
+    }
+
     public bool TryGetObjectProperty(string propertyName, out JSValue value)
     {
       if (Type == JSValueType.Object && Object.TryGetValue(propertyName, out value))
