@@ -403,6 +403,16 @@ namespace Microsoft.ReactNative.Managed
       return Expression.Call(method.IsStatic ? null : instance, method, args);
     }
 
+    public static Expression SetField(this Expression instance, FieldInfo fieldInfo, Expression value)
+    {
+      return Assign(Field(fieldInfo.IsStatic ? null : instance, fieldInfo), value);
+    }
+
+    public static Expression SetProperty(this Expression instance, PropertyInfo propertyInfo, Expression value)
+    {
+      return Assign(Property(propertyInfo.GetSetMethod().IsStatic ? null : instance, propertyInfo), value);
+    }
+
     public static TDelegate CompileLambda<TDelegate>(params object[] expressions) where TDelegate : Delegate
     {
       var typeWrapper = new TypeWrapper(typeof(TDelegate));

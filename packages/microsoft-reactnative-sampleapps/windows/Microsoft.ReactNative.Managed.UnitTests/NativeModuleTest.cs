@@ -336,6 +336,18 @@ namespace Microsoft.ReactNative.Managed.UnitTests
             provider.Add("const62", "MyConstant62");
         }
 
+        [ReactEvent("onIntResult1")]
+        public Action<int> OnIntResult1 = null;
+
+        [ReactEvent]
+        public static Action<int> OnIntResult2 = null;
+
+        [ReactEvent]
+        public Action<Point> OnPointResult3 { get; set; }
+
+        [ReactEvent("onPointResult4")]
+        public static Action<Point> OnPointResult4 { get; set; }
+
         public string Message { get; set; }
         public static string StaticMessage { get; set; }
     }
@@ -752,6 +764,64 @@ namespace Microsoft.ReactNative.Managed.UnitTests
             Assert.AreEqual("MyConstant52", constants["const52"].String);
             Assert.AreEqual(new Point { X = 15, Y = 17 }, constants["const61"].To<Point>());
             Assert.AreEqual("MyConstant62", constants["const62"].String);
+        }
+
+        [TestMethod]
+        public void TestEvent_EventField()
+        {
+            bool eventRaised = false;
+            m_moduleBuilder.SetEventHandler("onIntResult1", (int eventArg) =>
+            {
+                Assert.AreEqual(42, eventArg);
+                eventRaised = true;
+            });
+
+            m_module.OnIntResult1(42);
+            Assert.IsTrue(eventRaised);
+        }
+
+        [TestMethod]
+        public void TestEvent_StaticEventField()
+        {
+            bool eventRaised = false;
+            m_moduleBuilder.SetEventHandler(nameof(SimpleNativeModule.OnIntResult2), (int eventArg) =>
+            {
+                Assert.AreEqual(64, eventArg);
+                eventRaised = true;
+            });
+
+            SimpleNativeModule.OnIntResult2(64);
+            Assert.IsTrue(eventRaised);
+        }
+
+        [TestMethod]
+        public void TestEvent_EventProperty()
+        {
+            bool eventRaised = false;
+            m_moduleBuilder.SetEventHandler(nameof(SimpleNativeModule.OnPointResult3), (Point eventArg) =>
+            {
+                Assert.AreEqual(12, eventArg.X);
+                Assert.AreEqual(14, eventArg.Y);
+                eventRaised = true;
+            });
+
+            m_module.OnPointResult3(new Point { X = 12, Y = 14 });
+            Assert.IsTrue(eventRaised);
+        }
+
+        [TestMethod]
+        public void TestEvent_StaticEventProperty()
+        {
+            bool eventRaised = false;
+            m_moduleBuilder.SetEventHandler("onPointResult4", (Point eventArg) =>
+            {
+                Assert.AreEqual(32, eventArg.X);
+                Assert.AreEqual(42, eventArg.Y);
+                eventRaised = true;
+            });
+
+            SimpleNativeModule.OnPointResult4(new Point { X = 32, Y = 42 });
+            Assert.IsTrue(eventRaised);
         }
     }
 }

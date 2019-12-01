@@ -41,11 +41,10 @@ namespace Microsoft.ReactNative.Managed.UnitTests
         Quadrocopter,
     }
 
-#pragma warning disable CS0649
     class RobotTool
     {
         public string Name { get; set; }
-        public int Weight;
+        public int Weight = 0;
         public bool IsEnabled { get; set; }
     }
 
@@ -54,7 +53,6 @@ namespace Microsoft.ReactNative.Managed.UnitTests
         public int X;
         public int Y;
     }
-#pragma warning restore CS0649
 
     class T2Extra
     {

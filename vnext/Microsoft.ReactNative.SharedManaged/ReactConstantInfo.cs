@@ -16,16 +16,16 @@ namespace Microsoft.ReactNative.Managed
     public ReactConstantInfo(PropertyInfo propertyInfo, ReactConstantAttribute constantAttribute)
     {
       ConstantName = constantAttribute.ConstantName ?? propertyInfo.Name;
-      ConstantImpl = new Lazy<ReactConstantImpl>(() => MakePropertyConstant(propertyInfo), LazyThreadSafetyMode.PublicationOnly);
+      ConstantImpl = new Lazy<ReactConstantImpl>(() => MakeConstant(propertyInfo), LazyThreadSafetyMode.PublicationOnly);
     }
 
     public ReactConstantInfo(FieldInfo fieldInfo, ReactConstantAttribute constantAttribute)
     {
       ConstantName = constantAttribute.ConstantName ?? fieldInfo.Name;
-      ConstantImpl = new Lazy<ReactConstantImpl>(() => MakeFieldConstant(fieldInfo), LazyThreadSafetyMode.PublicationOnly);
+      ConstantImpl = new Lazy<ReactConstantImpl>(() => MakeConstant(fieldInfo), LazyThreadSafetyMode.PublicationOnly);
     }
 
-    private ReactConstantImpl MakePropertyConstant(PropertyInfo propertyInfo)
+    private ReactConstantImpl MakeConstant(PropertyInfo propertyInfo)
     {
       // Generate code that looks like:
       //
@@ -42,7 +42,7 @@ namespace Microsoft.ReactNative.Managed
             Property(isStatic ? null : module.CastTo(propertyInfo.DeclaringType), propertyInfo)));
     }
 
-    private ReactConstantImpl MakeFieldConstant(FieldInfo fieldInfo)
+    private ReactConstantImpl MakeConstant(FieldInfo fieldInfo)
     {
       // Generate code that looks like:
       //

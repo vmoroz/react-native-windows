@@ -15,8 +15,8 @@ namespace Microsoft.ReactNative.Managed.UnitTests
         private Dictionary<string, SyncMethodDelegate> m_syncMethods =
             new Dictionary<string, SyncMethodDelegate>();
         private List<ConstantProvider> m_constProviders = new List<ConstantProvider>();
-        private Dictionary<string, ReactEventHandlerSetter> m_eventHandlers =
-            new Dictionary<string, ReactEventHandlerSetter>();
+        private Dictionary<string, Action<IJSValueReader>> m_eventHandlers =
+            new Dictionary<string, Action<IJSValueReader>>();
 
         public bool IsResolveCallbackCalled { get; private set; }
         public bool IsRejectCallbackCalled { get; private set; }
@@ -43,7 +43,18 @@ namespace Microsoft.ReactNative.Managed.UnitTests
 
         public void AddEventHandlerSetter(string name, ReactEventHandlerSetter eventHandlerSetter)
         {
-            m_eventHandlers.Add(name, eventHandlerSetter);
+            eventHandlerSetter((ReactArgWriter argWriter) =>
+            {
+                if (m_eventHandlers.TryGetValue(name, out var eventHandler))
+                {
+                    var writer = new JSValueTreeWriter();
+                    writer.WriteArrayBegin();
+                    argWriter(writer);
+                    writer.WriteArrayEnd();
+
+                    eventHandler(new JSValueTreeReader(writer.TakeValue()));
+                }
+            });
         }
 
         public void Call0(string methodName) =>
@@ -178,8 +189,18 @@ namespace Microsoft.ReactNative.Managed.UnitTests
             {
                 constantProvider(constantWriter);
             }
+
             constantWriter.WriteObjectEnd();
             return constantWriter.TakeValue().Object;
+        }
+
+        public void SetEventHandler<T>(string eventName, Action<T> eventHandler)
+        {
+            m_eventHandlers.Add(eventName, (IJSValueReader reader) =>
+            {
+                reader.ReadArgs(out T arg);
+                eventHandler(arg);
+            });
         }
     }
 }

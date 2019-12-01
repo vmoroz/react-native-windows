@@ -14,6 +14,13 @@ namespace Microsoft.ReactNative.Managed
   {
     public ReactConstantProviderInfo(MethodInfo methodInfo)
     {
+      ParameterInfo[] parameters = methodInfo.GetParameters();
+      if (parameters.Length != 1 || parameters[0].ParameterType != typeof(ReactConstantProvider))
+      {
+        throw new ArgumentException($"Constant provider method must have one parameter of ReactConstantProvider type."
+          + $" Module: {methodInfo.DeclaringType.FullName} Method: {methodInfo.Name}");
+      }
+
       ConstantProviderImpl = new Lazy<ReactConstantProviderImpl>(() => MakeConstantProvider(methodInfo), LazyThreadSafetyMode.PublicationOnly);
     }
 
@@ -25,13 +32,6 @@ namespace Microsoft.ReactNative.Managed
       // {
       //   (module as MyModule).constantProviderMethod(constantProvider);
       // });
-
-      ParameterInfo[] parameters = methodInfo.GetParameters();
-      if (parameters.Length != 1 || parameters[0].ParameterType != typeof(ReactConstantProvider))
-      {
-        throw new ArgumentException($"Constant provider method must have one parameter of ReactConstantProvider type."
-            + $" Module: {methodInfo.DeclaringType.FullName} {methodInfo.Name}");
-      }
 
       bool isStatic = methodInfo.IsStatic;
       return CompileLambda<ReactConstantProviderImpl>(
