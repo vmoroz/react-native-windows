@@ -7,13 +7,13 @@ using System.Collections.Generic;
 
 namespace Microsoft.ReactNative.Managed.UnitTests
 {
-    class JTokenReader : IJSValueReader
+    class JTokenJSValueReader : IJSValueReader
     {
         private JToken m_current;
         private bool m_isIterating = false;
         private readonly Stack<StackEntry> m_stack = new Stack<StackEntry>();
 
-        public JTokenReader(JToken root)
+        public JTokenJSValueReader(JToken root)
         {
             m_current = root;
         }

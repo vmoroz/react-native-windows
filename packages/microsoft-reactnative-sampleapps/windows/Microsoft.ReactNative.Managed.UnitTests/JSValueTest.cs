@@ -22,7 +22,7 @@ namespace Microsoft.ReactNative.Managed.UnitTests
               IntValue: 42,
               DoubleValue: 4.5
             }");
-            IJSValueReader reader = new JTokenReader(jobj);
+            IJSValueReader reader = new JTokenJSValueReader(jobj);
 
             JSValue jsValue = JSValue.ReadFrom(reader);
             Assert.AreEqual(JSValueType.Object, jsValue.Type);
@@ -49,7 +49,7 @@ namespace Microsoft.ReactNative.Managed.UnitTests
                 DoubleValue: 4.5
               }
             }");
-            IJSValueReader reader = new JTokenReader(jobj);
+            IJSValueReader reader = new JTokenJSValueReader(jobj);
 
             JSValue jsValue = JSValue.ReadFrom(reader);
             Assert.AreEqual(JSValueType.Object, jsValue.Type);
@@ -67,7 +67,7 @@ namespace Microsoft.ReactNative.Managed.UnitTests
         public void TestReadArray()
         {
             JArray jarr = JArray.Parse(@"[null, {}, [], ""Hello"", true, 42, 4.5]");
-            IJSValueReader reader = new JTokenReader(jarr);
+            IJSValueReader reader = new JTokenJSValueReader(jarr);
 
             JSValue jsValue = JSValue.ReadFrom(reader);
             Assert.AreEqual(JSValueType.Array, jsValue.Type);
@@ -84,7 +84,7 @@ namespace Microsoft.ReactNative.Managed.UnitTests
         public void TestReadNestedArray()
         {
             JArray jarr = JArray.Parse(@"[[null, {}, [], ""Hello"", true, 42, 4.5]]");
-            IJSValueReader reader = new JTokenReader(jarr);
+            IJSValueReader reader = new JTokenJSValueReader(jarr);
 
             JSValue jsValue = JSValue.ReadFrom(reader);
             Assert.AreEqual(JSValueType.Array, jsValue.Type);

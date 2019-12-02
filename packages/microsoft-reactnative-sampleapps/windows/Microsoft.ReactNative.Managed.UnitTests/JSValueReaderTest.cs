@@ -186,7 +186,7 @@ namespace Microsoft.ReactNative.Managed.UnitTests
                 Path: [{X: 5, Y: 6}, {X: 45, Y: 90}, {X: 15, Y: 16}],
                 Extra: {Kind: 1, MovieSeries: ""Episode 2""}
             }");
-            IJSValueReader reader = new JTokenReader(jobj);
+            IJSValueReader reader = new JTokenJSValueReader(jobj);
 
             reader.ReadValue(out RobotInfo robot);
             Assert.AreEqual(RobotModel.R2D2, robot.Model);
@@ -249,7 +249,7 @@ namespace Microsoft.ReactNative.Managed.UnitTests
                 Extra = new R2D2Extra { MovieSeries = "Episode 2" }
             };
 
-            var writer = new JsonWriter();
+            var writer = new JTokenJSValueWriter();
             writer.WriteValue(robot);
             JToken jValue = writer.TakeValue();
 
@@ -300,7 +300,7 @@ namespace Microsoft.ReactNative.Managed.UnitTests
                 FloatValue: 3.14,
                 NullValue: null
             }");
-            IJSValueReader reader = new JTokenReader(jobj);
+            IJSValueReader reader = new JTokenJSValueReader(jobj);
 
             Assert.AreEqual(JSValueType.Object, reader.ValueType);
             int properyCount = 0;
@@ -443,7 +443,7 @@ namespace Microsoft.ReactNative.Managed.UnitTests
         [TestMethod]
         public void TestWriteValueDefaultExtensions()
         {
-            var writer = new JsonWriter();
+            var writer = new JTokenJSValueWriter();
             writer.WriteObjectBegin();
             writer.WriteObjectProperty("StringValue1", "");
             writer.WriteObjectProperty("StringValue2", "5");

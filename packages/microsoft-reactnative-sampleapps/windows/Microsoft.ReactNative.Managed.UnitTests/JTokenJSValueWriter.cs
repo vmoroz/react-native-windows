@@ -9,7 +9,7 @@ using System.Linq;
 
 namespace Microsoft.ReactNative.Managed.UnitTests
 {
-    class JsonWriter : IJSValueWriter
+    class JTokenJSValueWriter : IJSValueWriter
     {
         private State m_state = State.Start;
         private List<StackEntry> m_stack = new List<StackEntry>();
