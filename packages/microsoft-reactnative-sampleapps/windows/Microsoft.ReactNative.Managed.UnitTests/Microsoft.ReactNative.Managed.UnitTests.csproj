@@ -119,8 +119,8 @@
     <SDKReference Include="TestPlatform.Universal, Version=$(UnitTestPlatformVersion)" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="JsonReader.cs" />
-    <Compile Include="JsonWriter.cs" />
+    <Compile Include="JTokenJSValueReader.cs" />
+    <Compile Include="JTokenJSValueWriter.cs" />
     <Compile Include="JSValueReaderTest.cs" />
     <Compile Include="NativeModuleTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
