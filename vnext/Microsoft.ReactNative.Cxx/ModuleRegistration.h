@@ -3,7 +3,6 @@
 
 #pragma once
 #include "winrt/Microsoft.ReactNative.Bridge.h"
-#include "winrt/Microsoft.ReactNative.h"
 
 #define INTERNAL_REACT_MODULE_3_ARGS(moduleClass, moduleName, eventEmitterName)                               \
   struct moduleClass;                                                                                         \
