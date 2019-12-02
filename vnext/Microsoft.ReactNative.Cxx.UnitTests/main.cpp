@@ -3,6 +3,8 @@
 #define CATCH_CONFIG_RUNNER
 #include "catch.hpp"
 
+#include "JSValue.h"
+
 using namespace winrt;
 using namespace Windows::Foundation;
 
