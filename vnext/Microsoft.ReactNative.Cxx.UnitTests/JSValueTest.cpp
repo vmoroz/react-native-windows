@@ -61,43 +61,35 @@ TEST_CASE("TestReadNestedObject", "JSValueTest") {
   REQUIRE(nestedObj.at("DoubleValue").Double() == 4.5);
 }
 
-//[TestMethod] public void TestReadArray() {
-//  JArray jarr = JArray.Parse(
-//      @"[null, {}, [], "
-//       "Hello"
-//       ", true, 42, 4.5]");
-//  IJSValueReader reader = new JTokenJSValueReader(jarr);
-//
-//  JSValue jsValue = JSValue.ReadFrom(reader);
-//  Assert.AreEqual(JSValueType.Array, jsValue.Type);
-//  Assert.IsTrue(jsValue.Array[0].IsNull);
-//  Assert.IsNotNull(jsValue.Array[1].Object);
-//  Assert.IsNotNull(jsValue.Array[2].Array);
-//  Assert.AreEqual("Hello", jsValue.Array[3].String);
-//  Assert.AreEqual(true, jsValue.Array[4].Boolean);
-//  Assert.AreEqual(42, jsValue.Array[5].Int64);
-//  Assert.AreEqual(4.5, jsValue.Array[6].Double);
-//}
-//
-//[TestMethod] public void TestReadNestedArray() {
-//  JArray jarr = JArray.Parse(
-//      @"[[null, {}, [], "
-//       "Hello"
-//       ", true, 42, 4.5]]");
-//  IJSValueReader reader = new JTokenJSValueReader(jarr);
-//
-//  JSValue jsValue = JSValue.ReadFrom(reader);
-//  Assert.AreEqual(JSValueType.Array, jsValue.Type);
-//  var nestedArr = jsValue.Array[0].Array;
-//  Assert.IsTrue(nestedArr[0].IsNull);
-//  Assert.IsNotNull(nestedArr[1].Object);
-//  Assert.IsNotNull(nestedArr[2].Array);
-//  Assert.AreEqual("Hello", nestedArr[3].String);
-//  Assert.AreEqual(true, nestedArr[4].Boolean);
-//  Assert.AreEqual(42, nestedArr[5].Int64);
-//  Assert.AreEqual(4.5, nestedArr[6].Double);
-//}
-//}
-//}
+TEST_CASE("TestReadArray", "JSValueTest") {
+  const wchar_t *json = LR"JSON([null, {}, [], "Hello", true, 42, 4.5])JSON";
+  IJSValueReader reader = make<JsonJSValueReader>(json);
+
+  JSValue jsValue = JSValue::ReadFrom(reader);
+  REQUIRE(jsValue.Type() == JSValueType::Array);
+  REQUIRE(jsValue.Array()[0].IsNull());
+  REQUIRE(jsValue.Array()[1].Object().empty());
+  REQUIRE(jsValue.Array()[2].Array().empty());
+  REQUIRE(jsValue.Array()[3].String() == "Hello");
+  REQUIRE(jsValue.Array()[4].Boolean() == true);
+  REQUIRE(jsValue.Array()[5].Int64() == 42);
+  REQUIRE(jsValue.Array()[6].Double() == 4.5);
+}
+
+TEST_CASE("TestReadNestedArray", "JSValueTest") {
+  const wchar_t *json = LR"JSON([[null, {}, [], "Hello", true, 42, 4.5]])JSON";
+  IJSValueReader reader = make<JsonJSValueReader>(json);
+
+  JSValue jsValue = JSValue::ReadFrom(reader);
+  REQUIRE(jsValue.Type() == JSValueType::Array);
+  const auto& nestedArr = jsValue.Array()[0].Array();
+  REQUIRE(nestedArr[0].IsNull());
+  REQUIRE(nestedArr[1].Object().empty());
+  REQUIRE(nestedArr[2].Array().empty());
+  REQUIRE(nestedArr[3].String() == "Hello");
+  REQUIRE(nestedArr[4].Boolean() == true);
+  REQUIRE(nestedArr[5].Int64() == 42);
+  REQUIRE(nestedArr[6].Double() == 4.5);
+}
 
 } // namespace winrt::Microsoft::ReactNative::Bridge
