@@ -112,6 +112,7 @@
   <ItemGroup>
     <ClCompile Include="JsonJSValueReader.cpp" />
     <ClCompile Include="JsonReader.cpp" />
+    <ClCompile Include="JSValueReaderTest.cpp" />
     <ClCompile Include="JSValueTest.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="pch.cpp">
