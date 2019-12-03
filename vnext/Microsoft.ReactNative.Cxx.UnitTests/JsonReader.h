@@ -7,7 +7,7 @@
 #include <stack>
 #include <string_view>
 
-namespace Microsoft::ReactNative::Cxx::UnitTests {
+namespace winrt::Microsoft::ReactNative::Bridge {
 
 struct JsonSource {
   static_assert(sizeof(wchar_t) == 2, "This code expects 2-byte wchars");
@@ -52,7 +52,7 @@ struct JsonReader {
  public:
   JsonReader(JsonSource source) : m_source{source} {
     m_isAllowed.All = 0;
-    m_isAllowed.StartContainer = 1;
+    m_isAllowed.Option.StartContainer = 1;
   }
 
   JsonReader(const JsonReader &) = delete;
@@ -122,7 +122,7 @@ struct JsonReader {
 
       // ,
       uint32_t EndComma : 1;
-    };
+    } Option;
 
     uint32_t All;
 
@@ -141,4 +141,4 @@ struct JsonReader {
   bool m_isStringContent = false;
 };
 
-} // namespace Microsoft::ReactNative::Cxx::UnitTests
+} // namespace winrt::Microsoft::ReactNative::Bridge

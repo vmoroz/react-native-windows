@@ -37,6 +37,10 @@ namespace Microsoft.ReactNative.Managed
             propertyName = properties.Current.Key;
             return true;
           }
+          else
+          {
+            m_isIterating = m_stack.Count != 0;
+          }
         }
       }
       else if (m_stack.Count != 0)
@@ -77,6 +81,11 @@ namespace Microsoft.ReactNative.Managed
             return true;
           }
         }
+        else
+        {
+          m_isIterating = m_stack.Count != 0;
+        }
+
       }
       else if (m_stack.Count != 0)
       {

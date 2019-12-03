@@ -9,7 +9,8 @@
 #include "JsonReader.h"
 #include "Crash.h"
 
-namespace Microsoft::ReactNative::Cxx::UnitTests {
+namespace winrt::Microsoft::ReactNative::Bridge {
+
 static bool IsSimpleWhitespace(wchar_t c) noexcept {
   return (c == ' ' || c == '\t' || c == '\r' || c == '\n');
 }
@@ -23,21 +24,21 @@ JsonParseState JsonReader::ReadNext() noexcept {
 
     wchar_t ch = m_source.PeekChar();
 
-    if (m_isAllowed.StringChar) {
-      if (m_isAllowed.EscapeChar) {
+    if (m_isAllowed.Option.StringChar) {
+      if (m_isAllowed.Option.EscapeChar) {
         if (HandleEscapeChar(ch))
           continue;
         return HandleInvalidData();
       }
 
-      if (m_isAllowed.EscapeCharHex) {
+      if (m_isAllowed.Option.EscapeCharHex) {
         if (HandleEscapeCharHex(ch))
           continue;
         return HandleInvalidData();
       }
 
       if (ch == '\\') {
-        m_isAllowed.EscapeChar = 1;
+        m_isAllowed.Option.EscapeChar = 1;
         continue;
       }
 
@@ -75,7 +76,7 @@ JsonParseState JsonReader::ReadNext() noexcept {
         return HandleEndContainer(JsonParseState::StartObject, JsonParseState::EndObject);
 
       case ',': {
-        if (m_isAllowed.EndComma) {
+        if (m_isAllowed.Option.EndComma) {
           if (HandleEndContainerOrValue(JsonParseState::Value))
             return JsonParseState::Value;
 
@@ -92,7 +93,7 @@ JsonParseState JsonReader::ReadNext() noexcept {
       }
 
       case ':': {
-        if (m_isAllowed.NameDelim) {
+        if (m_isAllowed.Option.NameDelim) {
           m_isAllowed.All = 0;
           OnValueExpected();
           continue;
@@ -121,7 +122,7 @@ void JsonReader::ResetContainerState() noexcept {
   if (m_states.top() == JsonParseState::StartArray) {
     OnValueExpected();
   } else {
-    m_isAllowed.BeginName = 1;
+    m_isAllowed.Option.BeginName = 1;
     m_isStringContent = false;
     m_textBuffer.clear();
   }
@@ -129,20 +130,20 @@ void JsonReader::ResetContainerState() noexcept {
 
 // Called after '[', ':', ','
 void JsonReader::OnValueExpected() noexcept {
-  m_isAllowed.StartContainer = 1;
-  m_isAllowed.BeginValue = 1;
+  m_isAllowed.Option.StartContainer = 1;
+  m_isAllowed.Option.BeginValue = 1;
   m_isStringContent = false;
   m_textBuffer.clear();
 }
 
 // Handle the start of a new Container: [ {
 JsonParseState JsonReader::HandleStartContainer(JsonParseState state) noexcept {
-  if (!m_isAllowed.StartContainer)
+  if (!m_isAllowed.Option.StartContainer)
     return HandleInvalidData();
 
   m_states.push(state);
   ResetContainerState();
-  m_isAllowed.EndContainer = 1;
+  m_isAllowed.Option.EndContainer = 1;
 
   m_source.Inc();
   return state;
@@ -150,7 +151,7 @@ JsonParseState JsonReader::HandleStartContainer(JsonParseState state) noexcept {
 
 // Handle the end of a Container: } ]
 JsonParseState JsonReader::HandleEndContainer(JsonParseState oldState, JsonParseState newState) noexcept {
-  if (!m_isAllowed.EndContainer)
+  if (!m_isAllowed.Option.EndContainer)
     return HandleInvalidData();
 
   // Check for previously ended value first
@@ -170,11 +171,11 @@ JsonParseState JsonReader::HandleEndContainer(JsonParseState oldState, JsonParse
 
 // Handle starting a new string: "
 bool JsonReader::HandleBeginString() noexcept {
-  if (m_isAllowed.BeginName || m_isAllowed.BeginValue) {
-    m_states.push(m_isAllowed.BeginName ? JsonParseState::Name : JsonParseState::Value);
+  if (m_isAllowed.Option.BeginName || m_isAllowed.Option.BeginValue) {
+    m_states.push(m_isAllowed.Option.BeginName ? JsonParseState::Name : JsonParseState::Value);
 
     m_isAllowed.All = 0;
-    m_isAllowed.StringChar = 1;
+    m_isAllowed.Option.StringChar = 1;
     m_isStringContent = true;
     return true;
   }
@@ -186,16 +187,16 @@ bool JsonReader::HandleBeginString() noexcept {
 bool JsonReader::HandleNonStringChar(wchar_t ch) noexcept {
   // FUTURE: could add more validation here
 
-  if (m_isAllowed.NonStringChar) {
+  if (m_isAllowed.Option.NonStringChar) {
     m_textBuffer += ch;
     return true;
   }
 
-  if (m_isAllowed.BeginValue) {
+  if (m_isAllowed.Option.BeginValue) {
     m_isAllowed.All = 0;
-    m_isAllowed.NonStringChar = 1;
-    m_isAllowed.EndComma = 1;
-    m_isAllowed.EndContainer = 1;
+    m_isAllowed.Option.NonStringChar = 1;
+    m_isAllowed.Option.EndComma = 1;
+    m_isAllowed.Option.EndContainer = 1;
     m_states.push(JsonParseState::Value);
     m_textBuffer.clear();
 
@@ -234,8 +235,8 @@ bool JsonReader::HandleEscapeChar(wchar_t ch) noexcept {
 
     case 'u':
       // Switch to hex-mode
-      m_isAllowed.EscapeChar = 0;
-      m_isAllowed.EscapeCharHex = 1;
+      m_isAllowed.Option.EscapeChar = 0;
+      m_isAllowed.Option.EscapeCharHex = 1;
       m_hexStartIndex = m_textBuffer.length();
       return true;
 
@@ -245,7 +246,7 @@ bool JsonReader::HandleEscapeChar(wchar_t ch) noexcept {
 
   m_textBuffer += ch;
 
-  m_isAllowed.EscapeChar = 0;
+  m_isAllowed.Option.EscapeChar = 0;
   return true;
 }
 
@@ -268,7 +269,7 @@ bool JsonReader::HandleEscapeCharHex(wchar_t ch) noexcept {
   m_textBuffer.resize(m_hexStartIndex);
   m_textBuffer += ch;
 
-  m_isAllowed.EscapeCharHex = 0;
+  m_isAllowed.Option.EscapeCharHex = 0;
   return true;
 }
 
@@ -279,8 +280,8 @@ bool JsonReader::HandleEndContainerOrValue(JsonParseState state) noexcept {
 
     m_isAllowed.All = 0;
     if (m_states.size() > 0) {
-      m_isAllowed.EndComma = 1;
-      m_isAllowed.EndContainer = 1;
+      m_isAllowed.Option.EndComma = 1;
+      m_isAllowed.Option.EndContainer = 1;
     }
 
     return true;
@@ -294,7 +295,7 @@ bool JsonReader::HandleEndName() noexcept {
   if (m_states.top() == JsonParseState::Name) {
     m_states.pop();
     m_isAllowed.All = 0;
-    m_isAllowed.NameDelim = 1;
+    m_isAllowed.Option.NameDelim = 1;
     return true;
   }
 
@@ -375,4 +376,4 @@ bool JsonReader::IsNull() noexcept {
   return false;
 }
 
-} // namespace Microsoft::ReactNative::Cxx::UnitTests
+} // namespace winrt::Microsoft::ReactNative::Bridge

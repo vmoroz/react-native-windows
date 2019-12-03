@@ -61,6 +61,8 @@ bool DynamicReader::GetNextObjectProperty(hstring &propertyName) noexcept {
         SetCurrentValue(&(property->second));
         propertyName = to_hstring(property->first.asString());
         return true;
+      } else {
+        m_isIterating = !m_stack.empty();
       }
     }
   } else if (!m_stack.empty()) {
@@ -91,6 +93,8 @@ bool DynamicReader::GetNextArrayItem() noexcept {
         m_stack.push_back(StackEntry::ArrayItem(m_current, item));
         SetCurrentValue(&*item);
         return true;
+      } else {
+        m_isIterating = !m_stack.empty();
       }
     }
   } else if (!m_stack.empty()) {

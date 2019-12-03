@@ -4,7 +4,7 @@
 #include "Crash.h"
 #include "winrt/Microsoft.ReactNative.Bridge.h"
 
-namespace winrt::Microsoft::ReactNative {
+namespace winrt::Microsoft::ReactNative::Bridge {
 
 // Forward declarations
 struct JSValue;
@@ -48,38 +48,38 @@ struct JSValueArrayView {
 struct JSValue {
   static const JSValue Null;
 
-  JSValue() noexcept : m_type{Bridge::JSValueType::Null}, m_int64{0} {}
-  JSValue(std::nullptr_t) noexcept : m_type{Bridge::JSValueType::Null}, m_int64{0} {}
-  JSValue(JSValueObject &&value) noexcept : m_type{Bridge::JSValueType::Object}, m_object{std::move(value)} {}
-  JSValue(JSValueArray &&value) noexcept : m_type{Bridge::JSValueType::Array}, m_array(std::move(value)) {}
-  JSValue(std::string &&value) noexcept : m_type{Bridge::JSValueType::String}, m_string{std::move(value)} {}
-  JSValue(bool value) noexcept : m_type{Bridge::JSValueType::Boolean}, m_bool{value} {}
-  JSValue(int64_t value) noexcept : m_type{Bridge::JSValueType::Int64}, m_int64{value} {}
-  JSValue(double value) noexcept : m_type{Bridge::JSValueType::Double}, m_double{value} {}
+  JSValue() noexcept : m_type{JSValueType::Null}, m_int64{0} {}
+  JSValue(std::nullptr_t) noexcept : m_type{JSValueType::Null}, m_int64{0} {}
+  JSValue(JSValueObject &&value) noexcept : m_type{JSValueType::Object}, m_object{std::move(value)} {}
+  JSValue(JSValueArray &&value) noexcept : m_type{JSValueType::Array}, m_array(std::move(value)) {}
+  JSValue(std::string &&value) noexcept : m_type{JSValueType::String}, m_string{std::move(value)} {}
+  JSValue(bool value) noexcept : m_type{JSValueType::Boolean}, m_bool{value} {}
+  JSValue(int64_t value) noexcept : m_type{JSValueType::Int64}, m_int64{value} {}
+  JSValue(double value) noexcept : m_type{JSValueType::Double}, m_double{value} {}
 
   JSValue(JSValue &&other) noexcept : m_type{other.m_type} {
     switch (m_type) {
-      case Bridge::JSValueType::Object:
-        m_object = std::move(other.m_object);
+      case JSValueType::Object:
+        new (&m_object) JSValueObject(std::move(other.m_object));
         break;
-      case Bridge::JSValueType::Array:
-        m_array = std::move(other.m_array);
+      case JSValueType::Array:
+        new (&m_array) JSValueArray(std::move(other.m_array));
         break;
-      case Bridge::JSValueType::String:
-        m_string = std::move(other.m_string);
+      case JSValueType::String:
+        new (&m_string) std::string(std::move(other.m_string));
         break;
-      case Bridge::JSValueType::Boolean:
+      case JSValueType::Boolean:
         m_bool = other.m_bool;
         break;
-      case Bridge::JSValueType::Int64:
+      case JSValueType::Int64:
         m_int64 = other.m_int64;
         break;
-      case Bridge::JSValueType::Double:
+      case JSValueType::Double:
         m_double = other.m_double;
         break;
     }
 
-    other.m_type = Bridge::JSValueType::Null;
+    other.m_type = JSValueType::Null;
     other.m_int64 = 0;
   }
 
@@ -97,56 +97,56 @@ struct JSValue {
 
   ~JSValue() noexcept {
     switch (m_type) {
-      case Bridge::JSValueType::Object:
+      case JSValueType::Object:
         m_object.~map();
         break;
-      case Bridge::JSValueType::Array:
+      case JSValueType::Array:
         m_array.~vector();
         break;
-      case Bridge::JSValueType::String:
+      case JSValueType::String:
         m_string.~basic_string();
         break;
     }
 
     m_int64 = 0;
-    m_type = Bridge::JSValueType::Null;
+    m_type = JSValueType::Null;
   }
 
-  Bridge::JSValueType Type() const noexcept {
+  JSValueType Type() const noexcept {
     return m_type;
   }
 
   bool IsNull() const noexcept {
-    return m_type == Bridge::JSValueType::Null;
+    return m_type == JSValueType::Null;
   }
 
   const JSValueObject &Object() const noexcept {
-    VerifyElseCrash(m_type == Bridge::JSValueType::Object);
+    VerifyElseCrash(m_type == JSValueType::Object);
     return m_object;
   }
 
   const JSValueArray &Array() const noexcept {
-    VerifyElseCrash(m_type == Bridge::JSValueType::Array);
+    VerifyElseCrash(m_type == JSValueType::Array);
     return m_array;
   }
 
   const std::string &String() const noexcept {
-    VerifyElseCrash(m_type == Bridge::JSValueType::String);
+    VerifyElseCrash(m_type == JSValueType::String);
     return m_string;
   }
 
   bool Boolean() const noexcept {
-    VerifyElseCrash(m_type == Bridge::JSValueType::Boolean);
+    VerifyElseCrash(m_type == JSValueType::Boolean);
     return m_bool;
   }
 
   int64_t Int64() const noexcept {
-    VerifyElseCrash(m_type == Bridge::JSValueType::Int64);
+    VerifyElseCrash(m_type == JSValueType::Int64);
     return m_int64;
   }
 
   double Double() const noexcept {
-    VerifyElseCrash(m_type == Bridge::JSValueType::Double);
+    VerifyElseCrash(m_type == JSValueType::Double);
     return m_double;
   }
 
@@ -159,7 +159,7 @@ struct JSValue {
   // }
 
   const JSValue *GetObjectProperty(std::string_view propertyName) {
-    if (m_type == Bridge::JSValueType::Object) {
+    if (m_type == JSValueType::Object) {
       auto it = m_object.find(propertyName);
       if (it != m_object.end()) {
         return &(it->second);
@@ -172,19 +172,19 @@ struct JSValue {
   bool Equals(const JSValue &other) const noexcept {
     if (m_type == other.m_type) {
       switch (m_type) {
-        case Bridge::JSValueType::Null:
+        case JSValueType::Null:
           return true;
-        case Bridge::JSValueType::Object:
+        case JSValueType::Object:
           return ObjectEquals(m_object);
-        case Bridge::JSValueType::Array:
+        case JSValueType::Array:
           return ArrayEquals(m_array);
-        case Bridge::JSValueType::String:
+        case JSValueType::String:
           return m_string == other.m_string;
-        case Bridge::JSValueType::Boolean:
+        case JSValueType::Boolean:
           return m_bool == other.m_bool;
-        case Bridge::JSValueType::Int64:
+        case JSValueType::Int64:
           return m_int64 == other.m_int64;
-        case Bridge::JSValueType::Double:
+        case JSValueType::Double:
           return m_double == m_double;
         default:
           return false;
@@ -194,14 +194,14 @@ struct JSValue {
     return false;
   }
 
-   //static JSValue ReadFrom(IJSValueReader& reader) {
-   //  auto treeReader = reader.try_ as IJSValueTreeReader;
-   //  if (treeReader != null) {
-   //    return treeReader.Current;
-   //  }
+   static JSValue ReadFrom(IJSValueReader& reader) {
+     //auto treeReader = reader.try_ as IJSValueTreeReader;
+     //if (treeReader != null) {
+     //  return treeReader.Current;
+     //}
 
-   //  return ReadValue(reader);
-   //}
+     return ReadValue(reader);
+   }
 
   // static Dictionary<string, JSValue> ReadObjectPropertiesFrom(IJSValueReader reader) {
   //   if (reader.ValueType == JSValueType.Object) {
@@ -230,36 +230,36 @@ struct JSValue {
   // }
 
  private:
-  static JSValue ReadValue(Bridge::IJSValueReader &reader) noexcept {
+  static JSValue ReadValue(IJSValueReader &reader) noexcept {
     switch (reader.ValueType()) {
-      case Bridge::JSValueType::Null:
+      case JSValueType::Null:
         return JSValue();
-      case Bridge::JSValueType::Object:
+      case JSValueType::Object:
         return ReadObject(reader);
-      case Bridge::JSValueType::Array:
+      case JSValueType::Array:
         return ReadArray(reader);
-      case Bridge::JSValueType::String:
-        return new JSValue(to_string(reader.GetString()));
-      case Bridge::JSValueType::Boolean:
-        return new JSValue(reader.GetBoolean());
-      case Bridge::JSValueType::Int64:
-        return new JSValue(reader.GetInt64());
-      case Bridge::JSValueType::Double:
-        return new JSValue(reader.GetDouble());
+      case JSValueType::String:
+        return JSValue(to_string(reader.GetString()));
+      case JSValueType::Boolean:
+        return JSValue(reader.GetBoolean());
+      case JSValueType::Int64:
+        return JSValue(reader.GetInt64());
+      case JSValueType::Double:
+        return JSValue(reader.GetDouble());
       default:
         VerifyElseCrashSz(false, "Unexpected JSValueType");
     }
   }
 
-  static JSValue ReadObject(Bridge::IJSValueReader &reader) noexcept {
-    return new JSValue(ReadObjectProperties(reader));
+  static JSValue ReadObject(IJSValueReader &reader) noexcept {
+    return JSValue(ReadObjectProperties(reader));
   }
 
-  static JSValue ReadArray(Bridge::IJSValueReader &reader) noexcept {
-    return new JSValue(ReadArrayItems(reader));
+  static JSValue ReadArray(IJSValueReader &reader) noexcept {
+    return JSValue(ReadArrayItems(reader));
   }
 
-  static JSValueObject ReadObjectProperties(Bridge::IJSValueReader &reader) noexcept {
+  static JSValueObject ReadObjectProperties(IJSValueReader &reader) noexcept {
     JSValueObject properties;
     hstring propertyName;
     while (reader.GetNextObjectProperty(/*ref*/ propertyName)) {
@@ -269,7 +269,7 @@ struct JSValue {
     return properties;
   }
 
-  static JSValueArray ReadArrayItems(Bridge::IJSValueReader &reader) noexcept {
+  static JSValueArray ReadArrayItems(IJSValueReader &reader) noexcept {
     JSValueArray items;
     while (reader.GetNextArrayItem()) {
       items.push_back(ReadValue(reader));
@@ -279,33 +279,33 @@ struct JSValue {
   }
 
  public:
-  void WriteTo(Bridge::IJSValueWriter &writer) const noexcept {
+  void WriteTo(IJSValueWriter &writer) const noexcept {
     switch (m_type) {
-      case Bridge::JSValueType::Null:
+      case JSValueType::Null:
         writer.WriteNull();
         break;
-      case Bridge::JSValueType::Object:
+      case JSValueType::Object:
         WriteObject(writer, Object());
         break;
-      case Bridge::JSValueType::Array:
+      case JSValueType::Array:
         WriteArray(writer, Array());
         break;
-      case Bridge::JSValueType::String:
+      case JSValueType::String:
         writer.WriteString(to_hstring(String()));
         break;
-      case Bridge::JSValueType::Boolean:
+      case JSValueType::Boolean:
         writer.WriteBoolean(Boolean());
         break;
-      case Bridge::JSValueType::Int64:
+      case JSValueType::Int64:
         writer.WriteInt64(Int64());
         break;
-      case Bridge::JSValueType::Double:
+      case JSValueType::Double:
         writer.WriteDouble(Double());
         break;
     }
   }
 
-  static void WriteObject(Bridge::IJSValueWriter &writer, JSValueObjectView value) noexcept {
+  static void WriteObject(IJSValueWriter &writer, JSValueObjectView value) noexcept {
     writer.WriteObjectBegin();
     for (const auto &keyValue : value) {
       writer.WritePropertyName(to_hstring(keyValue.first));
@@ -314,7 +314,7 @@ struct JSValue {
     writer.WriteObjectEnd();
   }
 
-  static void WriteArray(Bridge::IJSValueWriter &writer, JSValueArrayView value) noexcept {
+  static void WriteArray(IJSValueWriter &writer, JSValueArrayView value) noexcept {
     writer.WriteArrayBegin();
     for (const JSValue &item : value) {
       item.WriteTo(writer);
@@ -357,7 +357,7 @@ struct JSValue {
   }
 
  private:
-  Bridge::JSValueType m_type;
+  JSValueType m_type;
   union {
     JSValueObject m_object;
     JSValueArray m_array;
