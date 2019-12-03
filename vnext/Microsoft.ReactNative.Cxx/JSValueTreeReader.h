@@ -5,16 +5,9 @@
 #ifndef MICROSOFT_REACTNATIVE_JSVALUETREEREADER
 #define MICROSOFT_REACTNATIVE_JSVALUETREEREADER
 
-#include <unknwn.h>
-#include "JSValue.h"
-#include "winrt/Microsoft.ReactNative.Bridge.h"
+#include "IJSValueTreeReader.h"
 
 namespace winrt::Microsoft::ReactNative::Bridge {
-
-struct __declspec(uuid("2abb7c60-88d7-45e7-bb72-863c117a0c00")) IJSValueTreeReader : ::IUnknown {
-  virtual const JSValue &Current() noexcept = 0;
-  virtual const JSValue &Root() noexcept = 0;
-};
 
 struct JSValueTreeReader : implements<JSValueTreeReader, IJSValueReader, IJSValueTreeReader> {
   JSValueTreeReader(const JSValue &value) noexcept;

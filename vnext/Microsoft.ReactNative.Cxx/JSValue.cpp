@@ -3,7 +3,7 @@
 
 #include "pch.h"
 #include "JSValue.h"
-#include "JSValueTreeReader.h"
+#include "IJSValueTreeReader.h"
 
 namespace winrt::Microsoft::ReactNative::Bridge {
 
