@@ -17,6 +17,7 @@ namespace winrt::Microsoft::ReactNative::Bridge {
 template <class T>
 T ReadValue(IJSValueReader &reader) noexcept;
 void ReadValue(IJSValueReader &reader, /*out*/ std::string &value) noexcept;
+void ReadValue(IJSValueReader &reader, /*out*/ std::wstring &value) noexcept;
 void ReadValue(IJSValueReader &reader, /*out*/ bool &value) noexcept;
 void ReadValue(IJSValueReader &reader, /*out*/ int64_t &value) noexcept;
 void ReadValue(IJSValueReader &reader, /*out*/ int8_t &value) noexcept;
@@ -53,6 +54,26 @@ inline void ReadValue(IJSValueReader &reader, /*out*/ std::string &value) noexce
       break;
     default:
       value = "";
+      break;
+  }
+}
+
+inline void ReadValue(IJSValueReader &reader, /*out*/ std::wstring &value) noexcept {
+  switch (reader.ValueType()) {
+    case JSValueType::String:
+      value = reader.GetString();
+      break;
+    case JSValueType::Boolean:
+      value = reader.GetBoolean() ? L"true" : L"false";
+      break;
+    case JSValueType::Int64:
+      value = std::to_wstring(reader.GetInt64());
+      break;
+    case JSValueType::Double:
+      value = std::to_wstring(reader.GetDouble());
+      break;
+    default:
+      value = L"";
       break;
   }
 }
@@ -170,7 +191,7 @@ inline void ReadValue(IJSValueReader &reader, /*out*/ double &value) noexcept {
       value = reader.GetBoolean() ? 1 : 0;
       break;
     case JSValueType::Int64:
-      value = reader.GetInt64();
+      value = static_cast<double>(reader.GetInt64());
       break;
     case JSValueType::Double:
       value = reader.GetDouble();
@@ -181,73 +202,12 @@ inline void ReadValue(IJSValueReader &reader, /*out*/ double &value) noexcept {
   }
 }
 
-////
-////template <class T>
-////inline bool ReadValue(winrt::Microsoft::ReactNative::Bridge::IJSValueReader const &reader, T &value) noexcept {
-////  static_assert(sizeof(std::decay_t<T>) == 0, "Implement ReadValue for the T type");
-////}
-////
-////inline bool ReadValue(winrt::Microsoft::ReactNative::Bridge::IJSValueReader const &reader, bool &value) noexcept {
-////
-////  return reader.ValueType() ==  reader.TryGetBoolen(value);
-////}
-////
-////inline bool ReadValue(winrt::Microsoft::ReactNative::Bridge::IJSValueReader const &reader, int8_t &value) noexcept {
-////  int64_t result{};
-////  return reader.TryGetInt64(result) && (value = static_cast<int8_t>(result), true);
-////}
-////
-////inline bool ReadValue(winrt::Microsoft::ReactNative::Bridge::IJSValueReader const &reader, int16_t &value) noexcept
-///{ /  int64_t result{}; /  return reader.TryGetInt64(result) && (value = static_cast<int16_t>(result), true);
-////}
-////
-////inline bool ReadValue(winrt::Microsoft::ReactNative::Bridge::IJSValueReader const &reader, int32_t &value) noexcept
-///{ /  int64_t result{}; /  return reader.TryGetInt64(result) && (value = static_cast<int32_t>(result), true);
-////}
-////
-////inline bool ReadValue(winrt::Microsoft::ReactNative::Bridge::IJSValueReader const &reader, int64_t &value) noexcept
-///{ /  return reader.TryGetInt64(value);
-////}
-////
-////inline bool ReadValue(winrt::Microsoft::ReactNative::Bridge::IJSValueReader const &reader, uint8_t &value) noexcept
-///{ /  int64_t result{}; /  return reader.TryGetInt64(result) && (value = static_cast<uint8_t>(result), true);
-////}
-////
-////inline bool ReadValue(winrt::Microsoft::ReactNative::Bridge::IJSValueReader const &reader, uint16_t &value) noexcept
-///{ /  int64_t result{}; /  return reader.TryGetInt64(result) && (value = static_cast<uint16_t>(result), true);
-////}
-////
-////inline bool ReadValue(winrt::Microsoft::ReactNative::Bridge::IJSValueReader const &reader, uint32_t &value) noexcept
-///{ /  int64_t result{}; /  return reader.TryGetInt64(result) && (value = static_cast<uint32_t>(result), true);
-////}
-////
-////inline bool ReadValue(winrt::Microsoft::ReactNative::Bridge::IJSValueReader const &reader, uint64_t &value) noexcept
-///{ /  int64_t result{}; /  return reader.TryGetInt64(result) && (value = static_cast<uint64_t>(result), true);
-////}
-////
-////inline bool ReadValue(winrt::Microsoft::ReactNative::Bridge::IJSValueReader const &reader, double &value) noexcept {
-////  return reader.TryGetDouble(value);
-////}
-////
-////inline bool ReadValue(winrt::Microsoft::ReactNative::Bridge::IJSValueReader const &reader, float &value) noexcept {
-////  double result{};
-////  return reader.TryGetDouble(result) && (value = static_cast<float>(result), true);
-////}
-////
-////inline bool ReadValue(
-////    winrt::Microsoft::ReactNative::Bridge::IJSValueReader const &reader,
-////    std::string &value) noexcept {
-////  winrt::hstring str;
-////  return reader.TryGetString(str) && (value = winrt::to_string(str), true);
-////}
-////
-////inline bool ReadValue(
-////    winrt::Microsoft::ReactNative::Bridge::IJSValueReader const &reader,
-////    std::wstring &value) noexcept {
-////  winrt::hstring str;
-////  return reader.TryGetString(str) && (value = std::wstring{str.data(), str.size()}, true);
-////}
-////
+template <class T>
+inline void ReadValue(IJSValueReader &reader, /*out*/T &value) noexcept {
+  static_assert(sizeof(std::decay_t<T>) == 0, "Implement ReadValue for the T type");
+}
+
+
 ////template <class... TArgs>
 ////inline void ReadArgs(winrt::Microsoft::ReactNative::Bridge::IJSValueReader const &reader, TArgs &... args) noexcept
 ///{ /  if constexpr (sizeof...(args) > 0) { /    using winrt::Microsoft::ReactNative::Bridge::JSValueReaderState; /

@@ -378,6 +378,7 @@ TEST_CASE("TestReadValueDefaultExtensions", "JSValueReaderTest") {
   while (reader.GetNextObjectProperty(/*out*/ propertyName)) {
     if (propertyName == L"StringValue1") {
       REQUIRE(ReadValue<std::string>(reader) == "");
+      REQUIRE(ReadValue<std::wstring>(reader) == L"");
       REQUIRE(ReadValue<bool>(reader) == false);
       REQUIRE(ReadValue<int8_t>(reader) == 0);
       REQUIRE(ReadValue<int16_t>(reader) == 0);
