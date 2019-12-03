@@ -2,6 +2,8 @@
 // Licensed under the MIT License.
 
 #pragma once
+#ifndef MICROSOFT_REACTNATIVE_JSVALUETREEREADER
+#define MICROSOFT_REACTNATIVE_JSVALUETREEREADER
 
 #include <unknwn.h>
 #include "JSValue.h"
@@ -9,14 +11,12 @@
 
 namespace winrt::Microsoft::ReactNative::Bridge {
 
-struct __declspec(uuid("2abb7c60-88d7-45e7-bb72-863c117a0c00")) IJSValueTreeReader
-  : ::IUnknown {
-  virtual JSValue Current() noexcept = 0;
-  virtual JSValue Root() noexcept = 0;
+struct __declspec(uuid("2abb7c60-88d7-45e7-bb72-863c117a0c00")) IJSValueTreeReader : ::IUnknown {
+  virtual const JSValue &Current() noexcept = 0;
+  virtual const JSValue &Root() noexcept = 0;
 };
 
 struct JSValueTreeReader : implements<JSValueTreeReader, IJSValueReader, IJSValueTreeReader> {
-
   JSValueTreeReader(const JSValue &value) noexcept;
   JSValueTreeReader(JSValue &&value) noexcept;
 
@@ -30,30 +30,30 @@ struct JSValueTreeReader : implements<JSValueTreeReader, IJSValueReader, IJSValu
   double GetDouble() noexcept;
 
  public: // IJSValueTreeReader
-  JSValue Current() noexcept;
-  JSValue Root() noexcept;
+  const JSValue &Current() noexcept;
+  const JSValue &Root() noexcept;
 
  private:
   struct StackEntry {
-    static StackEntry ObjectProperty(
-        const JSValue *value,
-        const JSValueObject::const_iterator &property) noexcept;
-    static StackEntry ArrayItem(const JSValue *value, const JSValueArray::const_iterator &item) noexcept;
+    StackEntry(const JSValue &value, const JSValueObject::const_iterator &property) noexcept;
+    StackEntry(const JSValue &value, const JSValueArray::const_iterator &item) noexcept;
 
-    const JSValue *Value{nullptr};
+    const JSValue& Value;
     JSValueArray::const_iterator Item;
     JSValueObject::const_iterator Property;
   };
 
  private:
-  void SetCurrentValue(const JSValue *value) noexcept;
+  void SetCurrentValue(const JSValue &value) noexcept;
 
  private:
   const JSValue m_ownedValue;
-  const JSValue& m_root;
-  const JSValue *m_current{nullptr};
+  const JSValue &m_root;
+  const JSValue *m_current;
   bool m_isInContainer{false};
   std::vector<StackEntry> m_stack;
 };
 
 } // namespace winrt::Microsoft::ReactNative::Bridge
+
+#endif // MICROSOFT_REACTNATIVE_JSVALUETREEREADER

@@ -10,32 +10,20 @@ namespace winrt::Microsoft::ReactNative::Bridge {
 // JSValueTreeReader implementation
 //===========================================================================
 
-/*static*/ JSValueTreeReader::StackEntry JSValueTreeReader::StackEntry::ObjectProperty(
-    const JSValue *value,
-    const JSValueObject::const_iterator &property) noexcept {
-  StackEntry entry;
-  entry.Value = value;
-  entry.Property = property;
-  return entry;
-}
+JSValueTreeReader::StackEntry::StackEntry(const JSValue &value, const JSValueObject::const_iterator &property) noexcept
+    : Value{value}, Property{property} {}
 
-/*static*/ JSValueTreeReader::StackEntry JSValueTreeReader::StackEntry::ArrayItem(
-    const JSValue *value,
-    const JSValueArray::const_iterator &item) noexcept {
-  StackEntry entry;
-  entry.Value = value;
-  entry.Item = item;
-  return entry;
-}
 
-JSValueTreeReader::JSValueTreeReader(const JSValue &value) noexcept : m_root {value},
-m_current{&value} {}
+JSValueTreeReader::StackEntry::StackEntry(const JSValue &value, const JSValueArray::const_iterator &item) noexcept
+    : Value{value}, Item{item} {}
+
+JSValueTreeReader::JSValueTreeReader(const JSValue &value) noexcept : m_root{value}, m_current{&value} {}
 
 JSValueTreeReader::JSValueTreeReader(JSValue &&value) noexcept
     : m_ownedValue{std::move(value)}, m_root{m_ownedValue}, m_current{&m_ownedValue} {}
 
 JSValueType JSValueTreeReader::ValueType() noexcept {
-  return m_current ? m_current->Type() : JSValueType::Null;
+  return m_current->Type();
 }
 
 bool JSValueTreeReader::GetNextObjectProperty(hstring &propertyName) noexcept {
@@ -44,8 +32,8 @@ bool JSValueTreeReader::GetNextObjectProperty(hstring &propertyName) noexcept {
       const auto &properties = m_current->Object();
       const auto &property = properties.begin();
       if (property != properties.end()) {
-        m_stack.push_back(StackEntry::ObjectProperty(m_current, property));
-        SetCurrentValue(&(property->second));
+        m_stack.emplace_back(m_current, property);
+        SetCurrentValue(property->second);
         propertyName = to_hstring(property->first);
         return true;
       } else {
@@ -54,14 +42,14 @@ bool JSValueTreeReader::GetNextObjectProperty(hstring &propertyName) noexcept {
     }
   } else if (!m_stack.empty()) {
     auto &entry = m_stack.back();
-    if (entry.Value->Type() == JSValueType::Object) {
+    if (entry.Value.Type() == JSValueType::Object) {
       auto &property = entry.Property;
-      if (++property != entry.Value->Object().end()) {
-        SetCurrentValue(&(property->second));
+      if (++property != entry.Value.Object().end()) {
+        SetCurrentValue(property->second);
         propertyName = to_hstring(property->first);
         return true;
       } else {
-        m_current = entry.Value;
+        m_current = &entry.Value;
         m_stack.pop_back();
         m_isInContainer = !m_stack.empty();
       }
@@ -77,8 +65,8 @@ bool JSValueTreeReader::GetNextArrayItem() noexcept {
     if (m_current->Type() == JSValueType::Array) {
       const auto &item = m_current->Array().begin();
       if (item != m_current->Array().end()) {
-        m_stack.push_back(StackEntry::ArrayItem(m_current, item));
-        SetCurrentValue(&*item);
+        m_stack.emplace_back(m_current, item);
+        SetCurrentValue(*item);
         return true;
       } else {
         m_isInContainer = !m_stack.empty();
@@ -86,12 +74,12 @@ bool JSValueTreeReader::GetNextArrayItem() noexcept {
     }
   } else if (!m_stack.empty()) {
     auto &entry = m_stack.back();
-    if (entry.Value->Type() == JSValueType::Array) {
-      if (++entry.Item != entry.Value->Array().end()) {
-        SetCurrentValue(&*entry.Item);
+    if (entry.Value.Type() == JSValueType::Array) {
+      if (++entry.Item != entry.Value.Array().end()) {
+        SetCurrentValue(*entry.Item);
         return true;
       } else {
-        m_current = entry.Value;
+        m_current = &entry.Value;
         m_stack.pop_back();
         m_isInContainer = !m_stack.empty();
       }
@@ -101,9 +89,9 @@ bool JSValueTreeReader::GetNextArrayItem() noexcept {
   return false;
 }
 
-void JSValueTreeReader::SetCurrentValue(const JSValue *value) noexcept {
-  m_current = value;
-  switch (value->Type()) {
+void JSValueTreeReader::SetCurrentValue(const JSValue &value) noexcept {
+  m_current = &value;
+  switch (value.Type()) {
     case JSValueType::Object:
     case JSValueType::Array:
       m_isInContainer = false;
@@ -128,6 +116,14 @@ int64_t JSValueTreeReader::GetInt64() noexcept {
 
 double JSValueTreeReader::GetDouble() noexcept {
   return (ValueType() == JSValueType::Double) ? m_current->Double() : 0;
+}
+
+const JSValue &JSValueTreeReader::Current() noexcept {
+  return *m_current;
+}
+
+const JSValue &JSValueTreeReader::Root() noexcept {
+  return m_root;
 }
 
 } // namespace winrt::Microsoft::ReactNative::Bridge
