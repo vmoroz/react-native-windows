@@ -5,11 +5,11 @@
   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
   IgnorableNamespaces="uap mp">
 
-  <Identity Name="1b661c99-e7a3-40af-993d-1a7a90c20638"
+  <Identity Name="275f6fce-b23e-420f-a82a-1c30fb308a0f"
             Publisher="CN=vmorozov"
             Version="1.0.0.0" />
 
-  <mp:PhoneIdentity PhoneProductId="1b661c99-e7a3-40af-993d-1a7a90c20638" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
+  <mp:PhoneIdentity PhoneProductId="275f6fce-b23e-420f-a82a-1c30fb308a0f" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 
   <Properties>
     <DisplayName>Microsoft.ReactNative.Managed.UnitTests</DisplayName>

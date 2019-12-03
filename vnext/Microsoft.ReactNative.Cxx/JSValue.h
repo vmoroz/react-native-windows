@@ -368,15 +368,15 @@ struct JSValue {
   };
 };
 
-bool operator==(const JSValue &left, const JSValue &right) noexcept {
+inline bool operator==(const JSValue &left, const JSValue &right) noexcept {
   return left.Equals(right);
 }
 
-bool operator!=(const JSValue &left, const JSValue &right) noexcept {
+inline bool operator!=(const JSValue &left, const JSValue &right) noexcept {
   return !left.Equals(right);
 }
 
-void swap(JSValue &left, JSValue &right) noexcept {
+inline void swap(JSValue &left, JSValue &right) noexcept {
   JSValue temp{std::move(right)};
   right = std::move(left);
   left = std::move(temp);

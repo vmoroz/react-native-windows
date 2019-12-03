@@ -17,12 +17,14 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)Crash.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)JSValue.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)JSValueReader.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)JSValueTreeReader.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)JSValueWriter.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)ModuleMemberRegistration.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)ModuleRegistration.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)NativeModules.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="$(MSBuildThisFileDirectory)JSValueTreeReader.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)ModuleRegistration.cpp" />
   </ItemGroup>
 </Project>

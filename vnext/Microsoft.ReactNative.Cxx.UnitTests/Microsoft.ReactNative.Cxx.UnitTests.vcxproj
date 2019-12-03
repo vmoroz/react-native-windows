@@ -52,7 +52,6 @@
   </ImportGroup>
   <ImportGroup Label="Shared">
     <Import Project="..\Microsoft.ReactNative.Cxx\Microsoft.ReactNative.Cxx.vcxitems" Label="Shared" />
-    <Import Project="..\Microsoft.ReactNative.Shared\Microsoft.ReactNative.Shared.vcxitems" Label="Shared" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
@@ -126,6 +125,13 @@
     <Text Include="readme.txt">
       <DeploymentContent>false</DeploymentContent>
     </Text>
+  </ItemGroup>
+  <ItemGroup>
+    <Midl Include="..\Microsoft.ReactNative\IJSValueReader.idl" />
+    <Midl Include="..\Microsoft.ReactNative\IJSValueWriter.idl" />
+    <Midl Include="..\Microsoft.ReactNative\IReactModuleBuilder.idl" />
+    <Midl Include="..\Microsoft.ReactNative\IReactPackageBuilder.idl" />
+    <Midl Include="..\Microsoft.ReactNative\IViewManager.idl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
