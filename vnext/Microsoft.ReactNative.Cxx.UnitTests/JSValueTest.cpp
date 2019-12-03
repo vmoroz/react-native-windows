@@ -33,31 +33,34 @@ TEST_CASE("TestReadObject", "JSValueTest") {
   REQUIRE(jsValue.Object().at("DoubleValue").Double() == 4.5);
 }
 
-//      [TestMethod] public void
-//      TestReadNestedObject() {
-//            JObject jobj = JObject.Parse(@"{
-//              NestedObj: {
-//    NullValue:
-//      null,
-//          ObjValue : {}, ArrayValue : [], StringValue : "" Hello "", BoolValue : true, IntValue : 42, DoubleValue
-//          : 4.5
-//              }
-//  }
-//  ");
-//      IJSValueReader reader = new JTokenJSValueReader(jobj);
-//
-//  JSValue jsValue = JSValue.ReadFrom(reader);
-//  Assert.AreEqual(JSValueType.Object, jsValue.Type);
-//  var nestedObj = jsValue.Object["NestedObj"].Object;
-//  Assert.IsTrue(nestedObj["NullValue"].IsNull);
-//  Assert.IsNotNull(nestedObj["ObjValue"].Object);
-//  Assert.IsNotNull(nestedObj["ArrayValue"].Array);
-//  Assert.AreEqual("Hello", nestedObj["StringValue"].String);
-//  Assert.AreEqual(true, nestedObj["BoolValue"].Boolean);
-//  Assert.AreEqual(42, nestedObj["IntValue"].Int64);
-//  Assert.AreEqual(4.5, nestedObj["DoubleValue"].Double);
-//} // namespace Microsoft.ReactNative.Managed.UnitTests
-//
+TEST_CASE("TestReadNestedObject", "JSValueTest") {
+  const wchar_t *json =
+      LR"JSON({
+        "NestedObj": {
+          "NullValue": null,
+          "ObjValue": {},
+          "ArrayValue": [],
+          "StringValue": "Hello",
+          "BoolValue": true,
+          "IntValue": 42,
+          "DoubleValue": 4.5
+        }
+      })JSON";
+
+  IJSValueReader reader = make<JsonJSValueReader>(json);
+
+  JSValue jsValue = JSValue::ReadFrom(reader);
+  REQUIRE(jsValue.Type() == JSValueType::Object);
+  const auto &nestedObj = jsValue.Object().at("NestedObj").Object();
+  REQUIRE(nestedObj.at("NullValue").IsNull());
+  REQUIRE(nestedObj.at("ObjValue").Object().empty());
+  REQUIRE(nestedObj.at("ArrayValue").Array().empty());
+  REQUIRE(nestedObj.at("StringValue").String() == "Hello");
+  REQUIRE(nestedObj.at("BoolValue").Boolean() == true);
+  REQUIRE(nestedObj.at("IntValue").Int64() == 42);
+  REQUIRE(nestedObj.at("DoubleValue").Double() == 4.5);
+}
+
 //[TestMethod] public void TestReadArray() {
 //  JArray jarr = JArray.Parse(
 //      @"[null, {}, [], "
