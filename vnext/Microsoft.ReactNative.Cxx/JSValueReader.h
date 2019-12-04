@@ -16,12 +16,35 @@ namespace winrt::Microsoft::ReactNative::Bridge {
 // 2. Using a ReadValue standalone function with const JSValue& as a first argument.
 // 3. We can auto-generate the read method for the type in some cases.
 
+// A special type to prevent circular call between
+// ReadValue(IJSValueReader&, T&) and ReadValue(JSValue&, T&)
+template <class T>
+struct TypeWrapper {
+  T Value;
+  operator T &() noexcept {
+    return Value;
+  }
+};
+
 // Forward declarations
 template <class T>
 T ReadValue(IJSValueReader &reader) noexcept;
+template <class T>
+T ReadValue(const JSValue &jsValue) noexcept;
 
-template <class T, std::enable_if_t<!std::is_enum_v<T>, int> = 1>
-void ReadValue(IJSValueReader &reader, /*out*/ T &value) noexcept;
+template <
+    class T,
+    class TJSValueReader,
+    std::enable_if_t<
+        std::is_same_v<TJSValueReader, IJSValueReader> || std::is_same_v<TJSValueReader, TypeWrapper<IJSValueReader>>,
+        int> = 1>
+void ReadValue(TJSValueReader &reader, /*out*/ T &value) noexcept;
+
+template <
+    class T,
+    class TJSValue,
+    std::enable_if_t<std::is_same_v<TJSValue, JSValue> || std::is_same_v<TJSValue, TypeWrapper<JSValue>>, int> = 1>
+void ReadValue(const TJSValue &jsValue, /*out*/ T &value) noexcept;
 
 void ReadValue(IJSValueReader &reader, /*out*/ std::string &value) noexcept;
 void ReadValue(IJSValueReader &reader, /*out*/ std::wstring &value) noexcept;
@@ -54,19 +77,28 @@ void ReadValue(IJSValueReader &reader, /*out*/ JSValue &value) noexcept;
 void ReadValue(IJSValueReader &reader, /*out*/ JSValueObject &value) noexcept;
 void ReadValue(IJSValueReader &reader, /*out*/ JSValueArray &value) noexcept;
 
-template <class T>
-void ReadValue(const JSValue &jsValue, /*out*/ T &value) noexcept;
-template <class T>
-T ReadValue(const JSValue &jsValue) noexcept;
-
 bool SkipArrayToEnd(IJSValueReader &reader) noexcept;
 template <class... TArgs>
 void ReadArgs(IJSValueReader &reader, /*out*/ TArgs &... args) noexcept;
+
+
+#define INTERNAL_REACT_FIELD_2_ARGS(field, fieldName)                                                           \
+  bool REACT_reg##field{                                                                                        \
+      ::Microsoft::ReactNative::ModuleEventFieldInfo<decltype(&std::remove_pointer_t<decltype(this)>::field)>:: \
+          Register(this, eventName, &std::remove_pointer_t<decltype(this)>::field)};
+
+#define INTERNAL_REACT_EVENT_1_ARGS(field) INTERNAL_REACT_EVENT_2_ARGS(field, #field)
+
+#define INTERNAL_REACT_FIELD_MACRO_CHOOSER(...) \
+  INTERNAL_REACT_MEMBER_RECOMPOSER((__VA_ARGS__, INTERNAL_REACT_EVENT_2_ARGS, INTERNAL_REACT_EVENT_1_ARGS, ))
 
 //===========================================================================
 // IJSValueReader extensions implementation
 //===========================================================================
 
+// TODO: add support for attributed structs
+
+// This is a convenience method to call ReadValue for IJSValueReader.
 template <class T>
 inline T ReadValue(IJSValueReader &reader) noexcept {
   T result;
@@ -74,11 +106,42 @@ inline T ReadValue(IJSValueReader &reader) noexcept {
   return result;
 }
 
-template <class T, std::enable_if_t<!std::is_enum_v<T>, int>>
-inline void ReadValue(IJSValueReader &reader, /*out*/ T &value) noexcept {
-  // TODO: add call to ReadValue with JSValue first parameter
-  // TODO: add support for attributed structs
-  static_assert(sizeof(std::decay_t<T>) == 0, "Implement ReadValue for the T type");
+// This is a convenience method to call ReadValue for JSValue.
+template <class T>
+inline T ReadValue(const JSValue &jsValue) noexcept {
+  T result;
+  ReadValue(jsValue, /*out*/ result);
+  return result;
+}
+
+// Try to call ReadValue for JSValue unless it is already called us with TypeWrapper parameter.
+template <
+    class T,
+    class TJSValueReader,
+    std::enable_if_t<
+        std::is_same_v<TJSValueReader, IJSValueReader> || std::is_same_v<TJSValueReader, TypeWrapper<IJSValueReader>>,
+        int>>
+inline void ReadValue(TJSValueReader &reader, /*out*/ T &value) noexcept {
+  if constexpr (std::is_same_v<TJSValueReader, IJSValueReader>) {
+    TypeWrapper<JSValue> jsValue = {JSValue::ReadFrom(reader)};
+    ReadValue(jsValue, /*out*/ value);
+  } else {
+    static_assert(false, "Implement ReadValue for the T type");
+  }
+}
+
+// Try to call ReadValue for IJSValueReader unless it is already called us with TypeWrapper parameter.
+template <
+    class T,
+    class TJSValue,
+    std::enable_if_t<std::is_same_v<TJSValue, JSValue> || std::is_same_v<TJSValue, TypeWrapper<JSValue>>, int>>
+inline void ReadValue(const TJSValue &jsValue, /*out*/ T &value) noexcept {
+  if constexpr (std::is_same_v<TJSValue, JSValue>) {
+    TypeWrapper<IJSValueReader> reader = {MakeJSValueTreeReader(jsValue)};
+    ReadValue(reader, /*out*/ value);
+  } else {
+    static_assert(false, "Implement ReadValue for the T type");
+  }
 }
 
 template <typename TChar, typename TValue>
@@ -336,18 +399,6 @@ void ReadTuple(IJSValueReader &reader, /*out*/ T &tuple, std::index_sequence<I..
 template <class... Ts>
 inline void ReadValue(IJSValueReader &reader, /*out*/ std::tuple<Ts...> &value) noexcept {
   ReadTuple(reader, value, std::make_index_sequence<sizeof...(Ts)>{});
-}
-
-template <class T>
-inline void ReadValue(const JSValue &jsValue, /*out*/ T &value) noexcept {
-  ReadValue(make<JSValueTreeReader>(jsValue), /*out*/ value);
-}
-
-template <class T>
-inline T ReadValue(const JSValue &jsValue) noexcept {
-  T value;
-  ReadValue(MakeJSValueTreeReader(jsValue), /*out*/ value);
-  return value;
 }
 
 // It helps to read arguments from an array if there are more items than expected.
