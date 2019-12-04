@@ -483,7 +483,7 @@ TEST_CASE("TestReadValueDefaultExtensions", "JSValueReaderTest") {
       ++properyCount;
     } else if (propertyName == L"FloatValue") {
       REQUIRE(ReadValue<std::string>(reader) == "3.14");
-   //   REQUIRE(ReadValue<std::wstring>(reader) == L"3.14");
+      REQUIRE(ReadValue<std::wstring>(reader) == L"3.14");
       REQUIRE(ReadValue<bool>(reader) == true);
       REQUIRE(ReadValue<int8_t>(reader) == 3);
       REQUIRE(ReadValue<int16_t>(reader) == 3);
