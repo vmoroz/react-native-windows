@@ -91,9 +91,12 @@ inline void ReadValue(IJSValueReader &reader, /*out*/ std::string &value) noexce
     case JSValueType::Int64:
       value = std::to_string(reader.GetInt64());
       break;
-    case JSValueType::Double:
-      value = std::to_string(reader.GetDouble());
+    case JSValueType::Double: {
+      char output[50];
+      snprintf(output, 50, "%g", reader.GetDouble());
+      value = output;
       break;
+    }
     default:
       value = "";
       break;
@@ -112,7 +115,7 @@ inline void ReadValue(IJSValueReader &reader, /*out*/ std::wstring &value) noexc
       value = std::to_wstring(reader.GetInt64());
       break;
     case JSValueType::Double:
-      value = std::to_wstring(reader.GetDouble());
+      value = to_hstring(reader.GetDouble());
       break;
     default:
       value = L"";
