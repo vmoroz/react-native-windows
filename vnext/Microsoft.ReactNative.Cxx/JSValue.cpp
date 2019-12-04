@@ -157,33 +157,29 @@ bool JSValue::Equals(const JSValue &other) const noexcept {
   return ReadValue(reader);
 }
 
-// TODO: implement
-// static Dictionary<string, JSValue> ReadObjectPropertiesFrom(IJSValueReader reader) {
-//   if (reader.ValueType == JSValueType.Object) {
-//     var treeReader = reader as IJSValueTreeReader;
-//     if (treeReader != null) {
-//       return new Dictionary<string, JSValue>(treeReader.Current.Object as IDictionary<string, JSValue>);
-//     }
+/*static*/ JSValueObject JSValue::ReadObjectFrom(IJSValueReader &reader) noexcept {
+  if (reader.ValueType() == JSValueType::Object) {
+    if (auto treeReader = reader.try_as<IJSValueTreeReader>()) {
+      return CopyObject(treeReader->Current().Object());
+    }
 
-//     return ReadObjectProperties(reader);
-//   }
+    return ReadObjectProperties(reader);
+  }
 
-//   return new Dictionary<string, JSValue>();
-// }
+  return JSValueObject{};
+}
 
-// TODO: implement
-// static List<JSValue> ReadArrayItemsFrom(IJSValueReader reader) {
-//   if (reader.ValueType == JSValueType.Array) {
-//     var treeReader = reader as IJSValueTreeReader;
-//     if (treeReader != null) {
-//       return new List<JSValue>(treeReader.Current.Array as IList<JSValue>);
-//     }
+/*static*/ JSValueArray JSValue::ReadArrayFrom(IJSValueReader &reader) noexcept {
+  if (reader.ValueType() == JSValueType::Array) {
+    if (auto treeReader = reader.try_as<IJSValueTreeReader>()) {
+      return CopyArray(treeReader->Current().Array());
+    }
 
-//     return ReadArrayItems(reader);
-//   }
+    return ReadArrayItems(reader);
+  }
 
-//   return new List<JSValue>();
-// }
+  return JSValueArray{};
+}
 
 void JSValue::WriteTo(IJSValueWriter &writer) const noexcept {
   switch (m_type) {
