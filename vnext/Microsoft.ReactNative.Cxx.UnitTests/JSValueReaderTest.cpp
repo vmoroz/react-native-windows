@@ -5,178 +5,94 @@
 #include "JSValueReader.h"
 #include "JsonJSValueReader.h"
 #include "catch.hpp"
+#include <variant>
 
 namespace winrt::Microsoft::ReactNative::Bridge {
 
-// namespace Microsoft.ReactNative.Managed.UnitTests {
-//  class RobotInfo {
-//   public
-//    RobotModel Model {
-//      get;
-//      set;
-//    }
-//   public
-//    string Name {
-//      get;
-//      set;
-//    }
-//   public
-//    int Age;
-//   public
-//    RobotShape Shape {
-//      get;
-//      set;
-//    }
-//   public
-//    RobotShape ? Shape2 {
-//      get;
-//      set;
-//    }
-//   public
-//    RobotShape ? Shape3 {
-//      get;
-//      set;
-//    }
-//   public
-//    IList<int> Steps {
-//      get;
-//      set;
-//    }
-//   public
-//    IDictionary<string, int> Dimensions {
-//      get;
-//      set;
-//    }
-//   public
-//    Tuple<int, string, bool> Badges {
-//      get;
-//      set;
-//    }
-//   public
-//    RobotTool[] Tools {
-//      get;
-//      set;
-//    }
-//   public
-//    RobotPoint[] Path {
-//      get;
-//      set;
-//    }
-//   public
-//    OneOf<T2Extra, R2D2Extra> Extra {
-//      get;
-//      set;
-//    }
-//  }
-//
-//  enum RobotModel {
-//    T2,
-//    R2D2,
-//    C3PO,
-//  };
-//
-//  // We are generating ReadValue for it.
-//  enum RobotShape {
-//    Humanoid,
-//    Trashcan,
-//    Beercan,
-//    Quadrocopter,
-//  }
-//
-//  class RobotTool {
-//   public
-//    string Name {
-//      get;
-//      set;
-//    }
-//   public
-//    int Weight = 0;
-//   public
-//    bool IsEnabled {
-//      get;
-//      set;
-//    }
-//  }
-//
-//  struct RobotPoint {
-//   public
-//    int X;
-//   public
-//    int Y;
-//  }
-//
-//  class T2Extra {
-//   public
-//    string ActorName {
-//      get;
-//      set;
-//    }
-//   public
-//    int MovieYear {
-//      get;
-//      set;
-//    }
-//  }
-//
-//  class R2D2Extra {
-//   public
-//    string MovieSeries {
-//      get;
-//      set;
-//    }
-//  }
-//
-//  static class RobotSerialization {
-//    // Reading RobotInfo value. It could be generated instead.
-//   public
-//    static void ReadValue(this IJSValueReader reader, out RobotInfo value) {
-//      value = new RobotInfo();
-//      if (reader.ValueType == JSValueType.Object) {
-//        while (reader.GetNextObjectProperty(out string propertyName)) {
-//          switch (propertyName) {
-//            case nameof(value.Model):
-//              value.Model = reader.ReadValue<RobotModel>();
-//              break;
-//            case nameof(value.Name):
-//              value.Name = reader.ReadValue<string>();
-//              break;
-//            case nameof(value.Age):
-//              value.Age = reader.ReadValue<int>();
-//              break;
-//            case nameof(value.Shape):
-//              value.Shape = reader.ReadValue<RobotShape>();
-//              break;
-//            case nameof(value.Shape2):
-//              value.Shape2 = reader.ReadValue < RobotShape ? > ();
-//              break;
-//            case nameof(value.Shape3):
-//              value.Shape3 = reader.ReadValue < RobotShape ? > ();
-//              break;
-//            case nameof(value.Steps):
-//              value.Steps = reader.ReadValue<IList<int>>();
-//              break;
-//            case nameof(value.Dimensions):
-//              value.Dimensions = reader.ReadValue<IDictionary<string, int>>();
-//              break;
-//            case nameof(value.Badges):
-//              value.Badges = reader.ReadValue<Tuple<int, string, bool>>();
-//              break;
-//            case nameof(value.Tools):
-//              value.Tools = reader.ReadValue<RobotTool[]>();
-//              break;
-//            case nameof(value.Path):
-//              value.Path = reader.ReadValue<RobotPoint[]>();
-//              break;
-//            case nameof(value.Extra):
-//              value.Extra = reader.ReadValue<OneOf<T2Extra, R2D2Extra>>();
-//              break;
-//            default:
-//              reader.ReadValue<JSValue>();
-//              break;
-//          }
-//        }
-//      }
-//    }
+enum struct RobotModel {
+  T2,
+  R2D2,
+  C3PO,
+};
+
+// We are generating ReadValue for it.
+enum struct RobotShape {
+  Humanoid,
+  Trashcan,
+  Beercan,
+  Quadrocopter,
+};
+
+struct RobotTool {
+  std::string Name;
+  int Weight;
+  bool IsEnabled;
+};
+
+struct RobotPoint {
+  int X;
+  int Y;
+};
+
+struct T2Extra {
+  std::string ActorName;
+  int MovieYear;
+};
+
+struct R2D2Extra {
+  std::string MovieSeries;
+};
+
+struct RobotInfo {
+  RobotModel Model;
+  std::string Name;
+  int Age;
+  RobotShape Shape;
+  std::optional<RobotShape> Shape2;
+  std::optional<RobotShape> Shape3;
+  std::vector<int> Steps;
+  std::map<std::string, int> Dimensions;
+  std::tuple<int, std::string, bool> Badges;
+  //std::vector<RobotTool> Tools;
+  //std::vector<RobotPoint> Path;
+//  std::variant<T2Extra, R2D2Extra> Extra;
+};
+
+// Reading RobotInfo value. It could be generated instead.
+void ReadValue(IJSValueReader &reader, RobotInfo &value) noexcept {
+  value = RobotInfo();
+  if (reader.ValueType() == JSValueType::Object) {
+    hstring propertyName;
+    while (reader.GetNextObjectProperty(/*out*/ propertyName)) {
+      if (propertyName == L"Model")
+        ReadValue(reader, value.Model);
+      else if (propertyName == L"Name")
+        ReadValue(reader, value.Name);
+      else if (propertyName == L"Age")
+        ReadValue(reader, value.Age);
+      else if (propertyName == L"Shape")
+        ReadValue(reader, value.Shape);
+      else if (propertyName == L"Shape2")
+        ReadValue(reader, value.Shape2);
+      else if (propertyName == L"Shape3")
+        ReadValue(reader, value.Shape3);
+      else if (propertyName == L"Steps")
+        ReadValue(reader, value.Steps);
+      else if (propertyName == L"Dimensions")
+        ReadValue(reader, value.Dimensions);
+      else if (propertyName == L"Badges")
+        ReadValue(reader, value.Badges);
+      //else if (propertyName == L"Tools")
+      //  ReadValue(reader, value.Tools);
+      //else if (propertyName == L"Path")
+      //  ReadValue(reader, value.Path);
+      //else if (propertyName == L"Extra")
+      //  ReadValue(reader, value.Extra);
+      else
+        ReadValue<JSValue>(reader);
+    }
+  }
+}
 //
 //    // Reading RobotInfo value. It could be generated instead.
 //   public
@@ -201,35 +117,32 @@ namespace winrt::Microsoft::ReactNative::Bridge {
 //      }
 //    }
 //
-//    // Reading RobotModel enum value. It could be generated instead.
-//   public
-//    static void ReadValue(this IJSValueReader reader, out RobotModel value) {
-//      value = (RobotModel)reader.ReadValue<int>();
-//    }
+
+// Reading RobotModel enum value. It could be generated instead.
+void ReadValue(IJSValueReader &reader, RobotModel &value) {
+  value = static_cast<RobotModel>(ReadValue<int>(reader));
+}
+
 //
 //    // Writing RobotModel enum value. It could be generated instead.
 //   public
 //    static void WriteValue(this IJSValueWriter writer, RobotModel value) {
 //      writer.WriteValue((int)value);
 //    }
-//
-//    // Reading discriminating union requires using JSValue.
-//   public
-//    static void ReadValue(this JSValue jsValue, out OneOf<T2Extra, R2D2Extra> value) {
-//      value = default;
-//      if (jsValue.TryGetObjectProperty("Kind", out JSValue kind)) {
-//        RobotModel modelType = kind.ReadValue<RobotModel>();
-//        switch (modelType) {
-//          case RobotModel.T2:
-//            value = jsValue.ReadValue<T2Extra>();
-//            break;
-//          case RobotModel.R2D2:
-//            value = jsValue.ReadValue<R2D2Extra>();
-//            break;
-//        }
-//      }
-//    }
-//
+
+// Reading discriminating union requires using JSValue.
+
+//void ReadValue(const JSValue &jsValue, std::variant<T2Extra, R2D2Extra> &value) noexcept {
+//  switch (ReadValue<RobotModel>(jsValue["Kind"])) {
+//    case RobotModel::T2:
+//      value = jsValue.To<T2Extra>();
+//      break;
+//    case RobotModel::R2D2:
+//      value = jsValue.To<R2D2Extra>();
+//      break;
+//  }
+//}
+
 //    // Writing discriminating union is simpler than reading.
 //   public
 //    static void WriteValue(this IJSValueWriter writer, OneOf<T2Extra, R2D2Extra> value) {
@@ -244,61 +157,64 @@ namespace winrt::Microsoft::ReactNative::Bridge {
 //      writer.WriteObjectEnd();
 //    }
 //  }
-//
-//      [TestClass] public class JSValueReaderTest {
-//    [TestMethod] public void TestReadCustomType() {
-//            JObject jobj = JObject.Parse(@"{
-//                Model: 1,
-//                Name: ""Bob"",
-//                Age: 42,
-//                Shape: 1,
-//                Shape2: 2,
-//                Shape3: null,
-//                Steps: [1, 2, 3],
-//                Dimensions: {Width: 24, Height: 78},
-//                Badges: [2, ""Maverick"", true],
-//                Tools: [{Name: ""Screwdriver"", Weight: 2, IsEnabled: true}, {Name: ""Electro-shocker"", Weight: 3,
-//                IsEnabled: false}], Path: [{X: 5, Y: 6}, {X: 45, Y: 90}, {X: 15, Y: 16}], Extra: {
-//      Kind:
-//        1, MovieSeries : "" Episode 2 ""}
-//    }
-//    ");
-//        IJSValueReader reader = new JTokenJSValueReader(jobj);
-//
-//    reader.ReadValue(out RobotInfo robot);
-//    Assert.AreEqual(RobotModel.R2D2, robot.Model);
-//    Assert.AreEqual("Bob", robot.Name);
-//    Assert.AreEqual(42, robot.Age);
-//    Assert.AreEqual(RobotShape.Trashcan, robot.Shape);
-//    Assert.AreEqual(RobotShape.Beercan, robot.Shape2.Value);
-//    Assert.IsFalse(robot.Shape3.HasValue);
-//    Assert.AreEqual(3, robot.Steps.Count);
-//    Assert.AreEqual(1, robot.Steps[0]);
-//    Assert.AreEqual(2, robot.Steps[1]);
-//    Assert.AreEqual(3, robot.Steps[2]);
-//    Assert.AreEqual(2, robot.Dimensions.Count);
-//    Assert.AreEqual(24, robot.Dimensions["Width"]);
-//    Assert.AreEqual(78, robot.Dimensions["Height"]);
-//    Assert.AreEqual(2, robot.Badges.Item1);
-//    Assert.AreEqual("Maverick", robot.Badges.Item2);
-//    Assert.AreEqual(true, robot.Badges.Item3);
-//    Assert.AreEqual(2, robot.Tools.Length);
-//    Assert.AreEqual("Screwdriver", robot.Tools[0].Name);
-//    Assert.AreEqual(2, robot.Tools[0].Weight);
-//    Assert.AreEqual(true, robot.Tools[0].IsEnabled);
-//    Assert.AreEqual("Electro-shocker", robot.Tools[1].Name);
-//    Assert.AreEqual(3, robot.Tools[1].Weight);
-//    Assert.AreEqual(false, robot.Tools[1].IsEnabled);
-//    Assert.AreEqual(3, robot.Path.Length);
-//    Assert.AreEqual(5, robot.Path[0].X);
-//    Assert.AreEqual(6, robot.Path[0].Y);
-//    Assert.AreEqual(45, robot.Path[1].X);
-//    Assert.AreEqual(90, robot.Path[1].Y);
-//    Assert.AreEqual(15, robot.Path[2].X);
-//    Assert.AreEqual(16, robot.Path[2].Y);
-//    Assert.AreEqual(true, robot.Extra.TryGet<R2D2Extra>(out var r2d2Extra));
-//    Assert.AreEqual("Episode 2", r2d2Extra.MovieSeries);
-//  }
+TEST_CASE("TestReadCustomType", "JSValueReaderTest") {
+  const wchar_t *json =
+      LR"JSON({
+        "Model": 1,
+        "Name": "Bob",
+        "Age": 42,
+        "Shape": 1,
+        "Shape2": 2,
+        "Shape3": null,
+        "Steps": [1, 2, 3],
+        "Dimensions": {"Width": 24, "Height": 78},
+        "Badges": [2, "Maverick", true],
+        "Tools": [
+          {"Name": "Screwdriver", "Weight": 2, "IsEnabled": true},
+          {"Name": "Electro-shocker", Weight: 3, "IsEnabled": false}],
+        "Path": [{"X": 5, "Y": 6}, {"X": 45, "Y": 90}, {"X": 15, "Y": 16}],
+        "Extra": {"Kind": 1, "MovieSeries" : "Episode 2"}
+    })JSON";
+
+  IJSValueReader reader = make<JsonJSValueReader>(json);
+
+  RobotInfo robot = ReadValue<RobotInfo>(reader);
+  REQUIRE(robot.Model == RobotModel::R2D2);
+  REQUIRE(robot.Name == "Bob");
+  REQUIRE(robot.Age == 42);
+  REQUIRE(robot.Shape == RobotShape::Trashcan);
+  REQUIRE(*robot.Shape2 == RobotShape::Beercan);
+  REQUIRE(!robot.Shape3.has_value());
+  REQUIRE(robot.Steps.size() == 3);
+  REQUIRE(robot.Steps[0] == 1);
+  REQUIRE(robot.Steps[1] == 2);
+  REQUIRE(robot.Steps[2] == 3);
+  REQUIRE(robot.Dimensions.size() == 2);
+  REQUIRE(robot.Dimensions["Width"] == 24);
+  REQUIRE(robot.Dimensions["Height"] == 78);
+  REQUIRE(std::get<0>(robot.Badges) == 2);
+  REQUIRE(std::get<1>(robot.Badges) == "Maverick");
+  REQUIRE(std::get<2>(robot.Badges) == true);
+  //    Assert.AreEqual(2, robot.Badges.Item1);
+  //    Assert.AreEqual("Maverick", robot.Badges.Item2);
+  //    Assert.AreEqual(true, robot.Badges.Item3);
+  //    Assert.AreEqual(2, robot.Tools.Length);
+  //    Assert.AreEqual("Screwdriver", robot.Tools[0].Name);
+  //    Assert.AreEqual(2, robot.Tools[0].Weight);
+  //    Assert.AreEqual(true, robot.Tools[0].IsEnabled);
+  //    Assert.AreEqual("Electro-shocker", robot.Tools[1].Name);
+  //    Assert.AreEqual(3, robot.Tools[1].Weight);
+  //    Assert.AreEqual(false, robot.Tools[1].IsEnabled);
+  //    Assert.AreEqual(3, robot.Path.Length);
+  //    Assert.AreEqual(5, robot.Path[0].X);
+  //    Assert.AreEqual(6, robot.Path[0].Y);
+  //    Assert.AreEqual(45, robot.Path[1].X);
+  //    Assert.AreEqual(90, robot.Path[1].Y);
+  //    Assert.AreEqual(15, robot.Path[2].X);
+  //    Assert.AreEqual(16, robot.Path[2].Y);
+  //    Assert.AreEqual(true, robot.Extra.TryGet<R2D2Extra>(out var r2d2Extra));
+  //    Assert.AreEqual("Episode 2", r2d2Extra.MovieSeries);
+}
 //
 //      [TestMethod] public void
 //      TestWriteCustomType() {
@@ -517,8 +433,6 @@ TEST_CASE("TestReadValueDefaultExtensions", "JSValueReaderTest") {
   REQUIRE(properyCount == 9);
 }
 
-} // namespace winrt::Microsoft::ReactNative::Bridge
-
 //[TestMethod] public void TestWriteValueDefaultExtensions() {
 //  var writer = new JTokenJSValueWriter();
 //  writer.WriteObjectBegin();
@@ -545,4 +459,5 @@ TEST_CASE("TestReadValueDefaultExtensions", "JSValueReaderTest") {
 //  Assert.AreEqual(JTokenType.Null, jValue["NullValue"].Type);
 //}
 //}
-//}
+
+} // namespace winrt::Microsoft::ReactNative::Bridge

@@ -12,6 +12,7 @@ namespace winrt::Microsoft::ReactNative::Bridge {
 
 // Forward declarations
 struct JSValue;
+IJSValueReader MakeJSValueTreeReader(const JSValue &root) noexcept;
 
 // Type alias for JSValue object type
 using JSValueObject = std::map<std::string, JSValue, std::less<>>;
@@ -80,8 +81,8 @@ struct JSValue {
   int64_t Int64() const noexcept;
   double Double() const noexcept;
 
-  // TODO: template <class T> T To() noexcept;
-  // TODO: template <class T> static JSValue From(const T& value) noexcept;
+  //template <typename T> T To() const noexcept;
+  //template <class T> static JSValue From(const T& value) noexcept;
 
   const JSValue &GetObjectProperty(std::string_view propertyName) const noexcept;
   const JSValue &GetArrayItem(JSValueArray::size_type index) const noexcept;
@@ -194,7 +195,12 @@ inline double JSValue::Double() const noexcept {
   return (m_type == JSValueType::Double) ? m_double : 0;
 }
 
-// T To<T>() = > (new JSValueTreeReader(this)).ReadValue<T>();
+//template <typename T>
+//inline T JSValue::To() const noexcept {
+//  T result;
+//  ReadValue(MakeJSValueTreeReader(*this), result);
+//  return result;
+//}
 
 // JSValue From<T>(T value) {
 //   var writer = new JSValueTreeWriter();

@@ -13,7 +13,6 @@ namespace winrt::Microsoft::ReactNative::Bridge {
 JSValueTreeReader::StackEntry::StackEntry(const JSValue &value, const JSValueObject::const_iterator &property) noexcept
     : Value{value}, Property{property} {}
 
-
 JSValueTreeReader::StackEntry::StackEntry(const JSValue &value, const JSValueArray::const_iterator &item) noexcept
     : Value{value}, Item{item} {}
 
@@ -124,6 +123,10 @@ const JSValue &JSValueTreeReader::Current() noexcept {
 
 const JSValue &JSValueTreeReader::Root() noexcept {
   return m_root;
+}
+
+IJSValueReader MakeJSValueTreeReader(const JSValue& root) noexcept {
+  return make<JSValueTreeReader>(root);
 }
 
 } // namespace winrt::Microsoft::ReactNative::Bridge

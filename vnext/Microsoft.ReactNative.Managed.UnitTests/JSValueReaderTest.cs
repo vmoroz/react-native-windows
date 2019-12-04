@@ -95,7 +95,7 @@ namespace Microsoft.ReactNative.Managed.UnitTests
             }
         }
 
-        // Reading RobotInfo value. It could be generated instead.
+        // Writing RobotInfo value. It could be generated instead.
         public static void WriteValue(this IJSValueWriter writer, RobotInfo value)
         {
             if (value != null)

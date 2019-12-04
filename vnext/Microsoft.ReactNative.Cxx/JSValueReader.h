@@ -19,7 +19,8 @@ namespace winrt::Microsoft::ReactNative::Bridge {
 // Forward declarations
 template <class T>
 T ReadValue(IJSValueReader &reader) noexcept;
-template <class T>
+
+template <class T, std::enable_if_t<!std::is_enum_v<T>, int> = 1>
 void ReadValue(IJSValueReader &reader, /*out*/ T &value) noexcept;
 
 void ReadValue(IJSValueReader &reader, /*out*/ std::string &value) noexcept;
@@ -73,7 +74,7 @@ inline T ReadValue(IJSValueReader &reader) noexcept {
   return result;
 }
 
-template <class T>
+template <class T, std::enable_if_t<!std::is_enum_v<T>, int>>
 inline void ReadValue(IJSValueReader &reader, /*out*/ T &value) noexcept {
   // TODO: add call to ReadValue with JSValue first parameter
   // TODO: add support for attributed structs
@@ -276,7 +277,7 @@ inline void ReadValue(IJSValueReader &reader, /*out*/ T &value) noexcept {
 
 template <class T>
 inline void ReadValue(IJSValueReader &reader, /*out*/ std::optional<T> &value) noexcept {
-  if (reader.ValueType != JSValueType.Null) {
+  if (reader.ValueType() != JSValueType::Null) {
     value = ReadValue<T>(reader);
   } else {
     value = std::nullopt;
@@ -288,7 +289,7 @@ inline void ReadValue(IJSValueReader &reader, /*out*/ std::optional<T> &value) n
 // While std::less<> is better, the standard cannot have a breaking change to switch to it.
 template <class T, class TCompare, class TAlloc>
 inline void ReadValue(IJSValueReader &reader, /*out*/ std::map<std::string, T, TCompare, TAlloc> &value) noexcept {
-  if (reader.ValueType == JSValueType.Object) {
+  if (reader.ValueType() == JSValueType::Object) {
     hstring propertyName;
     while (reader.GetNextObjectProperty(/*out*/ propertyName)) {
       value.emplace(to_string(propertyName), ReadValue<T>(reader));
@@ -298,7 +299,7 @@ inline void ReadValue(IJSValueReader &reader, /*out*/ std::map<std::string, T, T
 
 template <class T, class TCompare, class TAlloc>
 inline void ReadValue(IJSValueReader &reader, /*out*/ std::map<std::wstring, T, TCompare, TAlloc> &value) noexcept {
-  if (reader.ValueType == JSValueType.Object) {
+  if (reader.ValueType() == JSValueType::Object) {
     hstring propertyName;
     while (reader.GetNextObjectProperty(/*out*/ propertyName)) {
       value.emplace(propertyName, ReadValue<T>(reader));
@@ -308,7 +309,7 @@ inline void ReadValue(IJSValueReader &reader, /*out*/ std::map<std::wstring, T, 
 
 template <class T, class TAlloc>
 inline void ReadValue(IJSValueReader &reader, /*out*/ std::vector<T, TAlloc> &value) noexcept {
-  if (reader.ValueType == JSValueType.Array) {
+  if (reader.ValueType() == JSValueType::Array) {
     while (reader.GetNextArrayItem()) {
       value.push_back(ReadValue<T>(reader));
     }
@@ -327,11 +328,14 @@ inline void ReadValue(IJSValueReader &reader, /*out*/ JSValueArray &value) noexc
   value = JSValue::ReadArrayFrom(reader);
 }
 
+template <class T, size_t... I>
+void ReadTuple(IJSValueReader &reader, /*out*/ T &tuple, std::index_sequence<I...>) noexcept {
+  ReadArgs(reader, std::get<I>(tuple)...);
+}
+
 template <class... Ts>
 inline void ReadValue(IJSValueReader &reader, /*out*/ std::tuple<Ts...> &value) noexcept {
-  Ts... args;
-  ReadArgs(reader, /*out*/ args...);
-  value = std::tuple<Ts...>(args...);
+  ReadTuple(reader, value, std::make_index_sequence<sizeof...(Ts)>{});
 }
 
 template <class T>
@@ -342,7 +346,7 @@ inline void ReadValue(const JSValue &jsValue, /*out*/ T &value) noexcept {
 template <class T>
 inline T ReadValue(const JSValue &jsValue) noexcept {
   T value;
-  ReadValue(make<JSValueTreeReader>(jsValue), /*out*/ value);
+  ReadValue(MakeJSValueTreeReader(jsValue), /*out*/ value);
   return value;
 }
 
@@ -358,7 +362,7 @@ inline bool SkipArrayToEnd(IJSValueReader &reader) noexcept {
 template <class... TArgs>
 inline void ReadArgs(IJSValueReader &reader, /*out*/ TArgs &... args) noexcept {
   // Read as many arguments as we can or return default values.
-  bool success = reader.ValueType == JSValueType.Array;
+  bool success = reader.ValueType() == JSValueType::Array;
 
   // To read variadic template arguments in natural order we must use them in an initializer list.
   // TODO: can we fold expression instead?
