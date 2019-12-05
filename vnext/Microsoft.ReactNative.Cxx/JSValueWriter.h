@@ -6,12 +6,11 @@
 #define MICROSOFT_REACTNATIVE_JSVALUEWRITER
 
 #include "winrt/Microsoft.ReactNative.Bridge.h"
-#include "winrt/Microsoft.ReactNative.h"
 
 //==============================================================================
 // IJSValueWriter helpers
 //==============================================================================
-namespace Microsoft::ReactNative {
+namespace winrt::Microsoft::ReactNative::Bridge {
 
 template <class T>
 inline bool WriteProperty(

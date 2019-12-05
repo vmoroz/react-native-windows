@@ -18,6 +18,7 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)JSValue.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)JSValueReader.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)JSValueTreeReader.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)JSValueTreeWriter.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)JSValueWriter.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)ModuleMemberRegistration.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)ModuleRegistration.h" />
@@ -27,6 +28,7 @@
   <ItemGroup>
     <ClCompile Include="$(MSBuildThisFileDirectory)JSValue.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)JSValueTreeReader.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)JSValueTreeWriter.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)ModuleRegistration.cpp" />
   </ItemGroup>
 </Project>
