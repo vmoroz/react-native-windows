@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import { NativeModules } from 'react-native';
 
-const CustomUserControlCS = requireNativeComponent('CustomUserControlCS');
+//const CustomUserControlCS = requireNativeComponent('CustomUserControlCS');
 
 const CustomUserControlCPP = requireNativeComponent('CustomUserControlCPP');
 
@@ -106,7 +106,7 @@ class SampleApp extends Component {
     {
       const cuccsTag = findNodeHandle(this._cuccsRef);
       log(`tag: ${cuccsTag}`);
-      UIManager.dispatchViewManagerCommand(cuccsTag, UIManager.CustomUserControlCS.Commands.CustomCommand, ['Hello World!']);
+      //UIManager.dispatchViewManagerCommand(cuccsTag, UIManager.CustomUserControlCS.Commands.CustomCommand, ['Hello World!']);
     }
   }
 
@@ -122,9 +122,6 @@ class SampleApp extends Component {
 
         <Button onPress={() => { this._onPressHandlerSMCS(); }} title="Call SampleModuleCS!" disabled={NativeModules.SampleModuleCS == null} />
         <Button onPress={() => { this._onPressHandlerSMCPP(); }} title="Call SampleModuleCPP!" disabled={NativeModules.SampleModuleCPP == null} />
-
-        <CustomUserControlCS style={styles.customcontrol} label="CustomUserControlCS!" ref={(ref) => { this._cuccsRef = ref; }} />
-        <Button onPress={() => { this._onPressHandlerCUCCS(); }} title="Call CustomUserControlCS Commands!" />
 
         <CustomUserControlCPP style={styles.customcontrol} label="CustomUserControlCPP!" />
         <Text style={styles.instructions}>
