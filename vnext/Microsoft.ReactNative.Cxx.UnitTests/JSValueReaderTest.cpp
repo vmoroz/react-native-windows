@@ -39,14 +39,26 @@ struct RobotPoint {
   int Y;
 };
 
+FieldMap GetStructInfo(RobotPoint *) {
+  return {{L"X", &RobotPoint::X}, {L"Y", &RobotPoint::Y}};
+}
+
 struct T2Extra {
   std::string ActorName;
   int MovieYear;
 };
 
+FieldMap GetStructInfo(T2Extra *) {
+  return {{L"ActorName", &T2Extra::ActorName}, {L"MovieYear", &T2Extra::MovieYear}};
+}
+
 struct R2D2Extra {
   std::string MovieSeries;
 };
+
+FieldMap GetStructInfo(R2D2Extra *) {
+  return {{L"MovieSeries", &R2D2Extra::MovieSeries}};
+}
 
 struct RobotInfo {
   RobotModel Model;
@@ -59,9 +71,26 @@ struct RobotInfo {
   std::map<std::string, int> Dimensions;
   std::tuple<int, std::string, bool> Badges;
   std::vector<RobotTool> Tools;
-  // std::vector<RobotPoint> Path;
-  // std::variant<T2Extra, R2D2Extra> Extra;
+  std::vector<RobotPoint> Path;
+  std::variant<T2Extra, R2D2Extra> Extra;
 };
+
+// Reading RobotModel enum value. We could use template-based version instead.
+void ReadValue(IJSValueReader &reader, RobotModel &value) {
+  value = static_cast<RobotModel>(ReadValue<int>(reader));
+}
+
+// Reading discriminating union requires using JSValue.
+void ReadValue(const JSValue &jsValue, std::variant<T2Extra, R2D2Extra> &value) noexcept {
+  switch (ReadValue<RobotModel>(jsValue["Kind"])) {
+    case RobotModel::T2:
+      value = ReadValue<T2Extra>(jsValue);
+      break;
+    case RobotModel::R2D2:
+      value = ReadValue<R2D2Extra>(jsValue);
+      break;
+  }
+}
 
 // Reading RobotInfo value. It could be generated instead.
 void ReadValue(IJSValueReader &reader, RobotInfo &value) noexcept {
@@ -89,10 +118,10 @@ void ReadValue(IJSValueReader &reader, RobotInfo &value) noexcept {
         ReadValue(reader, value.Badges);
       else if (propertyName == L"Tools")
         ReadValue(reader, value.Tools);
-      // else if (propertyName == L"Path")
-      //  ReadValue(reader, value.Path);
-      // else if (propertyName == L"Extra")
-      //  ReadValue(reader, value.Extra);
+      else if (propertyName == L"Path")
+        ReadValue(reader, value.Path);
+      else if (propertyName == L"Extra")
+        ReadValue(reader, value.Extra);
       else
         ReadValue<JSValue>(reader);
     }
@@ -123,30 +152,12 @@ void ReadValue(IJSValueReader &reader, RobotInfo &value) noexcept {
 //    }
 //
 
-// Reading RobotModel enum value. It could be generated instead.
-void ReadValue(IJSValueReader &reader, RobotModel &value) {
-  value = static_cast<RobotModel>(ReadValue<int>(reader));
-}
-
 //
 //    // Writing RobotModel enum value. It could be generated instead.
 //   public
 //    static void WriteValue(this IJSValueWriter writer, RobotModel value) {
 //      writer.WriteValue((int)value);
 //    }
-
-// Reading discriminating union requires using JSValue.
-
-// void ReadValue(const JSValue &jsValue, std::variant<T2Extra, R2D2Extra> &value) noexcept {
-//  switch (ReadValue<RobotModel>(jsValue["Kind"])) {
-//    case RobotModel::T2:
-//      value = ReadValue<T2Extra>(jsValue);
-//      break;
-//    case RobotModel::R2D2:
-//      value = ReadValue<R2D2Extra>(jsValue);
-//      break;
-//  }
-//}
 
 //    // Writing discriminating union is simpler than reading.
 //   public
@@ -207,16 +218,18 @@ TEST_CASE("TestReadCustomType", "JSValueReaderTest") {
   REQUIRE(robot.Tools[1].Name == "Electro-shocker");
   REQUIRE(robot.Tools[1].Weight == 3);
   REQUIRE(robot.Tools[1].IsEnabled == false);
-  //    Assert.AreEqual(3, robot.Path.Length);
-  //    Assert.AreEqual(5, robot.Path[0].X);
-  //    Assert.AreEqual(6, robot.Path[0].Y);
-  //    Assert.AreEqual(45, robot.Path[1].X);
-  //    Assert.AreEqual(90, robot.Path[1].Y);
-  //    Assert.AreEqual(15, robot.Path[2].X);
-  //    Assert.AreEqual(16, robot.Path[2].Y);
-  //    Assert.AreEqual(true, robot.Extra.TryGet<R2D2Extra>(out var r2d2Extra));
-  //    Assert.AreEqual("Episode 2", r2d2Extra.MovieSeries);
+  REQUIRE(robot.Path.size() == 3);
+  REQUIRE(robot.Path[0].X == 5);
+  REQUIRE(robot.Path[0].Y == 6);
+  REQUIRE(robot.Path[1].X == 45);
+  REQUIRE(robot.Path[1].Y == 90);
+  REQUIRE(robot.Path[2].X == 15);
+  REQUIRE(robot.Path[2].Y == 16);
+  const R2D2Extra *r2d2Extra = std::get_if<R2D2Extra>(&robot.Extra);
+  REQUIRE(r2d2Extra != nullptr);
+  REQUIRE(r2d2Extra->MovieSeries == "Episode 2");
 }
+
 //
 //      [TestMethod] public void
 //      TestWriteCustomType() {

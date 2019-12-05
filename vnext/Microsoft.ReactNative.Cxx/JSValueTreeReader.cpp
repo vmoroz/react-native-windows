@@ -31,7 +31,7 @@ bool JSValueTreeReader::GetNextObjectProperty(hstring &propertyName) noexcept {
       const auto &properties = m_current->Object();
       const auto &property = properties.begin();
       if (property != properties.end()) {
-        m_stack.emplace_back(m_current, property);
+        m_stack.emplace_back(*m_current, property);
         SetCurrentValue(property->second);
         propertyName = to_hstring(property->first);
         return true;
@@ -64,7 +64,7 @@ bool JSValueTreeReader::GetNextArrayItem() noexcept {
     if (m_current->Type() == JSValueType::Array) {
       const auto &item = m_current->Array().begin();
       if (item != m_current->Array().end()) {
-        m_stack.emplace_back(m_current, item);
+        m_stack.emplace_back(*m_current, item);
         SetCurrentValue(*item);
         return true;
       } else {

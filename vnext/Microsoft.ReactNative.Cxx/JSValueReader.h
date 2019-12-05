@@ -33,18 +33,10 @@ T ReadValue(IJSValueReader &reader) noexcept;
 template <class T>
 T ReadValue(const JSValue &jsValue) noexcept;
 
-template <
-    class T,
-    class TJSValueReader,
-    std::enable_if_t<
-        std::is_same_v<TJSValueReader, IJSValueReader> || std::is_same_v<TJSValueReader, TypeWrapper<IJSValueReader>>,
-        int> = 1>
+template <class T, class TJSValueReader, std::enable_if_t<std::is_same_v<TJSValueReader, IJSValueReader>, int> = 1>
 void ReadValue(TJSValueReader &reader, /*out*/ T &value) noexcept;
 
-template <
-    class T,
-    class TJSValue,
-    std::enable_if_t<std::is_same_v<TJSValue, JSValue> || std::is_same_v<TJSValue, TypeWrapper<JSValue>>, int> = 1>
+template <class T, class TJSValue, std::enable_if_t<std::is_same_v<TJSValue, JSValue>, int> = 1>
 void ReadValue(const TJSValue &jsValue, /*out*/ T &value) noexcept;
 
 void ReadValue(IJSValueReader &reader, /*out*/ std::string &value) noexcept;
@@ -81,7 +73,7 @@ void ReadValue(IJSValueReader &reader, /*out*/ JSValueArray &value) noexcept;
 template <class T, std::enable_if_t<!std::is_void_v<decltype(GetStructInfo(static_cast<T *>(nullptr)))>, int> = 1>
 void ReadValue(IJSValueReader &reader, /*out*/ T &value) noexcept;
 
-  bool SkipArrayToEnd(IJSValueReader &reader) noexcept;
+bool SkipArrayToEnd(IJSValueReader &reader) noexcept;
 template <class... TArgs>
 void ReadArgs(IJSValueReader &reader, /*out*/ TArgs &... args) noexcept;
 
@@ -106,33 +98,17 @@ inline T ReadValue(const JSValue &jsValue) noexcept {
 }
 
 // Try to call ReadValue for JSValue unless it is already called us with TypeWrapper parameter.
-template <
-    class T,
-    class TJSValueReader,
-    std::enable_if_t<
-        std::is_same_v<TJSValueReader, IJSValueReader> || std::is_same_v<TJSValueReader, TypeWrapper<IJSValueReader>>,
-        int>>
+template <class T, class TJSValueReader, std::enable_if_t<std::is_same_v<TJSValueReader, IJSValueReader>, int>>
 inline void ReadValue(TJSValueReader &reader, /*out*/ T &value) noexcept {
-  if constexpr (std::is_same_v<TJSValueReader, IJSValueReader>) {
-    TypeWrapper<JSValue> jsValue = {JSValue::ReadFrom(reader)};
-    ReadValue(jsValue, /*out*/ value);
-  } else {
-    static_assert(false, "Implement ReadValue for the T type");
-  }
+  TypeWrapper<JSValue> jsValue = {JSValue::ReadFrom(reader)};
+  ReadValue(jsValue, /*out*/ value);
 }
 
 // Try to call ReadValue for IJSValueReader unless it is already called us with TypeWrapper parameter.
-template <
-    class T,
-    class TJSValue,
-    std::enable_if_t<std::is_same_v<TJSValue, JSValue> || std::is_same_v<TJSValue, TypeWrapper<JSValue>>, int>>
+template <class T, class TJSValue, std::enable_if_t<std::is_same_v<TJSValue, JSValue>, int>>
 inline void ReadValue(const TJSValue &jsValue, /*out*/ T &value) noexcept {
-  if constexpr (std::is_same_v<TJSValue, JSValue>) {
-    TypeWrapper<IJSValueReader> reader = {MakeJSValueTreeReader(jsValue)};
-    ReadValue(reader, /*out*/ value);
-  } else {
-    static_assert(false, "Implement ReadValue for the T type");
-  }
+  TypeWrapper<IJSValueReader> reader = {MakeJSValueTreeReader(jsValue)};
+  ReadValue(reader, /*out*/ value);
 }
 
 template <typename TChar, typename TValue>
