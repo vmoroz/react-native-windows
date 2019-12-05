@@ -120,6 +120,7 @@
     <ClInclude Include="LifecycleState.h" />
     <ClInclude Include="NativeModulesProvider.h" />
     <ClInclude Include="pch.h" />
+    <ClInclude Include="React.h" />
     <ClInclude Include="ReactApplication.h">
       <DependentUpon>ReactApplication.idl</DependentUpon>
     </ClInclude>
@@ -131,6 +132,7 @@
       <DependentUpon>ReactContext.idl</DependentUpon>
       <SubType>Code</SubType>
     </ClInclude>
+    <ClInclude Include="ReactHost.h" />
     <ClInclude Include="ReactInstanceCreator.h" />
     <ClInclude Include="ReactInstance.h">
       <DependentUpon>ReactInstance.idl</DependentUpon>
@@ -145,6 +147,7 @@
       <DependentUpon>ReactInstanceSettings.idl</DependentUpon>
       <SubType>Code</SubType>
     </ClInclude>
+    <ClInclude Include="ReactInstanceWin32.h" />
     <ClInclude Include="ReactNativeHost.h">
       <DependentUpon>ReactNativeHost.idl</DependentUpon>
       <SubType>Code</SubType>
@@ -187,6 +190,7 @@
       <DependentUpon>ReactContext.idl</DependentUpon>
       <SubType>Code</SubType>
     </ClCompile>
+    <ClCompile Include="ReactHost.cpp" />
     <ClCompile Include="ReactInstanceCreator.cpp" />
     <ClCompile Include="ReactInstance.cpp">
       <DependentUpon>ReactInstance.idl</DependentUpon>
@@ -201,6 +205,7 @@
       <DependentUpon>ReactInstanceSettings.idl</DependentUpon>
       <SubType>Code</SubType>
     </ClCompile>
+    <ClCompile Include="ReactInstanceWin32.cpp" />
     <ClCompile Include="ReactNativeHost.cpp">
       <DependentUpon>ReactNativeHost.idl</DependentUpon>
       <SubType>Code</SubType>
