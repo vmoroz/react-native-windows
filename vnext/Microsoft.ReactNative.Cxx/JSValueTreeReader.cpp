@@ -117,14 +117,6 @@ double JSValueTreeReader::GetDouble() noexcept {
   return (ValueType() == JSValueType::Double) ? m_current->Double() : 0;
 }
 
-const JSValue &JSValueTreeReader::Current() noexcept {
-  return *m_current;
-}
-
-const JSValue &JSValueTreeReader::Root() noexcept {
-  return m_root;
-}
-
 IJSValueReader MakeJSValueTreeReader(const JSValue& root) noexcept {
   return make<JSValueTreeReader>(root);
 }

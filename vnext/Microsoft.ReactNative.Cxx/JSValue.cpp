@@ -3,7 +3,6 @@
 
 #include "pch.h"
 #include "JSValue.h"
-#include "IJSValueTreeReader.h"
 
 namespace winrt::Microsoft::ReactNative::Bridge {
 
@@ -150,19 +149,11 @@ bool JSValue::Equals(const JSValue &other) const noexcept {
 }
 
 /*static*/ JSValue JSValue::ReadFrom(IJSValueReader &reader) noexcept {
-  if (auto treeReader = reader.try_as<IJSValueTreeReader>()) {
-    return treeReader->Current().Copy();
-  }
-
   return ReadValue(reader);
 }
 
 /*static*/ JSValueObject JSValue::ReadObjectFrom(IJSValueReader &reader) noexcept {
   if (reader.ValueType() == JSValueType::Object) {
-    if (auto treeReader = reader.try_as<IJSValueTreeReader>()) {
-      return CopyObject(treeReader->Current().Object());
-    }
-
     return ReadObjectProperties(reader);
   }
 
@@ -171,10 +162,6 @@ bool JSValue::Equals(const JSValue &other) const noexcept {
 
 /*static*/ JSValueArray JSValue::ReadArrayFrom(IJSValueReader &reader) noexcept {
   if (reader.ValueType() == JSValueType::Array) {
-    if (auto treeReader = reader.try_as<IJSValueTreeReader>()) {
-      return CopyArray(treeReader->Current().Array());
-    }
-
     return ReadArrayItems(reader);
   }
 

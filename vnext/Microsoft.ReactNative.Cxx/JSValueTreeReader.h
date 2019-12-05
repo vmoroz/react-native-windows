@@ -5,11 +5,11 @@
 #ifndef MICROSOFT_REACTNATIVE_JSVALUETREEREADER
 #define MICROSOFT_REACTNATIVE_JSVALUETREEREADER
 
-#include "IJSValueTreeReader.h"
+#include "JSValue.h"
 
 namespace winrt::Microsoft::ReactNative::Bridge {
 
-struct JSValueTreeReader : implements<JSValueTreeReader, IJSValueReader, IJSValueTreeReader> {
+struct JSValueTreeReader : implements<JSValueTreeReader, IJSValueReader> {
   JSValueTreeReader(const JSValue &value) noexcept;
   JSValueTreeReader(JSValue &&value) noexcept;
 
@@ -21,10 +21,6 @@ struct JSValueTreeReader : implements<JSValueTreeReader, IJSValueReader, IJSValu
   bool GetBoolean() noexcept;
   int64_t GetInt64() noexcept;
   double GetDouble() noexcept;
-
- public: // IJSValueTreeReader
-  const JSValue &Current() noexcept;
-  const JSValue &Root() noexcept;
 
  private:
   struct StackEntry {
