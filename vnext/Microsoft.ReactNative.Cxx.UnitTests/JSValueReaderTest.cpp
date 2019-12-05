@@ -3,9 +3,10 @@
 
 #include "pch.h"
 #include "JSValueReader.h"
+//#include "JSValueWriter.h"
+#include <variant>
 #include "JsonJSValueReader.h"
 #include "catch.hpp"
-#include <variant>
 
 namespace winrt::Microsoft::ReactNative::Bridge {
 
@@ -28,6 +29,10 @@ struct RobotTool {
   int Weight;
   bool IsEnabled;
 };
+
+FieldMap GetStructInfo(RobotTool *) {
+  return {{L"Name", &RobotTool::Name}, {L"Weight", &RobotTool::Weight}, {L"IsEnabled", &RobotTool::IsEnabled}};
+}
 
 struct RobotPoint {
   int X;
@@ -53,9 +58,9 @@ struct RobotInfo {
   std::vector<int> Steps;
   std::map<std::string, int> Dimensions;
   std::tuple<int, std::string, bool> Badges;
-  //std::vector<RobotTool> Tools;
-  //std::vector<RobotPoint> Path;
-//  std::variant<T2Extra, R2D2Extra> Extra;
+  std::vector<RobotTool> Tools;
+  // std::vector<RobotPoint> Path;
+  // std::variant<T2Extra, R2D2Extra> Extra;
 };
 
 // Reading RobotInfo value. It could be generated instead.
@@ -82,11 +87,11 @@ void ReadValue(IJSValueReader &reader, RobotInfo &value) noexcept {
         ReadValue(reader, value.Dimensions);
       else if (propertyName == L"Badges")
         ReadValue(reader, value.Badges);
-      //else if (propertyName == L"Tools")
-      //  ReadValue(reader, value.Tools);
-      //else if (propertyName == L"Path")
+      else if (propertyName == L"Tools")
+        ReadValue(reader, value.Tools);
+      // else if (propertyName == L"Path")
       //  ReadValue(reader, value.Path);
-      //else if (propertyName == L"Extra")
+      // else if (propertyName == L"Extra")
       //  ReadValue(reader, value.Extra);
       else
         ReadValue<JSValue>(reader);
@@ -132,13 +137,13 @@ void ReadValue(IJSValueReader &reader, RobotModel &value) {
 
 // Reading discriminating union requires using JSValue.
 
-//void ReadValue(const JSValue &jsValue, std::variant<T2Extra, R2D2Extra> &value) noexcept {
+// void ReadValue(const JSValue &jsValue, std::variant<T2Extra, R2D2Extra> &value) noexcept {
 //  switch (ReadValue<RobotModel>(jsValue["Kind"])) {
 //    case RobotModel::T2:
-//      value = jsValue.To<T2Extra>();
+//      value = ReadValue<T2Extra>(jsValue);
 //      break;
 //    case RobotModel::R2D2:
-//      value = jsValue.To<R2D2Extra>();
+//      value = ReadValue<R2D2Extra>(jsValue);
 //      break;
 //  }
 //}
@@ -171,7 +176,7 @@ TEST_CASE("TestReadCustomType", "JSValueReaderTest") {
         "Badges": [2, "Maverick", true],
         "Tools": [
           {"Name": "Screwdriver", "Weight": 2, "IsEnabled": true},
-          {"Name": "Electro-shocker", Weight: 3, "IsEnabled": false}],
+          {"Name": "Electro-shocker", "Weight": 3, "IsEnabled": false}],
         "Path": [{"X": 5, "Y": 6}, {"X": 45, "Y": 90}, {"X": 15, "Y": 16}],
         "Extra": {"Kind": 1, "MovieSeries" : "Episode 2"}
     })JSON";
@@ -195,16 +200,13 @@ TEST_CASE("TestReadCustomType", "JSValueReaderTest") {
   REQUIRE(std::get<0>(robot.Badges) == 2);
   REQUIRE(std::get<1>(robot.Badges) == "Maverick");
   REQUIRE(std::get<2>(robot.Badges) == true);
-  //    Assert.AreEqual(2, robot.Badges.Item1);
-  //    Assert.AreEqual("Maverick", robot.Badges.Item2);
-  //    Assert.AreEqual(true, robot.Badges.Item3);
-  //    Assert.AreEqual(2, robot.Tools.Length);
-  //    Assert.AreEqual("Screwdriver", robot.Tools[0].Name);
-  //    Assert.AreEqual(2, robot.Tools[0].Weight);
-  //    Assert.AreEqual(true, robot.Tools[0].IsEnabled);
-  //    Assert.AreEqual("Electro-shocker", robot.Tools[1].Name);
-  //    Assert.AreEqual(3, robot.Tools[1].Weight);
-  //    Assert.AreEqual(false, robot.Tools[1].IsEnabled);
+  REQUIRE(robot.Tools.size() == 2);
+  REQUIRE(robot.Tools[0].Name == "Screwdriver");
+  REQUIRE(robot.Tools[0].Weight == 2);
+  REQUIRE(robot.Tools[0].IsEnabled == true);
+  REQUIRE(robot.Tools[1].Name == "Electro-shocker");
+  REQUIRE(robot.Tools[1].Weight == 3);
+  REQUIRE(robot.Tools[1].IsEnabled == false);
   //    Assert.AreEqual(3, robot.Path.Length);
   //    Assert.AreEqual(5, robot.Path[0].X);
   //    Assert.AreEqual(6, robot.Path[0].Y);

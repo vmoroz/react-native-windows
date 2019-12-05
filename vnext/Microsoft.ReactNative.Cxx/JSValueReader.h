@@ -7,6 +7,7 @@
 
 #include "JSValue.h"
 #include "JSValueTreeReader.h"
+#include "StructInfo.h"
 #include "winrt/Microsoft.ReactNative.Bridge.h"
 
 namespace winrt::Microsoft::ReactNative::Bridge {
@@ -77,26 +78,16 @@ void ReadValue(IJSValueReader &reader, /*out*/ JSValue &value) noexcept;
 void ReadValue(IJSValueReader &reader, /*out*/ JSValueObject &value) noexcept;
 void ReadValue(IJSValueReader &reader, /*out*/ JSValueArray &value) noexcept;
 
-bool SkipArrayToEnd(IJSValueReader &reader) noexcept;
+template <class T, std::enable_if_t<!std::is_void_v<decltype(GetStructInfo(static_cast<T *>(nullptr)))>, int> = 1>
+void ReadValue(IJSValueReader &reader, /*out*/ T &value) noexcept;
+
+  bool SkipArrayToEnd(IJSValueReader &reader) noexcept;
 template <class... TArgs>
 void ReadArgs(IJSValueReader &reader, /*out*/ TArgs &... args) noexcept;
-
-
-#define INTERNAL_REACT_FIELD_2_ARGS(field, fieldName)                                                           \
-  bool REACT_reg##field{                                                                                        \
-      ::Microsoft::ReactNative::ModuleEventFieldInfo<decltype(&std::remove_pointer_t<decltype(this)>::field)>:: \
-          Register(this, eventName, &std::remove_pointer_t<decltype(this)>::field)};
-
-#define INTERNAL_REACT_EVENT_1_ARGS(field) INTERNAL_REACT_EVENT_2_ARGS(field, #field)
-
-#define INTERNAL_REACT_FIELD_MACRO_CHOOSER(...) \
-  INTERNAL_REACT_MEMBER_RECOMPOSER((__VA_ARGS__, INTERNAL_REACT_EVENT_2_ARGS, INTERNAL_REACT_EVENT_1_ARGS, ))
 
 //===========================================================================
 // IJSValueReader extensions implementation
 //===========================================================================
-
-// TODO: add support for attributed structs
 
 // This is a convenience method to call ReadValue for IJSValueReader.
 template <class T>
@@ -399,6 +390,22 @@ void ReadTuple(IJSValueReader &reader, /*out*/ T &tuple, std::index_sequence<I..
 template <class... Ts>
 inline void ReadValue(IJSValueReader &reader, /*out*/ std::tuple<Ts...> &value) noexcept {
   ReadTuple(reader, value, std::make_index_sequence<sizeof...(Ts)>{});
+}
+
+template <class T, std::enable_if_t<!std::is_void_v<decltype(GetStructInfo(static_cast<T *>(nullptr)))>, int>>
+inline void ReadValue(IJSValueReader &reader, /*out*/ T &value) noexcept {
+  if (reader.ValueType() == JSValueType::Object) {
+    const auto &fieldMap = StructInfo<T>::FieldMap;
+    hstring propertyName;
+    while (reader.GetNextObjectProperty(/*out*/ propertyName)) {
+      auto it = fieldMap.find(std::wstring_view(propertyName));
+      if (it != fieldMap.end()) {
+        it->second.ReadField(reader, &value);
+      } else {
+        ReadValue<JSValue>(reader); // Skip this property
+      }
+    }
+  }
 }
 
 // It helps to read arguments from an array if there are more items than expected.

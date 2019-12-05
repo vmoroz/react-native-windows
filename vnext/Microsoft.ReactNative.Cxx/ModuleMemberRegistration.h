@@ -1,6 +1,10 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
+// We implement optional parameter macros based on the StackOverflow discussion:
+// https://stackoverflow.com/questions/3046889/optional-parameters-with-c-macros
+// Please refer to it if you want to understand it works.
+
 #pragma once
 #include "winrt/Microsoft.ReactNative.Bridge.h"
 #include "winrt/Microsoft.ReactNative.h"
