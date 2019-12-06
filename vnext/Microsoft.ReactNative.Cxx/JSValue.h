@@ -86,11 +86,16 @@ struct JSValue {
   int64_t Int64() const noexcept;
   double Double() const noexcept;
 
+  JSValueObject TakeObject() noexcept;
+  JSValueArray TakeArray() noexcept;
+
   size_t PropertyCount() const noexcept;
   size_t ItemCount() const noexcept;
 
-  // template <typename T> T To() const noexcept;
-  // template <class T> static JSValue From(const T& value) noexcept;
+  template <typename T>
+  T To() const noexcept;
+  template <class T>
+  static JSValue From(const T &value) noexcept;
 
   const JSValue &GetObjectProperty(std::string_view propertyName) const noexcept;
   const JSValue &GetArrayItem(JSValueArray::size_type index) const noexcept;
@@ -207,18 +212,20 @@ inline double JSValue::Double() const noexcept {
   return (m_type == JSValueType::Double) ? m_double : 0;
 }
 
-// template <typename T>
-// inline T JSValue::To() const noexcept {
-//  T result;
-//  ReadValue(MakeJSValueTreeReader(*this), result);
-//  return result;
-//}
+template <typename T>
+inline T JSValue::To() const noexcept {
+  T result;
+  ReadValue(MakeJSValueTreeReader(*this), /*out*/ result);
+  return result;
+}
 
-// JSValue From<T>(T value) {
-//   var writer = new JSValueTreeWriter();
-//   writer.WriteValue(value);
-//   return writer.TakeValue();
-// }
+template <class T>
+static JSValue From(const T &value) noexcept {
+  JSValue result;
+  auto writer = MakeJSValueTreeWriter(result);
+  WriteValue(writer, value);
+  return result;
+}
 
 inline const JSValue &JSValue::operator[](std::string_view propertyName) const noexcept {
   return GetObjectProperty(propertyName);

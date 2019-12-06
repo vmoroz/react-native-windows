@@ -104,6 +104,26 @@ JSValue JSValue::Copy() const noexcept {
   return result;
 }
 
+JSValueObject JSValue::TakeObject() noexcept {
+  JSValueObject result;
+  if (m_type == JSValueType::Object) {
+    result = std::move(m_object);
+    m_int64 = 0;
+    m_type = JSValueType::Null;
+  }
+  return result;
+}
+
+JSValueArray JSValue::TakeArray() noexcept {
+  JSValueArray result;
+  if (m_type == JSValueType::Array) {
+    result = std::move(m_array);
+    m_int64 = 0;
+    m_type = JSValueType::Null;
+  }
+  return result;
+}
+
 size_t JSValue::PropertyCount() const noexcept {
   return (m_type == JSValueType::Object) ? m_object.size() : 0;
 }
