@@ -104,6 +104,14 @@ JSValue JSValue::Copy() const noexcept {
   return result;
 }
 
+size_t JSValue::PropertyCount() const noexcept {
+  return (m_type == JSValueType::Object) ? m_object.size() : 0;
+}
+
+size_t JSValue::ItemCount() const noexcept {
+  return (m_type == JSValueType::Array) ? m_array.size() : 0;
+}
+
 const JSValue &JSValue::GetObjectProperty(std::string_view propertyName) const noexcept {
   if (m_type == JSValueType::Object) {
     auto it = m_object.find(propertyName);

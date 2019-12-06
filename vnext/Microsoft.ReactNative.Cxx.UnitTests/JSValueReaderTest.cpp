@@ -147,20 +147,20 @@ void ReadValue(IJSValueReader &reader, RobotInfo &value) noexcept {
 }
 
 // Writing RobotInfo value. It could be generated instead.
-void WriteValue(IJSValueWriter const &writer, RobotInfo const & /*value*/) noexcept {
+void WriteValue(IJSValueWriter const &writer, RobotInfo const &value) noexcept {
   writer.WriteObjectBegin();
-  // WriteValue(writer, L"Model", value.Model);
-  // WriteValue(writer, L"Name", value.Name);
-  // WriteValue(writer, L"Age", value.Age);
-  // WriteValue(writer, L"Shape", value.Shape);
-  // WriteValue(writer, L"Shape2", value.Shape2);
-  // WriteValue(writer, L"Shape3", value.Shape3);
-  // WriteValue(writer, L"Steps", value.Steps);
-  // WriteValue(writer, L"Dimensions", value.Dimensions);
-  // WriteValue(writer, L"Badges", value.Badges);
-  // WriteValue(writer, L"Tools", value.Tools);
-  // WriteValue(writer, L"Path", value.Path);
-  // WriteValue(writer, L"Extra", value.Extra);
+  WriteProperty(writer, L"Model", value.Model);
+  WriteProperty(writer, L"Name", value.Name);
+  WriteProperty(writer, L"Age", value.Age);
+  WriteProperty(writer, L"Shape", value.Shape);
+  WriteProperty(writer, L"Shape2", value.Shape2);
+  WriteProperty(writer, L"Shape3", value.Shape3);
+  WriteProperty(writer, L"Steps", value.Steps);
+  WriteProperty(writer, L"Dimensions", value.Dimensions);
+  WriteProperty(writer, L"Badges", value.Badges);
+  WriteProperty(writer, L"Tools", value.Tools);
+  WriteProperty(writer, L"Path", value.Path);
+  WriteProperty(writer, L"Extra", value.Extra);
   writer.WriteObjectEnd();
 }
 
@@ -221,62 +221,59 @@ TEST_CASE("TestReadCustomType", "JSValueReaderTest") {
   REQUIRE(r2d2Extra->MovieSeries == "Episode 2");
 }
 
-//
-//      [TestMethod] public void
-//      TestWriteCustomType() {
-//    var robot =
-//        new RobotInfo{Model = RobotModel.R2D2,
-//                      Name = "Bob",
-//                      Age = 42,
-//                      Shape = RobotShape.Trashcan,
-//                      Shape2 = RobotShape.Beercan,
-//                      Shape3 = null,
-//                      Steps = new List<int>{1, 2, 3},
-//                      Dimensions = new Dictionary<string, int>{["Width"] = 24, ["Height"] = 78},
-//                      Badges = Tuple.Create(2, "Maverick", true),
-//                      Tools = new RobotTool[]{new RobotTool{Name = "Screwdriver", Weight = 2, IsEnabled = true},
-//                                              new RobotTool{Name = "Electro-shocker", Weight = 3, IsEnabled = false}},
-//                      Path = new RobotPoint[]{new RobotPoint{X = 5, Y = 6},
-//                                              new RobotPoint{X = 45, Y = 90},
-//                                              new RobotPoint{X = 15, Y = 16}},
-//                      Extra = new R2D2Extra{MovieSeries = "Episode 2"}};
-//
-//    var writer = new JTokenJSValueWriter();
-//    writer.WriteValue(robot);
-//    JToken jValue = writer.TakeValue();
-//
-//    Assert.AreEqual((int)RobotModel.R2D2, jValue["Model"]);
-//    Assert.AreEqual("Bob", jValue["Name"]);
-//    Assert.AreEqual(42, jValue["Age"]);
-//    Assert.AreEqual((int)RobotShape.Trashcan, jValue["Shape"]);
-//    Assert.AreEqual((int)RobotShape.Beercan, jValue["Shape2"]);
-//    Assert.AreEqual(JTokenType.Null, jValue["Shape3"].Type);
-//    Assert.AreEqual(3, (jValue["Steps"] as JArray).Count);
-//    Assert.AreEqual(1, jValue["Steps"][0]);
-//    Assert.AreEqual(2, jValue["Steps"][1]);
-//    Assert.AreEqual(3, jValue["Steps"][2]);
-//    Assert.AreEqual(2, (jValue["Dimensions"] as JObject).Count);
-//    Assert.AreEqual(24, jValue["Dimensions"]["Width"]);
-//    Assert.AreEqual(78, jValue["Dimensions"]["Height"]);
-//    Assert.AreEqual(2, jValue["Badges"][0]);
-//    Assert.AreEqual("Maverick", jValue["Badges"][1]);
-//    Assert.AreEqual(true, jValue["Badges"][2]);
-//    Assert.AreEqual(2, (jValue["Tools"] as JArray).Count);
-//    Assert.AreEqual("Screwdriver", jValue["Tools"][0]["Name"]);
-//    Assert.AreEqual(2, jValue["Tools"][0]["Weight"]);
-//    Assert.AreEqual(true, jValue["Tools"][0]["IsEnabled"]);
-//    Assert.AreEqual("Electro-shocker", jValue["Tools"][1]["Name"]);
-//    Assert.AreEqual(3, jValue["Tools"][1]["Weight"]);
-//    Assert.AreEqual(false, jValue["Tools"][1]["IsEnabled"]);
-//    Assert.AreEqual(3, (jValue["Path"] as JArray).Count);
-//    Assert.AreEqual(5, jValue["Path"][0]["X"]);
-//    Assert.AreEqual(6, jValue["Path"][0]["Y"]);
-//    Assert.AreEqual(45, jValue["Path"][1]["X"]);
-//    Assert.AreEqual(90, jValue["Path"][1]["Y"]);
-//    Assert.AreEqual(15, jValue["Path"][2]["X"]);
-//    Assert.AreEqual(16, jValue["Path"][2]["Y"]);
-//    Assert.AreEqual("Episode 2", jValue["Extra"]["MovieSeries"]);
-//  }
+TEST_CASE("TestWriteCustomType", "JSValueReaderTest") {
+  RobotInfo robot{};
+  robot.Model = RobotModel::R2D2;
+  robot.Name = "Bob";
+  robot.Age = 42;
+  robot.Shape = RobotShape::Trashcan;
+  robot.Shape2 = RobotShape::Beercan;
+  robot.Shape3 = std::nullopt;
+  robot.Steps = std::vector<int>{1, 2, 3};
+  robot.Dimensions = std::map<std::string, int>{{"Width", 24}, {"Height", 78}};
+  robot.Badges = std::tuple<int, std::string, bool>{2, "Maverick", true};
+  robot.Tools = std::vector<RobotTool>{RobotTool{/*Name =*/"Screwdriver", /*Weight =*/2, /*IsEnabled =*/true},
+                                       RobotTool{/*Name =*/"Electro-shocker", /*Weight =*/3, /*IsEnabled =*/false}};
+  robot.Path = std::vector<RobotPoint>{
+      RobotPoint{/*X =*/5, /*Y =*/6}, RobotPoint{/*X =*/45, /*Y =*/90}, RobotPoint{/*X =*/15, /*Y =*/16}};
+  robot.Extra = R2D2Extra{/*MovieSeries =*/"Episode 2"};
+
+  JSValue jsValue;
+  auto writer = MakeJSValueTreeWriter(jsValue);
+  WriteValue(writer, robot);
+
+  REQUIRE(jsValue["Model"] == (int)RobotModel::R2D2);
+  REQUIRE(jsValue["Name"] == "Bob");
+  REQUIRE(jsValue["Age"] == 42);
+  REQUIRE(jsValue["Shape"] == (int)RobotShape::Trashcan);
+  REQUIRE(jsValue["Shape2"] == (int)RobotShape::Beercan);
+  REQUIRE(jsValue["Shape3"] == nullptr);
+  REQUIRE(jsValue["Steps"].ItemCount() == 3);
+  REQUIRE(jsValue["Steps"][0] == 1);
+  REQUIRE(jsValue["Steps"][1] == 2);
+  REQUIRE(jsValue["Steps"][2] == 3);
+  REQUIRE(jsValue["Dimensions"].PropertyCount() == 2);
+  REQUIRE(jsValue["Dimensions"]["Width"] == 24);
+  REQUIRE(jsValue["Dimensions"]["Height"] == 78);
+  REQUIRE(jsValue["Badges"][0] == 2);
+  REQUIRE(jsValue["Badges"][1] == "Maverick");
+  REQUIRE(jsValue["Badges"][2] == true);
+  REQUIRE(jsValue["Tools"].ItemCount() == 2);
+  REQUIRE(jsValue["Tools"][0]["Name"] == "Screwdriver");
+  REQUIRE(jsValue["Tools"][0]["Weight"] == 2);
+  REQUIRE(jsValue["Tools"][0]["IsEnabled"] == true);
+  REQUIRE(jsValue["Tools"][1]["Name"] == "Electro-shocker");
+  REQUIRE(jsValue["Tools"][1]["Weight"] == 3);
+  REQUIRE(jsValue["Tools"][1]["IsEnabled"] == false);
+  REQUIRE(jsValue["Path"].ItemCount() == 3);
+  REQUIRE(jsValue["Path"][0]["X"] == 5);
+  REQUIRE(jsValue["Path"][0]["Y"] == 6);
+  REQUIRE(jsValue["Path"][1]["X"] == 45);
+  REQUIRE(jsValue["Path"][1]["Y"] == 90);
+  REQUIRE(jsValue["Path"][2]["X"] == 15);
+  REQUIRE(jsValue["Path"][2]["Y"] == 16);
+  REQUIRE(jsValue["Extra"]["MovieSeries"] == "Episode 2");
+}
 
 TEST_CASE("TestReadValueDefaultExtensions", "JSValueReaderTest") {
   const wchar_t *json =
@@ -454,14 +451,14 @@ TEST_CASE("TestWriteValueDefaultExtensions", "JSValueReaderTest") {
   WriteProperty(writer, L"NullValue", nullptr);
   writer.WriteObjectEnd();
 
-  REQUIRE(jsValue["StringValue1"].String() == "");
-  REQUIRE(jsValue["StringValue2"].String() == "5");
-  REQUIRE(jsValue["StringValue3"].String() == "Hello");
-  REQUIRE(jsValue["BoolValue1"].Boolean() ==false);
-  REQUIRE(jsValue["BoolValue2"].Boolean() == true);
-  REQUIRE(jsValue["IntValue1"].Int64() == 0);
-  REQUIRE(jsValue["IntValue2"].Int64() == 42);
-  REQUIRE(jsValue["FloatValue"].Double() == 3.14);
+  REQUIRE(jsValue["StringValue1"] == "");
+  REQUIRE(jsValue["StringValue2"] == "5");
+  REQUIRE(jsValue["StringValue3"] == "Hello");
+  REQUIRE(jsValue["BoolValue1"] == false);
+  REQUIRE(jsValue["BoolValue2"] == true);
+  REQUIRE(jsValue["IntValue1"] == 0);
+  REQUIRE(jsValue["IntValue2"] == 42);
+  REQUIRE(jsValue["FloatValue"] == 3.14);
   REQUIRE(jsValue["NullValue"] == nullptr);
   REQUIRE(jsValue["NullValue"] == JSValue::Null);
 }

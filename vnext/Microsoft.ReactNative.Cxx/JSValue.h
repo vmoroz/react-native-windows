@@ -56,8 +56,12 @@ struct JSValue {
   JSValue(JSValueObject &&value) noexcept;
   JSValue(JSValueArray &&value) noexcept;
   JSValue(std::string &&value) noexcept;
-  JSValue(bool value) noexcept;
-  JSValue(int64_t value) noexcept;
+  template <class TStringView, std::enable_if_t<std::is_convertible_v<TStringView, std::string_view>, int> = 1>
+  JSValue(TStringView value) noexcept;
+  template <class TBool, std::enable_if_t<std::is_same_v<TBool, bool>, int> = 1>
+  JSValue(TBool value) noexcept;
+  template <class TInt, std::enable_if_t<std::is_integral_v<TInt> && !std::is_same_v<TInt, bool>, int> = 1>
+  JSValue(TInt value) noexcept;
   JSValue(double value) noexcept;
 
   JSValue(const JSValue &other) = delete;
@@ -69,7 +73,7 @@ struct JSValue {
   ~JSValue() noexcept;
 
   JSValue Copy() const noexcept;
-  static JSValueObject CopyObject(const JSValueObject& other) noexcept;
+  static JSValueObject CopyObject(const JSValueObject &other) noexcept;
   static JSValueArray CopyArray(const JSValueArray &other) noexcept;
 
   JSValueType Type() const noexcept;
@@ -81,8 +85,11 @@ struct JSValue {
   int64_t Int64() const noexcept;
   double Double() const noexcept;
 
-  //template <typename T> T To() const noexcept;
-  //template <class T> static JSValue From(const T& value) noexcept;
+  size_t PropertyCount() const noexcept;
+  size_t ItemCount() const noexcept;
+
+  // template <typename T> T To() const noexcept;
+  // template <class T> static JSValue From(const T& value) noexcept;
 
   const JSValue &GetObjectProperty(std::string_view propertyName) const noexcept;
   const JSValue &GetArrayItem(JSValueArray::size_type index) const noexcept;
@@ -159,8 +166,12 @@ inline JSValue::JSValue(std::nullptr_t) noexcept : m_type{JSValueType::Null}, m_
 inline JSValue::JSValue(JSValueObject &&value) noexcept : m_type{JSValueType::Object}, m_object{std::move(value)} {}
 inline JSValue::JSValue(JSValueArray &&value) noexcept : m_type{JSValueType::Array}, m_array(std::move(value)) {}
 inline JSValue::JSValue(std::string &&value) noexcept : m_type{JSValueType::String}, m_string{std::move(value)} {}
-inline JSValue::JSValue(bool value) noexcept : m_type{JSValueType::Boolean}, m_bool{value} {}
-inline JSValue::JSValue(int64_t value) noexcept : m_type{JSValueType::Int64}, m_int64{value} {}
+template <class TStringView, std::enable_if_t<std::is_convertible_v<TStringView, std::string_view>, int>>
+inline JSValue::JSValue(TStringView value) noexcept : m_type{JSValueType::String}, m_string{value} {}
+template <class TBool, std::enable_if_t<std::is_same_v<TBool, bool>, int>>
+inline JSValue::JSValue(TBool value) noexcept : m_type{JSValueType::Boolean}, m_bool{value} {}
+template <class TInt, std::enable_if_t<std::is_integral_v<TInt> && !std::is_same_v<TInt, bool>, int>>
+inline JSValue::JSValue(TInt value) noexcept : m_type{JSValueType::Int64}, m_int64{static_cast<int64_t>(value)} {}
 inline JSValue::JSValue(double value) noexcept : m_type{JSValueType::Double}, m_double{value} {}
 
 inline JSValueType JSValue::Type() const noexcept {
@@ -195,8 +206,8 @@ inline double JSValue::Double() const noexcept {
   return (m_type == JSValueType::Double) ? m_double : 0;
 }
 
-//template <typename T>
-//inline T JSValue::To() const noexcept {
+// template <typename T>
+// inline T JSValue::To() const noexcept {
 //  T result;
 //  ReadValue(MakeJSValueTreeReader(*this), result);
 //  return result;
@@ -231,4 +242,3 @@ inline bool operator!=(const JSValue &left, const JSValue &right) noexcept {
 } // namespace winrt::Microsoft::ReactNative::Bridge
 
 #endif // MICROSOFT_REACTNATIVE_JSVALUE
-
