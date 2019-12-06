@@ -14,7 +14,7 @@ using FieldMap = std::map<std::wstring, FieldInfo, std::less<>>;
 using FieldReaderType =
     void (*)(IJSValueReader & /*reader*/, void * /*obj*/, const uintptr_t * /*fieldPtrStore*/) noexcept;
 using FieldWriterType =
-    void (*)(IJSValueWriter & /*writer*/, void * /*obj*/, const uintptr_t * /*fieldPtrStore*/) noexcept;
+    void (*)(IJSValueWriter const & /*writer*/, const void * /*obj*/, const uintptr_t * /*fieldPtrStore*/) noexcept;
 
 template <class T>
 void GetStructInfo(T *) {}
@@ -23,7 +23,7 @@ template <class TClass, class TValue>
 void FieldReader(IJSValueReader &reader, void *obj, const uintptr_t *fieldPtrStore) noexcept;
 
 template <class TClass, class TValue>
-void FieldWriter(IJSValueWriter &writer, void *obj, const uintptr_t *fieldPtrStore) noexcept;
+void FieldWriter(IJSValueWriter const &writer, const void *obj, const uintptr_t *fieldPtrStore) noexcept;
 
 struct FieldInfo {
   template <class TClass, class TValue>
@@ -38,7 +38,7 @@ struct FieldInfo {
     m_fieldReader(reader, obj, &m_fieldPtrStore);
   }
 
-  void WriteField(IJSValueWriter &writer, void *obj) const noexcept {
+  void WriteField(IJSValueWriter const &writer, const void *obj) const noexcept {
     m_fieldWriter(writer, obj, &m_fieldPtrStore);
   }
 
@@ -55,9 +55,9 @@ void FieldReader(IJSValueReader &reader, void *obj, const uintptr_t *fieldPtrSto
 }
 
 template <class TClass, class TValue>
-void FieldWriter(IJSValueWriter const & writer, void * obj, const uintptr_t * fieldPtrStore) noexcept {
+void FieldWriter(IJSValueWriter const &writer, const void *obj, const uintptr_t *fieldPtrStore) noexcept {
   using FieldPtrType = TValue TClass::*;
-  WriteValue(writer, static_cast<TClass *>(obj)->*(*reinterpret_cast<const FieldPtrType *>(fieldPtrStore)));
+  WriteValue(writer, static_cast<const TClass *>(obj)->*(*reinterpret_cast<const FieldPtrType *>(fieldPtrStore)));
 }
 
 template <class T>

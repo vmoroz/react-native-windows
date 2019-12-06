@@ -11,12 +11,8 @@ namespace winrt::Microsoft::ReactNative::Bridge {
 // JSValueTreeWriter implementation
 //===========================================================================
 
-JSValueTreeWriter::JSValueTreeWriter() noexcept {
+JSValueTreeWriter::JSValueTreeWriter(JSValue &resultValue) noexcept : m_resultValue{resultValue} {
   m_containerStack.push(ContainerInfo{ContainerType::None});
-}
-
-JSValue JSValueTreeWriter::TakeValue() noexcept {
-  return std::move(m_resultValue);
 }
 
 void JSValueTreeWriter::WriteNull() noexcept {
@@ -84,8 +80,8 @@ void JSValueTreeWriter::WriteValue(JSValue &&value) noexcept {
   }
 }
 
-IJSValueWriter MakeJSValueTreeWriter() noexcept {
-  return make<JSValueTreeWriter>();
+IJSValueWriter MakeJSValueTreeWriter(JSValue &resultValue) noexcept {
+  return make<JSValueTreeWriter>(resultValue);
 }
 
 } // namespace winrt::Microsoft::ReactNative::Bridge

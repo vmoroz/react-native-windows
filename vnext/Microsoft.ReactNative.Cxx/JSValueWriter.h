@@ -14,14 +14,11 @@ namespace winrt::Microsoft::ReactNative::Bridge {
 //==============================================================================
 
 // Forward declarations
-template <class T, class TJSValueWriter, std::enable_if_t<std::is_same_v<TJSValueWriter, IJSValueWriter>, int> = 1>
-void WriteValue(TJSValueWriter const &writer, T const &value) noexcept;
-
-template <class T, class TJSValue, std::enable_if_t<std::is_same_v<TJSValue, JSValue>, int> = 1>
-void WriteValue(/*out*/ TJSValue &jsValue, T const &value) noexcept;
-
-void WriteValue(IJSValueWriter const &writer, std::string const &value) noexcept;
-void WriteValue(IJSValueWriter const &writer, std::wstring const &value) noexcept;
+void WriteValue(IJSValueWriter const &writer, std::nullptr_t) noexcept;
+template <class T, std::enable_if_t<std::is_convertible_v<T, std::string_view>, int> = 1>
+void WriteValue(IJSValueWriter const &writer, T const &value) noexcept;
+template <class T, std::enable_if_t<std::is_convertible_v<T, std::wstring_view>, int> = 1>
+void WriteValue(IJSValueWriter const &writer, T const &value) noexcept;
 void WriteValue(IJSValueWriter const &writer, bool value) noexcept;
 void WriteValue(IJSValueWriter const &writer, int8_t value) noexcept;
 void WriteValue(IJSValueWriter const &writer, int16_t value) noexcept;
@@ -54,40 +51,32 @@ template <class T, std::enable_if_t<!std::is_void_v<decltype(GetStructInfo(stati
 void WriteValue(IJSValueWriter const &writer, T const &value) noexcept;
 
 template <class T>
-bool WriteProperty(IJSValueWriter const &writer, std::string_view propertyName, T const &value) noexcept;
+void WriteProperty(IJSValueWriter const &writer, std::string_view propertyName, T const &value) noexcept;
 template <class T>
-bool WriteProperty(IJSValueWriter const &writer, std::wstring_view propertyName, T const &value) noexcept;
+void WriteProperty(IJSValueWriter const &writer, std::wstring_view propertyName, T const &value) noexcept;
+template <class T>
+void WriteProperties(IJSValueWriter const &writer, T const &value) noexcept;
 
 template <class... TArgs>
 void WriteArgs(IJSValueWriter const &writer, TArgs const &... args) noexcept;
 
-IJSValueWriter MakeJSValueTreeWriter() noexcept;
+IJSValueWriter MakeJSValueTreeWriter(JSValue &resultValue) noexcept;
 
 //==============================================================================
 // IJSValueWriter extensions implementation
 //==============================================================================
 
-// Try to call WriteValue for JSValue unless it is already called us with a TypeWrapper parameter.
-template <class T, class TJSValueWriter, std::enable_if_t<std::is_same_v<TJSValueWriter, IJSValueWriter>, int>>
-inline void WriteValue(TJSValueWriter const &writer, T const &value) noexcept {
-  TypeWrapper<JSValue> wrappedJSValue;
-  WriteValue(/*out*/ wrappedJSValue, value);
-  wrappedJSValue.Value.WriteTo(writer);
+void WriteValue(IJSValueWriter const& writer, std::nullptr_t) noexcept {
+  writer.WriteNull();
 }
 
-// Try to call ReadValue for IJSValueWriter unless it is already called us with TypeWrapper parameter.
-template <class T, class TJSValue, std::enable_if_t<std::is_same_v<TJSValue, JSValue>, int>>
-inline void WriteValue(/*out*/ TJSValue &jsValue, T const &value) noexcept {
-  TypeWrapper<IJSValueWriter> wrappedWriter = {MakeJSValueTreeWriter()};
-  WriteValue(wrappedWriter, value);
-  jsValue = std::move(wrappedWriter.Value);
-}
-
-inline void WriteValue(IJSValueWriter const &writer, std::string_view value) noexcept {
+template <class T, std::enable_if_t<std::is_convertible_v<T, std::string_view>, int>>
+inline void WriteValue(IJSValueWriter const &writer, T const &value) noexcept {
   writer.WriteString(to_hstring(value));
 }
 
-inline void WriteValue(IJSValueWriter const &writer, std::wstring_view value) noexcept {
+template <class T, std::enable_if_t<std::is_convertible_v<T, std::wstring_view>, int>>
+inline void WriteValue(IJSValueWriter const &writer, T const &value) noexcept {
   writer.WriteString(value);
 }
 
@@ -211,23 +200,31 @@ inline void WriteValue(IJSValueWriter const &writer, T const &value) noexcept {
 }
 
 template <class T>
-inline bool WriteProperty(IJSValueWriter const &writer, std::string_view propertyName, T const &value) noexcept {
+inline void WriteProperty(IJSValueWriter const &writer, std::string_view propertyName, T const &value) noexcept {
+  writer.WritePropertyName(to_hstring(propertyName));
+  WriteValue(writer, value);
+}
+
+template <class T>
+inline void WriteProperty(IJSValueWriter const &writer, std::wstring_view propertyName, T const &value) noexcept {
   writer.WritePropertyName(propertyName);
   WriteValue(writer, value);
 }
 
 template <class T>
-inline bool WriteProperty(IJSValueWriter const &writer, std::wstring_view propertyName, T const &value) noexcept {
-  writer.WritePropertyName(propertyName);
-  WriteValue(writer, value);
+inline void WriteProperties(IJSValueWriter const &writer, T const &value) noexcept {
+  JSValue jsValue;
+  WriteValue(MakeJSValueTreeWriter(/*ref*/ jsValue), value);
+  for (auto &property : jsValue.Object()) {
+    WriteProperty(writer, property.first, property.second);
+  }
 }
 
 template <class... TArgs>
 inline void WriteArgs(IJSValueWriter const &writer, TArgs const &... args) noexcept {
   writer.WriteArrayBegin();
   if constexpr (sizeof...(args) > 0) {
-    // To write variadic template arguments in natural order we must use them in
-    // an initializer list.
+    // To write variadic template arguments in natural order we must use them in an initializer list.
     [[maybe_unused]] int dummy[] = {(WriteValue(writer, args), 0)...};
   }
   writer.WriteArrayEnd();

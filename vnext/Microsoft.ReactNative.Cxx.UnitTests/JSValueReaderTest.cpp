@@ -3,8 +3,8 @@
 
 #include "pch.h"
 #include "JSValueReader.h"
-#include "JSValueWriter.h"
 #include <variant>
+#include "JSValueWriter.h"
 #include "JsonJSValueReader.h"
 #include "catch.hpp"
 
@@ -76,8 +76,13 @@ struct RobotInfo {
 };
 
 // Reading RobotModel enum value. We could use template-based version instead.
-void ReadValue(IJSValueReader &reader, RobotModel &value) {
+void ReadValue(IJSValueReader &reader, RobotModel &value) noexcept {
   value = static_cast<RobotModel>(ReadValue<int>(reader));
+}
+
+// Writing RobotModel enum value. We could use template-based version instead.
+void WriteValue(IJSValueWriter const &writer, RobotModel value) noexcept {
+  WriteValue(writer, static_cast<int>(value));
 }
 
 // Reading discriminating union requires using JSValue.
@@ -90,6 +95,19 @@ void ReadValue(const JSValue &jsValue, std::variant<T2Extra, R2D2Extra> &value) 
       value = ReadValue<R2D2Extra>(jsValue);
       break;
   }
+}
+
+// Writing discriminating union.
+void WriteValue(IJSValueWriter const &writer, std::variant<T2Extra, R2D2Extra> const &value) noexcept {
+  writer.WriteObjectBegin();
+  if (const T2Extra *t2 = std::get_if<T2Extra>(&value)) {
+    WriteProperty(writer, L"Kind", RobotModel::T2);
+    WriteProperties(writer, *t2);
+  } else if (const R2D2Extra *r2d2 = std::get_if<R2D2Extra>(&value)) {
+    WriteProperty(writer, L"Kind", RobotModel::R2D2);
+    WriteProperties(writer, *r2d2);
+  }
+  writer.WriteObjectEnd();
 }
 
 // Reading RobotInfo value. It could be generated instead.
@@ -127,52 +145,25 @@ void ReadValue(IJSValueReader &reader, RobotInfo &value) noexcept {
     }
   }
 }
-//
-//    // Reading RobotInfo value. It could be generated instead.
-//   public
-//    static void WriteValue(this IJSValueWriter writer, RobotInfo value) {
-//      if (value != null) {
-//        writer.WriteObjectBegin();
-//        writer.WriteObjectProperty(nameof(value.Model), value.Model);
-//        writer.WriteObjectProperty(nameof(value.Name), value.Name);
-//        writer.WriteObjectProperty(nameof(value.Age), value.Age);
-//        writer.WriteObjectProperty(nameof(value.Shape), value.Shape);
-//        writer.WriteObjectProperty(nameof(value.Shape2), value.Shape2);
-//        writer.WriteObjectProperty(nameof(value.Shape3), value.Shape3);
-//        writer.WriteObjectProperty(nameof(value.Steps), value.Steps);
-//        writer.WriteObjectProperty(nameof(value.Dimensions), value.Dimensions);
-//        writer.WriteObjectProperty(nameof(value.Badges), value.Badges);
-//        writer.WriteObjectProperty(nameof(value.Tools), value.Tools);
-//        writer.WriteObjectProperty(nameof(value.Path), value.Path);
-//        writer.WriteObjectProperty(nameof(value.Extra), value.Extra);
-//        writer.WriteObjectEnd();
-//      } else {
-//        writer.WriteNull();
-//      }
-//    }
-//
 
-//
-//    // Writing RobotModel enum value. It could be generated instead.
-//   public
-//    static void WriteValue(this IJSValueWriter writer, RobotModel value) {
-//      writer.WriteValue((int)value);
-//    }
+// Writing RobotInfo value. It could be generated instead.
+void WriteValue(IJSValueWriter const &writer, RobotInfo const &/*value*/) noexcept {
+  writer.WriteObjectBegin();
+  //WriteValue(writer, L"Model", value.Model);
+  //WriteValue(writer, L"Name", value.Name);
+  //WriteValue(writer, L"Age", value.Age);
+  //WriteValue(writer, L"Shape", value.Shape);
+  //WriteValue(writer, L"Shape2", value.Shape2);
+  //WriteValue(writer, L"Shape3", value.Shape3);
+  //WriteValue(writer, L"Steps", value.Steps);
+  //WriteValue(writer, L"Dimensions", value.Dimensions);
+  //WriteValue(writer, L"Badges", value.Badges);
+  //WriteValue(writer, L"Tools", value.Tools);
+  //WriteValue(writer, L"Path", value.Path);
+  //WriteValue(writer, L"Extra", value.Extra);
+  writer.WriteObjectEnd();
+}
 
-//    // Writing discriminating union is simpler than reading.
-//   public
-//    static void WriteValue(this IJSValueWriter writer, OneOf<T2Extra, R2D2Extra> value) {
-//      writer.WriteObjectBegin();
-//      if (value.TryGet(out T2Extra t2)) {
-//        writer.WriteObjectProperty("Kind", RobotModel.T2);
-//        writer.WriteObjectProperties(t2);
-//      } else if (value.TryGet(out R2D2Extra r2d2)) {
-//        writer.WriteObjectProperty("Kind", RobotModel.R2D2);
-//        writer.WriteObjectProperties(r2d2);
-//      }
-//      writer.WriteObjectEnd();
-//    }
-//  }
 TEST_CASE("TestReadCustomType", "JSValueReaderTest") {
   const wchar_t *json =
       LR"JSON({
@@ -448,31 +439,31 @@ TEST_CASE("TestReadValueDefaultExtensions", "JSValueReaderTest") {
   REQUIRE(properyCount == 9);
 }
 
-//[TestMethod] public void TestWriteValueDefaultExtensions() {
-//  var writer = new JTokenJSValueWriter();
-//  writer.WriteObjectBegin();
-//  writer.WriteObjectProperty("StringValue1", "");
-//  writer.WriteObjectProperty("StringValue2", "5");
-//  writer.WriteObjectProperty("StringValue3", "Hello");
-//  writer.WriteObjectProperty("BoolValue1", false);
-//  writer.WriteObjectProperty("BoolValue2", true);
-//  writer.WriteObjectProperty("IntValue1", 0);
-//  writer.WriteObjectProperty("IntValue2", 42);
-//  writer.WriteObjectProperty("FloatValue", 3.14);
-//  writer.WriteObjectProperty("NullValue", JSValue.Null);
-//  writer.WriteObjectEnd();
-//  JToken jValue = writer.TakeValue();
-//
-//  Assert.AreEqual("", jValue["StringValue1"]);
-//  Assert.AreEqual("5", jValue["StringValue2"]);
-//  Assert.AreEqual("Hello", jValue["StringValue3"]);
-//  Assert.AreEqual(false, jValue["BoolValue1"]);
-//  Assert.AreEqual(true, jValue["BoolValue2"]);
-//  Assert.AreEqual(0, jValue["IntValue1"]);
-//  Assert.AreEqual(42, jValue["IntValue2"]);
-//  Assert.AreEqual(3.14, jValue["FloatValue"]);
-//  Assert.AreEqual(JTokenType.Null, jValue["NullValue"].Type);
-//}
-//}
+TEST_CASE("TestWriteValueDefaultExtensions", "JSValueReaderTest") {
+  JSValue jsValue;
+  auto writer = MakeJSValueTreeWriter(jsValue);
+  writer.WriteObjectBegin();
+  WriteProperty(writer, L"StringValue1", "");
+  WriteProperty(writer, L"StringValue2", "5");
+  WriteProperty(writer, L"StringValue3", "Hello");
+  WriteProperty(writer, L"BoolValue1", false);
+  WriteProperty(writer, L"BoolValue2", true);
+  WriteProperty(writer, L"IntValue1", 0);
+  WriteProperty(writer, L"IntValue2", 42);
+  WriteProperty(writer, L"FloatValue", 3.14);
+  WriteProperty(writer, L"NullValue", nullptr);
+  writer.WriteObjectEnd();
+  //JSValue jsValue = writer.TakeValue();
+
+  //REQUIRE("", jsValue["StringValue1"].String());
+  //REQUIRE("5", jsValue["StringValue2"]);
+  //REQUIRE("Hello", jsValue["StringValue3"]);
+  //REQUIRE(false, jsValue["BoolValue1"]);
+  //REQUIRE(true, jsValue["BoolValue2"]);
+  //REQUIRE(0, jsValue["IntValue1"]);
+  //REQUIRE(42, jsValue["IntValue2"]);
+  //REQUIRE(3.14, jsValue["FloatValue"]);
+  //REQUIRE(JTokenType.Null, jsValue["NullValue"].Type);
+}
 
 } // namespace winrt::Microsoft::ReactNative::Bridge
