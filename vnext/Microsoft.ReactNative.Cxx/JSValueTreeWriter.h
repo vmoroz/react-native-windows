@@ -5,11 +5,14 @@
 #ifndef MICROSOFT_REACTNATIVE_JSVALUETREEWRITER
 #define MICROSOFT_REACTNATIVE_JSVALUETREEWRITER
 
+#include <stack>
 #include "JSValue.h"
 
 namespace winrt::Microsoft::ReactNative::Bridge {
 
+// Writes to a tree of JSValue objects.
 struct JSValueTreeWriter : implements<JSValueTreeWriter, IJSValueWriter> {
+  JSValueTreeWriter() noexcept;
   JSValue TakeValue() noexcept;
 
  public: // IJSValueWriter
@@ -25,15 +28,12 @@ struct JSValueTreeWriter : implements<JSValueTreeWriter, IJSValueWriter> {
   void WriteArrayEnd() noexcept;
 
  private:
-  enum struct State { Start, PropertyName, PropertyValue, Array, Finish };
+  enum struct ContainerType { None, Object, Array };
 
-  struct StackEntry {
-    //StackEntry(State state, JSValueObject &&object, std::string &&propertyName) noexcept
-    //    : State{state}, Object{std::move(object)}, PropertyName{std::move(propertyName)} {}
+  struct ContainerInfo {
+    ContainerInfo(ContainerType type) noexcept : Type{std::move(type)} {}
 
-    //StackEntry(State state, JSValueArray &&array) noexcept : State{state}, Array(std::move(array)) {}
-
-    State State;
+    ContainerType Type{ContainerType::None};
     JSValueObject Object;
     JSValueArray Array;
     std::string PropertyName;
@@ -43,12 +43,8 @@ struct JSValueTreeWriter : implements<JSValueTreeWriter, IJSValueWriter> {
   void WriteValue(JSValue &&value) noexcept;
 
  private:
-  State m_state{State::Start};
-  std::vector<StackEntry> m_stack;
-  JSValueObject m_object;
-  JSValueArray m_array;
-  std::string m_propertyName;
-  JSValue m_result;
+  std::stack<ContainerInfo> m_containerStack;
+  JSValue m_resultValue;
 };
 
 } // namespace winrt::Microsoft::ReactNative::Bridge
