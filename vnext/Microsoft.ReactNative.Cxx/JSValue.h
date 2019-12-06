@@ -13,6 +13,7 @@ namespace winrt::Microsoft::ReactNative::Bridge {
 // Forward declarations
 struct JSValue;
 IJSValueReader MakeJSValueTreeReader(const JSValue &root) noexcept;
+IJSValueWriter MakeJSValueTreeWriter(JSValue &resultValue) noexcept;
 
 // Type alias for JSValue object type
 using JSValueObject = std::map<std::string, JSValue, std::less<>>;
@@ -98,9 +99,9 @@ struct JSValue {
 
   bool Equals(const JSValue &other) const noexcept;
 
-  static JSValue ReadFrom(IJSValueReader &reader) noexcept;
-  static JSValueObject ReadObjectFrom(IJSValueReader &reader) noexcept;
-  static JSValueArray ReadArrayFrom(IJSValueReader &reader) noexcept;
+  static JSValue ReadFrom(IJSValueReader const &reader) noexcept;
+  static JSValueObject ReadObjectFrom(IJSValueReader const &reader) noexcept;
+  static JSValueArray ReadArrayFrom(IJSValueReader const &reader) noexcept;
 
   void WriteTo(IJSValueWriter const &writer) const noexcept;
   static void WriteObjectTo(IJSValueWriter const &writer, JSValueObjectView object) noexcept;
@@ -109,9 +110,9 @@ struct JSValue {
  private:
   bool ObjectEquals(const JSValueObject &other) const noexcept;
   bool ArrayEquals(const JSValueArray &other) const noexcept;
-  static JSValue ReadValue(IJSValueReader &reader) noexcept;
-  static JSValueObject ReadObjectProperties(IJSValueReader &reader) noexcept;
-  static JSValueArray ReadArrayItems(IJSValueReader &reader) noexcept;
+  static JSValue ReadValue(IJSValueReader const &reader) noexcept;
+  static JSValueObject ReadObjectProperties(IJSValueReader const &reader) noexcept;
+  static JSValueArray ReadArrayItems(IJSValueReader const &reader) noexcept;
 
  private: // Instance fields
   JSValueType m_type;

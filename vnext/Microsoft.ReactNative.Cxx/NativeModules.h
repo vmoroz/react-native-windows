@@ -166,7 +166,7 @@ struct ModuleMethodInfo<void (TModule::*)(TArgs...) noexcept> {
     // Fire and forget method
     static MethodDelegate GetFunc(ModuleType *module, MethodType method, std::integral_constant<size_t, 0>) noexcept {
       return [ module, method ](
-          const IJSValueReader &argReader,
+          const IJSValueReader const &argReader,
           const IJSValueWriter & /*argWriter*/,
           const MethodResultCallback &,
           const MethodResultCallback &) mutable noexcept {
@@ -229,7 +229,7 @@ struct ModuleMethodInfo<void (TModule::*)(TArgs...) noexcept> {
     // Method with one callback
     static MethodDelegate GetFunc(ModuleType *module, MethodType method, std::integral_constant<size_t, 1>) noexcept {
       return [ module, method ](
-          const IJSValueReader &argReader,
+          const IJSValueReader const &argReader,
           const IJSValueWriter &argWriter,
           const MethodResultCallback &callback,
           const MethodResultCallback &) mutable noexcept {
@@ -246,7 +246,7 @@ struct ModuleMethodInfo<void (TModule::*)(TArgs...) noexcept> {
     // Method with two callbacks
     static MethodDelegate GetFunc(ModuleType *module, MethodType method, std::integral_constant<size_t, 2>) noexcept {
       return [ module, method ](
-          const IJSValueReader &argReader,
+          const IJSValueReader const &argReader,
           const IJSValueWriter &argWriter,
           const MethodResultCallback &callback1,
           const MethodResultCallback &callback2) mutable noexcept {
@@ -306,7 +306,7 @@ struct ModuleMethodInfo<TResult (TModule::*)(TArgs...) noexcept> {
     // Async method with return value
     static MethodDelegate GetFunc(ModuleType *module, MethodType method) noexcept {
       return [ module, method ](
-          const IJSValueReader &argReader,
+          const IJSValueReader const &argReader,
           const IJSValueWriter &argWriter,
           const MethodResultCallback &callback,
           const MethodResultCallback &) mutable noexcept {

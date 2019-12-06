@@ -28,7 +28,7 @@ namespace winrt::Microsoft::ReactNative::Bridge {
 struct FieldInfo;
 using FieldMap = std::map<std::wstring, FieldInfo, std::less<>>;
 using FieldReaderType =
-    void (*)(IJSValueReader & /*reader*/, void * /*obj*/, const uintptr_t * /*fieldPtrStore*/) noexcept;
+    void (*)(IJSValueReader const & /*reader*/, void * /*obj*/, const uintptr_t * /*fieldPtrStore*/) noexcept;
 using FieldWriterType =
     void (*)(IJSValueWriter const & /*writer*/, const void * /*obj*/, const uintptr_t * /*fieldPtrStore*/) noexcept;
 
@@ -36,7 +36,7 @@ template <class T>
 void GetStructInfo(T *) {}
 
 template <class TClass, class TValue>
-void FieldReader(IJSValueReader &reader, void *obj, const uintptr_t *fieldPtrStore) noexcept;
+void FieldReader(IJSValueReader const &reader, void *obj, const uintptr_t *fieldPtrStore) noexcept;
 
 template <class TClass, class TValue>
 void FieldWriter(IJSValueWriter const &writer, const void *obj, const uintptr_t *fieldPtrStore) noexcept;
@@ -50,7 +50,7 @@ struct FieldInfo {
     static_assert(sizeof(m_fieldPtrStore) >= sizeof(fieldPtr));
   }
 
-  void ReadField(IJSValueReader &reader, void *obj) const noexcept {
+  void ReadField(IJSValueReader const &reader, void *obj) const noexcept {
     m_fieldReader(reader, obj, &m_fieldPtrStore);
   }
 
@@ -65,7 +65,7 @@ struct FieldInfo {
 };
 
 template <class TClass, class TValue>
-void FieldReader(IJSValueReader &reader, void *obj, const uintptr_t *fieldPtrStore) noexcept {
+void FieldReader(IJSValueReader const &reader, void *obj, const uintptr_t *fieldPtrStore) noexcept {
   using FieldPtrType = TValue TClass::*;
   ReadValue(reader, /*out*/ static_cast<TClass *>(obj)->*(*reinterpret_cast<const FieldPtrType *>(fieldPtrStore)));
 }

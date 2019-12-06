@@ -156,11 +156,11 @@ bool JSValue::Equals(const JSValue &other) const noexcept {
   return false;
 }
 
-/*static*/ JSValue JSValue::ReadFrom(IJSValueReader &reader) noexcept {
+/*static*/ JSValue JSValue::ReadFrom(IJSValueReader const &reader) noexcept {
   return ReadValue(reader);
 }
 
-/*static*/ JSValueObject JSValue::ReadObjectFrom(IJSValueReader &reader) noexcept {
+/*static*/ JSValueObject JSValue::ReadObjectFrom(IJSValueReader const &reader) noexcept {
   if (reader.ValueType() == JSValueType::Object) {
     return ReadObjectProperties(reader);
   }
@@ -168,7 +168,7 @@ bool JSValue::Equals(const JSValue &other) const noexcept {
   return JSValueObject{};
 }
 
-/*static*/ JSValueArray JSValue::ReadArrayFrom(IJSValueReader &reader) noexcept {
+/*static*/ JSValueArray JSValue::ReadArrayFrom(IJSValueReader const &reader) noexcept {
   if (reader.ValueType() == JSValueType::Array) {
     return ReadArrayItems(reader);
   }
@@ -254,7 +254,7 @@ bool JSValue::ArrayEquals(const JSValueArray &other) const noexcept {
 }
 
 // Read value from IJSValueReader without checking for IJSValueTreeReader.
-/*static*/ JSValue JSValue::ReadValue(IJSValueReader &reader) noexcept {
+/*static*/ JSValue JSValue::ReadValue(IJSValueReader const &reader) noexcept {
   switch (reader.ValueType()) {
     case JSValueType::Null:
       return JSValue();
@@ -276,7 +276,7 @@ bool JSValue::ArrayEquals(const JSValueArray &other) const noexcept {
 }
 
 // Read object properties without checking value type.
-/*static*/ JSValueObject JSValue::ReadObjectProperties(IJSValueReader &reader) noexcept {
+/*static*/ JSValueObject JSValue::ReadObjectProperties(IJSValueReader const &reader) noexcept {
   JSValueObject properties;
   hstring propertyName;
   while (reader.GetNextObjectProperty(/*ref*/ propertyName)) {
@@ -287,7 +287,7 @@ bool JSValue::ArrayEquals(const JSValueArray &other) const noexcept {
 }
 
 // Read array items without checking value type.
-/*static*/ JSValueArray JSValue::ReadArrayItems(IJSValueReader &reader) noexcept {
+/*static*/ JSValueArray JSValue::ReadArrayItems(IJSValueReader const &reader) noexcept {
   JSValueArray items;
   while (reader.GetNextArrayItem()) {
     items.push_back(ReadValue(reader));

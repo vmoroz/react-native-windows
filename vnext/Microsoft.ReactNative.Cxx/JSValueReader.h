@@ -33,52 +33,52 @@ struct TypeWrapper {
 
 // Forward declarations
 template <class T>
-T ReadValue(IJSValueReader &reader) noexcept;
+T ReadValue(IJSValueReader const &reader) noexcept;
 template <class T>
 T ReadValue(const JSValue &jsValue) noexcept;
 
 template <class T, class TJSValueReader, std::enable_if_t<std::is_same_v<TJSValueReader, IJSValueReader>, int> = 1>
-void ReadValue(TJSValueReader &reader, /*out*/ T &value) noexcept;
+void ReadValue(TJSValueReader const &reader, /*out*/ T &value) noexcept;
 
 template <class T, class TJSValue, std::enable_if_t<std::is_same_v<TJSValue, JSValue>, int> = 1>
-void ReadValue(const TJSValue &jsValue, /*out*/ T &value) noexcept;
+void ReadValue(TJSValue const &jsValue, /*out*/ T &value) noexcept;
 
-void ReadValue(IJSValueReader &reader, /*out*/ std::string &value) noexcept;
-void ReadValue(IJSValueReader &reader, /*out*/ std::wstring &value) noexcept;
-void ReadValue(IJSValueReader &reader, /*out*/ bool &value) noexcept;
-void ReadValue(IJSValueReader &reader, /*out*/ int8_t &value) noexcept;
-void ReadValue(IJSValueReader &reader, /*out*/ int16_t &value) noexcept;
-void ReadValue(IJSValueReader &reader, /*out*/ int32_t &value) noexcept;
-void ReadValue(IJSValueReader &reader, /*out*/ int64_t &value) noexcept;
-void ReadValue(IJSValueReader &reader, /*out*/ uint8_t &value) noexcept;
-void ReadValue(IJSValueReader &reader, /*out*/ uint16_t &value) noexcept;
-void ReadValue(IJSValueReader &reader, /*out*/ uint32_t &value) noexcept;
-void ReadValue(IJSValueReader &reader, /*out*/ uint64_t &value) noexcept;
-void ReadValue(IJSValueReader &reader, /*out*/ float &value) noexcept;
-void ReadValue(IJSValueReader &reader, /*out*/ double &value) noexcept;
+void ReadValue(IJSValueReader const &reader, /*out*/ std::string &value) noexcept;
+void ReadValue(IJSValueReader const &reader, /*out*/ std::wstring &value) noexcept;
+void ReadValue(IJSValueReader const &reader, /*out*/ bool &value) noexcept;
+void ReadValue(IJSValueReader const &reader, /*out*/ int8_t &value) noexcept;
+void ReadValue(IJSValueReader const &reader, /*out*/ int16_t &value) noexcept;
+void ReadValue(IJSValueReader const &reader, /*out*/ int32_t &value) noexcept;
+void ReadValue(IJSValueReader const &reader, /*out*/ int64_t &value) noexcept;
+void ReadValue(IJSValueReader const &reader, /*out*/ uint8_t &value) noexcept;
+void ReadValue(IJSValueReader const &reader, /*out*/ uint16_t &value) noexcept;
+void ReadValue(IJSValueReader const &reader, /*out*/ uint32_t &value) noexcept;
+void ReadValue(IJSValueReader const &reader, /*out*/ uint64_t &value) noexcept;
+void ReadValue(IJSValueReader const &reader, /*out*/ float &value) noexcept;
+void ReadValue(IJSValueReader const &reader, /*out*/ double &value) noexcept;
 template <class T, std::enable_if_t<std::is_enum_v<T>, int> = 1>
-void ReadValue(IJSValueReader &reader, /*out*/ T &value) noexcept;
+void ReadValue(IJSValueReader const &reader, /*out*/ T &value) noexcept;
 template <class T>
-void ReadValue(IJSValueReader &reader, /*out*/ std::optional<T> &value) noexcept;
+void ReadValue(IJSValueReader const &reader, /*out*/ std::optional<T> &value) noexcept;
 template <class T, class TCompare = std::less<>, class TAlloc = std::allocator<pair<const std::string, T>>>
-void ReadValue(IJSValueReader &reader, /*out*/ std::map<std::string, T, TCompare, TAlloc> &value) noexcept;
+void ReadValue(IJSValueReader const &reader, /*out*/ std::map<std::string, T, TCompare, TAlloc> &value) noexcept;
 template <class T, class TCompare = std::less<>, class TAlloc = std::allocator<pair<const std::string, T>>>
-void ReadValue(IJSValueReader &reader, /*out*/ std::map<std::wstring, T, TCompare, TAlloc> &value) noexcept;
+void ReadValue(IJSValueReader const &reader, /*out*/ std::map<std::wstring, T, TCompare, TAlloc> &value) noexcept;
 template <class T, class TAlloc = allocator<T>>
-void ReadValue(IJSValueReader &reader, /*out*/ std::vector<T, TAlloc> &value) noexcept;
+void ReadValue(IJSValueReader const &reader, /*out*/ std::vector<T, TAlloc> &value) noexcept;
 template <class... Ts>
-void ReadValue(IJSValueReader &reader, /*out*/ std::tuple<Ts...> &value) noexcept;
+void ReadValue(IJSValueReader const &reader, /*out*/ std::tuple<Ts...> &value) noexcept;
 
-void ReadValue(IJSValueReader &reader, /*out*/ JSValue &value) noexcept;
-void ReadValue(IJSValueReader &reader, /*out*/ JSValueObject &value) noexcept;
-void ReadValue(IJSValueReader &reader, /*out*/ JSValueArray &value) noexcept;
+void ReadValue(IJSValueReader const &reader, /*out*/ JSValue &value) noexcept;
+void ReadValue(IJSValueReader const &reader, /*out*/ JSValueObject &value) noexcept;
+void ReadValue(IJSValueReader const &reader, /*out*/ JSValueArray &value) noexcept;
 
 template <class T, std::enable_if_t<!std::is_void_v<decltype(GetStructInfo(static_cast<T *>(nullptr)))>, int> = 1>
-void ReadValue(IJSValueReader &reader, /*out*/ T &value) noexcept;
+void ReadValue(IJSValueReader const &reader, /*out*/ T &value) noexcept;
 
-bool SkipArrayToEnd(IJSValueReader &reader) noexcept;
+bool SkipArrayToEnd(IJSValueReader const &reader) noexcept;
 template <class... TArgs>
-void ReadArgs(IJSValueReader &reader, /*out*/ TArgs &... args) noexcept;
+void ReadArgs(IJSValueReader const &reader, /*out*/ TArgs &... args) noexcept;
 
 //===========================================================================
 // IJSValueReader extensions implementation
@@ -86,7 +86,7 @@ void ReadArgs(IJSValueReader &reader, /*out*/ TArgs &... args) noexcept;
 
 // This is a convenience method to call ReadValue for IJSValueReader.
 template <class T>
-inline T ReadValue(IJSValueReader &reader) noexcept {
+inline T ReadValue(IJSValueReader const &reader) noexcept {
   T result;
   ReadValue(reader, /*out*/ result);
   return result;
@@ -102,14 +102,14 @@ inline T ReadValue(const JSValue &jsValue) noexcept {
 
 // Try to call ReadValue for JSValue unless it is already called us with TypeWrapper parameter.
 template <class T, class TJSValueReader, std::enable_if_t<std::is_same_v<TJSValueReader, IJSValueReader>, int>>
-inline void ReadValue(TJSValueReader &reader, /*out*/ T &value) noexcept {
+inline void ReadValue(TJSValueReader const &reader, /*out*/ T &value) noexcept {
   TypeWrapper<JSValue> jsValue = {JSValue::ReadFrom(reader)};
   ReadValue(jsValue, /*out*/ value);
 }
 
 // Try to call ReadValue for IJSValueReader unless it is already called us with TypeWrapper parameter.
 template <class T, class TJSValue, std::enable_if_t<std::is_same_v<TJSValue, JSValue>, int>>
-inline void ReadValue(const TJSValue &jsValue, /*out*/ T &value) noexcept {
+inline void ReadValue(TJSValue const &jsValue, /*out*/ T &value) noexcept {
   TypeWrapper<IJSValueReader> reader = {MakeJSValueTreeReader(jsValue)};
   ReadValue(reader, /*out*/ value);
 }
@@ -137,7 +137,7 @@ inline std::basic_string<TChar> basic_string_convert(TValue value) {
   }
 }
 
-inline void ReadValue(IJSValueReader &reader, /*out*/ std::string &value) noexcept {
+inline void ReadValue(IJSValueReader const &reader, /*out*/ std::string &value) noexcept {
   switch (reader.ValueType()) {
     case JSValueType::String:
       value = to_string(reader.GetString());
@@ -157,7 +157,7 @@ inline void ReadValue(IJSValueReader &reader, /*out*/ std::string &value) noexce
   }
 }
 
-inline void ReadValue(IJSValueReader &reader, /*out*/ std::wstring &value) noexcept {
+inline void ReadValue(IJSValueReader const &reader, /*out*/ std::wstring &value) noexcept {
   switch (reader.ValueType()) {
     case JSValueType::String:
       value = reader.GetString();
@@ -177,7 +177,7 @@ inline void ReadValue(IJSValueReader &reader, /*out*/ std::wstring &value) noexc
   }
 }
 
-inline void ReadValue(IJSValueReader &reader, /*out*/ bool &value) noexcept {
+inline void ReadValue(IJSValueReader const &reader, /*out*/ bool &value) noexcept {
   switch (reader.ValueType()) {
     case JSValueType::String:
       value = !to_string(reader.GetString()).empty();
@@ -197,25 +197,25 @@ inline void ReadValue(IJSValueReader &reader, /*out*/ bool &value) noexcept {
   }
 }
 
-inline void ReadValue(IJSValueReader &reader, /*out*/ int8_t &value) noexcept {
+inline void ReadValue(IJSValueReader const &reader, /*out*/ int8_t &value) noexcept {
   int64_t val;
   ReadValue(reader, /*out*/ val);
   value = static_cast<int8_t>(val);
 }
 
-inline void ReadValue(IJSValueReader &reader, /*out*/ int16_t &value) noexcept {
+inline void ReadValue(IJSValueReader const &reader, /*out*/ int16_t &value) noexcept {
   int64_t val;
   ReadValue(reader, /*out*/ val);
   value = static_cast<int16_t>(val);
 }
 
-inline void ReadValue(IJSValueReader &reader, /*out*/ int32_t &value) noexcept {
+inline void ReadValue(IJSValueReader const &reader, /*out*/ int32_t &value) noexcept {
   int64_t val;
   ReadValue(reader, /*out*/ val);
   value = static_cast<int32_t>(val);
 }
 
-inline void ReadValue(IJSValueReader &reader, /*out*/ int64_t &value) noexcept {
+inline void ReadValue(IJSValueReader const &reader, /*out*/ int64_t &value) noexcept {
   switch (reader.ValueType()) {
     case JSValueType::String: {
       hstring str = reader.GetString();
@@ -243,37 +243,37 @@ inline void ReadValue(IJSValueReader &reader, /*out*/ int64_t &value) noexcept {
   }
 }
 
-inline void ReadValue(IJSValueReader &reader, /*out*/ uint8_t &value) noexcept {
+inline void ReadValue(IJSValueReader const &reader, /*out*/ uint8_t &value) noexcept {
   int64_t val;
   ReadValue(reader, /*out*/ val);
   value = static_cast<uint8_t>(val);
 }
 
-inline void ReadValue(IJSValueReader &reader, /*out*/ uint16_t &value) noexcept {
+inline void ReadValue(IJSValueReader const &reader, /*out*/ uint16_t &value) noexcept {
   int64_t val;
   ReadValue(reader, /*out*/ val);
   value = static_cast<uint16_t>(val);
 }
 
-inline void ReadValue(IJSValueReader &reader, /*out*/ uint32_t &value) noexcept {
+inline void ReadValue(IJSValueReader const &reader, /*out*/ uint32_t &value) noexcept {
   int64_t val;
   ReadValue(reader, /*out*/ val);
   value = static_cast<uint32_t>(val);
 }
 
-inline void ReadValue(IJSValueReader &reader, /*out*/ uint64_t &value) noexcept {
+inline void ReadValue(IJSValueReader const &reader, /*out*/ uint64_t &value) noexcept {
   int64_t val;
   ReadValue(reader, /*out*/ val);
   value = static_cast<uint64_t>(val);
 }
 
-inline void ReadValue(IJSValueReader &reader, /*out*/ float &value) noexcept {
+inline void ReadValue(IJSValueReader const &reader, /*out*/ float &value) noexcept {
   double val;
   ReadValue(reader, /*out*/ val);
   value = static_cast<float>(val);
 }
 
-inline void ReadValue(IJSValueReader &reader, /*out*/ double &value) noexcept {
+inline void ReadValue(IJSValueReader const &reader, /*out*/ double &value) noexcept {
   switch (reader.ValueType()) {
     case JSValueType::String: {
       hstring str = reader.GetString();
@@ -302,14 +302,14 @@ inline void ReadValue(IJSValueReader &reader, /*out*/ double &value) noexcept {
 }
 
 template <class T, std::enable_if_t<std::is_enum_v<T>, int>>
-inline void ReadValue(IJSValueReader &reader, /*out*/ T &value) noexcept {
+inline void ReadValue(IJSValueReader const &reader, /*out*/ T &value) noexcept {
   int32_t intValue;
   ReadValue(reader, intValue);
   value = static_cast<T>(intValue);
 }
 
 template <class T>
-inline void ReadValue(IJSValueReader &reader, /*out*/ std::optional<T> &value) noexcept {
+inline void ReadValue(IJSValueReader const &reader, /*out*/ std::optional<T> &value) noexcept {
   if (reader.ValueType() != JSValueType::Null) {
     value = ReadValue<T>(reader);
   } else {
@@ -321,7 +321,9 @@ inline void ReadValue(IJSValueReader &reader, /*out*/ std::optional<T> &value) n
 // This is to enable use of string-like objects such as std::string_view as key to retrieve values.
 // While std::less<> is better, the standard cannot have a breaking change to switch to it.
 template <class T, class TCompare, class TAlloc>
-inline void ReadValue(IJSValueReader &reader, /*out*/ std::map<std::string, T, TCompare, TAlloc> &value) noexcept {
+inline void ReadValue(
+    IJSValueReader const &reader,
+    /*out*/ std::map<std::string, T, TCompare, TAlloc> &value) noexcept {
   if (reader.ValueType() == JSValueType::Object) {
     hstring propertyName;
     while (reader.GetNextObjectProperty(/*out*/ propertyName)) {
@@ -331,7 +333,9 @@ inline void ReadValue(IJSValueReader &reader, /*out*/ std::map<std::string, T, T
 }
 
 template <class T, class TCompare, class TAlloc>
-inline void ReadValue(IJSValueReader &reader, /*out*/ std::map<std::wstring, T, TCompare, TAlloc> &value) noexcept {
+inline void ReadValue(
+    IJSValueReader const &reader,
+    /*out*/ std::map<std::wstring, T, TCompare, TAlloc> &value) noexcept {
   if (reader.ValueType() == JSValueType::Object) {
     hstring propertyName;
     while (reader.GetNextObjectProperty(/*out*/ propertyName)) {
@@ -341,7 +345,7 @@ inline void ReadValue(IJSValueReader &reader, /*out*/ std::map<std::wstring, T, 
 }
 
 template <class T, class TAlloc>
-inline void ReadValue(IJSValueReader &reader, /*out*/ std::vector<T, TAlloc> &value) noexcept {
+inline void ReadValue(IJSValueReader const &reader, /*out*/ std::vector<T, TAlloc> &value) noexcept {
   if (reader.ValueType() == JSValueType::Array) {
     while (reader.GetNextArrayItem()) {
       value.push_back(ReadValue<T>(reader));
@@ -350,29 +354,29 @@ inline void ReadValue(IJSValueReader &reader, /*out*/ std::vector<T, TAlloc> &va
 }
 
 template <class T, size_t... I>
-inline void ReadTuple(IJSValueReader &reader, /*out*/ T &tuple, std::index_sequence<I...>) noexcept {
+inline void ReadTuple(IJSValueReader const &reader, /*out*/ T &tuple, std::index_sequence<I...>) noexcept {
   ReadArgs(reader, std::get<I>(tuple)...);
 }
 
 template <class... Ts>
-inline void ReadValue(IJSValueReader &reader, /*out*/ std::tuple<Ts...> &value) noexcept {
+inline void ReadValue(IJSValueReader const &reader, /*out*/ std::tuple<Ts...> &value) noexcept {
   ReadTuple(reader, value, std::make_index_sequence<sizeof...(Ts)>{});
 }
 
-inline void ReadValue(IJSValueReader &reader, /*out*/ JSValue &value) noexcept {
+inline void ReadValue(IJSValueReader const &reader, /*out*/ JSValue &value) noexcept {
   value = JSValue::ReadFrom(reader);
 }
 
-inline void ReadValue(IJSValueReader &reader, /*out*/ JSValueObject &value) noexcept {
+inline void ReadValue(IJSValueReader const &reader, /*out*/ JSValueObject &value) noexcept {
   value = JSValue::ReadObjectFrom(reader);
 }
 
-inline void ReadValue(IJSValueReader &reader, /*out*/ JSValueArray &value) noexcept {
+inline void ReadValue(IJSValueReader const &reader, /*out*/ JSValueArray &value) noexcept {
   value = JSValue::ReadArrayFrom(reader);
 }
 
 template <class T, std::enable_if_t<!std::is_void_v<decltype(GetStructInfo(static_cast<T *>(nullptr)))>, int>>
-inline void ReadValue(IJSValueReader &reader, /*out*/ T &value) noexcept {
+inline void ReadValue(IJSValueReader const &reader, /*out*/ T &value) noexcept {
   if (reader.ValueType() == JSValueType::Object) {
     const auto &fieldMap = StructInfo<T>::FieldMap;
     hstring propertyName;
@@ -388,7 +392,7 @@ inline void ReadValue(IJSValueReader &reader, /*out*/ T &value) noexcept {
 }
 
 // It helps to read arguments from an array if there are more items than expected.
-inline bool SkipArrayToEnd(IJSValueReader &reader) noexcept {
+inline bool SkipArrayToEnd(IJSValueReader const &reader) noexcept {
   while (reader.GetNextArrayItem()) {
     ReadValue<JSValue>(reader); // Read and ignore the value
   }
@@ -397,7 +401,7 @@ inline bool SkipArrayToEnd(IJSValueReader &reader) noexcept {
 }
 
 template <class... TArgs>
-inline void ReadArgs(IJSValueReader &reader, /*out*/ TArgs &... args) noexcept {
+inline void ReadArgs(IJSValueReader const &reader, /*out*/ TArgs &... args) noexcept {
   // Read as many arguments as we can or return default values.
   bool success = reader.ValueType() == JSValueType::Array;
 

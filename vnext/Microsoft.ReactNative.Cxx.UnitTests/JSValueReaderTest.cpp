@@ -76,7 +76,7 @@ struct RobotInfo {
 };
 
 // Reading RobotModel enum value. We could use template-based version instead.
-void ReadValue(IJSValueReader &reader, RobotModel &value) noexcept {
+void ReadValue(IJSValueReader const &reader, RobotModel &value) noexcept {
   value = static_cast<RobotModel>(ReadValue<int>(reader));
 }
 
@@ -111,7 +111,7 @@ void WriteValue(IJSValueWriter const &writer, std::variant<T2Extra, R2D2Extra> c
 }
 
 // Reading RobotInfo value. It could be generated instead.
-void ReadValue(IJSValueReader &reader, RobotInfo &value) noexcept {
+void ReadValue(IJSValueReader const &reader, RobotInfo &value) noexcept {
   value = RobotInfo();
   if (reader.ValueType() == JSValueType::Object) {
     hstring propertyName;
