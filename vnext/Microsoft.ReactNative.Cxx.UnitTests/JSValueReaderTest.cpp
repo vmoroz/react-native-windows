@@ -30,6 +30,7 @@ struct RobotTool {
   bool IsEnabled;
 };
 
+// This is how we can provide "reflection" information about type outside of struct.
 FieldMap GetStructInfo(RobotTool *) {
   return {{L"Name", &RobotTool::Name}, {L"Weight", &RobotTool::Weight}, {L"IsEnabled", &RobotTool::IsEnabled}};
 }
@@ -43,22 +44,21 @@ FieldMap GetStructInfo(RobotPoint *) {
   return {{L"X", &RobotPoint::X}, {L"Y", &RobotPoint::Y}};
 }
 
+// We can provide "reflection" information about struct using REACT_STRUCT and REACT_FIELD macros.
+REACT_STRUCT(T2Extra)
 struct T2Extra {
+  REACT_FIELD(ActorName)
   std::string ActorName;
+
+  REACT_FIELD(MovieYear)
   int MovieYear;
 };
 
-FieldMap GetStructInfo(T2Extra *) {
-  return {{L"ActorName", &T2Extra::ActorName}, {L"MovieYear", &T2Extra::MovieYear}};
-}
-
+REACT_STRUCT(R2D2Extra)
 struct R2D2Extra {
+  REACT_FIELD(MovieSeries)
   std::string MovieSeries;
 };
-
-FieldMap GetStructInfo(R2D2Extra *) {
-  return {{L"MovieSeries", &R2D2Extra::MovieSeries}};
-}
 
 struct RobotInfo {
   RobotModel Model;
@@ -147,20 +147,20 @@ void ReadValue(IJSValueReader &reader, RobotInfo &value) noexcept {
 }
 
 // Writing RobotInfo value. It could be generated instead.
-void WriteValue(IJSValueWriter const &writer, RobotInfo const &/*value*/) noexcept {
+void WriteValue(IJSValueWriter const &writer, RobotInfo const & /*value*/) noexcept {
   writer.WriteObjectBegin();
-  //WriteValue(writer, L"Model", value.Model);
-  //WriteValue(writer, L"Name", value.Name);
-  //WriteValue(writer, L"Age", value.Age);
-  //WriteValue(writer, L"Shape", value.Shape);
-  //WriteValue(writer, L"Shape2", value.Shape2);
-  //WriteValue(writer, L"Shape3", value.Shape3);
-  //WriteValue(writer, L"Steps", value.Steps);
-  //WriteValue(writer, L"Dimensions", value.Dimensions);
-  //WriteValue(writer, L"Badges", value.Badges);
-  //WriteValue(writer, L"Tools", value.Tools);
-  //WriteValue(writer, L"Path", value.Path);
-  //WriteValue(writer, L"Extra", value.Extra);
+  // WriteValue(writer, L"Model", value.Model);
+  // WriteValue(writer, L"Name", value.Name);
+  // WriteValue(writer, L"Age", value.Age);
+  // WriteValue(writer, L"Shape", value.Shape);
+  // WriteValue(writer, L"Shape2", value.Shape2);
+  // WriteValue(writer, L"Shape3", value.Shape3);
+  // WriteValue(writer, L"Steps", value.Steps);
+  // WriteValue(writer, L"Dimensions", value.Dimensions);
+  // WriteValue(writer, L"Badges", value.Badges);
+  // WriteValue(writer, L"Tools", value.Tools);
+  // WriteValue(writer, L"Path", value.Path);
+  // WriteValue(writer, L"Extra", value.Extra);
   writer.WriteObjectEnd();
 }
 
@@ -453,17 +453,17 @@ TEST_CASE("TestWriteValueDefaultExtensions", "JSValueReaderTest") {
   WriteProperty(writer, L"FloatValue", 3.14);
   WriteProperty(writer, L"NullValue", nullptr);
   writer.WriteObjectEnd();
-  //JSValue jsValue = writer.TakeValue();
+  // JSValue jsValue = writer.TakeValue();
 
-  //REQUIRE("", jsValue["StringValue1"].String());
-  //REQUIRE("5", jsValue["StringValue2"]);
-  //REQUIRE("Hello", jsValue["StringValue3"]);
-  //REQUIRE(false, jsValue["BoolValue1"]);
-  //REQUIRE(true, jsValue["BoolValue2"]);
-  //REQUIRE(0, jsValue["IntValue1"]);
-  //REQUIRE(42, jsValue["IntValue2"]);
-  //REQUIRE(3.14, jsValue["FloatValue"]);
-  //REQUIRE(JTokenType.Null, jsValue["NullValue"].Type);
+  // REQUIRE("", jsValue["StringValue1"].String());
+  // REQUIRE("5", jsValue["StringValue2"]);
+  // REQUIRE("Hello", jsValue["StringValue3"]);
+  // REQUIRE(false, jsValue["BoolValue1"]);
+  // REQUIRE(true, jsValue["BoolValue2"]);
+  // REQUIRE(0, jsValue["IntValue1"]);
+  // REQUIRE(42, jsValue["IntValue2"]);
+  // REQUIRE(3.14, jsValue["FloatValue"]);
+  // REQUIRE(JTokenType.Null, jsValue["NullValue"].Type);
 }
 
 } // namespace winrt::Microsoft::ReactNative::Bridge
