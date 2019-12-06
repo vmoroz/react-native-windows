@@ -168,16 +168,16 @@ bool JSValue::Equals(const JSValue &other) const noexcept {
   return JSValueArray{};
 }
 
-void JSValue::WriteTo(IJSValueWriter &writer) const noexcept {
+void JSValue::WriteTo(IJSValueWriter const &writer) const noexcept {
   switch (m_type) {
     case JSValueType::Null:
       writer.WriteNull();
       break;
     case JSValueType::Object:
-      WriteObject(writer, m_object);
+      WriteObjectTo(writer, m_object);
       break;
     case JSValueType::Array:
-      WriteArray(writer, m_array);
+      WriteArrayTo(writer, m_array);
       break;
     case JSValueType::String:
       writer.WriteString(to_hstring(m_string));
@@ -194,7 +194,7 @@ void JSValue::WriteTo(IJSValueWriter &writer) const noexcept {
   }
 }
 
-/*static*/ void JSValue::WriteObject(IJSValueWriter &writer, JSValueObjectView object) noexcept {
+/*static*/ void JSValue::WriteObjectTo(IJSValueWriter const &writer, JSValueObjectView object) noexcept {
   writer.WriteObjectBegin();
   for (const auto &property : object) {
     writer.WritePropertyName(to_hstring(property.first));
@@ -203,7 +203,7 @@ void JSValue::WriteTo(IJSValueWriter &writer) const noexcept {
   writer.WriteObjectEnd();
 }
 
-/*static*/ void JSValue::WriteArray(IJSValueWriter &writer, JSValueArrayView value) noexcept {
+/*static*/ void JSValue::WriteArrayTo(IJSValueWriter const &writer, JSValueArrayView value) noexcept {
   writer.WriteArrayBegin();
   for (const JSValue &item : value) {
     item.WriteTo(writer);

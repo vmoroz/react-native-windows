@@ -95,9 +95,9 @@ struct JSValue {
   static JSValueObject ReadObjectFrom(IJSValueReader &reader) noexcept;
   static JSValueArray ReadArrayFrom(IJSValueReader &reader) noexcept;
 
-  void WriteTo(IJSValueWriter &writer) const noexcept;
-  static void WriteObject(IJSValueWriter &writer, JSValueObjectView object) noexcept;
-  static void WriteArray(IJSValueWriter &writer, JSValueArrayView value) noexcept;
+  void WriteTo(IJSValueWriter const &writer) const noexcept;
+  static void WriteObjectTo(IJSValueWriter const &writer, JSValueObjectView object) noexcept;
+  static void WriteArrayTo(IJSValueWriter const &writer, JSValueArrayView value) noexcept;
 
  private:
   bool ObjectEquals(const JSValueObject &other) const noexcept;

@@ -55,9 +55,9 @@ void FieldReader(IJSValueReader &reader, void *obj, const uintptr_t *fieldPtrSto
 }
 
 template <class TClass, class TValue>
-void FieldWriter(IJSValueWriter & /*writer*/, void * /*obj*/, const uintptr_t * /*fieldPtrStore*/) noexcept {
-  // using FieldPtrType = TValue TClass::*;
-  // WriteValue(writer, static_cast<TClass *>(obj)->*(*reinterpret_cast<const FieldPtrType *>(fieldPtrStore)));
+void FieldWriter(IJSValueWriter const & writer, void * obj, const uintptr_t * fieldPtrStore) noexcept {
+  using FieldPtrType = TValue TClass::*;
+  WriteValue(writer, static_cast<TClass *>(obj)->*(*reinterpret_cast<const FieldPtrType *>(fieldPtrStore)));
 }
 
 template <class T>

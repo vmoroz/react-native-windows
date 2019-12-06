@@ -44,13 +44,13 @@ void JSValueTreeWriter::WriteObjectBegin() noexcept {
 }
 
 void JSValueTreeWriter::WritePropertyName(const winrt::hstring &name) noexcept {
-  auto& top = m_containerStack.top();
+  auto &top = m_containerStack.top();
   VerifyElseCrash(top.Type == ContainerType::Object);
   top.PropertyName = to_string(name);
 }
 
 void JSValueTreeWriter::WriteObjectEnd() noexcept {
-  auto& top = m_containerStack.top();
+  auto &top = m_containerStack.top();
   VerifyElseCrash(top.Type == ContainerType::Object);
   JSValue value{std::move(top.Object)};
   m_containerStack.pop();
@@ -70,7 +70,7 @@ void JSValueTreeWriter::WriteArrayEnd() noexcept {
 }
 
 void JSValueTreeWriter::WriteValue(JSValue &&value) noexcept {
-  auto& top = m_containerStack.top();
+  auto &top = m_containerStack.top();
   switch (top.Type) {
     case ContainerType::None:
       m_resultValue = std::move(value);
@@ -82,6 +82,10 @@ void JSValueTreeWriter::WriteValue(JSValue &&value) noexcept {
       top.Array.push_back(std::move(value));
       break;
   }
+}
+
+IJSValueWriter MakeJSValueTreeWriter() noexcept {
+  return make<JSValueTreeWriter>();
 }
 
 } // namespace winrt::Microsoft::ReactNative::Bridge

@@ -27,6 +27,10 @@ struct TypeWrapper {
   }
 };
 
+//==============================================================================
+// IJSValueReader extensions
+//==============================================================================
+
 // Forward declarations
 template <class T>
 T ReadValue(IJSValueReader &reader) noexcept;
@@ -42,7 +46,6 @@ void ReadValue(const TJSValue &jsValue, /*out*/ T &value) noexcept;
 void ReadValue(IJSValueReader &reader, /*out*/ std::string &value) noexcept;
 void ReadValue(IJSValueReader &reader, /*out*/ std::wstring &value) noexcept;
 void ReadValue(IJSValueReader &reader, /*out*/ bool &value) noexcept;
-void ReadValue(IJSValueReader &reader, /*out*/ int64_t &value) noexcept;
 void ReadValue(IJSValueReader &reader, /*out*/ int8_t &value) noexcept;
 void ReadValue(IJSValueReader &reader, /*out*/ int16_t &value) noexcept;
 void ReadValue(IJSValueReader &reader, /*out*/ int32_t &value) noexcept;
@@ -346,6 +349,16 @@ inline void ReadValue(IJSValueReader &reader, /*out*/ std::vector<T, TAlloc> &va
   }
 }
 
+template <class T, size_t... I>
+inline void ReadTuple(IJSValueReader &reader, /*out*/ T &tuple, std::index_sequence<I...>) noexcept {
+  ReadArgs(reader, std::get<I>(tuple)...);
+}
+
+template <class... Ts>
+inline void ReadValue(IJSValueReader &reader, /*out*/ std::tuple<Ts...> &value) noexcept {
+  ReadTuple(reader, value, std::make_index_sequence<sizeof...(Ts)>{});
+}
+
 inline void ReadValue(IJSValueReader &reader, /*out*/ JSValue &value) noexcept {
   value = JSValue::ReadFrom(reader);
 }
@@ -356,16 +369,6 @@ inline void ReadValue(IJSValueReader &reader, /*out*/ JSValueObject &value) noex
 
 inline void ReadValue(IJSValueReader &reader, /*out*/ JSValueArray &value) noexcept {
   value = JSValue::ReadArrayFrom(reader);
-}
-
-template <class T, size_t... I>
-void ReadTuple(IJSValueReader &reader, /*out*/ T &tuple, std::index_sequence<I...>) noexcept {
-  ReadArgs(reader, std::get<I>(tuple)...);
-}
-
-template <class... Ts>
-inline void ReadValue(IJSValueReader &reader, /*out*/ std::tuple<Ts...> &value) noexcept {
-  ReadTuple(reader, value, std::make_index_sequence<sizeof...(Ts)>{});
 }
 
 template <class T, std::enable_if_t<!std::is_void_v<decltype(GetStructInfo(static_cast<T *>(nullptr)))>, int>>

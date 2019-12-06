@@ -3,7 +3,7 @@
 
 #include "pch.h"
 #include "JSValueReader.h"
-//#include "JSValueWriter.h"
+#include "JSValueWriter.h"
 #include <variant>
 #include "JsonJSValueReader.h"
 #include "catch.hpp"
