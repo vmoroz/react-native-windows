@@ -7,6 +7,22 @@
 
 #include "winrt/Microsoft.ReactNative.Bridge.h"
 
+#define REACT_STRUCT(type)                                                                   \
+  struct type;                                                                               \
+  winrt::Microsoft::ReactNative::Bridge::FieldMap GetStructInfo(type *) noexcept {           \
+    winrt::Microsoft::ReactNative::Bridge::FieldMap fieldMap{};                              \
+    winrt::Microsoft::ReactNative::Bridge::CollectStructFields<type, __COUNTER__>(fieldMap); \
+    return fieldMap;                                                                         \
+  }
+
+#define REACT_FIELD(field)                                                         \
+  template <class TClass>                                                          \
+  static void RegisterField(                                                       \
+      winrt::Microsoft::ReactNative::Bridge::FieldMap &fieldMap,                   \
+      winrt::Microsoft::ReactNative::Bridge::ReactFieldId<__COUNTER__>) noexcept { \
+    fieldMap.emplace(L## #field, &TClass::field);                                  \
+  }
+
 namespace winrt::Microsoft::ReactNative::Bridge {
 
 struct FieldInfo;
@@ -67,6 +83,23 @@ struct StructInfo {
 
 template <class T>
 /*static*/ const FieldMap StructInfo<T>::FieldMap = GetStructInfo(static_cast<T *>(nullptr));
+
+template <int I>
+using ReactFieldId = std::integral_constant<int, I>;
+
+template <class TClass, int I>
+auto HasRegisterField(FieldMap &fieldMap, ReactFieldId<I> id)
+    -> decltype(TClass::template RegisterField<TClass>(fieldMap, id), std::true_type{});
+template <class TClass>
+auto HasRegisterField(...) -> std::false_type;
+
+template <class TClass, int I>
+void CollectStructFields(FieldMap &fieldMap) noexcept {
+  if constexpr (decltype(HasRegisterField<TClass>(fieldMap, ReactFieldId<I + 1>{}))::value) {
+    TClass::template RegisterField<TClass>(fieldMap, ReactFieldId<I + 1>{});
+    CollectStructFields<TClass, I + 1>(fieldMap);
+  }
+}
 
 } // namespace winrt::Microsoft::ReactNative::Bridge
 
