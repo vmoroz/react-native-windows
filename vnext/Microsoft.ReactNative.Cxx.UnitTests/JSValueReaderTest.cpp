@@ -453,17 +453,17 @@ TEST_CASE("TestWriteValueDefaultExtensions", "JSValueReaderTest") {
   WriteProperty(writer, L"FloatValue", 3.14);
   WriteProperty(writer, L"NullValue", nullptr);
   writer.WriteObjectEnd();
-  // JSValue jsValue = writer.TakeValue();
 
-  // REQUIRE("", jsValue["StringValue1"].String());
-  // REQUIRE("5", jsValue["StringValue2"]);
-  // REQUIRE("Hello", jsValue["StringValue3"]);
-  // REQUIRE(false, jsValue["BoolValue1"]);
-  // REQUIRE(true, jsValue["BoolValue2"]);
-  // REQUIRE(0, jsValue["IntValue1"]);
-  // REQUIRE(42, jsValue["IntValue2"]);
-  // REQUIRE(3.14, jsValue["FloatValue"]);
-  // REQUIRE(JTokenType.Null, jsValue["NullValue"].Type);
+  REQUIRE(jsValue["StringValue1"].String() == "");
+  REQUIRE(jsValue["StringValue2"].String() == "5");
+  REQUIRE(jsValue["StringValue3"].String() == "Hello");
+  REQUIRE(jsValue["BoolValue1"].Boolean() ==false);
+  REQUIRE(jsValue["BoolValue2"].Boolean() == true);
+  REQUIRE(jsValue["IntValue1"].Int64() == 0);
+  REQUIRE(jsValue["IntValue2"].Int64() == 42);
+  REQUIRE(jsValue["FloatValue"].Double() == 3.14);
+  REQUIRE(jsValue["NullValue"] == nullptr);
+  REQUIRE(jsValue["NullValue"] == JSValue::Null);
 }
 
 } // namespace winrt::Microsoft::ReactNative::Bridge
