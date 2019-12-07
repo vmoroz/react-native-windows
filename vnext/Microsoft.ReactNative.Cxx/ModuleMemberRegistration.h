@@ -14,7 +14,7 @@
 // The disadvantage is that we require to have one bool field per registration.
 #define INTERNAL_REACT_METHOD_4_ARGS(methodType, isAsync, method, methodName)                                 \
   bool REACT_reg##method{                                                                                     \
-      ::Microsoft::ReactNative::                                                                              \
+      winrt::Microsoft::ReactNative::Bridge::                                                                 \
           Module##methodType##MethodInfo<decltype(&std::remove_pointer_t<decltype(this)>::method)>::Register( \
               this, methodName, &std::remove_pointer_t<decltype(this)>::method, isAsync)};
 
@@ -28,20 +28,20 @@
 #define INTERNAL_REACT_METHOD_MACRO_CHOOSER(...) \
   INTERNAL_REACT_MEMBER_RECOMPOSER((__VA_ARGS__, INTERNAL_REACT_METHOD_4_ARGS, INTERNAL_REACT_METHOD_3_ARGS, ))
 
-#define INTERNAL_REACT_CONSTANT_2_ARGS(field, constantName)                                                     \
-  bool REACT_reg##field{                                                                                        \
-      ::Microsoft::ReactNative::ModuleConstFieldInfo<decltype(&std::remove_pointer_t<decltype(this)>::field)>:: \
-          Register(this, constantName, &std::remove_pointer_t<decltype(this)>::field)};
+#define INTERNAL_REACT_CONSTANT_2_ARGS(field, constantName)                                                          \
+  bool REACT_reg##field{winrt::Microsoft::ReactNative::Bridge::                                                      \
+                            ModuleConstFieldInfo<decltype(&std::remove_pointer_t<decltype(this)>::field)>::Register( \
+                                this, constantName, &std::remove_pointer_t<decltype(this)>::field)};
 
 #define INTERNAL_REACT_CONSTANT_1_ARGS(field) INTERNAL_REACT_CONSTANT_2_ARGS(field, #field)
 
 #define INTERNAL_REACT_CONSTANT_MACRO_CHOOSER(...) \
   INTERNAL_REACT_MEMBER_RECOMPOSER((__VA_ARGS__, INTERNAL_REACT_CONSTANT_2_ARGS, INTERNAL_REACT_CONSTANT_1_ARGS, ))
 
-#define INTERNAL_REACT_EVENT_2_ARGS(field, eventName)                                                           \
-  bool REACT_reg##field{                                                                                        \
-      ::Microsoft::ReactNative::ModuleEventFieldInfo<decltype(&std::remove_pointer_t<decltype(this)>::field)>:: \
-          Register(this, eventName, &std::remove_pointer_t<decltype(this)>::field)};
+#define INTERNAL_REACT_EVENT_2_ARGS(field, eventName)                                                                \
+  bool REACT_reg##field{winrt::Microsoft::ReactNative::Bridge::                                                      \
+                            ModuleEventFieldInfo<decltype(&std::remove_pointer_t<decltype(this)>::field)>::Register( \
+                                this, eventName, &std::remove_pointer_t<decltype(this)>::field)};
 
 #define INTERNAL_REACT_EVENT_1_ARGS(field) INTERNAL_REACT_EVENT_2_ARGS(field, #field)
 

@@ -8,12 +8,12 @@
   struct moduleClass;                                                                                         \
                                                                                                               \
   template <class TDummy>                                                                                     \
-  struct moduleClass##_ModuleRegistration final : ::Microsoft::ReactNative::ModuleRegistration {              \
+  struct moduleClass##_ModuleRegistration final : winrt::Microsoft::ReactNative::Bridge::ModuleRegistration { \
     moduleClass##_ModuleRegistration() noexcept                                                               \
-        : ::Microsoft::ReactNative::ModuleRegistration(moduleName, eventEmitterName) {}                       \
+        : winrt::Microsoft::ReactNative::Bridge::ModuleRegistration(moduleName, eventEmitterName) {}          \
                                                                                                               \
     winrt::Microsoft::ReactNative::Bridge::ReactModuleProvider MakeModuleProvider() const noexcept override { \
-      return ::Microsoft::ReactNative::MakeModuleProvider<moduleClass>();                                     \
+      return winrt::Microsoft::ReactNative::Bridge::MakeModuleProvider<moduleClass>();                        \
     }                                                                                                         \
                                                                                                               \
     static const moduleClass##_ModuleRegistration Registration;                                               \
@@ -32,11 +32,11 @@
 
 #define INTERNAL_REACT_MODULE_RECOMPOSER(argsWithParentheses) INTERNAL_REACT_MODULE_4TH_ARG argsWithParentheses
 
-#define INTERNAL_REACT_MODULE_MACRO_CHOOSER(...) \
-  INTERNAL_REACT_MODULE_RECOMPOSER(              \
+#define INTERNAL_REACT_MODULE(...)  \
+  INTERNAL_REACT_MODULE_RECOMPOSER( \
       (__VA_ARGS__, INTERNAL_REACT_MODULE_3_ARGS, INTERNAL_REACT_MODULE_2_ARGS, INTERNAL_REACT_MODULE_1_ARGS, ))
 
-namespace Microsoft::ReactNative {
+namespace winrt::Microsoft::ReactNative::Bridge {
 
 struct ModuleRegistration {
   ModuleRegistration(const char *moduleName, const char *eventEmitterName) noexcept;
@@ -65,4 +65,4 @@ struct ModuleRegistration {
 
 void AddAttributedModules(winrt::Microsoft::ReactNative::Bridge::IReactPackageBuilder const &packageBuilder) noexcept;
 
-} // namespace Microsoft::ReactNative
+} // namespace winrt::Microsoft::ReactNative::Bridge

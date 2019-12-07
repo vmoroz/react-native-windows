@@ -19,7 +19,7 @@
 // - eventEmitterName (optional) - the event emitter name used in JavaScript.
 //     Default is the moduleName.
 #define REACT_MODULE(/* moduleClass, [opt] moduleName, [opt] eventEmitterName */...) \
-  INTERNAL_REACT_MODULE_MACRO_CHOOSER(__VA_ARGS__)(__VA_ARGS__)
+  INTERNAL_REACT_MODULE(__VA_ARGS__)(__VA_ARGS__)
 
 // The macro to annotate a method to export to JavaScript.
 // It declares an asynchronous method. To return a value:
@@ -63,7 +63,7 @@
 // Use with a field for events
 #define REACT_EVENT(/* field, [opt] eventName */...) INTERNAL_REACT_EVENT_MACRO_CHOOSER(__VA_ARGS__)(__VA_ARGS__)
 
-namespace Microsoft::ReactNative {
+namespace winrt::Microsoft::ReactNative::Bridge {
 
 namespace Internal {
 
@@ -123,17 +123,14 @@ template <class T>
 
 } // namespace Internal
 
-using CurrentNativeModuleBuilder =
-    Internal::ThreadLocalHolder<const winrt::Microsoft::ReactNative::Bridge::IReactModuleBuilder>;
+using CurrentNativeModuleBuilder = Internal::ThreadLocalHolder<const IReactModuleBuilder>;
 
 //==============================================================================
 // Module registration helpers
 //==============================================================================
 
 template <class TModule>
-inline winrt::Microsoft::ReactNative::Bridge::ReactModuleProvider MakeModuleProvider() noexcept {
-  using winrt::Microsoft::ReactNative::Bridge::IReactModuleBuilder;
-
+inline ReactModuleProvider MakeModuleProvider() noexcept {
   return [module = std::shared_ptr<TModule>{nullptr}](IReactModuleBuilder const &moduleBuilder) mutable noexcept {
     CurrentNativeModuleBuilder currentModuleBuilder{&moduleBuilder};
     module = std::make_shared<TModule>();
@@ -151,11 +148,6 @@ struct ModuleMethodInfo<void (TModule::*)(TArgs...) noexcept> {
   using ModuleType = TModule;
   using MethodType = void (TModule::*)(TArgs...) noexcept;
   using IndexSequence = std::make_index_sequence<sizeof...(TArgs) - CallbackCount>;
-
-  using IJSValueReader = winrt::Microsoft::ReactNative::Bridge::IJSValueReader;
-  using IJSValueWriter = winrt::Microsoft::ReactNative::Bridge::IJSValueWriter;
-  using MethodDelegate = winrt::Microsoft::ReactNative::Bridge::MethodDelegate;
-  using MethodResultCallback = winrt::Microsoft::ReactNative::Bridge::MethodResultCallback;
 
   template <class>
   struct Invoker;
@@ -263,9 +255,6 @@ struct ModuleMethodInfo<void (TModule::*)(TArgs...) noexcept> {
   };
 
   static bool Register(void *module, const char *jsName, MethodType method, [[maybe_unused]] bool isAsync) noexcept {
-    using winrt::Microsoft::ReactNative::Bridge::IReactModuleBuilder;
-    using winrt::Microsoft::ReactNative::Bridge::MethodReturnType;
-
     if (auto m = static_cast<ModuleType *>(module)) {
       MethodReturnType returnType{MethodReturnType::Void};
       if constexpr (CallbackCount == 1) {
@@ -280,7 +269,7 @@ struct ModuleMethodInfo<void (TModule::*)(TArgs...) noexcept> {
 
       MethodDelegate methodDelegate =
           Invoker<IndexSequence>::GetFunc(m, method, std::integral_constant<size_t, CallbackCount>{});
-      CurrentNativeModuleBuilder::Get()->AddMethod(winrt::to_hstring(jsName), returnType, methodDelegate);
+      CurrentNativeModuleBuilder::Get()->AddMethod(to_hstring(jsName), returnType, methodDelegate);
     }
     return false;
   }
@@ -291,11 +280,6 @@ struct ModuleMethodInfo<TResult (TModule::*)(TArgs...) noexcept> {
   using ModuleType = TModule;
   using MethodType = TResult (TModule::*)(TArgs...) noexcept;
   using IndexSequence = std::make_index_sequence<sizeof...(TArgs)>;
-
-  using IJSValueReader = winrt::Microsoft::ReactNative::Bridge::IJSValueReader;
-  using IJSValueWriter = winrt::Microsoft::ReactNative::Bridge::IJSValueWriter;
-  using MethodDelegate = winrt::Microsoft::ReactNative::Bridge::MethodDelegate;
-  using MethodResultCallback = winrt::Microsoft::ReactNative::Bridge::MethodResultCallback;
 
   template <class>
   struct Invoker;
@@ -320,13 +304,9 @@ struct ModuleMethodInfo<TResult (TModule::*)(TArgs...) noexcept> {
   };
 
   static bool Register(void *module, const char *jsName, MethodType method, bool /*isAsync*/) noexcept {
-    using winrt::Microsoft::ReactNative::Bridge::IReactModuleBuilder;
-    using winrt::Microsoft::ReactNative::Bridge::MethodReturnType;
-
     if (auto m = static_cast<ModuleType *>(module)) {
       MethodDelegate methodDelegate = Invoker<IndexSequence>::GetFunc(m, method);
-      CurrentNativeModuleBuilder::Get()->AddMethod(
-          winrt::to_hstring(jsName), MethodReturnType::Callback, methodDelegate);
+      CurrentNativeModuleBuilder::Get()->AddMethod(to_hstring(jsName), MethodReturnType::Callback, methodDelegate);
     }
     return false;
   }
@@ -340,10 +320,6 @@ struct ModuleSyncMethodInfo<TResult (TModule::*)(TArgs...) noexcept> {
   using ModuleType = TModule;
   using MethodType = TResult (TModule::*)(TArgs...) noexcept;
   using IndexSequence = std::make_index_sequence<sizeof...(TArgs)>;
-
-  using IJSValueReader = winrt::Microsoft::ReactNative::Bridge::IJSValueReader;
-  using IJSValueWriter = winrt::Microsoft::ReactNative::Bridge::IJSValueWriter;
-  using SyncMethodDelegate = winrt::Microsoft::ReactNative::Bridge::SyncMethodDelegate;
 
   template <class>
   struct Invoker;
@@ -362,11 +338,9 @@ struct ModuleSyncMethodInfo<TResult (TModule::*)(TArgs...) noexcept> {
   };
 
   static bool Register(void *module, const char *jsName, MethodType method, bool /*isAsync*/) noexcept {
-    using winrt::Microsoft::ReactNative::Bridge::IReactModuleBuilder;
-
     if (auto m = static_cast<ModuleType *>(module)) {
       SyncMethodDelegate syncMethodDelegate = Invoker<IndexSequence>::GetFunc(m, method);
-      CurrentNativeModuleBuilder::Get()->AddSyncMethod(winrt::to_hstring(jsName), syncMethodDelegate);
+      CurrentNativeModuleBuilder::Get()->AddSyncMethod(to_hstring(jsName), syncMethodDelegate);
     }
     return false;
   }
@@ -376,15 +350,11 @@ template <class TFunc>
 struct ModuleConstMethodInfo;
 
 template <class TModule>
-struct ModuleConstMethodInfo<void (TModule::*)(
-    const winrt::Microsoft::ReactNative::Bridge::IJSValueWriter &) noexcept> {
+struct ModuleConstMethodInfo<void (TModule::*)(const IJSValueWriter &) noexcept> {
   using ModuleType = TModule;
-  using IJSValueWriter = winrt::Microsoft::ReactNative::Bridge::IJSValueWriter;
   using MethodType = void (TModule::*)(const IJSValueWriter &) noexcept;
 
   static bool Register(void *module, const char * /*jsName*/, MethodType method, bool /*isAsync*/) noexcept {
-    using winrt::Microsoft::ReactNative::Bridge::IReactModuleBuilder;
-
     if (auto m = static_cast<ModuleType *>(module)) {
       CurrentNativeModuleBuilder::Get()->AddConstantProvider(
           [ m, method ](const IJSValueWriter &argWriter) mutable noexcept { (m->*method)(argWriter); });
@@ -402,13 +372,10 @@ struct ModuleConstFieldInfo<TValue TModule::*> {
   using FieldType = TValue TModule::*;
 
   static bool Register(void *module, const char *jsName, FieldType field) noexcept {
-    using winrt::Microsoft::ReactNative::Bridge::IReactModuleBuilder;
-    using winrt::Microsoft::ReactNative::Bridge::IJSValueWriter;
-
     if (auto m = static_cast<ModuleType *>(module)) {
       CurrentNativeModuleBuilder::Get()->AddConstantProvider(
           [ m, name = std::string(jsName), field ](const IJSValueWriter &argWriter) mutable noexcept {
-            ::Microsoft::ReactNative::WriteProperty(argWriter, name, m->*field);
+            WriteProperty(argWriter, name, m->*field);
           });
     }
     return false;
@@ -418,13 +385,11 @@ struct ModuleConstFieldInfo<TValue TModule::*> {
 struct ModuleConstantInfo {
   template <class TValue>
   static bool Register(void *module, const char *jsName, TValue &&value) noexcept {
-    using winrt::Microsoft::ReactNative::Bridge::IJSValueWriter;
-
     if (module) {
       CurrentNativeModuleBuilder::Get()->AddConstantProvider(
           [ name = std::string(jsName),
             value = std::forward<TValue>(value) ](const IJSValueWriter &argWriter) mutable noexcept {
-            ::Microsoft::ReactNative::WriteProperty(argWriter, name, value);
+            WriteProperty(argWriter, name, value);
           });
     }
 
@@ -442,9 +407,6 @@ struct ModuleEventFieldInfo<TFunc<void(TArg)> TModule::*> {
   using FieldType = EventType TModule::*;
 
   static bool Register(TModule *module, const char *jsName, FieldType field) noexcept {
-    using winrt::Microsoft::ReactNative::Bridge::ReactEventHandler;
-    using winrt::Microsoft::ReactNative::Bridge::IJSValueWriter;
-
     CurrentNativeModuleBuilder::Get()->AddEventHandlerSetter(
         winrt::to_hstring(jsName), [ module, field ](const ReactEventHandler &eventHandler) noexcept {
           module->*field = [eventHandler](TArg arg) noexcept {
@@ -456,4 +418,4 @@ struct ModuleEventFieldInfo<TFunc<void(TArg)> TModule::*> {
   }
 };
 
-} // namespace Microsoft::ReactNative
+} // namespace winrt::Microsoft::ReactNative::Bridge

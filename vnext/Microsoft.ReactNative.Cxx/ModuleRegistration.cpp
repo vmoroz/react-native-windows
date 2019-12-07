@@ -4,7 +4,7 @@
 #include "pch.h"
 #include "ModuleRegistration.h"
 
-namespace Microsoft::ReactNative {
+namespace winrt::Microsoft::ReactNative::Bridge {
 
 const ModuleRegistration *ModuleRegistration::s_head{nullptr};
 
@@ -19,4 +19,4 @@ void AddAttributedModules(winrt::Microsoft::ReactNative::Bridge::IReactPackageBu
   }
 }
 
-} // namespace Microsoft::ReactNative
+} // namespace winrt::Microsoft::ReactNative::Bridge
