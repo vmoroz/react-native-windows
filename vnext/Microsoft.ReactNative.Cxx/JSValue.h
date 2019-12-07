@@ -115,7 +115,6 @@ struct JSValue {
  private:
   bool ObjectEquals(const JSValueObject &other) const noexcept;
   bool ArrayEquals(const JSValueArray &other) const noexcept;
-  static JSValue ReadValue(IJSValueReader const &reader) noexcept;
   static JSValueObject ReadObjectProperties(IJSValueReader const &reader) noexcept;
   static JSValueArray ReadArrayItems(IJSValueReader const &reader) noexcept;
 

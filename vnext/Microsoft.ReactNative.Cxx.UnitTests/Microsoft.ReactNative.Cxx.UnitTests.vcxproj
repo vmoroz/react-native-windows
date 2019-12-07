@@ -108,6 +108,7 @@
     <ClInclude Include="JsonJSValueReader.h" />
     <ClInclude Include="JsonReader.h" />
     <ClInclude Include="pch.h" />
+    <ClInclude Include="ReactModuleBuilderMock.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="JsonJSValueReader.cpp" />
@@ -115,9 +116,11 @@
     <ClCompile Include="JSValueReaderTest.cpp" />
     <ClCompile Include="JSValueTest.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="NativeModuleTest.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="ReactModuleBuilderMock.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="catch.runsettings" />

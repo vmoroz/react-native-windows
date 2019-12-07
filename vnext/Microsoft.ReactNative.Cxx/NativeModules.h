@@ -3,7 +3,6 @@
 
 #pragma once
 #include "winrt/Microsoft.ReactNative.Bridge.h"
-#include "winrt/Microsoft.ReactNative.h"
 
 #include <type_traits>
 #include "JSValueReader.h"
@@ -166,10 +165,10 @@ struct ModuleMethodInfo<void (TModule::*)(TArgs...) noexcept> {
     // Fire and forget method
     static MethodDelegate GetFunc(ModuleType *module, MethodType method, std::integral_constant<size_t, 0>) noexcept {
       return [ module, method ](
-          const IJSValueReader const &argReader,
-          const IJSValueWriter & /*argWriter*/,
-          const MethodResultCallback &,
-          const MethodResultCallback &) mutable noexcept {
+          IJSValueReader const &argReader,
+          IJSValueWriter const & /*argWriter*/,
+          MethodResultCallback const &,
+          MethodResultCallback const &) mutable noexcept {
         std::tuple<std::remove_reference_t<TArgs>...> typedArgs{};
         ReadArgs(argReader, std::get<I>(typedArgs)...);
         (module->*method)(std::get<I>(std::move(typedArgs))...);
@@ -229,10 +228,10 @@ struct ModuleMethodInfo<void (TModule::*)(TArgs...) noexcept> {
     // Method with one callback
     static MethodDelegate GetFunc(ModuleType *module, MethodType method, std::integral_constant<size_t, 1>) noexcept {
       return [ module, method ](
-          const IJSValueReader const &argReader,
-          const IJSValueWriter &argWriter,
-          const MethodResultCallback &callback,
-          const MethodResultCallback &) mutable noexcept {
+          IJSValueReader const &argReader,
+          IJSValueWriter const &argWriter,
+          MethodResultCallback const &callback,
+          MethodResultCallback const &) mutable noexcept {
         using ArgTuple = std::tuple<std::remove_reference_t<TArgs>...>;
         ArgTuple typedArgs{};
         ReadArgs(argReader, std::get<I>(typedArgs)...);
@@ -246,10 +245,10 @@ struct ModuleMethodInfo<void (TModule::*)(TArgs...) noexcept> {
     // Method with two callbacks
     static MethodDelegate GetFunc(ModuleType *module, MethodType method, std::integral_constant<size_t, 2>) noexcept {
       return [ module, method ](
-          const IJSValueReader const &argReader,
-          const IJSValueWriter &argWriter,
-          const MethodResultCallback &callback1,
-          const MethodResultCallback &callback2) mutable noexcept {
+          IJSValueReader const &argReader,
+          IJSValueWriter const &argWriter,
+          MethodResultCallback const &callback1,
+          MethodResultCallback const &callback2) mutable noexcept {
         using ArgTuple = std::tuple<std::remove_reference_t<TArgs>...>;
         ArgTuple typedArgs{};
         ReadArgs(argReader, std::get<I>(typedArgs)...);
@@ -306,10 +305,10 @@ struct ModuleMethodInfo<TResult (TModule::*)(TArgs...) noexcept> {
     // Async method with return value
     static MethodDelegate GetFunc(ModuleType *module, MethodType method) noexcept {
       return [ module, method ](
-          const IJSValueReader const &argReader,
-          const IJSValueWriter &argWriter,
-          const MethodResultCallback &callback,
-          const MethodResultCallback &) mutable noexcept {
+          IJSValueReader const &argReader,
+          IJSValueWriter const &argWriter,
+          MethodResultCallback const &callback,
+          MethodResultCallback const &) mutable noexcept {
         using ArgTuple = std::tuple<std::remove_reference_t<TArgs>...>;
         ArgTuple typedArgs{};
         ReadArgs(argReader, std::get<I>(typedArgs)...);

@@ -8,44 +8,12 @@
 
 namespace winrt::Microsoft::ReactNative::Bridge {
 
-struct ReactModuleBuilderMockDelegate {
-  bool IsResolveCallbackCalled() const noexcept {
-    return m_isResolveCallbackCalled;
-  }
-
-  void IsResolveCallbackCalled(bool value) noexcept {
-    m_isResolveCallbackCalled = value;
-  }
-
-  bool IsRejectCallbackCalled() const noexcept {
-    return m_isRejectCallbackCalled;
-  }
-
-  void IsRejectCallbackCalled(bool value) noexcept {
-    m_isRejectCallbackCalled = value;
-  }
-
- private:
-  bool m_isResolveCallbackCalled;
-  bool m_isRejectCallbackCalled;
-};
-
-struct ReactModuleBuilderMock : implements<ReactModuleBuilderMock, IReactModuleBuilder> {
-  ReactModuleBuilderMock(ReactModuleBuilderMockDelegate &delegate) noexcept;
-
- public: // IReactModuleBuilder
-  void SetEventEmitterName(hstring const &name) noexcept;
-  void AddMethod(hstring const &name, MethodReturnType returnType, MethodDelegate const &method) noexcept;
-  void AddSyncMethod(hstring const &name, SyncMethodDelegate const &method) noexcept;
-  void AddConstantProvider(ConstantProvider const &constantProvider) noexcept;
-  void AddEventHandlerSetter(hstring const &name, ReactEventHandlerSetter const &eventHandlerSetter) noexcept;
-
- public:
+struct ReactModuleBuilderMock {
   template <class... TArgs>
   void Call0(std::wstring const &methodName, TArgs &&... args) noexcept;
 
   template <class TResult, class... TArgs>
-  void Call1(std::wstring const &methodName, TArgs &&... args, std::function<void(TResult)> const &resolve) noexcept;
+  void Call1(std::wstring const &methodName, std::function<void(TResult)> const &resolve, TArgs &&... args) noexcept;
 
   template <class TResult, class TError, class... TArgs>
   void Call2(
@@ -62,6 +30,18 @@ struct ReactModuleBuilderMock : implements<ReactModuleBuilderMock, IReactModuleB
   template <class T>
   void SetEventHandler(std::wstring const &eventName, std::function<void(T)> const &eventHandler) noexcept;
 
+  bool IsResolveCallbackCalled() const noexcept;
+  void IsResolveCallbackCalled(bool value) noexcept;
+  bool IsRejectCallbackCalled() const noexcept;
+  void IsRejectCallbackCalled(bool value) noexcept;
+
+ public: // IReactModuleBuilder
+  void SetEventEmitterName(hstring const &name) noexcept;
+  void AddMethod(hstring const &name, MethodReturnType returnType, MethodDelegate const &method) noexcept;
+  void AddSyncMethod(hstring const &name, SyncMethodDelegate const &method) noexcept;
+  void AddConstantProvider(ConstantProvider const &constantProvider) noexcept;
+  void AddEventHandlerSetter(hstring const &name, ReactEventHandlerSetter const &eventHandlerSetter) noexcept;
+
  private:
   MethodDelegate GetMethod0(std::wstring const &methodName) const noexcept;
   MethodDelegate GetMethod1(std::wstring const &methodName) const noexcept;
@@ -72,7 +52,7 @@ struct ReactModuleBuilderMock : implements<ReactModuleBuilderMock, IReactModuleB
   template <class... TArgs>
   static IJSValueReader ArgReader(TArgs &&... args) noexcept;
   static IJSValueReader CreateArgReader(
-      std::function<IJSValueWriter(IJSValueWriter const &)> const &argWriter) noexcept;
+      std::function<void(IJSValueWriter const &)> const &argWriter) noexcept;
 
   template <class T>
   MethodResultCallback ResolveCallback(JSValue const &jsValue, std::function<void(T)> const &resolve) noexcept;
@@ -85,18 +65,30 @@ struct ReactModuleBuilderMock : implements<ReactModuleBuilderMock, IReactModuleB
   std::map<std::wstring, SyncMethodDelegate> m_syncMethods;
   std::vector<ConstantProvider> m_constProviders;
   std::map<std::wstring, std::function<void(IJSValueReader &)>> m_eventHandlers;
-  ReactModuleBuilderMockDelegate &m_delegate;
+  bool m_isResolveCallbackCalled;
+  bool m_isRejectCallbackCalled;
+};
+
+struct ReactModuleBuilderImpl : implements<ReactModuleBuilderImpl, IReactModuleBuilder> {
+  ReactModuleBuilderImpl(ReactModuleBuilderMock &mock) noexcept;
+
+ public: // IReactModuleBuilder
+  void SetEventEmitterName(hstring const &name) noexcept;
+  void AddMethod(hstring const &name, MethodReturnType returnType, MethodDelegate const &method) noexcept;
+  void AddSyncMethod(hstring const &name, SyncMethodDelegate const &method) noexcept;
+  void AddConstantProvider(ConstantProvider const &constantProvider) noexcept;
+  void AddEventHandlerSetter(hstring const &name, ReactEventHandlerSetter const &eventHandlerSetter) noexcept;
+
+ private:
+  ReactModuleBuilderMock &m_mock;
 };
 
 //===========================================================================
 // ReactModuleBuilderMock inline implementation
 //===========================================================================
 
-inline ReactModuleBuilderMock::ReactModuleBuilderMock(ReactModuleBuilderMockDelegate &delegate) noexcept
-    : m_delegate{delegate} {}
-
 template <class... TArgs>
-void ReactModuleBuilderMock::Call0(std::wstring const &methodName, TArgs &&... args) noexcept {
+inline void ReactModuleBuilderMock::Call0(std::wstring const &methodName, TArgs &&... args) noexcept {
   if (auto method = GetMethod0(methodName)) {
     JSValue jsValue;
     method(ArgReader(std::forward<TArgs>(args)...), ArgWriter(jsValue), nullptr, nullptr);
@@ -104,10 +96,10 @@ void ReactModuleBuilderMock::Call0(std::wstring const &methodName, TArgs &&... a
 }
 
 template <class TResult, class... TArgs>
-void ReactModuleBuilderMock::Call1(
+inline void ReactModuleBuilderMock::Call1(
     std::wstring const &methodName,
-    TArgs &&... args,
-    std::function<void(TResult)> const &resolve) noexcept {
+    std::function<void(TResult)> const &resolve,
+    TArgs &&... args) noexcept {
   if (auto method = GetMethod1(methodName)) {
     JSValue jsValue;
     method(ArgReader(std::forward<TArgs>(args)...), ArgWriter(jsValue), ResolveCallback(jsValue, resolve), nullptr);
@@ -115,7 +107,7 @@ void ReactModuleBuilderMock::Call1(
 }
 
 template <class TResult, class TError, class... TArgs>
-void ReactModuleBuilderMock::Call2(
+inline void ReactModuleBuilderMock::Call2(
     std::wstring const &methodName,
     TArgs &&... args,
     std::function<void(TResult)> const &resolve,
@@ -131,7 +123,8 @@ void ReactModuleBuilderMock::Call2(
 }
 
 template <class TResult, class... TArgs>
-void ReactModuleBuilderMock::CallSync(std::wstring const &methodName, TArgs &&... args, TResult &result) noexcept {
+inline void
+ReactModuleBuilderMock::CallSync(std::wstring const &methodName, TArgs &&... args, TResult &result) noexcept {
   if (auto method = GetSyncMethod(methodName)) {
     JSValue jsValue;
     method(ArgReader(std::forward<TArgs>(args)...), ArgWriter(jsValue));
@@ -142,27 +135,74 @@ void ReactModuleBuilderMock::CallSync(std::wstring const &methodName, TArgs &&..
 template <class... TArgs>
 inline /*static*/ IJSValueReader ReactModuleBuilderMock::ArgReader(TArgs &&... args) noexcept {
   return CreateArgReader(
-      [](IJSValueWriter const &writer) noexcept { return WriteArgs(writer, std::forward<TArgs>(args)...); });
+      [&args...](IJSValueWriter const &writer) mutable noexcept { WriteArgs(writer, std::forward<TArgs>(args)...); });
 }
 
 template <class T>
-MethodResultCallback ReactModuleBuilderMock::ResolveCallback(
+inline MethodResultCallback ReactModuleBuilderMock::ResolveCallback(
     JSValue const &jsValue,
     std::function<void(T)> const &resolve) noexcept {
-  return [ this, &jsValue ](IJSValueWriter const & /*writer*/) noexcept {
+  return [ this, &jsValue, &resolve ](IJSValueWriter const & /*writer*/) noexcept {
     resolve(jsValue.To<T>());
-    m_delegate.IsResolveCallbackCalled(true);
+    m_isResolveCallbackCalled = true;
   };
 }
 
 template <class T>
-MethodResultCallback ReactModuleBuilderMock::RejectCallback(
+inline MethodResultCallback ReactModuleBuilderMock::RejectCallback(
     JSValue const &jsValue,
     std::function<void(T)> const &reject) noexcept {
   return [ this, &jsValue ](IJSValueWriter const & /*writer*/) noexcept {
     reject(jsValue.To<T>());
-    m_delegate.IsResolveCallbackCalled(true);
+    m_isResolveCallbackCalled = true;
   };
+}
+
+inline bool ReactModuleBuilderMock::IsResolveCallbackCalled() const noexcept {
+  return m_isResolveCallbackCalled;
+}
+
+inline void ReactModuleBuilderMock::IsResolveCallbackCalled(bool value) noexcept {
+  m_isResolveCallbackCalled = value;
+}
+
+inline bool ReactModuleBuilderMock::IsRejectCallbackCalled() const noexcept {
+  return m_isRejectCallbackCalled;
+}
+
+inline void ReactModuleBuilderMock::IsRejectCallbackCalled(bool value) noexcept {
+  m_isRejectCallbackCalled = value;
+}
+
+//===========================================================================
+// ReactModuleBuilderImpl inline implementation
+//===========================================================================
+
+inline ReactModuleBuilderImpl::ReactModuleBuilderImpl(ReactModuleBuilderMock &mock) noexcept : m_mock{mock} {}
+
+inline void ReactModuleBuilderImpl::SetEventEmitterName(hstring const &name) noexcept {
+  m_mock.SetEventEmitterName(name);
+}
+
+inline void ReactModuleBuilderImpl::AddMethod(
+    hstring const &name,
+    MethodReturnType returnType,
+    MethodDelegate const &method) noexcept {
+  m_mock.AddMethod(name, returnType, method);
+}
+
+inline void ReactModuleBuilderImpl::AddSyncMethod(hstring const &name, SyncMethodDelegate const &method) noexcept {
+  m_mock.AddSyncMethod(name, method);
+}
+
+inline void ReactModuleBuilderImpl::AddConstantProvider(ConstantProvider const &constantProvider) noexcept {
+  m_mock.AddConstantProvider(constantProvider);
+}
+
+inline void ReactModuleBuilderImpl::AddEventHandlerSetter(
+    hstring const &name,
+    ReactEventHandlerSetter const &eventHandlerSetter) noexcept {
+  m_mock.AddEventHandlerSetter(name, eventHandlerSetter);
 }
 
 } // namespace winrt::Microsoft::ReactNative::Bridge

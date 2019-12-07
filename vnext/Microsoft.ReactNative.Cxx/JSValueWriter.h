@@ -66,7 +66,7 @@ IJSValueWriter MakeJSValueTreeWriter(JSValue &resultValue) noexcept;
 // IJSValueWriter extensions implementation
 //==============================================================================
 
-void WriteValue(IJSValueWriter const& writer, std::nullptr_t) noexcept {
+inline void WriteValue(IJSValueWriter const& writer, std::nullptr_t) noexcept {
   writer.WriteNull();
 }
 

@@ -7,7 +7,6 @@
 
 #pragma once
 #include "winrt/Microsoft.ReactNative.Bridge.h"
-#include "winrt/Microsoft.ReactNative.h"
 
 // Internal implementation details.
 // Registration of a method relies on a TLS context that is setup when object is

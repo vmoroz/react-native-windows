@@ -99,7 +99,7 @@ SyncMethodDelegate ReactModuleBuilderMock::GetSyncMethod(std::wstring const &met
 }
 
 /*static*/ IJSValueReader ReactModuleBuilderMock::CreateArgReader(
-    std::function<IJSValueWriter(IJSValueWriter const &)> const &argWriter) noexcept {
+    std::function<void(IJSValueWriter const &)> const &argWriter) noexcept {
   JSValue jsValue;
   auto writer = MakeJSValueTreeWriter(jsValue);
   argWriter(writer);

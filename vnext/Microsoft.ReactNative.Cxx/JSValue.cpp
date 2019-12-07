@@ -177,7 +177,24 @@ bool JSValue::Equals(const JSValue &other) const noexcept {
 }
 
 /*static*/ JSValue JSValue::ReadFrom(IJSValueReader const &reader) noexcept {
-  return ReadValue(reader);
+  switch (reader.ValueType()) {
+    case JSValueType::Null:
+      return JSValue();
+    case JSValueType::Object:
+      return JSValue(ReadObjectProperties(reader));
+    case JSValueType::Array:
+      return JSValue(ReadArrayItems(reader));
+    case JSValueType::String:
+      return JSValue(to_string(reader.GetString()));
+    case JSValueType::Boolean:
+      return JSValue(reader.GetBoolean());
+    case JSValueType::Int64:
+      return JSValue(reader.GetInt64());
+    case JSValueType::Double:
+      return JSValue(reader.GetDouble());
+    default:
+      VerifyElseCrashSz(false, "Unexpected JSValueType");
+  }
 }
 
 /*static*/ JSValueObject JSValue::ReadObjectFrom(IJSValueReader const &reader) noexcept {
@@ -273,34 +290,12 @@ bool JSValue::ArrayEquals(const JSValueArray &other) const noexcept {
   return true;
 }
 
-// Read value from IJSValueReader without checking for IJSValueTreeReader.
-/*static*/ JSValue JSValue::ReadValue(IJSValueReader const &reader) noexcept {
-  switch (reader.ValueType()) {
-    case JSValueType::Null:
-      return JSValue();
-    case JSValueType::Object:
-      return JSValue(ReadObjectProperties(reader));
-    case JSValueType::Array:
-      return JSValue(ReadArrayItems(reader));
-    case JSValueType::String:
-      return JSValue(to_string(reader.GetString()));
-    case JSValueType::Boolean:
-      return JSValue(reader.GetBoolean());
-    case JSValueType::Int64:
-      return JSValue(reader.GetInt64());
-    case JSValueType::Double:
-      return JSValue(reader.GetDouble());
-    default:
-      VerifyElseCrashSz(false, "Unexpected JSValueType");
-  }
-}
-
 // Read object properties without checking value type.
 /*static*/ JSValueObject JSValue::ReadObjectProperties(IJSValueReader const &reader) noexcept {
   JSValueObject properties;
   hstring propertyName;
   while (reader.GetNextObjectProperty(/*ref*/ propertyName)) {
-    properties.emplace(to_string(propertyName), ReadValue(reader));
+    properties.emplace(to_string(propertyName), ReadFrom(reader));
   }
 
   return properties;
@@ -310,7 +305,7 @@ bool JSValue::ArrayEquals(const JSValueArray &other) const noexcept {
 /*static*/ JSValueArray JSValue::ReadArrayItems(IJSValueReader const &reader) noexcept {
   JSValueArray items;
   while (reader.GetNextArrayItem()) {
-    items.push_back(ReadValue(reader));
+    items.push_back(ReadFrom(reader));
   }
 
   return items;
