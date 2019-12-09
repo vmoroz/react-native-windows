@@ -6,6 +6,7 @@
 #define MICROSOFT_REACTNATIVE_JSVALUEWRITER
 
 #include "winrt/Microsoft.ReactNative.Bridge.h"
+#include "StructInfo.h"
 
 namespace winrt::Microsoft::ReactNative::Bridge {
 
