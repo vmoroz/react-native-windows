@@ -475,6 +475,62 @@ struct ModuleMethodInfo<TResult (*)(TArgs...) noexcept> {
   }
 };
 
+template <class TFunc>
+struct ModuleSyncMethodInfo;
+
+template <class TModule, class TResult, class... TArgs>
+struct ModuleSyncMethodInfo<TResult (TModule::*)(TArgs...) noexcept> {
+  using ModuleType = TModule;
+  using MethodType = TResult (TModule::*)(TArgs...) noexcept;
+  using IndexSequence = std::make_index_sequence<sizeof...(TArgs)>;
+
+  template <class>
+  struct Invoker;
+
+  template <size_t... I>
+  struct Invoker<std::index_sequence<I...>> {
+    static SyncMethodDelegate GetFunc(ModuleType *module, MethodType method) noexcept {
+      return [ module, method ](IJSValueReader const &argReader, IJSValueWriter const &argWriter) mutable noexcept {
+        using ArgTuple = std::tuple<std::remove_reference_t<TArgs>...>;
+        ArgTuple typedArgs{};
+        ReadArgs(argReader, std::get<I>(typedArgs)...);
+        TResult result = (module->*method)(std::get<I>(std::move(typedArgs))...);
+        WriteArgs(argWriter, result);
+      };
+    }
+  };
+
+  static SyncMethodDelegate GetMethodDelegate(void *module, MethodType method) noexcept {
+    return Invoker<IndexSequence>::GetFunc(static_cast<ModuleType *>(module), method);
+  }
+};
+
+template <class TResult, class... TArgs>
+struct ModuleSyncMethodInfo<TResult (*)(TArgs...) noexcept> {
+  using MethodType = TResult (*)(TArgs...) noexcept;
+  using IndexSequence = std::make_index_sequence<sizeof...(TArgs)>;
+
+  template <class>
+  struct Invoker;
+
+  template <size_t... I>
+  struct Invoker<std::index_sequence<I...>> {
+    static SyncMethodDelegate GetFunc(MethodType method) noexcept {
+      return [ method ](IJSValueReader const &argReader, IJSValueWriter const &argWriter) mutable noexcept {
+        using ArgTuple = std::tuple<std::remove_reference_t<TArgs>...>;
+        ArgTuple typedArgs{};
+        ReadArgs(argReader, std::get<I>(typedArgs)...);
+        TResult result = (*method)(std::get<I>(std::move(typedArgs))...);
+        WriteArgs(argWriter, result);
+      };
+    }
+  };
+
+  static SyncMethodDelegate GetMethodDelegate(void * /*module*/, MethodType method) noexcept {
+    return Invoker<IndexSequence>::GetFunc(method);
+  }
+};
+
 struct ReactModuleBuilder {
   ReactModuleBuilder(void *module, IReactModuleBuilder const &moduleBuilder) noexcept
       : m_module{module}, m_moduleBuilder{moduleBuilder} {}
@@ -509,6 +565,12 @@ struct ReactModuleBuilder {
     m_moduleBuilder.AddMethod(name, returnType, methodDelegate);
   }
 
+  template <class TClass, class TMethod>
+  void RegisterSyncMethod(TMethod method, wchar_t const *name) noexcept {
+    auto syncMethodDelegate = ModuleSyncMethodInfo<TMethod>::GetMethodDelegate(m_module, method);
+    m_moduleBuilder.AddSyncMethod(name, syncMethodDelegate);
+  }
+
  private:
   void *m_module;
   IReactModuleBuilder m_moduleBuilder;
@@ -530,6 +592,13 @@ inline ReactModuleProvider MakeModuleProvider() noexcept {
   static void RegisterMember(                                                                            \
       TRegistry &registry, winrt::Microsoft::ReactNative::Bridge::ReactMemberId<__COUNTER__>) noexcept { \
     registry.RegisterMethod<TClass>(&TClass::method, L## #method);                                       \
+  }
+
+#define REACT_SYNC_METHOD(method)                                                                        \
+  template <class TClass, class TRegistry>                                                               \
+  static void RegisterMember(                                                                            \
+      TRegistry &registry, winrt::Microsoft::ReactNative::Bridge::ReactMemberId<__COUNTER__>) noexcept { \
+    registry.RegisterSyncMethod<TClass>(&TClass::method, L## #method);                                   \
   }
 
 REACT_STRUCT(Point)
@@ -794,6 +863,36 @@ struct SimpleNativeModule {
     ReactError error{};
     error.Message = "Promise rejected";
     result.Reject(std::move(error));
+  }
+
+  REACT_SYNC_METHOD(AddSync)
+  int AddSync(int x, int y) noexcept {
+    return x + y;
+  }
+
+  REACT_SYNC_METHOD(NegateSync)
+  int NegateSync(int x) noexcept {
+    return -x;
+  }
+
+  REACT_SYNC_METHOD(SayHelloSync)
+  std::string SayHelloSync() noexcept {
+    return "Hello";
+  }
+
+  REACT_SYNC_METHOD(StaticAddSync)
+  static int StaticAddSync(int x, int y) noexcept {
+    return x + y;
+  }
+
+  REACT_SYNC_METHOD(StaticNegateSync)
+  static int StaticNegateSync(int x) noexcept {
+    return -x;
+  }
+
+  REACT_SYNC_METHOD(StaticSayHelloSync)
+  static std::string StaticSayHelloSync() noexcept {
+    return "Hello";
   }
 
   std::string Message;
@@ -1165,6 +1264,42 @@ TEST_CASE_METHOD(NativeModuleTestFixture, "TestMethodCall_StaticRejectSayHelloPr
       std::function<void(JSValue const &)>(
           [](JSValue const &error) noexcept { REQUIRE(error["message"] == "Promise rejected"); }));
   REQUIRE(m_builderMock.IsRejectCallbackCalled());
+}
+
+TEST_CASE_METHOD(NativeModuleTestFixture, "TestMethodSyncCall_AddSync", "NativeModuleTest") {
+  int result;
+  m_builderMock.CallSync(L"AddSync", /*out*/ result, 3, 5);
+  REQUIRE(result == 8);
+}
+
+TEST_CASE_METHOD(NativeModuleTestFixture, "TestMethodSyncCall_NegateSync", "NativeModuleTest") {
+  int result;
+  m_builderMock.CallSync(L"NegateSync", /*out*/ result, 7);
+  REQUIRE(result == -7);
+}
+
+TEST_CASE_METHOD(NativeModuleTestFixture, "TestMethodSyncCall_SayHelloSync", "NativeModuleTest") {
+  std::string result;
+  m_builderMock.CallSync(L"SayHelloSync", /*out*/ result);
+  REQUIRE(result == "Hello");
+}
+
+TEST_CASE_METHOD(NativeModuleTestFixture, "TestMethodSyncCall_StaticAddSync", "NativeModuleTest") {
+  int result;
+  m_builderMock.CallSync(L"StaticAddSync", /*out*/ result, 3, 5);
+  REQUIRE(result == 8);
+}
+
+TEST_CASE_METHOD(NativeModuleTestFixture, "TestMethodSyncCall_StaticNegateSync", "NativeModuleTest") {
+  int result;
+  m_builderMock.CallSync(L"StaticNegateSync", /*out*/ result, 7);
+  REQUIRE(result == -7);
+}
+
+TEST_CASE_METHOD(NativeModuleTestFixture, "TestMethodSyncCall_StaticSayHelloSync", "NativeModuleTest") {
+  std::string result;
+  m_builderMock.CallSync(L"StaticSayHelloSync", /*out*/ result);
+  REQUIRE(result == "Hello");
 }
 
 } // namespace winrt::Microsoft::ReactNative::Bridge
