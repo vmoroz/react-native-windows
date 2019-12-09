@@ -85,8 +85,11 @@ MethodDelegate ReactModuleBuilderMock::GetMethod1(std::wstring const &methodName
 
 MethodDelegate ReactModuleBuilderMock::GetMethod2(std::wstring const &methodName) const noexcept {
   auto it = m_methods.find(methodName);
-  return (it != m_methods.end() && std::get<0>(it->second) == MethodReturnType::TwoCallbacks) ? std::get<1>(it->second)
-                                                                                              : nullptr;
+  return (it != m_methods.end() &&
+          (std::get<0>(it->second) == MethodReturnType::TwoCallbacks ||
+           std::get<0>(it->second) == MethodReturnType::Promise))
+      ? std::get<1>(it->second)
+      : nullptr;
 }
 
 SyncMethodDelegate ReactModuleBuilderMock::GetSyncMethod(std::wstring const &methodName) const noexcept {
