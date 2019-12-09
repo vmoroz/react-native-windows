@@ -18,9 +18,9 @@ struct ReactModuleBuilderMock {
   template <class TResult, class TError, class... TArgs>
   void Call2(
       std::wstring const &methodName,
-      TArgs &&... args,
       std::function<void(TResult)> const &resolve,
-      std::function<void(TError)> const &reject) noexcept;
+      std::function<void(TError)> const &reject,
+      TArgs &&... args) noexcept;
 
   template <class TResult, class... TArgs>
   void CallSync(std::wstring const &methodName, TArgs &&... args, TResult &result) noexcept;
@@ -109,9 +109,9 @@ inline void ReactModuleBuilderMock::Call1(
 template <class TResult, class TError, class... TArgs>
 inline void ReactModuleBuilderMock::Call2(
     std::wstring const &methodName,
-    TArgs &&... args,
     std::function<void(TResult)> const &resolve,
-    std::function<void(TError)> const &reject) noexcept {
+    std::function<void(TError)> const &reject,
+    TArgs &&... args) noexcept {
   if (auto method = GetMethod2(methodName)) {
     JSValue jsValue;
     method(
@@ -154,11 +154,11 @@ template <class T>
 inline MethodResultCallback ReactModuleBuilderMock::RejectCallback(
     JSValue const &jsValue,
     std::function<void(T)> const &reject) noexcept {
-  return [ this, &jsValue ](IJSValueWriter const & /*writer*/) noexcept {
-    T arg;
+  return [ this, &jsValue, &reject ](IJSValueWriter const & /*writer*/) noexcept {
+    std::remove_const_t<std::remove_reference_t<T>> arg;
     ReadArgs(MakeJSValueTreeReader(jsValue), arg);
     reject(arg);
-    m_isResolveCallbackCalled = true;
+    m_isRejectCallbackCalled = true;
   };
 }
 
