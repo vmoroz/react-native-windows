@@ -143,7 +143,7 @@ inline MethodResultCallback ReactModuleBuilderMock::ResolveCallback(
     JSValue const &jsValue,
     std::function<void(T)> const &resolve) noexcept {
   return [ this, &jsValue, &resolve ](IJSValueWriter const & /*writer*/) noexcept {
-    T arg;
+    std::remove_const_t<std::remove_reference_t<T>> arg;
     ReadArgs(MakeJSValueTreeReader(jsValue), arg);
     resolve(arg);
     m_isResolveCallbackCalled = true;

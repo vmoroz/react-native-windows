@@ -61,6 +61,38 @@ struct ModuleMethodInfo<TResult (TModule::*)(TArgs...) noexcept> {
   }
 };
 
+template <class TResult, class... TArgs>
+struct ModuleMethodInfo<TResult (*)(TArgs...) noexcept> {
+  using MethodType = TResult (*)(TArgs...) noexcept;
+  using IndexSequence = std::make_index_sequence<sizeof...(TArgs)>;
+
+  template <class>
+  struct Invoker;
+
+  template <size_t... I>
+  struct Invoker<std::index_sequence<I...>> {
+    // Async method with return value
+    static MethodDelegate GetFunc(MethodType method) noexcept {
+      return [method](
+          IJSValueReader const &argReader,
+          IJSValueWriter const &argWriter,
+          MethodResultCallback const &callback,
+          MethodResultCallback const &) mutable noexcept {
+        using ArgTuple = std::tuple<std::remove_reference_t<TArgs>...>;
+        ArgTuple typedArgs{};
+        ReadArgs(argReader, std::get<I>(typedArgs)...);
+        TResult result = (*method)(std::get<I>(typedArgs)...);
+        WriteArgs(argWriter, result);
+        callback(argWriter);
+      };
+    }
+  };
+
+  static MethodDelegate GetMethodDelegate(void * /*module*/, MethodType method) noexcept {
+    return Invoker<IndexSequence>::GetFunc(method);
+  }
+};
+
 struct ReactModuleBuilder {
   ReactModuleBuilder(void *module, IReactModuleBuilder const &moduleBuilder) noexcept
       : m_module{module}, m_moduleBuilder{moduleBuilder} {}
@@ -110,6 +142,13 @@ inline ReactModuleProvider MakeModuleProvider() noexcept {
   };
 }
 
+#define REACT_METHOD(method)                                                                             \
+  template <class TClass, class TRegistry>                                                               \
+  static void RegisterMember(                                                                            \
+      TRegistry &registry, winrt::Microsoft::ReactNative::Bridge::ReactMemberId<__COUNTER__>) noexcept { \
+    registry.RegisterMethod<TClass>(&TClass::method, L## #method);                                       \
+  }
+
 struct SimpleNativeModule;
 
 template <class TRegistry>
@@ -121,15 +160,34 @@ void RegisterModule(TRegistry &registry, SimpleNativeModule *) noexcept {
 }
 
 struct SimpleNativeModule {
-  template <class TClass, class TRegistry>
-  static void RegisterMember(
-      TRegistry &registry,
-      winrt::Microsoft::ReactNative::Bridge::ReactMemberId<__COUNTER__>) noexcept {
-    registry.RegisterMethod<TClass>(&TClass::Add, L"Add");
-  }
-
+  REACT_METHOD(Add)
   int Add(int x, int y) noexcept {
     return x + y;
+  }
+
+  REACT_METHOD(Negate)
+  int Negate(int x) noexcept {
+    return -x;
+  }
+
+  REACT_METHOD(SayHello)
+  std::string SayHello() noexcept {
+    return "Hello";
+  }
+
+  REACT_METHOD(StaticAdd)
+  static int StaticAdd(int x, int y) noexcept {
+    return x + y;
+  }
+
+  REACT_METHOD(StaticNegate)
+  static int StaticNegate(int x) noexcept {
+    return -x;
+  }
+
+  REACT_METHOD(StaticSayHello)
+  static std::string StaticSayHello() noexcept {
+    return "Hello";
   }
 };
 
@@ -151,6 +209,36 @@ struct NativeModuleTestFixture {
 
 TEST_CASE_METHOD(NativeModuleTestFixture, "TestMethodCall_Add", "NativeModuleTest") {
   m_builderMock.Call1(L"Add", std::function<void(int)>([](int result) noexcept { REQUIRE(result == 8); }), 3, 5);
+  REQUIRE(m_builderMock.IsResolveCallbackCalled());
+}
+
+TEST_CASE_METHOD(NativeModuleTestFixture, "TestMethodCall_Negate", "NativeModuleTest") {
+  m_builderMock.Call1(L"Negate", std::function<void(int)>([](int result) noexcept { REQUIRE(result == -3); }), 3);
+  REQUIRE(m_builderMock.IsResolveCallbackCalled());
+}
+
+TEST_CASE_METHOD(NativeModuleTestFixture, "TestMethodCall_SayHello", "NativeModuleTest") {
+  m_builderMock.Call1(L"SayHello", std::function<void(const std::string &)>([](const std::string &result) noexcept {
+                        REQUIRE(result == "Hello");
+                      }));
+  REQUIRE(m_builderMock.IsResolveCallbackCalled());
+}
+
+TEST_CASE_METHOD(NativeModuleTestFixture, "TestMethodCall_StaticAdd", "NativeModuleTest") {
+  m_builderMock.Call1(
+      L"StaticAdd", std::function<void(int)>([](int result) noexcept { REQUIRE(result == 25); }), 20, 5);
+  REQUIRE(m_builderMock.IsResolveCallbackCalled());
+}
+
+TEST_CASE_METHOD(NativeModuleTestFixture, "TestMethodCall_StaticNegate", "NativeModuleTest") {
+  m_builderMock.Call1(L"StaticNegate", std::function<void(int)>([](int result) noexcept { REQUIRE(result == -7); }), 7);
+  REQUIRE(m_builderMock.IsResolveCallbackCalled());
+}
+
+TEST_CASE_METHOD(NativeModuleTestFixture, "TestMethodCall_StaticSayHello", "NativeModuleTest") {
+  m_builderMock.Call1(
+      L"StaticSayHello",
+      std::function<void(const std::string &)>([](const std::string &result) noexcept { REQUIRE(result == "Hello"); }));
   REQUIRE(m_builderMock.IsResolveCallbackCalled());
 }
 
