@@ -268,40 +268,40 @@ struct ModuleMethodInfo<void (*)(TArgs...) noexcept> {
       }
     };
 
-    // template <class T, class = void>
-    // struct RejectCallbackCreator;
+    template <class T, class TDummy>
+    struct RejectCallbackCreator;
 
-    // template <template <class...> class TCallback, class TArg>
-    // struct RejectCallbackCreator<
-    //    TCallback<void(TArg)>,
-    //    std::enable_if_t<std::is_assignable_v<std::string, TArg> || std::is_assignable_v<std::wstring, TArg>>> {
-    //  static TCallback<void(TArg)> Create(
-    //      const IJSValueWriter &argWriter,
-    //      const MethodResultCallback &callback) noexcept {
-    //    return TCallback([ callback = std::move(callback), argWriter ](TArg arg) noexcept {
-    //      argWriter.WriteArrayBegin();
-    //      argWriter.WriteObjectBegin();
-    //      argWriter.WritePropertyName(L"message");
-    //      WriteValue(argWriter, arg);
-    //      argWriter.WriteObjectEnd();
-    //      argWriter.WriteArrayEnd();
-    //      callback(argWriter);
-    //    });
-    //  }
-    //};
+    template <template <class...> class TCallback, class TArg>
+    struct RejectCallbackCreator<
+        TCallback<void(TArg)>,
+        std::enable_if_t<std::is_assignable_v<std::string, TArg> || std::is_assignable_v<std::wstring, TArg>>> {
+      static TCallback<void(TArg)> Create(
+          const IJSValueWriter &argWriter,
+          const MethodResultCallback &callback) noexcept {
+        return TCallback([ callback = std::move(callback), argWriter ](TArg arg) noexcept {
+          argWriter.WriteArrayBegin();
+          argWriter.WriteObjectBegin();
+          argWriter.WritePropertyName(L"message");
+          WriteValue(argWriter, arg);
+          argWriter.WriteObjectEnd();
+          argWriter.WriteArrayEnd();
+          callback(argWriter);
+        });
+      }
+    };
 
-    // template <template <class...> class TCallback>
-    // struct RejectCallbackCreator<TCallback<void()>, void> : CallbackCreator<TCallback<void()>> {};
+    template <template <class...> class TCallback>
+    struct RejectCallbackCreator<TCallback<void()>, void> : CallbackCreator<TCallback<void()>> {};
 
-    // template <template <class...> class TCallback, class TArg>
-    // struct RejectCallbackCreator<
-    //    TCallback<void(TArg)>,
-    //    std::enable_if_t<!std::is_assignable_v<std::string, TArg> && !std::is_assignable_v<std::wstring, TArg>>>
-    //    : CallbackCreator<TCallback<void(TArg)>> {};
+    template <template <class...> class TCallback, class TArg>
+    struct RejectCallbackCreator<
+        TCallback<void(TArg)>,
+        std::enable_if_t<!std::is_assignable_v<std::string, TArg> && !std::is_assignable_v<std::wstring, TArg>>>
+        : CallbackCreator<TCallback<void(TArg)>> {};
 
-    // template <template <class...> class TCallback, class TArg0, class TArg1, class... TArgs>
-    // struct RejectCallbackCreator<TCallback<void(TArg0, TArg1, TArgs...)>, void>
-    //    : CallbackCreator<TCallback<void(TArg0, TArg1, TArgs...)>> {};
+    template <template <class...> class TCallback, class TArg0, class TArg1, class... TArgs>
+    struct RejectCallbackCreator<TCallback<void(TArg0, TArg1, TArgs...)>, void>
+        : CallbackCreator<TCallback<void(TArg0, TArg1, TArgs...)>> {};
 
     // Method with one callback
     static MethodDelegate GetFunc(MethodType method, std::integral_constant<size_t, 1>) noexcept {
@@ -319,39 +319,33 @@ struct ModuleMethodInfo<void (*)(TArgs...) noexcept> {
       };
     }
 
-    //// Method with two callbacks
-    // static MethodDelegate GetFunc(ModuleType *module, MethodType method, std::integral_constant<size_t, 2>) noexcept
-    // {
-    //  return [ module, method ](
-    //      IJSValueReader const &argReader,
-    //      IJSValueWriter const &argWriter,
-    //      MethodResultCallback const &callback1,
-    //      MethodResultCallback const &callback2) mutable noexcept {
-    //    using ArgTuple = std::tuple<std::remove_reference_t<TArgs>...>;
-    //    ArgTuple typedArgs{};
-    //    ReadArgs(argReader, std::get<I>(typedArgs)...);
-    //    (module->*method)(
-    //        std::get<I>(std::move(typedArgs))...,
-    //        CallbackCreator<std::tuple_element_t<sizeof...(TArgs) - 2, ArgTuple>>::Create(
-    //            argWriter, std::move(callback1)),
-    //        RejectCallbackCreator<std::tuple_element_t<sizeof...(TArgs) - 1, ArgTuple>>::Create(
-    //            argWriter, std::move(callback2)));
-    //  };
-    //}
+    // Method with two callbacks
+    static MethodDelegate GetFunc(MethodType method, std::integral_constant<size_t, 2>) noexcept {
+      return [method](
+          IJSValueReader const &argReader,
+          IJSValueWriter const &argWriter,
+          MethodResultCallback const &resolve,
+          MethodResultCallback const &reject) mutable noexcept {
+        using ArgTuple = std::tuple<std::remove_reference_t<TArgs>...>;
+        ArgTuple typedArgs{};
+        ReadArgs(argReader, std::get<I>(typedArgs)...);
+        auto resolveCallback = CallbackCreator<std::remove_const_t<
+            std::remove_reference_t<std::tuple_element_t<sizeof...(TArgs) - 2, ArgTuple>>>>::Create(argWriter, resolve);
+        auto rejectCallback = RejectCallbackCreator<
+            std::remove_const_t<std::remove_reference_t<std::tuple_element_t<sizeof...(TArgs) - 1, ArgTuple>>>,
+            void>::Create(argWriter, reject);
+        (*method)(std::get<I>(std::move(typedArgs))..., std::move(resolveCallback), std::move(rejectCallback));
+      };
+    }
   };
 
   static MethodDelegate GetMethodDelegate(void * /*module*/, MethodType method, MethodReturnType &returnType) noexcept {
     returnType = MethodReturnType::Void;
     if constexpr (CallbackCount == 1) {
       returnType = MethodReturnType::Callback;
+    } else if constexpr (CallbackCount == 2) {
+      returnType = MethodReturnType::TwoCallbacks;
     }
-    // else if constexpr (CallbackCount == 2) {
-    //  if (isAsync) {
-    //    returnType = MethodReturnType::TwoCallbacks;
-    //  } else {
-    //    returnType = MethodReturnType::Promise;
-    //  }
-    //}
     return Invoker<IndexSequence>::GetFunc(method, std::integral_constant<size_t, CallbackCount>{});
   }
 };
@@ -577,21 +571,70 @@ struct SimpleNativeModule {
     }
   }
 
-  //[ReactMethod] public void NegateCallbacks(int x, Action<int> resolve, Action<string> reject) {
-  //  if (x >= 0) {
-  //    resolve(-x);
-  //  } else {
-  //    reject("Already negative");
-  //  }
-  //}
+  REACT_METHOD(NegateCallbacks)
+  void NegateCallbacks(
+      int x,
+      std::function<void(int)> const &resolve,
+      std::function<void(const std::string &)> const &reject) noexcept {
+    if (x >= 0) {
+      resolve(-x);
+    } else {
+      reject("Already negative");
+    }
+  }
 
-  //[ReactMethod] public void ResolveSayHelloCallbacks(Action<string> resolve, Action<string> reject) {
-  //  resolve("Hello_3");
-  //}
+  REACT_METHOD(ResolveSayHelloCallbacks)
+  void ResolveSayHelloCallbacks(
+      std::function<void(const std::string &)> const &resolve,
+      std::function<void(const std::string &)> const & /*reject*/) noexcept {
+    resolve("Hello_3");
+  }
 
-  //[ReactMethod] public void RejectSayHelloCallbacks(Action<string> resolve, Action<string> reject) {
-  //  reject("Goodbye");
-  //}
+  REACT_METHOD(RejectSayHelloCallbacks)
+  void RejectSayHelloCallbacks(
+      std::function<void(const std::string &)> const & /*resolve*/,
+      std::function<void(const std::string &)> const &reject) noexcept {
+    reject("Goodbye");
+  }
+
+  REACT_METHOD(StaticDivideCallbacks)
+  static void StaticDivideCallbacks(
+      int x,
+      int y,
+      std::function<void(int)> const &resolve,
+      std::function<void(const std::string &)> const &reject) noexcept {
+    if (y != 0) {
+      resolve(x / y);
+    } else {
+      reject("Division by 0");
+    }
+  }
+
+  REACT_METHOD(StaticNegateCallbacks)
+  static void StaticNegateCallbacks(
+      int x,
+      std::function<void(int)> const &resolve,
+      std::function<void(const std::string &)> const &reject) noexcept {
+    if (x >= 0) {
+      resolve(-x);
+    } else {
+      reject("Already negative");
+    }
+  }
+
+  REACT_METHOD(StaticResolveSayHelloCallbacks)
+  static void StaticResolveSayHelloCallbacks(
+      std::function<void(const std::string &)> const &resolve,
+      std::function<void(const std::string &)> const & /*reject*/) noexcept {
+    resolve("Hello_3");
+  }
+
+  REACT_METHOD(StaticRejectSayHelloCallbacks)
+  static void StaticRejectSayHelloCallbacks(
+      std::function<void(const std::string &)> const & /*resolve*/,
+      std::function<void(const std::string &)> const &reject) noexcept {
+    reject("Goodbye");
+  }
 
   std::string Message;
   static std::string StaticMessage;
@@ -735,6 +778,108 @@ TEST_CASE_METHOD(NativeModuleTestFixture, "TestMethodCall_DivideCallbacksError",
           [](JSValue const &error) noexcept { REQUIRE(error["message"] == "Division by 0"); }),
       6,
       0);
+  REQUIRE(m_builderMock.IsRejectCallbackCalled());
+}
+
+TEST_CASE_METHOD(NativeModuleTestFixture, "TestMethodCall_NegateCallbacks", "NativeModuleTest") {
+  m_builderMock.Call2(
+      L"NegateCallbacks",
+      std::function<void(int)>([](int result) noexcept { REQUIRE(result == -5); }),
+      std::function<void(JSValue const &)>(
+          [](JSValue const &error) noexcept { REQUIRE(error["message"] == "Already negative"); }),
+      5);
+  REQUIRE(m_builderMock.IsResolveCallbackCalled());
+}
+
+TEST_CASE_METHOD(NativeModuleTestFixture, "TestMethodCall_NegateCallbacksError", "NativeModuleTest") {
+  m_builderMock.Call2(
+      L"NegateCallbacks",
+      std::function<void(int)>([](int result) noexcept { REQUIRE(result == -5); }),
+      std::function<void(JSValue const &)>(
+          [](JSValue const &error) noexcept { REQUIRE(error["message"] == "Already negative"); }),
+      -5);
+  REQUIRE(m_builderMock.IsRejectCallbackCalled());
+}
+
+TEST_CASE_METHOD(NativeModuleTestFixture, "TestMethodCall_ResolveSayHelloCallbacks", "NativeModuleTest") {
+  m_builderMock.Call2(
+      L"ResolveSayHelloCallbacks",
+      std::function<void(const std::string &)>(
+          [](const std::string &result) noexcept { REQUIRE(result == "Hello_3"); }),
+      std::function<void(JSValue const &)>(
+          [](JSValue const &error) noexcept { REQUIRE(error["message"] == "Goodbye"); }));
+  REQUIRE(m_builderMock.IsResolveCallbackCalled());
+}
+
+TEST_CASE_METHOD(NativeModuleTestFixture, "TestMethodCall_RejectSayHelloCallbacks", "NativeModuleTest") {
+  m_builderMock.Call2(
+      L"RejectSayHelloCallbacks",
+      std::function<void(const std::string &)>(
+          [](const std::string &result) noexcept { REQUIRE(result == "Hello_3"); }),
+      std::function<void(JSValue const &)>(
+          [](JSValue const &error) noexcept { REQUIRE(error["message"] == "Goodbye"); }));
+  REQUIRE(m_builderMock.IsRejectCallbackCalled());
+}
+
+TEST_CASE_METHOD(NativeModuleTestFixture, "TestMethodCall_StaticDivideCallbacks", "NativeModuleTest") {
+  m_builderMock.Call2(
+      L"StaticDivideCallbacks",
+      std::function<void(int)>([](int result) noexcept { REQUIRE(result == 3); }),
+      std::function<void(JSValue const &)>(
+          [](JSValue const &error) noexcept { REQUIRE(error["message"] == "Division by 0"); }),
+      6,
+      2);
+  REQUIRE(m_builderMock.IsResolveCallbackCalled());
+}
+
+TEST_CASE_METHOD(NativeModuleTestFixture, "TestMethodCall_StaticDivideCallbacksError", "NativeModuleTest") {
+  m_builderMock.Call2(
+      L"StaticDivideCallbacks",
+      std::function<void(int)>([](int result) noexcept { REQUIRE(result == 3); }),
+      std::function<void(JSValue const &)>(
+          [](JSValue const &error) noexcept { REQUIRE(error["message"] == "Division by 0"); }),
+      6,
+      0);
+  REQUIRE(m_builderMock.IsRejectCallbackCalled());
+}
+
+TEST_CASE_METHOD(NativeModuleTestFixture, "TestMethodCall_StaticNegateCallbacks", "NativeModuleTest") {
+  m_builderMock.Call2(
+      L"StaticNegateCallbacks",
+      std::function<void(int)>([](int result) noexcept { REQUIRE(result == -5); }),
+      std::function<void(JSValue const &)>(
+          [](JSValue const &error) noexcept { REQUIRE(error["message"] == "Already negative"); }),
+      5);
+  REQUIRE(m_builderMock.IsResolveCallbackCalled());
+}
+
+TEST_CASE_METHOD(NativeModuleTestFixture, "TestMethodCall_StaticNegateCallbacksError", "NativeModuleTest") {
+  m_builderMock.Call2(
+      L"StaticNegateCallbacks",
+      std::function<void(int)>([](int result) noexcept { REQUIRE(result == -5); }),
+      std::function<void(JSValue const &)>(
+          [](JSValue const &error) noexcept { REQUIRE(error["message"] == "Already negative"); }),
+      -5);
+  REQUIRE(m_builderMock.IsRejectCallbackCalled());
+}
+
+TEST_CASE_METHOD(NativeModuleTestFixture, "TestMethodCall_StaticResolveSayHelloCallbacks", "NativeModuleTest") {
+  m_builderMock.Call2(
+      L"StaticResolveSayHelloCallbacks",
+      std::function<void(const std::string &)>(
+          [](const std::string &result) noexcept { REQUIRE(result == "Hello_3"); }),
+      std::function<void(JSValue const &)>(
+          [](JSValue const &error) noexcept { REQUIRE(error["message"] == "Goodbye"); }));
+  REQUIRE(m_builderMock.IsResolveCallbackCalled());
+}
+
+TEST_CASE_METHOD(NativeModuleTestFixture, "TestMethodCall_StaticRejectSayHelloCallbacks", "NativeModuleTest") {
+  m_builderMock.Call2(
+      L"StaticRejectSayHelloCallbacks",
+      std::function<void(const std::string &)>(
+          [](const std::string &result) noexcept { REQUIRE(result == "Hello_3"); }),
+      std::function<void(JSValue const &)>(
+          [](JSValue const &error) noexcept { REQUIRE(error["message"] == "Goodbye"); }));
   REQUIRE(m_builderMock.IsRejectCallbackCalled());
 }
 
