@@ -121,4 +121,8 @@ IJSValueReader MakeJSValueTreeReader(const JSValue& root) noexcept {
   return make<JSValueTreeReader>(root);
 }
 
+IJSValueReader MakeJSValueTreeReader(JSValue &&root) noexcept {
+  return make<JSValueTreeReader>(std::move(root));
+}
+
 } // namespace winrt::Microsoft::ReactNative::Bridge

@@ -143,7 +143,9 @@ inline MethodResultCallback ReactModuleBuilderMock::ResolveCallback(
     JSValue const &jsValue,
     std::function<void(T)> const &resolve) noexcept {
   return [ this, &jsValue, &resolve ](IJSValueWriter const & /*writer*/) noexcept {
-    resolve(jsValue.To<T>());
+    T arg;
+    ReadArgs(MakeJSValueTreeReader(jsValue), arg);
+    resolve(arg);
     m_isResolveCallbackCalled = true;
   };
 }
@@ -153,7 +155,9 @@ inline MethodResultCallback ReactModuleBuilderMock::RejectCallback(
     JSValue const &jsValue,
     std::function<void(T)> const &reject) noexcept {
   return [ this, &jsValue ](IJSValueWriter const & /*writer*/) noexcept {
-    reject(jsValue.To<T>());
+    T arg;
+    ReadArgs(MakeJSValueTreeReader(jsValue), arg);
+    reject(arg);
     m_isResolveCallbackCalled = true;
   };
 }

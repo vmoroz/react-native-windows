@@ -13,6 +13,7 @@ namespace winrt::Microsoft::ReactNative::Bridge {
 // Forward declarations
 struct JSValue;
 IJSValueReader MakeJSValueTreeReader(const JSValue &root) noexcept;
+IJSValueReader MakeJSValueTreeReader(JSValue &&root) noexcept;
 IJSValueWriter MakeJSValueTreeWriter(JSValue &resultValue) noexcept;
 
 // Type alias for JSValue object type

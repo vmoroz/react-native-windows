@@ -103,7 +103,7 @@ SyncMethodDelegate ReactModuleBuilderMock::GetSyncMethod(std::wstring const &met
   JSValue jsValue;
   auto writer = MakeJSValueTreeWriter(jsValue);
   argWriter(writer);
-  return MakeJSValueTreeReader(jsValue);
+  return MakeJSValueTreeReader(std::move(jsValue));
 }
 
 } // namespace winrt::Microsoft::ReactNative::Bridge

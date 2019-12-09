@@ -21,7 +21,13 @@
                                                                                                               \
   template <class TDummy>                                                                                     \
   const moduleClass##_ModuleRegistration<TDummy> moduleClass##_ModuleRegistration<TDummy>::Registration;      \
-  template struct moduleClass##_ModuleRegistration<int>;
+  template struct moduleClass##_ModuleRegistration<int>;                                                      \
+                                                                                                              \
+  template <class TRegistry>                                                                                  \
+  void RegisterModule(TRegistry &registry, moduleClass *) noexcept {                                          \
+    registry.RegisterModule<moduleClass>(                                                                     \
+        moduleName, eventEmitterName, winrt::Microsoft::ReactNative::Bridge::ReactMemberId<__COUNTER__>);     \
+  }
 
 #define INTERNAL_REACT_MODULE_2_ARGS(moduleClass, moduleName) \
   INTERNAL_REACT_MODULE_3_ARGS(moduleClass, moduleName, moduleName)
