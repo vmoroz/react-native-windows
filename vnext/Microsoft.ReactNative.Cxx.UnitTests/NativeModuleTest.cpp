@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 #include "pch.h"
+#include <sstream>
 #include "NativeModules.h"
 #include "ReactModuleBuilderMock.h"
 #include "StructInfo.h"
@@ -251,6 +252,135 @@ struct ModuleMethodInfo<TResult (TModule::*)(TArgs...) noexcept> {
   }
 };
 
+template <class... TArgs>
+struct ModuleMethodInfo<void (*)(TArgs...) noexcept> {
+  constexpr static size_t CallbackCount =
+      Internal::GetCallbackCount<std::tuple<std::remove_reference_t<TArgs>...>>::Value;
+  using MethodType = void (*)(TArgs...) noexcept;
+  using IndexSequence = std::make_index_sequence<sizeof...(TArgs) - CallbackCount>;
+
+  template <class>
+  struct Invoker;
+
+  template <size_t... I>
+  struct Invoker<std::index_sequence<I...>> {
+    // Fire and forget method
+    static MethodDelegate GetFunc(MethodType method, std::integral_constant<size_t, 0>) noexcept {
+      return [method](
+          IJSValueReader const &argReader,
+          IJSValueWriter const & /*argWriter*/,
+          MethodResultCallback const &,
+          MethodResultCallback const &) mutable noexcept {
+        std::tuple<std::remove_reference_t<TArgs>...> typedArgs{};
+        ReadArgs(argReader, std::get<I>(typedArgs)...);
+        (*method)(std::get<I>(std::move(typedArgs))...);
+      };
+    }
+
+    // template <class T>
+    // struct CallbackCreator;
+
+    // template <template <class...> class TCallback, class... TArgs>
+    // struct CallbackCreator<TCallback<void(TArgs...)>> {
+    //  static TCallback<void(TArgs...)> Create(
+    //      const IJSValueWriter &argWriter,
+    //      const MethodResultCallback &callback) noexcept {
+    //    return TCallback([ callback = std::move(callback), argWriter ](TArgs... args) noexcept {
+    //      WriteArgs(argWriter, std::move(args)...);
+    //      callback(argWriter);
+    //    });
+    //  }
+    //};
+
+    // template <class T, class = void>
+    // struct RejectCallbackCreator;
+
+    // template <template <class...> class TCallback, class TArg>
+    // struct RejectCallbackCreator<
+    //    TCallback<void(TArg)>,
+    //    std::enable_if_t<std::is_assignable_v<std::string, TArg> || std::is_assignable_v<std::wstring, TArg>>> {
+    //  static TCallback<void(TArg)> Create(
+    //      const IJSValueWriter &argWriter,
+    //      const MethodResultCallback &callback) noexcept {
+    //    return TCallback([ callback = std::move(callback), argWriter ](TArg arg) noexcept {
+    //      argWriter.WriteArrayBegin();
+    //      argWriter.WriteObjectBegin();
+    //      argWriter.WritePropertyName(L"message");
+    //      WriteValue(argWriter, arg);
+    //      argWriter.WriteObjectEnd();
+    //      argWriter.WriteArrayEnd();
+    //      callback(argWriter);
+    //    });
+    //  }
+    //};
+
+    // template <template <class...> class TCallback>
+    // struct RejectCallbackCreator<TCallback<void()>, void> : CallbackCreator<TCallback<void()>> {};
+
+    // template <template <class...> class TCallback, class TArg>
+    // struct RejectCallbackCreator<
+    //    TCallback<void(TArg)>,
+    //    std::enable_if_t<!std::is_assignable_v<std::string, TArg> && !std::is_assignable_v<std::wstring, TArg>>>
+    //    : CallbackCreator<TCallback<void(TArg)>> {};
+
+    // template <template <class...> class TCallback, class TArg0, class TArg1, class... TArgs>
+    // struct RejectCallbackCreator<TCallback<void(TArg0, TArg1, TArgs...)>, void>
+    //    : CallbackCreator<TCallback<void(TArg0, TArg1, TArgs...)>> {};
+
+    //// Method with one callback
+    // static MethodDelegate GetFunc(ModuleType *module, MethodType method, std::integral_constant<size_t, 1>) noexcept
+    // {
+    //  return [ module, method ](
+    //      IJSValueReader const &argReader,
+    //      IJSValueWriter const &argWriter,
+    //      MethodResultCallback const &callback,
+    //      MethodResultCallback const &) mutable noexcept {
+    //    using ArgTuple = std::tuple<std::remove_reference_t<TArgs>...>;
+    //    ArgTuple typedArgs{};
+    //    ReadArgs(argReader, std::get<I>(typedArgs)...);
+    //    (module->*method)(
+    //        std::get<I>(std::move(typedArgs))...,
+    //        CallbackCreator<std::tuple_element_t<sizeof...(TArgs) - 1, ArgTuple>>::Create(
+    //            argWriter, std::move(callback)));
+    //  };
+    //}
+
+    //// Method with two callbacks
+    // static MethodDelegate GetFunc(ModuleType *module, MethodType method, std::integral_constant<size_t, 2>) noexcept
+    // {
+    //  return [ module, method ](
+    //      IJSValueReader const &argReader,
+    //      IJSValueWriter const &argWriter,
+    //      MethodResultCallback const &callback1,
+    //      MethodResultCallback const &callback2) mutable noexcept {
+    //    using ArgTuple = std::tuple<std::remove_reference_t<TArgs>...>;
+    //    ArgTuple typedArgs{};
+    //    ReadArgs(argReader, std::get<I>(typedArgs)...);
+    //    (module->*method)(
+    //        std::get<I>(std::move(typedArgs))...,
+    //        CallbackCreator<std::tuple_element_t<sizeof...(TArgs) - 2, ArgTuple>>::Create(
+    //            argWriter, std::move(callback1)),
+    //        RejectCallbackCreator<std::tuple_element_t<sizeof...(TArgs) - 1, ArgTuple>>::Create(
+    //            argWriter, std::move(callback2)));
+    //  };
+    //}
+  };
+
+  static MethodDelegate GetMethodDelegate(void * /*module*/, MethodType method, MethodReturnType &returnType) noexcept {
+    returnType = MethodReturnType::Void;
+    // if constexpr (CallbackCount == 1) {
+    //  returnType = MethodReturnType::Callback;
+    //} else if constexpr (CallbackCount == 2) {
+    //  if (isAsync) {
+    //    returnType = MethodReturnType::TwoCallbacks;
+    //  } else {
+    //    returnType = MethodReturnType::Promise;
+    //  }
+    //}
+    return Invoker<IndexSequence>::GetFunc(method, std::integral_constant<size_t, CallbackCount>{});
+  }
+};
+
 template <class TResult, class... TArgs>
 struct ModuleMethodInfo<TResult (*)(TArgs...) noexcept> {
   using MethodType = TResult (*)(TArgs...) noexcept;
@@ -341,6 +471,15 @@ inline ReactModuleProvider MakeModuleProvider() noexcept {
     registry.RegisterMethod<TClass>(&TClass::method, L## #method);                                       \
   }
 
+REACT_STRUCT(Point)
+struct Point {
+  REACT_FIELD(X)
+  int X;
+
+  REACT_FIELD(Y)
+  int Y;
+};
+
 struct SimpleNativeModule;
 
 template <class TRegistry>
@@ -387,9 +526,44 @@ struct SimpleNativeModule {
     Message = "Hello_0";
   }
 
+  REACT_METHOD(PrintPoint)
+  void PrintPoint(Point pt) noexcept {
+    std::stringstream ss;
+    ss << "Point: (" << pt.X << ", " << pt.Y << ")";
+    Message = ss.str();
+  }
+
+  REACT_METHOD(PrintLine)
+  void PrintLine(Point start, Point end) noexcept {
+    std::stringstream ss;
+    ss << "Line: (" << start.X << ", " << start.Y << ")-(" << end.X << ", " << end.Y << ")";
+    Message = ss.str();
+  }
+
+  REACT_METHOD(StaticSayHello1)
+  static void StaticSayHello1() noexcept {
+    StaticMessage = "Hello_1";
+  }
+
+  REACT_METHOD(StaticPrintPoint)
+  static void StaticPrintPoint(Point pt) noexcept {
+    std::stringstream ss;
+    ss << "Static Point: (" << pt.X << ", " << pt.Y << ")";
+    StaticMessage = ss.str();
+  }
+
+  REACT_METHOD(StaticPrintLine)
+  static void StaticPrintLine(Point start, Point end) noexcept {
+    std::stringstream ss;
+    ss << "Static Line: (" << start.X << ", " << start.Y << ")-(" << end.X << ", " << end.Y << ")";
+    StaticMessage = ss.str();
+  }
+
   std::string Message;
   static std::string StaticMessage;
 };
+
+/*static*/ std::string SimpleNativeModule::StaticMessage;
 
 struct NativeModuleTestFixture {
   NativeModuleTestFixture() {
@@ -445,6 +619,31 @@ TEST_CASE_METHOD(NativeModuleTestFixture, "TestMethodCall_StaticSayHello", "Nati
 TEST_CASE_METHOD(NativeModuleTestFixture, "TestMethodCall_SayHello0", "NativeModuleTest") {
   m_builderMock.Call0(L"SayHello0");
   REQUIRE(m_module->Message == "Hello_0");
+}
+
+TEST_CASE_METHOD(NativeModuleTestFixture, "TestMethodCall_PrintPoint", "NativeModuleTest") {
+  m_builderMock.Call0(L"PrintPoint", Point{/*X =*/3, /*Y =*/5});
+  REQUIRE(m_module->Message == "Point: (3, 5)");
+}
+
+TEST_CASE_METHOD(NativeModuleTestFixture, "TestMethodCall_PrintLine", "NativeModuleTest") {
+  m_builderMock.Call0(L"PrintLine", Point{/*X =*/3, /*Y =*/5}, Point{/*X =*/6, /*Y =*/8});
+  REQUIRE(m_module->Message == "Line: (3, 5)-(6, 8)");
+}
+
+TEST_CASE_METHOD(NativeModuleTestFixture, "TestMethodCall_StaticSayHello1", "NativeModuleTest") {
+  m_builderMock.Call0(L"StaticSayHello1");
+  REQUIRE(SimpleNativeModule::StaticMessage == "Hello_1");
+}
+
+TEST_CASE_METHOD(NativeModuleTestFixture, "TestMethodCall_StaticPrintPoint", "NativeModuleTest") {
+  m_builderMock.Call0(L"StaticPrintPoint", Point{/*X =*/13, /*Y =*/15});
+  REQUIRE(SimpleNativeModule::StaticMessage == "Static Point: (13, 15)");
+}
+
+TEST_CASE_METHOD(NativeModuleTestFixture, "TestMethodCall_StaticPrintLine", "NativeModuleTest") {
+  m_builderMock.Call0(L"StaticPrintLine", Point{/*X =*/13, /*Y =*/15}, Point{/*X =*/16, /*Y =*/18});
+  REQUIRE(SimpleNativeModule::StaticMessage == "Static Line: (13, 15)-(16, 18)");
 }
 
 } // namespace winrt::Microsoft::ReactNative::Bridge
