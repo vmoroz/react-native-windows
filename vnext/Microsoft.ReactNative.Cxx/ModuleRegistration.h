@@ -26,13 +26,13 @@
   template <class TRegistry>                                                                                  \
   void RegisterModule(TRegistry &registry, moduleClass *) noexcept {                                          \
     registry.RegisterModule<moduleClass>(                                                                     \
-        moduleName, eventEmitterName, winrt::Microsoft::ReactNative::Bridge::ReactMemberId<__COUNTER__>);     \
+        moduleName, eventEmitterName, winrt::Microsoft::ReactNative::Bridge::ReactMemberId<__COUNTER__>{});   \
   }
 
 #define INTERNAL_REACT_MODULE_2_ARGS(moduleClass, moduleName) \
   INTERNAL_REACT_MODULE_3_ARGS(moduleClass, moduleName, moduleName)
 
-#define INTERNAL_REACT_MODULE_1_ARGS(moduleClass) INTERNAL_REACT_MODULE_2_ARGS(moduleClass, #moduleClass)
+#define INTERNAL_REACT_MODULE_1_ARGS(moduleClass) INTERNAL_REACT_MODULE_2_ARGS(moduleClass, L## #moduleClass)
 
 #define INTERNAL_REACT_MODULE_4TH_ARG(arg1, arg2, arg3, arg4, ...) arg4
 
@@ -45,7 +45,7 @@
 namespace winrt::Microsoft::ReactNative::Bridge {
 
 struct ModuleRegistration {
-  ModuleRegistration(const char *moduleName, const char *eventEmitterName) noexcept;
+  ModuleRegistration(const wchar_t *moduleName, const wchar_t *eventEmitterName) noexcept;
 
   virtual winrt::Microsoft::ReactNative::Bridge::ReactModuleProvider MakeModuleProvider() const noexcept = 0;
 
@@ -57,13 +57,13 @@ struct ModuleRegistration {
     return m_next;
   }
 
-  const char *ModuleName() const noexcept {
+  const wchar_t *ModuleName() const noexcept {
     return m_moduleName;
   }
 
  private:
-  const char *m_moduleName;
-  const char *m_eventEmitterName;
+  const wchar_t *m_moduleName;
+  const wchar_t *m_eventEmitterName;
   const ModuleRegistration *m_next{nullptr};
 
   static const ModuleRegistration *s_head;

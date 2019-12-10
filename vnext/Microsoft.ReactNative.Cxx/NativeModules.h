@@ -11,17 +11,16 @@
 #include "ModuleRegistration.h"
 #include "ReactPromise.h"
 
+// The macro to annotate a C++ class as a ReactNative module.
 //
-//// The macro to annotate a C++ class as a ReactNative module.
-////
-//// Arguments:
-//// - moduleClass (required) - the class name the macro is attached to.
-//// - moduleName (optional) - the module name visible to JavaScript. Default is
-////     the moduleClass name.
-//// - eventEmitterName (optional) - the event emitter name used in JavaScript.
-////     Default is the moduleName.
-//#define REACT_MODULE(/* moduleClass, [opt] moduleName, [opt] eventEmitterName */...) \
-//  INTERNAL_REACT_MODULE(__VA_ARGS__)(__VA_ARGS__)
+// Arguments:
+// - moduleClass (required) - the class name the macro is attached to.
+// - moduleName (optional) - the module name visible to JavaScript. Default is
+//     the moduleClass name.
+// - eventEmitterName (optional) - the event emitter name used in JavaScript.
+//     Default is the moduleName.
+#define REACT_MODULE(/* moduleClass, [opt] moduleName, [opt] eventEmitterName */...) \
+  INTERNAL_REACT_MODULE(__VA_ARGS__)(__VA_ARGS__)
 
 // REACT_METHOD annotates a method to export to JavaScript.
 // It declares an asynchronous method. To return a value:
@@ -53,15 +52,6 @@
 
 // Use with a field for events
 #define REACT_EVENT(/* field, [opt] eventName */...) INTERNAL_REACT_EVENT(__VA_ARGS__)(__VA_ARGS__)
-
-#define REACT_MODULE(module)                                                                            \
-  struct module;                                                                                        \
-                                                                                                        \
-  template <class TRegistry>                                                                            \
-  void RegisterModule(TRegistry &registry, module *) noexcept {                                         \
-    registry.RegisterModule<module>(                                                                    \
-        L## #module, L## #module, winrt::Microsoft::ReactNative::Bridge::ReactMemberId<__COUNTER__>{}); \
-  }
 
 namespace winrt::Microsoft::ReactNative::Bridge {
 
