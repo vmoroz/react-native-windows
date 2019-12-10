@@ -11,7 +11,6 @@
 #include "SampleModuleCPP.h"
 
 using namespace winrt::Microsoft::ReactNative::Bridge;
-using namespace Microsoft::ReactNative;
 
 namespace winrt::SampleLibraryCPP::implementation {
 

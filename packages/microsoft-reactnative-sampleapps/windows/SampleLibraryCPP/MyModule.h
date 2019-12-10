@@ -21,9 +21,9 @@ struct MyModule {
   const int m_fldConst = 43;
 
   REACT_CONSTANT_PROVIDER(SimpleConstants);
-  void SimpleConstants(const winrt::Microsoft::ReactNative::Bridge::IJSValueWriter &writer) noexcept {
-    ::Microsoft::ReactNative::WriteProperty(writer, "simpleConst1", 5);
-    ::Microsoft::ReactNative::WriteProperty(writer, "simpleConst2", "World");
+  void SimpleConstants(winrt::Microsoft::ReactNative::Bridge::ReactConstantProvider &constants) noexcept {
+    constants.Add(L"simpleConst1", 5);
+    constants.Add(L"simpleConst2", "World");
   }
 
   REACT_EVENT(OnChanged);
