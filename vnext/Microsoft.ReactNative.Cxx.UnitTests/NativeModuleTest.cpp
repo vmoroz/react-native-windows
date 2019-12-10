@@ -336,8 +336,8 @@ struct NativeModuleTestFixture {
     m_moduleBuilder = make<ReactModuleBuilderImpl>(m_builderMock);
     auto provider = MakeModuleProvider<SimpleNativeModule>();
     m_moduleObject = provider(m_moduleBuilder);
-    auto reactModule = m_moduleObject.as<IReactModule>();
-    m_module = &ReactModule<SimpleNativeModule>::GetImpl(reactModule);
+    auto reactModule = m_moduleObject.as<IBoxedValue>();
+    m_module = &BoxedValue<SimpleNativeModule>::GetImpl(reactModule);
   }
 
  protected:

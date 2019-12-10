@@ -2,7 +2,7 @@
 // Licensed under the MIT License.
 
 namespace Microsoft.ReactNative.Bridge {
-  interface IReactModule {
-    Int64 GetImpl();
+  interface IBoxedValue {
+    Int64 GetPtr();
   };
 } // namespace Microsoft.ReactNative.Bridge

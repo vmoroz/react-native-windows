@@ -502,23 +502,23 @@ namespace Microsoft.ReactNative.Managed
 
     public static void ReadValue<T>(this IJSValueReader reader, out T value)
     {
-      JSValueReader<T>.ReadValue(reader, out value);
+      JSValueReaderOf<T>.ReadValue(reader, out value);
     }
 
     public static T ReadValue<T>(this IJSValueReader reader)
     {
-      JSValueReader<T>.ReadValue(reader, out T value);
+      JSValueReaderOf<T>.ReadValue(reader, out T value);
       return value;
     }
 
     public static void ReadValue<T>(this JSValue jsValue, out T value)
     {
-      JSValueReader<T>.ReadValue(new JSValueTreeReader(jsValue), out value);
+      JSValueReaderOf<T>.ReadValue(new JSValueTreeReader(jsValue), out value);
     }
 
     public static T ReadValue<T>(this JSValue jsValue)
     {
-      JSValueReader<T>.ReadValue(new JSValueTreeReader(jsValue), out T value);
+      JSValueReaderOf<T>.ReadValue(new JSValueTreeReader(jsValue), out T value);
       return value;
     }
 
@@ -561,7 +561,7 @@ namespace Microsoft.ReactNative.Managed
   }
 
   // This class provides constant time access to the ReadValue delegate.
-  static class JSValueReader<T>
+  static class JSValueReaderOf<T>
   {
     public static ReadValueDelegate<T> ReadValue = JSValueReader.GetReadValueDelegate<T>();
   }

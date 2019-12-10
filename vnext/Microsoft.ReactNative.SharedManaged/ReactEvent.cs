@@ -11,7 +11,7 @@ namespace Microsoft.ReactNative.Managed
 
   // A helper class to initialize event handlers.
   // See the ReactEventInfo.MakeEvent for usage.
-  static class ReactEvent
+  static class ReactEventHelper
   {
     public static ReactArgWriter ArgWriter<T>(T arg) => (IJSValueWriter writer) => writer.WriteValue(arg);
   }

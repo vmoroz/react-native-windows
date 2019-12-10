@@ -22,7 +22,7 @@ namespace Microsoft.ReactNative.Managed.UnitTests
     public Tuple<int, string, bool> Badges { get; set; }
     public RobotTool[] Tools { get; set; }
     public RobotPoint[] Path { get; set; }
-    public OneOf<T2Extra, R2D2Extra> Extra { get; set; }
+    public OneOf2<T2Extra, R2D2Extra> Extra { get; set; }
   }
 
   enum RobotModel
@@ -88,7 +88,7 @@ namespace Microsoft.ReactNative.Managed.UnitTests
             case nameof(value.Badges): value.Badges = reader.ReadValue<Tuple<int, string, bool>>(); break;
             case nameof(value.Tools): value.Tools = reader.ReadValue<RobotTool[]>(); break;
             case nameof(value.Path): value.Path = reader.ReadValue<RobotPoint[]>(); break;
-            case nameof(value.Extra): value.Extra = reader.ReadValue<OneOf<T2Extra, R2D2Extra>>(); break;
+            case nameof(value.Extra): value.Extra = reader.ReadValue<OneOf2<T2Extra, R2D2Extra>>(); break;
             default: reader.ReadValue<JSValue>(); break;
           }
         }
@@ -134,7 +134,7 @@ namespace Microsoft.ReactNative.Managed.UnitTests
     }
 
     // Reading discriminating union requires using JSValue.
-    public static void ReadValue(this JSValue jsValue, out OneOf<T2Extra, R2D2Extra> value)
+    public static void ReadValue(this JSValue jsValue, out OneOf2<T2Extra, R2D2Extra> value)
     {
       value = default;
       if (jsValue.TryGetObjectProperty("Kind", out JSValue kind))
@@ -149,7 +149,7 @@ namespace Microsoft.ReactNative.Managed.UnitTests
     }
 
     // Writing discriminating union is simpler than reading.
-    public static void WriteValue(this IJSValueWriter writer, OneOf<T2Extra, R2D2Extra> value)
+    public static void WriteValue(this IJSValueWriter writer, OneOf2<T2Extra, R2D2Extra> value)
     {
       writer.WriteObjectBegin();
       if (value.TryGet(out T2Extra t2))

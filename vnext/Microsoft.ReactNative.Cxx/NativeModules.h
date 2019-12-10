@@ -712,26 +712,26 @@ struct ReactModuleBuilder {
 };
 
 template <class T>
-struct ReactModule : implements<ReactModule<T>, IReactModule> {
-  ReactModule() noexcept {}
+struct BoxedValue : implements<BoxedValue<T>, IBoxedValue> {
+  BoxedValue() noexcept {}
 
-  int64_t GetImpl() noexcept {
-    return reinterpret_cast<int64_t>(&m_module);
+  int64_t GetPtr() noexcept {
+    return reinterpret_cast<int64_t>(&m_value);
   }
 
-  static T &GetImpl(IReactModule &module) noexcept {
-    return *reinterpret_cast<T *>(module.GetImpl());
+  static T &GetImpl(IBoxedValue &module) noexcept {
+    return *reinterpret_cast<T *>(module.GetPtr());
   }
 
  private:
-  T m_module{};
+  T m_value{};
 };
 
 template <class TModule>
 inline ReactModuleProvider MakeModuleProvider() noexcept {
   return [](IReactModuleBuilder const &moduleBuilder) noexcept {
-    auto moduleObject = make<ReactModule<TModule>>();
-    auto module = &ReactModule<TModule>::GetImpl(moduleObject);
+    auto moduleObject = make<BoxedValue<TModule>>();
+    auto module = &BoxedValue<TModule>::GetImpl(moduleObject);
     ReactModuleBuilder builder{module, moduleBuilder};
     RegisterModule(builder, module);
     return moduleObject;

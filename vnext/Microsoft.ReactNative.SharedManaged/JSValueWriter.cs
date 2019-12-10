@@ -383,7 +383,7 @@ namespace Microsoft.ReactNative.Managed
 
     public static void WriteValue<T>(this IJSValueWriter writer, T value)
     {
-      JSValueWriter<T>.WriteValue(writer, value);
+      JSValueWriterOf<T>.WriteValue(writer, value);
     }
 
     public static void WriteObjectProperty<T>(this IJSValueWriter writer, string name, T value)
@@ -535,7 +535,7 @@ namespace Microsoft.ReactNative.Managed
     }
   }
 
-  static class JSValueWriter<T>
+  static class JSValueWriterOf<T>
   {
     public static WriteValueDelegate<T> WriteValue = JSValueWriter.GetWriteValueDelegate<T>();
   }

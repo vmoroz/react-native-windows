@@ -94,6 +94,6 @@ namespace Microsoft.ReactNative.Managed
     }
 
     static MethodInfo ArgWriterOf(Type typeArg) =>
-      typeof(ReactEvent).GetMethod(nameof(ReactEvent.ArgWriter)).MakeGenericMethod(typeArg);
+      typeof(ReactEventHelper).GetMethod(nameof(ReactEventHelper.ArgWriter)).MakeGenericMethod(typeArg);
   }
 }
