@@ -562,7 +562,7 @@ struct ReactConstantProvider {
   ReactConstantProvider(IJSValueWriter const &writer) noexcept : m_writer{writer} {}
 
   template <class T>
-  void Add(const wchar_t* name, const T& value) noexcept {
+  void Add(const wchar_t *name, const T &value) noexcept {
     WriteProperty(m_writer, name, value);
   }
 
@@ -594,6 +594,24 @@ struct ModuleConstantInfo<void (*)(ReactConstantProvider &) noexcept> {
     return [method](IJSValueWriter const &argWriter) mutable noexcept {
       ReactConstantProvider constantProvider{argWriter};
       (*method)(constantProvider);
+    };
+  }
+};
+
+template <class TField>
+struct ModuleEventFieldInfo;
+
+template <class TModule, template <class> class TFunc, class TArg>
+struct ModuleEventFieldInfo<TFunc<void(TArg)> TModule::*> {
+  using ModuleType = TModule;
+  using EventType = TFunc<void(TArg)>;
+  using FieldType = EventType TModule::*;
+
+  static ReactEventHandlerSetter GetEventHandlerSetter(void *module, FieldType field) noexcept {
+    return [ module = static_cast<ModuleType *>(module), field ](const ReactEventHandler &eventHandler) noexcept {
+      module->*field = [eventHandler](TArg arg) noexcept {
+        eventHandler([&](const IJSValueWriter &argWriter) noexcept { WriteValue(argWriter, arg); });
+      };
     };
   }
 };
@@ -650,6 +668,12 @@ struct ReactModuleBuilder {
     m_moduleBuilder.AddConstantProvider(constantProvider);
   }
 
+  template <class TClass, class TField>
+  void RegisterEvent(TField field, wchar_t const *name) noexcept {
+    auto eventHandlerSetter = ModuleEventFieldInfo<TField>::GetEventHandlerSetter(m_module, field);
+    m_moduleBuilder.AddEventHandlerSetter(name, eventHandlerSetter);
+  }
+
  private:
   void *m_module;
   IReactModuleBuilder m_moduleBuilder;
@@ -699,6 +723,20 @@ inline ReactModuleProvider MakeModuleProvider() noexcept {
   static void RegisterMember(                                                                            \
       TRegistry &registry, winrt::Microsoft::ReactNative::Bridge::ReactMemberId<__COUNTER__>) noexcept { \
     registry.RegisterConstantProvider<TClass>(&TClass::method);                                          \
+  }
+
+#define REACT_EVENT(field)                                                                               \
+  template <class TClass, class TRegistry>                                                               \
+  static void RegisterMember(                                                                            \
+      TRegistry &registry, winrt::Microsoft::ReactNative::Bridge::ReactMemberId<__COUNTER__>) noexcept { \
+    registry.RegisterEvent<TClass>(&TClass::field, L## #field);                                          \
+  }
+
+#define REACT_EVENT2(field, name)                                                                        \
+  template <class TClass, class TRegistry>                                                               \
+  static void RegisterMember(                                                                            \
+      TRegistry &registry, winrt::Microsoft::ReactNative::Bridge::ReactMemberId<__COUNTER__>) noexcept { \
+    registry.RegisterEvent<TClass>(&TClass::field, name);                                                \
   }
 
 REACT_STRUCT(Point)
@@ -1019,12 +1057,19 @@ struct SimpleNativeModule {
     provider.Add(L"const62", "MyConstant62");
   }
 
+  REACT_EVENT(OnIntResult1)
+  std::function<void(int)> OnIntResult1;
+
+  REACT_EVENT2(OnPointResult2, L"onPointResult2")
+  std::function<void(const Point &)> OnPointResult2;
+
   std::string Message;
   static std::string StaticMessage;
 };
 
 /*static*/ std::string SimpleNativeModule::StaticMessage;
 
+// Common base class used by all unit tests below.
 struct NativeModuleTestFixture {
   NativeModuleTestFixture() {
     m_moduleBuilder = make<ReactModuleBuilderImpl>(m_builderMock);
@@ -1440,6 +1485,30 @@ TEST_CASE_METHOD(NativeModuleTestFixture, "TestConstants", "NativeModuleTest") {
   REQUIRE(constants["const61"]["X"] == 15);
   REQUIRE(constants["const61"]["Y"] == 17);
   REQUIRE(constants["const62"] == "MyConstant62");
+}
+
+TEST_CASE_METHOD(NativeModuleTestFixture, "TestEvent_EventField1", "NativeModuleTest") {
+  bool eventRaised = false;
+  m_builderMock.SetEventHandler(L"OnIntResult1", std::function<void(int)>([&eventRaised](int eventArg) noexcept {
+                                  REQUIRE(eventArg == 42);
+                                  eventRaised = true;
+                                }));
+
+  m_module->OnIntResult1(42);
+  REQUIRE(eventRaised == true);
+}
+
+TEST_CASE_METHOD(NativeModuleTestFixture, "TestEvent_EventField2", "NativeModuleTest") {
+  bool eventRaised = false;
+  m_builderMock.SetEventHandler(
+      L"onPointResult2", std::function<void(const Point &)>([&eventRaised](const Point &eventArg) noexcept {
+        REQUIRE(eventArg.X == 4);
+        REQUIRE(eventArg.Y == 2);
+        eventRaised = true;
+      }));
+
+  m_module->OnPointResult2(Point{/*X =*/4, /*Y =*/2});
+  REQUIRE(eventRaised == true);
 }
 
 } // namespace winrt::Microsoft::ReactNative::Bridge

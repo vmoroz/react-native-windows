@@ -59,18 +59,6 @@ JSValueObject ReactModuleBuilderMock::GetConstants() noexcept {
   return jsValue.TakeObject();
 }
 
-template <class T>
-void ReactModuleBuilderMock::SetEventHandler(
-    std::wstring const &eventName,
-    std::function<void(T)> const &eventHandler) noexcept {
-  m_eventHandlers.emplace(
-      eventName, [](IJSValueReader const &reader) noexcept {
-        T arg;
-        ReadArgs(reader, /*out*/ arg);
-        eventHandler(arg);
-      });
-}
-
 MethodDelegate ReactModuleBuilderMock::GetMethod0(std::wstring const &methodName) const noexcept {
   auto it = m_methods.find(methodName);
   return (it != m_methods.end() && std::get<0>(it->second) == MethodReturnType::Void) ? std::get<1>(it->second)
