@@ -299,10 +299,10 @@ struct SimpleNativeModule {
   REACT_CONSTANT(Constant1)
   const std::string Constant1{"MyConstant1"};
 
-  REACT_CONSTANT2(Constant2, L"const2")
+  REACT_CONSTANT(Constant2, L"const2")
   const std::string Constant2{"MyConstant2"};
 
-  REACT_CONSTANT2(Constant3, L"const3")
+  REACT_CONSTANT(Constant3, L"const3")
   static constexpr Point Constant3{/*X =*/2, /*Y =*/3};
 
   REACT_CONSTANT(Constant4)
@@ -323,7 +323,7 @@ struct SimpleNativeModule {
   REACT_EVENT(OnIntResult1)
   std::function<void(int)> OnIntResult1;
 
-  REACT_EVENT2(OnPointResult2, L"onPointResult2")
+  REACT_EVENT(OnPointResult2, L"onPointResult2")
   std::function<void(const Point &)> OnPointResult2;
 
   std::string Message;

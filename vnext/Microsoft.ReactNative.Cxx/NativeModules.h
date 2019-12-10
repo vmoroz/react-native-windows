@@ -22,39 +22,37 @@
 ////     Default is the moduleName.
 //#define REACT_MODULE(/* moduleClass, [opt] moduleName, [opt] eventEmitterName */...) \
 //  INTERNAL_REACT_MODULE(__VA_ARGS__)(__VA_ARGS__)
+
+// REACT_METHOD annotates a method to export to JavaScript.
+// It declares an asynchronous method. To return a value:
+// - Return void and have a Callback as a last parameter. The Callback type can
+// be any std::function like type. I.e. Func<void(Args...)>.
+// - Return void and have two callbacks as last parameters. One is used to return
+// value and another an error.
+// - Return void and have a ReactPromise as a last parameter. In JavaScript the
+// method returns Promise.
+// - Return non-void value. In JavaScript it is treated as a method with one
+// Callback. Return std::pair<Error, Value> to be able to communicate error
+// condition.
 //
-//// The macro to annotate a method to export to JavaScript.
-//// It declares an asynchronous method. To return a value:
-//// - Return void and have a Callback as a last parameter. The Callback type can
-//// be any std::function like type. I.e. Func<void(Args...)>.
-//// - Return void and have two callbacks as last parameters. In JavaScript the
-//// method returns Promise. To keep it as two callbacks use the
-//// REACT_ASYNC_METHOD macro.
-//// - Return non-void value. In JavaScript it is treated as a method with one
-//// Callback. Return std::pair<Error, Value> to be able to communicate error
-//// condition.
-////
-//// Arguments:
-//// - method (required) - the method name the macro is attached to.
-//// - methodName (optional) - the method name visible to JavaScript. Default is
-////     the method name.
-//#define REACT_METHOD(/* method, [opt] methodName */...) INTERNAL_REACT_METHOD(__VA_ARGS__)(, __VA_ARGS__)
-//
-//// A method that is called synchronously. It must be used rarely because it may
-//// cause out-of-order execution when used along with asynchronous methods.
-//#define REACT_SYNC_METHOD(/* method, [opt] methodName */...) \
-//  INTERNAL_REACT_METHOD(__VA_ARGS__)(Sync, __VA_ARGS__)
-//
-//// A method where we can define constants.
-//// Constant definition relies on a TLS context that is setup when object is
-//// created.
-//#define REACT_CONSTANT_PROVIDER(method) INTERNAL_REACT_METHOD_3_ARGS(Const, method, "")
-//
-//// Use with a field to provide a constant
-//#define REACT_CONSTANT(/* field, [opt] constantName */...) INTERNAL_REACT_CONSTANT(__VA_ARGS__)(__VA_ARGS__)
-//
-//// Use with a field for events
-//#define REACT_EVENT(/* field, [opt] eventName */...) INTERNAL_REACT_EVENT(__VA_ARGS__)(__VA_ARGS__)
+// Arguments:
+// - method (required) - the method name the macro is attached to.
+// - methodName (optional) - the method name visible to JavaScript. Default is
+//     the method name.
+#define REACT_METHOD(/* method, [opt] methodName */...) INTERNAL_REACT_METHOD(__VA_ARGS__)(, __VA_ARGS__)
+
+// A method that is called synchronously. It must be used rarely because it may
+// cause out-of-order execution when used along with asynchronous methods.
+#define REACT_SYNC_METHOD(/* method, [opt] methodName */...) INTERNAL_REACT_METHOD(__VA_ARGS__)(Sync, __VA_ARGS__)
+
+// A method where we can define constants.
+#define REACT_CONSTANT_PROVIDER(method) INTERNAL_REACT_METHOD_3_ARGS(Const, method, L"")
+
+// Use with a field to provide a constant
+#define REACT_CONSTANT(/* field, [opt] constantName */...) INTERNAL_REACT_CONSTANT(__VA_ARGS__)(__VA_ARGS__)
+
+// Use with a field for events
+#define REACT_EVENT(/* field, [opt] eventName */...) INTERNAL_REACT_EVENT(__VA_ARGS__)(__VA_ARGS__)
 
 #define REACT_MODULE(module)                                                                            \
   struct module;                                                                                        \
@@ -63,55 +61,6 @@
   void RegisterModule(TRegistry &registry, module *) noexcept {                                         \
     registry.RegisterModule<module>(                                                                    \
         L## #module, L## #module, winrt::Microsoft::ReactNative::Bridge::ReactMemberId<__COUNTER__>{}); \
-  }
-
-#define REACT_METHOD(method)                                                                             \
-  template <class TClass, class TRegistry>                                                               \
-  static void RegisterMember(                                                                            \
-      TRegistry &registry, winrt::Microsoft::ReactNative::Bridge::ReactMemberId<__COUNTER__>) noexcept { \
-    registry.RegisterMethod<TClass>(&TClass::method, L## #method);                                       \
-  }
-
-#define REACT_SYNC_METHOD(method)                                                                        \
-  template <class TClass, class TRegistry>                                                               \
-  static void RegisterMember(                                                                            \
-      TRegistry &registry, winrt::Microsoft::ReactNative::Bridge::ReactMemberId<__COUNTER__>) noexcept { \
-    registry.RegisterSyncMethod<TClass>(&TClass::method, L## #method);                                   \
-  }
-
-#define REACT_CONSTANT(field)                                                                            \
-  template <class TClass, class TRegistry>                                                               \
-  static void RegisterMember(                                                                            \
-      TRegistry &registry, winrt::Microsoft::ReactNative::Bridge::ReactMemberId<__COUNTER__>) noexcept { \
-    registry.RegisterConstant<TClass>(&TClass::field, L## #field);                                       \
-  }
-
-#define REACT_CONSTANT2(field, name)                                                                     \
-  template <class TClass, class TRegistry>                                                               \
-  static void RegisterMember(                                                                            \
-      TRegistry &registry, winrt::Microsoft::ReactNative::Bridge::ReactMemberId<__COUNTER__>) noexcept { \
-    registry.RegisterConstant<TClass>(&TClass::field, name);                                             \
-  }
-
-#define REACT_CONSTANT_PROVIDER(method)                                                                  \
-  template <class TClass, class TRegistry>                                                               \
-  static void RegisterMember(                                                                            \
-      TRegistry &registry, winrt::Microsoft::ReactNative::Bridge::ReactMemberId<__COUNTER__>) noexcept { \
-    registry.RegisterConstantProvider<TClass>(&TClass::method);                                          \
-  }
-
-#define REACT_EVENT(field)                                                                               \
-  template <class TClass, class TRegistry>                                                               \
-  static void RegisterMember(                                                                            \
-      TRegistry &registry, winrt::Microsoft::ReactNative::Bridge::ReactMemberId<__COUNTER__>) noexcept { \
-    registry.RegisterEvent<TClass>(&TClass::field, L## #field);                                          \
-  }
-
-#define REACT_EVENT2(field, name)                                                                        \
-  template <class TClass, class TRegistry>                                                               \
-  static void RegisterMember(                                                                            \
-      TRegistry &registry, winrt::Microsoft::ReactNative::Bridge::ReactMemberId<__COUNTER__>) noexcept { \
-    registry.RegisterEvent<TClass>(&TClass::field, name);                                                \
   }
 
 namespace winrt::Microsoft::ReactNative::Bridge {
@@ -749,15 +698,15 @@ struct ReactModuleBuilder {
     m_moduleBuilder.AddSyncMethod(name, syncMethodDelegate);
   }
 
-  template <class TClass, class TField>
-  void RegisterConstant(TField field, wchar_t const *name) noexcept {
-    auto constantProvider = ModuleConstFieldInfo<TField>::GetConstantProvider(m_module, name, field);
+  template <class TClass, class TMethod>
+  void RegisterConstMethod(TMethod method, wchar_t const * /*name*/) noexcept {
+    auto constantProvider = ModuleConstantInfo<TMethod>::GetConstantProvider(m_module, method);
     m_moduleBuilder.AddConstantProvider(constantProvider);
   }
 
-  template <class TClass, class TMethod>
-  void RegisterConstantProvider(TMethod method) noexcept {
-    auto constantProvider = ModuleConstantInfo<TMethod>::GetConstantProvider(m_module, method);
+  template <class TClass, class TField>
+  void RegisterConstant(TField field, wchar_t const *name) noexcept {
+    auto constantProvider = ModuleConstFieldInfo<TField>::GetConstantProvider(m_module, name, field);
     m_moduleBuilder.AddConstantProvider(constantProvider);
   }
 
