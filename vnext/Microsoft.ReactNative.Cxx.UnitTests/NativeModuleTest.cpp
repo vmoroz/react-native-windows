@@ -516,7 +516,7 @@ struct ModuleSyncMethodInfo<TResult (*)(TArgs...) noexcept> {
   template <size_t... I>
   struct Invoker<std::index_sequence<I...>> {
     static SyncMethodDelegate GetFunc(MethodType method) noexcept {
-      return [ method ](IJSValueReader const &argReader, IJSValueWriter const &argWriter) mutable noexcept {
+      return [method](IJSValueReader const &argReader, IJSValueWriter const &argWriter) mutable noexcept {
         using ArgTuple = std::tuple<std::remove_reference_t<TArgs>...>;
         ArgTuple typedArgs{};
         ReadArgs(argReader, std::get<I>(typedArgs)...);
@@ -528,6 +528,73 @@ struct ModuleSyncMethodInfo<TResult (*)(TArgs...) noexcept> {
 
   static SyncMethodDelegate GetMethodDelegate(void * /*module*/, MethodType method) noexcept {
     return Invoker<IndexSequence>::GetFunc(method);
+  }
+};
+
+template <class TField>
+struct ModuleConstFieldInfo;
+
+template <class TModule, class TValue>
+struct ModuleConstFieldInfo<TValue TModule::*> {
+  using ModuleType = TModule;
+  using FieldType = TValue TModule::*;
+
+  static ConstantProvider GetConstantProvider(void *module, wchar_t const *name, FieldType field) noexcept {
+    return [ module = static_cast<ModuleType *>(module), name = std::wstring{name}, field ](
+        IJSValueWriter const &argWriter) mutable noexcept {
+      WriteProperty(argWriter, name, module->*field);
+    };
+  }
+};
+
+template <class TValue>
+struct ModuleConstFieldInfo<TValue *> {
+  using FieldType = TValue *;
+
+  static ConstantProvider GetConstantProvider(void * /*module*/, wchar_t const *name, FieldType field) noexcept {
+    return [ name = std::wstring{name}, field ](IJSValueWriter const &argWriter) mutable noexcept {
+      WriteProperty(argWriter, name, *field);
+    };
+  }
+};
+
+struct ReactConstantProvider {
+  ReactConstantProvider(IJSValueWriter const &writer) noexcept : m_writer{writer} {}
+
+  template <class T>
+  void Add(const wchar_t* name, const T& value) noexcept {
+    WriteProperty(m_writer, name, value);
+  }
+
+ private:
+  IJSValueWriter m_writer;
+};
+
+template <class TMethod>
+struct ModuleConstantInfo;
+
+template <class TModule>
+struct ModuleConstantInfo<void (TModule::*)(ReactConstantProvider &) noexcept> {
+  using ModuleType = TModule;
+  using MethodType = void (TModule::*)(ReactConstantProvider &) noexcept;
+
+  static ConstantProvider GetConstantProvider(void *module, MethodType method) noexcept {
+    return [ module = static_cast<ModuleType *>(module), method ](IJSValueWriter const &argWriter) mutable noexcept {
+      ReactConstantProvider constantProvider{argWriter};
+      (module->*method)(constantProvider);
+    };
+  }
+};
+
+template <>
+struct ModuleConstantInfo<void (*)(ReactConstantProvider &) noexcept> {
+  using MethodType = void (*)(ReactConstantProvider &) noexcept;
+
+  static ConstantProvider GetConstantProvider(void * /*module*/, MethodType method) noexcept {
+    return [method](IJSValueWriter const &argWriter) mutable noexcept {
+      ReactConstantProvider constantProvider{argWriter};
+      (*method)(constantProvider);
+    };
   }
 };
 
@@ -571,6 +638,18 @@ struct ReactModuleBuilder {
     m_moduleBuilder.AddSyncMethod(name, syncMethodDelegate);
   }
 
+  template <class TClass, class TField>
+  void RegisterConstant(TField field, wchar_t const *name) noexcept {
+    auto constantProvider = ModuleConstFieldInfo<TField>::GetConstantProvider(m_module, name, field);
+    m_moduleBuilder.AddConstantProvider(constantProvider);
+  }
+
+  template <class TClass, class TMethod>
+  void RegisterConstantProvider(TMethod method) noexcept {
+    auto constantProvider = ModuleConstantInfo<TMethod>::GetConstantProvider(m_module, method);
+    m_moduleBuilder.AddConstantProvider(constantProvider);
+  }
+
  private:
   void *m_module;
   IReactModuleBuilder m_moduleBuilder;
@@ -599,6 +678,27 @@ inline ReactModuleProvider MakeModuleProvider() noexcept {
   static void RegisterMember(                                                                            \
       TRegistry &registry, winrt::Microsoft::ReactNative::Bridge::ReactMemberId<__COUNTER__>) noexcept { \
     registry.RegisterSyncMethod<TClass>(&TClass::method, L## #method);                                   \
+  }
+
+#define REACT_CONSTANT(field)                                                                            \
+  template <class TClass, class TRegistry>                                                               \
+  static void RegisterMember(                                                                            \
+      TRegistry &registry, winrt::Microsoft::ReactNative::Bridge::ReactMemberId<__COUNTER__>) noexcept { \
+    registry.RegisterConstant<TClass>(&TClass::field, L## #field);                                       \
+  }
+
+#define REACT_CONSTANT2(field, name)                                                                     \
+  template <class TClass, class TRegistry>                                                               \
+  static void RegisterMember(                                                                            \
+      TRegistry &registry, winrt::Microsoft::ReactNative::Bridge::ReactMemberId<__COUNTER__>) noexcept { \
+    registry.RegisterConstant<TClass>(&TClass::field, name);                                             \
+  }
+
+#define REACT_CONSTANT_PROVIDER(method)                                                                  \
+  template <class TClass, class TRegistry>                                                               \
+  static void RegisterMember(                                                                            \
+      TRegistry &registry, winrt::Microsoft::ReactNative::Bridge::ReactMemberId<__COUNTER__>) noexcept { \
+    registry.RegisterConstantProvider<TClass>(&TClass::method);                                          \
   }
 
 REACT_STRUCT(Point)
@@ -893,6 +993,30 @@ struct SimpleNativeModule {
   REACT_SYNC_METHOD(StaticSayHelloSync)
   static std::string StaticSayHelloSync() noexcept {
     return "Hello";
+  }
+
+  REACT_CONSTANT(Constant1)
+  const std::string Constant1{"MyConstant1"};
+
+  REACT_CONSTANT2(Constant2, L"const2")
+  const std::string Constant2{"MyConstant2"};
+
+  REACT_CONSTANT2(Constant3, L"const3")
+  static constexpr Point Constant3{/*X =*/2, /*Y =*/3};
+
+  REACT_CONSTANT(Constant4)
+  static constexpr Point Constant4{/*X =*/3, /*Y =*/4};
+
+  REACT_CONSTANT_PROVIDER(Constant5)
+  void Constant5(ReactConstantProvider &provider) noexcept {
+    provider.Add(L"const51", Point{/*X =*/12, /*Y =*/14});
+    provider.Add(L"const52", "MyConstant52");
+  }
+
+  REACT_CONSTANT_PROVIDER(Constant6)
+  static void Constant6(ReactConstantProvider &provider) noexcept {
+    provider.Add(L"const61", Point{/*X =*/15, /*Y =*/17});
+    provider.Add(L"const62", "MyConstant62");
   }
 
   std::string Message;
@@ -1300,6 +1424,22 @@ TEST_CASE_METHOD(NativeModuleTestFixture, "TestMethodSyncCall_StaticSayHelloSync
   std::string result;
   m_builderMock.CallSync(L"StaticSayHelloSync", /*out*/ result);
   REQUIRE(result == "Hello");
+}
+
+TEST_CASE_METHOD(NativeModuleTestFixture, "TestConstants", "NativeModuleTest") {
+  auto constants = m_builderMock.GetConstants();
+  REQUIRE(constants["Constant1"] == "MyConstant1");
+  REQUIRE(constants["const2"] == "MyConstant2");
+  REQUIRE(constants["const3"]["X"] == 2);
+  REQUIRE(constants["const3"]["Y"] == 3);
+  REQUIRE(constants["Constant4"]["X"] == 3);
+  REQUIRE(constants["Constant4"]["Y"] == 4);
+  REQUIRE(constants["const51"]["X"] == 12);
+  REQUIRE(constants["const51"]["Y"] == 14);
+  REQUIRE(constants["const52"] == "MyConstant52");
+  REQUIRE(constants["const61"]["X"] == 15);
+  REQUIRE(constants["const61"]["Y"] == 17);
+  REQUIRE(constants["const62"] == "MyConstant62");
 }
 
 } // namespace winrt::Microsoft::ReactNative::Bridge
