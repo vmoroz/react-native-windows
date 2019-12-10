@@ -98,17 +98,17 @@ namespace SampleLibraryCS
         }
 
         [ReactMethod]
-        public void ExplicitPromiseMethodWithArgs(double arg, ReactCallback<double> resolve, ReactCallback<string> reject)
+        public void ExplicitPromiseMethodWithArgs(double arg, ReactPromise<double> result)
         {
             Debug.WriteLine($"{Name}.{nameof(ExplicitPromiseMethodWithArgs)}({arg})");
 
             try
             {
-                resolve(Math.PI);
+                result.Resolve(Math.PI);
             }
             catch (Exception ex)
             {
-                reject(ex.Message);
+                result.Reject(new ReactError { Message = ex.Message });
             }
         }
 
@@ -141,11 +141,11 @@ namespace SampleLibraryCS
 
         public SampleModuleCS()
         {
-            _timer = ThreadPoolTimer.CreatePeriodicTimer(new TimerElapsedHandler((timer) =>
-            {
-                TimedEvent?.Invoke(++_timerCount);
-            }),
-            TimeSpan.FromMilliseconds(TimedEventIntervalMS));
+            //_timer = ThreadPoolTimer.CreatePeriodicTimer(new TimerElapsedHandler((timer) =>
+            //{
+            //    TimedEvent?.Invoke(++_timerCount);
+            //}),
+            //TimeSpan.FromMilliseconds(TimedEventIntervalMS));
         }
 
         ~SampleModuleCS()
