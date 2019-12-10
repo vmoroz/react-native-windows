@@ -12,7 +12,7 @@ namespace winrt::Microsoft::ReactNative::Bridge {
 
 // Writes to a tree of JSValue objects.
 struct JSValueTreeWriter : implements<JSValueTreeWriter, IJSValueWriter> {
-  JSValueTreeWriter(JSValue& resultValue) noexcept;
+  JSValueTreeWriter(JSValue &resultValue) noexcept;
 
  public: // IJSValueWriter
   void WriteNull() noexcept;
@@ -43,7 +43,7 @@ struct JSValueTreeWriter : implements<JSValueTreeWriter, IJSValueWriter> {
 
  private:
   std::stack<ContainerInfo> m_containerStack;
-  JSValue& m_resultValue;
+  JSValue &m_resultValue;
 };
 
 } // namespace winrt::Microsoft::ReactNative::Bridge

@@ -135,12 +135,11 @@ template <class T>
 inline void ReactModuleBuilderMock::SetEventHandler(
     std::wstring const &eventName,
     std::function<void(T)> const &eventHandler) noexcept {
-  m_eventHandlers.emplace(
-      eventName, [eventHandler](IJSValueReader const &reader) noexcept {
-        std::remove_const_t<std::remove_reference_t<T>> arg;
-        ReadArgs(reader, /*out*/ arg);
-        eventHandler(arg);
-      });
+  m_eventHandlers.emplace(eventName, [eventHandler](IJSValueReader const &reader) noexcept {
+    std::remove_const_t<std::remove_reference_t<T>> arg;
+    ReadArgs(reader, /*out*/ arg);
+    eventHandler(arg);
+  });
 }
 
 template <class... TArgs>

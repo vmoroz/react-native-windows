@@ -2,8 +2,8 @@
 // Licensed under the MIT License.
 
 #include "pch.h"
-#include "Crash.h"
 #include "DynamicWriter.h"
+#include "Crash.h"
 
 namespace winrt::Microsoft::ReactNative::Bridge {
 

@@ -27,7 +27,7 @@ struct JSValueTreeReader : implements<JSValueTreeReader, IJSValueReader> {
     StackEntry(const JSValue &value, const JSValueObject::const_iterator &property) noexcept;
     StackEntry(const JSValue &value, const JSValueArray::const_iterator &item) noexcept;
 
-    const JSValue& Value;
+    const JSValue &Value;
     JSValueArray::const_iterator Item;
     JSValueObject::const_iterator Property;
   };

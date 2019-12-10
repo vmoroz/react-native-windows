@@ -10,7 +10,7 @@
   template <class TDummy>                                                                                     \
   struct moduleClass##_ModuleRegistration final : winrt::Microsoft::ReactNative::Bridge::ModuleRegistration { \
     moduleClass##_ModuleRegistration() noexcept                                                               \
-        : winrt::Microsoft::ReactNative::Bridge::ModuleRegistration(moduleName) {}          \
+        : winrt::Microsoft::ReactNative::Bridge::ModuleRegistration(moduleName) {}                            \
                                                                                                               \
     winrt::Microsoft::ReactNative::Bridge::ReactModuleProvider MakeModuleProvider() const noexcept override { \
       return winrt::Microsoft::ReactNative::Bridge::MakeModuleProvider<moduleClass>();                        \

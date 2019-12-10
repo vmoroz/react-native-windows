@@ -5,8 +5,8 @@
 #ifndef MICROSOFT_REACTNATIVE_JSVALUEWRITER
 #define MICROSOFT_REACTNATIVE_JSVALUEWRITER
 
-#include "winrt/Microsoft.ReactNative.Bridge.h"
 #include "StructInfo.h"
+#include "winrt/Microsoft.ReactNative.Bridge.h"
 
 namespace winrt::Microsoft::ReactNative::Bridge {
 
@@ -67,7 +67,7 @@ IJSValueWriter MakeJSValueTreeWriter(JSValue &resultValue) noexcept;
 // IJSValueWriter extensions implementation
 //==============================================================================
 
-inline void WriteValue(IJSValueWriter const& writer, std::nullptr_t) noexcept {
+inline void WriteValue(IJSValueWriter const &writer, std::nullptr_t) noexcept {
   writer.WriteNull();
 }
 

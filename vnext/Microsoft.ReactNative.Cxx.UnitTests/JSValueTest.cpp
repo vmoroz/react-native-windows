@@ -82,7 +82,7 @@ TEST_CASE("TestReadNestedArray", "JSValueTest") {
 
   JSValue jsValue = JSValue::ReadFrom(reader);
   REQUIRE(jsValue.Type() == JSValueType::Array);
-  const auto& nestedArr = jsValue.Array()[0].Array();
+  const auto &nestedArr = jsValue.Array()[0].Array();
   REQUIRE(nestedArr[0].IsNull());
   REQUIRE(nestedArr[1].Object().empty());
   REQUIRE(nestedArr[2].Array().empty());

@@ -13,7 +13,7 @@ struct DynamicReader : implements<DynamicReader, IJSValueReader> {
 
  public: // IJSValueReader
   JSValueType ValueType() noexcept;
-  bool GetNextObjectProperty(hstring& propertyName) noexcept;
+  bool GetNextObjectProperty(hstring &propertyName) noexcept;
   bool GetNextArrayItem() noexcept;
   hstring GetString() noexcept;
   bool GetBoolean() noexcept;

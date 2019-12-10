@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "winrt/Microsoft.ReactNative.Bridge.h"
 #include "JsonReader.h"
+#include "winrt/Microsoft.ReactNative.Bridge.h"
 
 namespace winrt::Microsoft::ReactNative::Bridge {
 
