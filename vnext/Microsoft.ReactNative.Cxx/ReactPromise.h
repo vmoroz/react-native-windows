@@ -23,6 +23,9 @@ struct ReactPromiseBase {
   // Report an Error.
   void Reject(ReactError &&error) noexcept;
 
+  void Reject(const char* errorMessage) noexcept;
+  void Reject(const wchar_t *errorMessage) noexcept;
+
  protected:
   void Clear() noexcept;
 

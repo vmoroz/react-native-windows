@@ -8,8 +8,7 @@ namespace winrt::Microsoft::ReactNative::Bridge {
 
 const ModuleRegistration *ModuleRegistration::s_head{nullptr};
 
-ModuleRegistration::ModuleRegistration(const wchar_t *moduleName, const wchar_t *eventEmitterName) noexcept
-    : m_moduleName{moduleName}, m_eventEmitterName{eventEmitterName}, m_next{s_head} {
+ModuleRegistration::ModuleRegistration(const wchar_t *moduleName) noexcept : m_moduleName{moduleName}, m_next{s_head} {
   s_head = this;
 }
 

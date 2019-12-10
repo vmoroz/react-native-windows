@@ -41,6 +41,50 @@ void ReactPromiseBase::Reject(ReactError &&error) noexcept {
   Clear();
 }
 
+void ReactPromiseBase::Reject(const char *errorMessage) noexcept {
+  if (m_reject == nullptr) {
+    Clear();
+    return;
+  }
+
+  m_writer.WriteArrayBegin();
+  m_writer.WriteObjectBegin();
+
+  WriteProperty(m_writer, ErrorMapKeyCode, ErrorDefaultCode);
+  WriteProperty(m_writer, ErrorMapKeyMessage, errorMessage);
+
+  // For consistency with iOS ensure userInfo key exists, even if we null it.
+  // iOS: /React/Base/RCTUtils.m -> RCTJSErrorFromCodeMessageAndNSError
+  WriteProperty(m_writer, ErrorMapKeyUserInfo, nullptr);
+
+  m_writer.WriteObjectEnd();
+  m_writer.WriteArrayEnd();
+  m_reject(m_writer);
+  Clear();
+}
+
+void ReactPromiseBase::Reject(const wchar_t *errorMessage) noexcept {
+  if (m_reject == nullptr) {
+    Clear();
+    return;
+  }
+
+  m_writer.WriteArrayBegin();
+  m_writer.WriteObjectBegin();
+
+  WriteProperty(m_writer, ErrorMapKeyCode, ErrorDefaultCode);
+  WriteProperty(m_writer, ErrorMapKeyMessage, errorMessage);
+
+  // For consistency with iOS ensure userInfo key exists, even if we null it.
+  // iOS: /React/Base/RCTUtils.m -> RCTJSErrorFromCodeMessageAndNSError
+  WriteProperty(m_writer, ErrorMapKeyUserInfo, nullptr);
+
+  m_writer.WriteObjectEnd();
+  m_writer.WriteArrayEnd();
+  m_reject(m_writer);
+  Clear();
+}
+
 void ReactPromiseBase::Clear() noexcept {
   m_resolve = nullptr;
   m_reject = nullptr;
