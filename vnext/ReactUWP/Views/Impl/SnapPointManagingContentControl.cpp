@@ -16,24 +16,50 @@ SnapPointManagingContentControl::SnapPointManagingContentControl() {
 void SnapPointManagingContentControl::SnapToInterval(float interval) {
   if (interval != m_interval) {
     m_interval = interval;
-    m_horizontalSnapPointsChangedEventSource(*this, nullptr);
-    m_verticalSnapPointsChangedEventSource(*this, nullptr);
+    NotifySnapPointsUpdated();
   }
+}
+
+void SnapPointManagingContentControl::SnapToStart(bool snapToStart) {
+  m_snapToStart = snapToStart;
+  NotifySnapPointsUpdated();
+}
+
+void SnapPointManagingContentControl::SnapToEnd(bool snapToEnd) {
+  m_snapToEnd = snapToEnd;
+  NotifySnapPointsUpdated();
+}
+
+void SnapPointManagingContentControl::PagingEnabled(bool pagingEnabled) {
+  m_pagingEnabled = pagingEnabled;
+  NotifySnapPointsUpdated();
 }
 
 void SnapPointManagingContentControl::SnapToOffsets(const winrt::IVectorView<float> &offsets) {
   m_offsets = offsets;
-  m_interval = 0;
+  if (m_offsets.Size() > 0) {
+    m_interval = 0.0f;
+    m_pagingEnabled = false;
+  }
+  NotifySnapPointsUpdated();
+}
+
+void SnapPointManagingContentControl::SetViewportSize(float scaledViewportWidth, float scaledviewportHeight) {
+  m_viewportWidth = scaledViewportWidth;
+  m_viewportHeight = scaledviewportHeight;
+}
+
+void SnapPointManagingContentControl::NotifySnapPointsUpdated() {
   m_horizontalSnapPointsChangedEventSource(*this, nullptr);
   m_verticalSnapPointsChangedEventSource(*this, nullptr);
 }
 
 bool SnapPointManagingContentControl::AreHorizontalSnapPointsRegular() {
-  return m_interval;
+  return (m_interval != 0.0f || m_pagingEnabled);
 }
 
 bool SnapPointManagingContentControl::AreVerticalSnapPointsRegular() {
-  return m_interval;
+  return (m_interval != 0.0f || m_pagingEnabled);
 }
 
 winrt::event_token SnapPointManagingContentControl::HorizontalSnapPointsChanged(
@@ -76,7 +102,13 @@ float SnapPointManagingContentControl::GetRegularSnapPoints(
     winrt::Orientation orientation,
     winrt::SnapPointsAlignment alignment,
     float offset) {
-  return m_interval;
+  if (m_interval > 0.0f) {
+    return m_interval;
+  } else if (m_pagingEnabled) {
+    return m_horizontal ? m_viewportWidth : m_viewportHeight;
+  }
+
+  return 0;
 }
 
 void SnapPointManagingContentControl::SetHorizontal(bool horizontal) {

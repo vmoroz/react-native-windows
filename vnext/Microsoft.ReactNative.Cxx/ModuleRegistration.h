@@ -10,7 +10,7 @@
   template <class TDummy>                                                                                     \
   struct moduleClass##_ModuleRegistration final : winrt::Microsoft::ReactNative::Bridge::ModuleRegistration { \
     moduleClass##_ModuleRegistration() noexcept                                                               \
-        : winrt::Microsoft::ReactNative::Bridge::ModuleRegistration(moduleName, eventEmitterName) {}          \
+        : winrt::Microsoft::ReactNative::Bridge::ModuleRegistration(moduleName) {}          \
                                                                                                               \
     winrt::Microsoft::ReactNative::Bridge::ReactModuleProvider MakeModuleProvider() const noexcept override { \
       return winrt::Microsoft::ReactNative::Bridge::MakeModuleProvider<moduleClass>();                        \
@@ -29,8 +29,7 @@
         moduleName, eventEmitterName, winrt::Microsoft::ReactNative::Bridge::ReactMemberId<__COUNTER__>{});   \
   }
 
-#define INTERNAL_REACT_MODULE_2_ARGS(moduleClass, moduleName) \
-  INTERNAL_REACT_MODULE_3_ARGS(moduleClass, moduleName, moduleName)
+#define INTERNAL_REACT_MODULE_2_ARGS(moduleClass, moduleName) INTERNAL_REACT_MODULE_3_ARGS(moduleClass, moduleName, L"")
 
 #define INTERNAL_REACT_MODULE_1_ARGS(moduleClass) INTERNAL_REACT_MODULE_2_ARGS(moduleClass, L## #moduleClass)
 
@@ -45,7 +44,7 @@
 namespace winrt::Microsoft::ReactNative::Bridge {
 
 struct ModuleRegistration {
-  ModuleRegistration(const wchar_t *moduleName, const wchar_t *eventEmitterName) noexcept;
+  ModuleRegistration(const wchar_t *moduleName) noexcept;
 
   virtual winrt::Microsoft::ReactNative::Bridge::ReactModuleProvider MakeModuleProvider() const noexcept = 0;
 
@@ -63,7 +62,6 @@ struct ModuleRegistration {
 
  private:
   const wchar_t *m_moduleName;
-  const wchar_t *m_eventEmitterName;
   const ModuleRegistration *m_next{nullptr};
 
   static const ModuleRegistration *s_head;

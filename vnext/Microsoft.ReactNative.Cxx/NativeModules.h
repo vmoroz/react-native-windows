@@ -18,7 +18,7 @@
 // - moduleName (optional) - the module name visible to JavaScript. Default is
 //     the moduleClass name.
 // - eventEmitterName (optional) - the event emitter name used in JavaScript.
-//     Default is the moduleName.
+//     Default is the RCTDeviceEventEmitter.
 #define REACT_MODULE(/* moduleClass, [opt] moduleName, [opt] eventEmitterName */...) \
   INTERNAL_REACT_MODULE(__VA_ARGS__)(__VA_ARGS__)
 

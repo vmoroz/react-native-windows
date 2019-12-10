@@ -14,11 +14,18 @@ import {
   UIManager,
   View,
 } from 'react-native';
-import { NativeModules } from 'react-native';
 
-//const CustomUserControlCS = requireNativeComponent('CustomUserControlCS');
+import { NativeModules, NativeEventEmitter } from 'react-native';
 
+// Creating event emitters
+const SampleModuleCSEmitter = new NativeEventEmitter(NativeModules.SampleModuleCS);
+const SampleModuleCPPEmitter = new NativeEventEmitter(NativeModules.SampleModuleCPP);
+
+const CustomUserControlCS = requireNativeComponent('CustomUserControlCS');
 const CustomUserControlCPP = requireNativeComponent('CustomUserControlCPP');
+
+const CircleCS = requireNativeComponent('CircleCS');
+const CircleCPP = requireNativeComponent('CircleCPP');
 
 var log = function(result) {
   console.log(result);
@@ -32,13 +39,18 @@ var getCallback = function(prefix) {
 };
 
 class SampleApp extends Component {
-  constructor(props) {
-    super(props);
-    this._cuccsRef = React.createRef();
+  componentDidMount() {
+    this._TimedEventCSSub = SampleModuleCSEmitter.addListener('TimedEventCS', getCallback('SampleModuleCS.TimedEventCS() => '));
+    this._TimedEventCPPSub = SampleModuleCPPEmitter.addListener('TimedEventCPP', getCallback('SampleModuleCPP.TimedEventCPP() => '));
   }
 
-  _onPressHandlerSMCS() {
-    log('SampleApp._onPressHandlerSMCS()');
+  componentWillUnmount() {
+    this._TimedEventCSSub.remove();
+    this._TimedEventCPPSub.remove();
+  }
+
+  onPressSampleModuleCS() {
+    log('SampleApp.onPressSampleModuleCS()');
 
     var numberArg = 42;
 
@@ -46,6 +58,9 @@ class SampleApp extends Component {
 
     log(`SampleModuleCS.NumberConstant: ${NativeModules.SampleModuleCS.NumberConstant}`);
     log(`SampleModuleCS.StringConstant: ${NativeModules.SampleModuleCS.StringConstant}`);
+
+    log(`SampleModuleCS.NumberConstantViaProvider: ${NativeModules.SampleModuleCS.NumberConstantViaProvider}`);
+    log(`SampleModuleCS.StringConstantViaProvider: ${NativeModules.SampleModuleCS.StringConstantViaProvider}`);
 
     // SampleModuleCS method calls
 
@@ -66,10 +81,14 @@ class SampleApp extends Component {
 
     var promise2 = NativeModules.SampleModuleCS.ExplicitPromiseMethodWithArgs(numberArg);
     promise2.then(getCallback('SampleModuleCS.ExplicitPromiseMethodWithArgs then => ')).catch(getCallback('SampleModuleCS.ExplicitPromiseMethodWithArgs catch => '));
+
+    log('SampleModuleCS.SyncReturnMethod => ' + NativeModules.SampleModuleCS.SyncReturnMethod());
+
+    log('SampleModuleCS.SyncReturnMethodWithArgs => ' + NativeModules.SampleModuleCS.SyncReturnMethodWithArgs(numberArg));
   }
 
-  _onPressHandlerSMCPP() {
-    log('SampleApp._onPressHandlerSMCPP()');
+  onPressSampleModuleCPP() {
+    log('SampleApp.onPressSampleModuleCPP()');
 
     var numberArg = 42;
 
@@ -77,6 +96,9 @@ class SampleApp extends Component {
 
     log(`SampleModuleCPP.NumberConstant: ${NativeModules.SampleModuleCPP.NumberConstant}`);
     log(`SampleModuleCPP.StringConstant: ${NativeModules.SampleModuleCPP.StringConstant}`);
+
+    log(`SampleModuleCPP.NumberConstantViaProvider: ${NativeModules.SampleModuleCPP.NumberConstantViaProvider}`);
+    log(`SampleModuleCPP.StringConstantViaProvider: ${NativeModules.SampleModuleCPP.StringConstantViaProvider}`);
 
     // SampleModuleCPP method calls
 
@@ -97,17 +119,46 @@ class SampleApp extends Component {
 
     var promise2 = NativeModules.SampleModuleCPP.ExplicitPromiseMethodWithArgs(numberArg);
     promise2.then(getCallback('SampleModuleCPP.ExplicitPromiseMethodWithArgs then => ')).catch(getCallback('SampleModuleCPP.ExplicitPromiseMethodWithArgs catch => '));
+
+    log('SampleModuleCPP.SyncReturnMethod => ' + NativeModules.SampleModuleCPP.SyncReturnMethod());
+
+    log('SampleModuleCPP.SyncReturnMethodWithArgs => ' + NativeModules.SampleModuleCPP.SyncReturnMethodWithArgs(numberArg));
   }
 
-  _onPressHandlerCUCCS() {
-    log('SampleApp._onPressHandlerCUCCS()');
+  onPressCustomUserControlCS() {
+    log('SampleApp.onPressCustomUserControlCS()');
 
-    if (this._cuccsRef)
+    var strArg = 'Hello World!';
+
+    if (this._CustomUserControlCSRef)
     {
-      const cuccsTag = findNodeHandle(this._cuccsRef);
-      log(`tag: ${cuccsTag}`);
-      //UIManager.dispatchViewManagerCommand(cuccsTag, UIManager.CustomUserControlCS.Commands.CustomCommand, ['Hello World!']);
+      const tag = findNodeHandle(this._CustomUserControlCSRef);
+      log(`UIManager.dispatchViewManagerCommand(${tag}, CustomUserControlCS.CustomCommand, "${strArg}")`);
+      UIManager.dispatchViewManagerCommand(tag, UIManager.getViewManagerConfig('CustomUserControlCS').Commands.CustomCommand, strArg);
     }
+  }
+
+  onPressCustomUserControlCPP() {
+    log('SampleApp.onPressCustomUserControlCPP()');
+
+    var strArg = 'Hello World!';
+
+    if (this._CustomUserControlCPPRef)
+    {
+      const tag = findNodeHandle(this._CustomUserControlCPPRef);
+      log(`UIManager.dispatchViewManagerCommand(${tag}, CustomUserControlCPP.CustomCommand, "${strArg}")`);
+      UIManager.dispatchViewManagerCommand(tag, UIManager.getViewManagerConfig('CustomUserControlCPP').Commands.CustomCommand, strArg);
+    }
+  }
+
+  onLabelChangedCustomUserControlCS(evt) {
+    var label = evt.nativeEvent;
+    log(`SampleApp.onLabelChangedCustomUserControlCS("${label}")`);
+  }
+
+  onLabelChangedCustomUserControlCPP(evt) {
+    var label = evt.nativeEvent;
+    log(`SampleApp.onLabelChangedCustomUserControlCPP("${label}")`);
   }
 
   render() {
@@ -120,10 +171,26 @@ class SampleApp extends Component {
           This app consumes custom Native Modules and View Managers.
         </Text>
 
-        <Button onPress={() => { this._onPressHandlerSMCS(); }} title="Call SampleModuleCS!" disabled={NativeModules.SampleModuleCS == null} />
-        <Button onPress={() => { this._onPressHandlerSMCPP(); }} title="Call SampleModuleCPP!" disabled={NativeModules.SampleModuleCPP == null} />
+        <Button onPress={() => { this.onPressSampleModuleCS(); }} title="Call SampleModuleCS!" disabled={NativeModules.SampleModuleCS == null} />
+        <Button onPress={() => { this.onPressSampleModuleCPP(); }} title="Call SampleModuleCPP!" disabled={NativeModules.SampleModuleCPP == null} />
 
-        <CustomUserControlCPP style={styles.customcontrol} label="CustomUserControlCPP!" />
+        <CustomUserControlCS style={styles.customcontrol} label="CustomUserControlCS!" ref={(ref) => { this._CustomUserControlCSRef = ref; }} onLabelChanged={(evt) => { this.onLabelChangedCustomUserControlCS(evt); }} />
+        <Button onPress={() => { this.onPressCustomUserControlCS(); }} title="Call CustomUserControlCS Commands!" />
+
+        <CustomUserControlCPP style={styles.customcontrol} label="CustomUserControlCPP!" ref={(ref) => { this._CustomUserControlCPPRef = ref; }} onLabelChanged={(evt) => { this.onLabelChangedCustomUserControlCPP(evt); }} />
+        <Button onPress={() => { this.onPressCustomUserControlCPP(); }} title="Call CustomUserControlCPP Commands!" />
+
+        <CircleCS style={styles.circle}>
+          <View style={styles.box}>
+            <Text style={styles.boxText}>CircleCS!</Text>
+          </View>
+        </CircleCS>
+
+        <CircleCPP style={styles.circle}>
+          <View style={styles.box}>
+            <Text style={styles.boxText}>CircleCPP!</Text>
+          </View>
+        </CircleCPP>
         <Text style={styles.instructions}>
           Hello from Microsoft!
         </Text>
@@ -155,6 +222,19 @@ const styles = StyleSheet.create({
     width: 200,
     height: 20,
     margin: 10,
+  },
+  circle: {
+    margin: 10,
+  },
+  box: {
+    backgroundColor: '#006666',
+    width: 100,
+    height: 100,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  boxText: {
+    fontSize: 20,
   },
 });
 

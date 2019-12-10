@@ -37,5 +37,6 @@
     <Compile Include="$(MSBuildThisFileDirectory)ReactPromise.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)ReactSyncMethodInfo.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)ViewManagerAttributes.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)ViewManagerEvent.cs" />
   </ItemGroup>
 </Project>
