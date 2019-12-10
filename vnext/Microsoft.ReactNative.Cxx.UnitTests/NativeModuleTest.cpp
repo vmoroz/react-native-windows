@@ -5,8 +5,6 @@
 #include <sstream>
 #include "NativeModules.h"
 #include "ReactModuleBuilderMock.h"
-#include "ReactPromise.h"
-#include "StructInfo.h"
 #include "catch.hpp"
 
 namespace winrt::Microsoft::ReactNative::Bridge {
