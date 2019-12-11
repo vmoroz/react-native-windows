@@ -23,9 +23,21 @@ namespace Microsoft.ReactNative.Managed
       Type lastParameterType = parameters.Length > 0 ? parameters[parameters.Length - 1].ParameterType : null;
       Type secondToLastParameterType = parameters.Length > 1 ? parameters[parameters.Length - 2].ParameterType : null;
       Func<ReactMethodImpl> createMethod;
-      bool isPromise(Type type) => type != null
-        && type.GetTypeInfo().IsGenericType
-        && type.GetTypeInfo().GetGenericTypeDefinition() == typeof(IReactPromise<>);
+
+      bool isPromise(Type type)
+      {
+        var typeInfo = type?.GetTypeInfo();
+        if (typeInfo != null && typeInfo.IsGenericType)
+        {
+          var genericArgs = type.GetGenericArguments();
+          if (genericArgs.Length == 1)
+          {
+            return typeof(IReactPromise<>).MakeGenericType(genericArgs).IsAssignableFrom(type);
+          }
+        }
+        return false;
+      }
+
       bool isCallback(Type type) => type != null && typeof(Delegate).IsAssignableFrom(type);
 
       if (returnType != typeof(void))
