@@ -19,7 +19,7 @@ using namespace winrt::Windows::Foundation::Collections;
 namespace winrt::Microsoft::ReactNative::implementation {
 
 ReactInstanceManager::ReactInstanceManager(
-    ReactNative::ReactInstanceSettings const& instanceSettings,
+    ReactNative::ReactInstanceSettings const &instanceSettings,
     std::string const &jsBundleFile,
     std::string const &jsMainModuleName,
     IVectorView<IReactPackageProvider> const &packageProviders,

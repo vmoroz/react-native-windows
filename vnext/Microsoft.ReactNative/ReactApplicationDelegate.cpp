@@ -24,7 +24,8 @@ static void ApplyArguments(ReactNative::ReactNativeHost const &host, std::wstrin
   }
 }
 
-ReactApplicationDelegate::ReactApplicationDelegate(Application const &application) noexcept : m_application(application) {
+ReactApplicationDelegate::ReactApplicationDelegate(Application const &application) noexcept
+    : m_application(application) {
   if (application == nullptr) {
     throw winrt::hresult_null_argument(); // ArgumentNullException
   }
@@ -40,8 +41,7 @@ ReactApplicationDelegate::ReactApplicationDelegate(Application const &applicatio
   m_application.EnteredBackground({this, &ReactApplicationDelegate::OnEnteredBackground});
 }
 
-void ReactApplicationDelegate::OnActivated(
-    IActivatedEventArgs const &args) noexcept {
+void ReactApplicationDelegate::OnActivated(IActivatedEventArgs const &args) noexcept {
   switch (args.Kind()) {
     case ActivationKind::Protocol:
       auto protocolArgs = args.as<IProtocolActivatedEventArgs>();
@@ -84,13 +84,15 @@ void ReactApplicationDelegate::OnSuspending(IInspectable const &sender, IInspect
 }
 
 void ReactApplicationDelegate::OnLeavingBackground(
-    IInspectable const &sender, LeavingBackgroundEventArgs const &args) noexcept {
+    IInspectable const &sender,
+    LeavingBackgroundEventArgs const &args) noexcept {
   OutputDebugStringW(L"ReactApplicationDelegate::OnLeavingBackground");
   m_reactApplication.Host().OnLeavingBackground();
 }
 
 void ReactApplicationDelegate::OnEnteredBackground(
-    IInspectable const &sender, EnteredBackgroundEventArgs const &args) noexcept {
+    IInspectable const &sender,
+    EnteredBackgroundEventArgs const &args) noexcept {
   OutputDebugStringW(L"ReactApplicationDelegate::OnEnteredBackground");
   m_reactApplication.Host().OnEnteredBackground();
 }

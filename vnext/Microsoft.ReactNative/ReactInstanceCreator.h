@@ -16,11 +16,11 @@ void InitReactNative();
 
 struct ReactInstanceCreator : react::uwp::IReactInstanceCreator {
   ReactInstanceCreator(
-      ReactNative::ReactInstanceSettings const& instanceSettings,
-      std::string const& jsBundleFile,
-      std::string const& jsMainModuleName,
-      std::shared_ptr<NativeModulesProvider> const& modulesProvider,
-      std::shared_ptr<ViewManagersProvider> const& viewManagersProvider);
+      ReactNative::ReactInstanceSettings const &instanceSettings,
+      std::string const &jsBundleFile,
+      std::string const &jsMainModuleName,
+      std::shared_ptr<NativeModulesProvider> const &modulesProvider,
+      std::shared_ptr<ViewManagersProvider> const &viewManagersProvider);
 
   std::string m_jsMainModuleName{};
   std::string m_jsBundleFile{};

@@ -18,7 +18,7 @@ namespace winrt::Microsoft::ReactNative::implementation {
 struct ReactInstanceManager : ReactInstanceManagerT<ReactInstanceManager> {
   ReactInstanceManager() = default;
   ReactInstanceManager(
-      ReactNative::ReactInstanceSettings const&instanceSettings,
+      ReactNative::ReactInstanceSettings const &instanceSettings,
       std::string const &jsBundleFile,
       std::string const &jsMainModuleName,
       Windows::Foundation::Collections::IVectorView<IReactPackageProvider> const &packageProviders,
