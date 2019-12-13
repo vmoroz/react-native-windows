@@ -7,20 +7,20 @@
 
 #include "winrt/Microsoft.ReactNative.h"
 
-#define REACT_STRUCT(type)                                                                   \
-  struct type;                                                                               \
+#define REACT_STRUCT(type)                                                           \
+  struct type;                                                                       \
   winrt::Microsoft::ReactNative::FieldMap GetStructInfo(type *) noexcept {           \
     winrt::Microsoft::ReactNative::FieldMap fieldMap{};                              \
     winrt::Microsoft::ReactNative::CollectStructFields<type, __COUNTER__>(fieldMap); \
-    return fieldMap;                                                                         \
+    return fieldMap;                                                                 \
   }
 
-#define REACT_FIELD(field)                                                         \
-  template <class TClass>                                                          \
-  static void RegisterField(                                                       \
+#define REACT_FIELD(field)                                                 \
+  template <class TClass>                                                  \
+  static void RegisterField(                                               \
       winrt::Microsoft::ReactNative::FieldMap &fieldMap,                   \
       winrt::Microsoft::ReactNative::ReactFieldId<__COUNTER__>) noexcept { \
-    fieldMap.emplace(L## #field, &TClass::field);                                  \
+    fieldMap.emplace(L## #field, &TClass::field);                          \
   }
 
 namespace winrt::Microsoft::ReactNative {
