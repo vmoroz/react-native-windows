@@ -11,7 +11,7 @@
 #include "CustomUserControlViewManagerCPP.h"
 #include "SampleModuleCPP.h"
 
-using namespace winrt::Microsoft::ReactNative::Bridge;
+using namespace winrt::Microsoft::ReactNative;
 
 namespace winrt::SampleLibraryCPP::implementation {
 

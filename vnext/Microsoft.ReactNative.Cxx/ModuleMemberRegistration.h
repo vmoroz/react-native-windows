@@ -15,7 +15,7 @@
 #define INTERNAL_REACT_METHOD_3_ARGS(methodType, method, methodName)                                     \
   template <class TClass, class TRegistry>                                                               \
   static void RegisterMember(                                                                            \
-      TRegistry &registry, winrt::Microsoft::ReactNative::Bridge::ReactMemberId<__COUNTER__>) noexcept { \
+      TRegistry &registry, winrt::Microsoft::ReactNative::ReactMemberId<__COUNTER__>) noexcept { \
     registry.Register##methodType##Method<TClass>(&TClass::method, methodName);                          \
   }
 
@@ -31,7 +31,7 @@
 #define INTERNAL_REACT_CONSTANT_2_ARGS(field, constantName)                                              \
   template <class TClass, class TRegistry>                                                               \
   static void RegisterMember(                                                                            \
-      TRegistry &registry, winrt::Microsoft::ReactNative::Bridge::ReactMemberId<__COUNTER__>) noexcept { \
+      TRegistry &registry, winrt::Microsoft::ReactNative::ReactMemberId<__COUNTER__>) noexcept { \
     registry.RegisterConstant<TClass>(&TClass::field, constantName);                                     \
   }
 
@@ -43,7 +43,7 @@
 #define INTERNAL_REACT_EVENT_2_ARGS(field, eventName)                                                    \
   template <class TClass, class TRegistry>                                                               \
   static void RegisterMember(                                                                            \
-      TRegistry &registry, winrt::Microsoft::ReactNative::Bridge::ReactMemberId<__COUNTER__>) noexcept { \
+      TRegistry &registry, winrt::Microsoft::ReactNative::ReactMemberId<__COUNTER__>) noexcept { \
     registry.RegisterEvent<TClass>(&TClass::field, eventName);                                           \
   }
 

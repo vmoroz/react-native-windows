@@ -3,14 +3,14 @@
 
 #pragma once
 
-#include "winrt/Microsoft.ReactNative.Bridge.h"
+#include "winrt/Microsoft.ReactNative.h"
 
 namespace winrt::SampleLibraryCPP::implementation {
 
 struct CircleViewManagerCPP : winrt::implements<
                                   CircleViewManagerCPP,
-                                  winrt::Microsoft::ReactNative::Bridge::IViewManager,
-                                  winrt::Microsoft::ReactNative::Bridge::IViewManagerWithChildren> {
+                                  winrt::Microsoft::ReactNative::IViewManager,
+                                  winrt::Microsoft::ReactNative::IViewManagerWithChildren> {
  public:
   CircleViewManagerCPP();
 

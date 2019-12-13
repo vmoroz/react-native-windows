@@ -4,7 +4,7 @@
 #include "pch.h"
 #include "JSValue.h"
 
-namespace winrt::Microsoft::ReactNative::Bridge {
+namespace winrt::Microsoft::ReactNative {
 
 //===========================================================================
 // JSValue implementation
@@ -321,4 +321,4 @@ void swap(JSValue &left, JSValue &right) noexcept {
   left = std::move(temp);
 }
 
-} // namespace winrt::Microsoft::ReactNative::Bridge
+} // namespace winrt::Microsoft::ReactNative
