@@ -16,9 +16,10 @@ enum FacadeType {
   TranslateX,
   TranslateY,
   Perspective,
+  Progress
 };
 
-inline FacadeType StringToFacadeType(const std::string &string) {
+static FacadeType StringToFacadeType(const std::string &string) {
   if (string == "opacity")
     return FacadeType::Opacity;
   if (string == "rotate")
@@ -37,7 +38,9 @@ inline FacadeType StringToFacadeType(const std::string &string) {
     return FacadeType::TranslateX;
   if (string == "translateY")
     return FacadeType::TranslateY;
+  if (string == "perspective")
+    return FacadeType::Perspective;
 
-  assert(string == "perspective");
-  return FacadeType::Perspective;
+  assert(string == "progress");
+  return FacadeType::Progress;
 }

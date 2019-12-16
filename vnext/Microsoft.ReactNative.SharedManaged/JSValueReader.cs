@@ -327,7 +327,7 @@ namespace Microsoft.ReactNative.Managed
         && reader.TryReadArrayItem(out T1 t1)
         && reader.SkipArrayToEnd())
       ? new Tuple<T1>(t1)
-      : default;
+      : default(Tuple<T1>);
     }
 
     public static void ReadValue<T1, T2>(this IJSValueReader reader, out Tuple<T1, T2> value)
@@ -337,7 +337,7 @@ namespace Microsoft.ReactNative.Managed
         && reader.TryReadArrayItem(out T2 t2)
         && reader.SkipArrayToEnd())
       ? new Tuple<T1, T2>(t1, t2)
-      : default;
+      : default(Tuple<T1, T2>);
     }
 
     public static void ReadValue<T1, T2, T3>(this IJSValueReader reader, out Tuple<T1, T2, T3> value)
@@ -348,7 +348,7 @@ namespace Microsoft.ReactNative.Managed
         && reader.TryReadArrayItem(out T3 t3)
         && reader.SkipArrayToEnd())
       ? new Tuple<T1, T2, T3>(t1, t2, t3)
-      : default;
+      : default(Tuple<T1, T2, T3>);
     }
 
     public static void ReadValue<T1, T2, T3, T4>(this IJSValueReader reader, out Tuple<T1, T2, T3, T4> value)
@@ -360,7 +360,7 @@ namespace Microsoft.ReactNative.Managed
         && reader.TryReadArrayItem(out T4 t4)
         && reader.SkipArrayToEnd())
       ? new Tuple<T1, T2, T3, T4>(t1, t2, t3, t4)
-      : default;
+      : default(Tuple<T1, T2, T3, T4>);
     }
 
     public static void ReadValue<T1, T2, T3, T4, T5>(
@@ -374,7 +374,7 @@ namespace Microsoft.ReactNative.Managed
         && reader.TryReadArrayItem(out T5 t5)
         && reader.SkipArrayToEnd())
       ? new Tuple<T1, T2, T3, T4, T5>(t1, t2, t3, t4, t5)
-      : default;
+      : default(Tuple<T1, T2, T3, T4, T5>);
     }
 
     public static void ReadValue<T1, T2, T3, T4, T5, T6>(
@@ -389,7 +389,7 @@ namespace Microsoft.ReactNative.Managed
         && reader.TryReadArrayItem(out T6 t6)
         && reader.SkipArrayToEnd())
       ? new Tuple<T1, T2, T3, T4, T5, T6>(t1, t2, t3, t4, t5, t6)
-      : default;
+      : default(Tuple<T1, T2, T3, T4, T5, T6>);
     }
 
     public static void ReadValue<T1, T2, T3, T4, T5, T6, T7>(
@@ -405,13 +405,13 @@ namespace Microsoft.ReactNative.Managed
         && reader.TryReadArrayItem(out T7 t7)
         && reader.SkipArrayToEnd())
       ? new Tuple<T1, T2, T3, T4, T5, T6, T7>(t1, t2, t3, t4, t5, t6, t7)
-      : default;
+      : default(Tuple<T1, T2, T3, T4, T5, T6, T7>);
     }
 
     public static bool TryReadArrayItem<T>(this IJSValueReader reader, out T value)
     {
       bool result = reader.GetNextArrayItem();
-      value = result ? reader.ReadValue<T>() : default;
+      value = result ? reader.ReadValue<T>() : default(T);
       return result;
     }
 
@@ -429,24 +429,24 @@ namespace Microsoft.ReactNative.Managed
     public static void ReadArgs<T1>(this IJSValueReader reader, out T1 arg1)
     {
       bool success = reader.ValueType == JSValueType.Array;
-      arg1 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T1>() : default;
+      arg1 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T1>() : default(T1);
       _ = success && reader.SkipArrayToEnd();
     }
 
     public static void ReadArgs<T1, T2>(this IJSValueReader reader, out T1 arg1, out T2 arg2)
     {
       bool success = reader.ValueType == JSValueType.Array;
-      arg1 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T1>() : default;
-      arg2 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T2>() : default;
+      arg1 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T1>() : default(T1);
+      arg2 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T2>() : default(T2);
       _ = success && reader.SkipArrayToEnd();
     }
 
     public static void ReadArgs<T1, T2, T3>(this IJSValueReader reader, out T1 arg1, out T2 arg2, out T3 arg3)
     {
       bool success = reader.ValueType == JSValueType.Array;
-      arg1 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T1>() : default;
-      arg2 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T2>() : default;
-      arg3 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T3>() : default;
+      arg1 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T1>() : default(T1);
+      arg2 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T2>() : default(T2);
+      arg3 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T3>() : default(T3);
       _ = success && reader.SkipArrayToEnd();
     }
 
@@ -454,10 +454,10 @@ namespace Microsoft.ReactNative.Managed
       out T1 arg1, out T2 arg2, out T3 arg3, out T4 arg4)
     {
       bool success = reader.ValueType == JSValueType.Array;
-      arg1 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T1>() : default;
-      arg2 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T2>() : default;
-      arg3 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T3>() : default;
-      arg4 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T4>() : default;
+      arg1 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T1>() : default(T1);
+      arg2 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T2>() : default(T2);
+      arg3 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T3>() : default(T3);
+      arg4 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T4>() : default(T4);
       _ = success && reader.SkipArrayToEnd();
     }
 
@@ -465,11 +465,11 @@ namespace Microsoft.ReactNative.Managed
       out T1 arg1, out T2 arg2, out T3 arg3, out T4 arg4, out T5 arg5)
     {
       bool success = reader.ValueType == JSValueType.Array;
-      arg1 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T1>() : default;
-      arg2 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T2>() : default;
-      arg3 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T3>() : default;
-      arg4 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T4>() : default;
-      arg5 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T5>() : default;
+      arg1 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T1>() : default(T1);
+      arg2 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T2>() : default(T2);
+      arg3 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T3>() : default(T3);
+      arg4 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T4>() : default(T4);
+      arg5 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T5>() : default(T5);
       _ = success && reader.SkipArrayToEnd();
     }
 
@@ -477,12 +477,12 @@ namespace Microsoft.ReactNative.Managed
       out T1 arg1, out T2 arg2, out T3 arg3, out T4 arg4, out T5 arg5, out T6 arg6)
     {
       bool success = reader.ValueType == JSValueType.Array;
-      arg1 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T1>() : default;
-      arg2 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T2>() : default;
-      arg3 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T3>() : default;
-      arg4 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T4>() : default;
-      arg5 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T5>() : default;
-      arg6 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T6>() : default;
+      arg1 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T1>() : default(T1);
+      arg2 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T2>() : default(T2);
+      arg3 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T3>() : default(T3);
+      arg4 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T4>() : default(T4);
+      arg5 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T5>() : default(T5);
+      arg6 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T6>() : default(T6);
       _ = success && reader.SkipArrayToEnd();
     }
 
@@ -490,13 +490,13 @@ namespace Microsoft.ReactNative.Managed
       out T1 arg1, out T2 arg2, out T3 arg3, out T4 arg4, out T5 arg5, out T6 arg6, out T7 arg7)
     {
       bool success = reader.ValueType == JSValueType.Array;
-      arg1 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T1>() : default;
-      arg2 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T2>() : default;
-      arg3 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T3>() : default;
-      arg4 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T4>() : default;
-      arg5 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T5>() : default;
-      arg6 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T6>() : default;
-      arg7 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T7>() : default;
+      arg1 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T1>() : default(T1);
+      arg2 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T2>() : default(T2);
+      arg3 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T3>() : default(T3);
+      arg4 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T4>() : default(T4);
+      arg5 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T5>() : default(T5);
+      arg6 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T6>() : default(T6);
+      arg7 = reader.GetNextArrayItem(ref success) ? reader.ReadValue<T7>() : default(T7);
       _ = success && reader.SkipArrayToEnd();
     }
 

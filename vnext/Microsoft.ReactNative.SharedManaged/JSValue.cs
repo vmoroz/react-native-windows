@@ -97,12 +97,12 @@ namespace Microsoft.ReactNative.Managed
       return false;
     }
 
-    public static bool operator ==(in JSValue lhs, in JSValue rhs)
+    public static bool operator ==(JSValue lhs, JSValue rhs)
     {
       return lhs.ValueEquals(rhs);
     }
 
-    public static bool operator !=(in JSValue lhs, in JSValue rhs)
+    public static bool operator !=(JSValue lhs, JSValue rhs)
     {
       return !lhs.ValueEquals(rhs);
     }
