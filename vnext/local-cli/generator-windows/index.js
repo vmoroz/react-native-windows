@@ -86,6 +86,7 @@ function copyProjectTemplateAndReplace(
     '<%=ns%>': ns,
     '<%=name%>': newProjectName,
     '<%=projectGuid%>': projectGuid,
+    '<%=projectGuidUpper%>': projectGuid.toUpperCase(),
     '<%=packageGuid%>': packageGuid,
     '<%=currentUser%>': currentUser,
     '<%=certificateThumbprint%>': certificateThumbprint ? `<PackageCertificateThumbprint>${certificateThumbprint}</PackageCertificateThumbprint>` : '',
@@ -103,7 +104,6 @@ function copyProjectTemplateAndReplace(
   if (language === 'cs') {
     [
       { from: path.join(srcPath, projDir, 'MyApp.csproj'), to: path.join(windowsDir, newProjectName, newProjectName + '.csproj') },
-      { from: path.join(srcPath, projDir, 'BundleBuilder.vcxproj'), to: path.join(windowsDir, newProjectName, 'BundleBuilder', 'BundleBuilder.vcxproj') },
     ].forEach((mapping) => copyAndReplaceWithChangedCallback(mapping.from, destPath, mapping.to, templateVars, options.overwrite));
   }
   else {

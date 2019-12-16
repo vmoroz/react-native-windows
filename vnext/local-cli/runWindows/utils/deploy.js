@@ -45,7 +45,18 @@ function getAppPackage(options) {
       ? `{*_x86_${configuration}_*,*_Win32_${configuration}_*}`
       : `*_${options.arch}_${configuration}_*`;
   const appPackageGlob = `windows/{*/AppPackages,AppPackages/*}/${packageFolder}`;
-  const appPackage = glob.sync(appPackageGlob)[0];
+  let appPackage = glob.sync(appPackageGlob)[0];
+
+  if (!appPackage && options.release) {
+    // in the latest vs, Release is removed
+    newWarn(
+      'No package found in *_Release_* folder, remove _Release_ and check again',
+    );
+    appPackage = glob.sync(
+      `windows/{*/AppPackages,AppPackages/*}/*_${options.arch}_*`,
+    )[0];
+  }
+
   if (!appPackage) {
     throw new Error(
       `Unable to find app package using search path: "${appPackageGlob}"`,
@@ -158,21 +169,31 @@ async function deployToDesktop(options, verbose) {
     newSpinner(removingText),
     removingText,
     'powershell',
-    `-ExecutionPolicy RemoteSigned Import-Module "${windowsStoreAppUtils}" ; Uninstall-App ${appName}`.split(
+    `-NoProfile -ExecutionPolicy RemoteSigned Import-Module "${windowsStoreAppUtils}" ; Uninstall-App ${appName}`.split(
       ' ',
     ),
     verbose,
   );
 
+  const devmodeText = 'Enabling Developer Mode';
+  const devmodeEnable = `-NoProfile -ExecutionPolicy RemoteSigned Import-Module "${windowsStoreAppUtils}"; EnableDevmode "${script}"`;
+
+  await commandWithProgress(
+    newSpinner(devmodeText),
+    devmodeText,
+    'powershell',
+    devmodeEnable.split(' '),
+    verbose,
+  );
+
   const installingText = 'Installing new version of the app';
-  const installApp = `-ExecutionPolicy RemoteSigned Import-Module "${windowsStoreAppUtils}"; Install-App "${script}"`;
-  const installAppCmd = options.force ? installApp + ' -Force' : installApp;
+  const installApp = `-NoProfile -ExecutionPolicy RemoteSigned Import-Module "${windowsStoreAppUtils}"; Install-App "${script}" -Force`;
 
   await commandWithProgress(
     newSpinner(installingText),
     installingText,
     'powershell',
-    installAppCmd.split(' '),
+    installApp.split(' '),
     verbose,
   );
 

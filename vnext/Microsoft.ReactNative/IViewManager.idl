@@ -3,15 +3,64 @@
 
 namespace Microsoft.ReactNative.Bridge
 {
-	[webhosthidden]
-	interface IViewManager
-	{
+  [webhosthidden]
+  enum ViewManagerPropertyType
+  {
+    Boolean,
+    Number,
+    String,
+    Array,
+    Map,
+    Color,
+  };
+
+  [webhosthidden]
+  interface IViewManager
+  {
     String Name { get; };
-		
-		Windows.UI.Xaml.FrameworkElement CreateView();
 
-    Windows.Foundation.Collections.IMapView<String, String> NativeProps { get; };
+    Windows.UI.Xaml.FrameworkElement CreateView();
+  };
 
-		void UpdateProperties(Windows.UI.Xaml.FrameworkElement view, Windows.Foundation.Collections.IMapView<String, IInspectable> propertyMap);
-	};
+  [webhosthidden]
+  interface IViewManagerWithExportedViewConstants
+  {
+    Windows.Foundation.Collections.IMapView<String, IInspectable> ExportedViewConstants { get; };
+  }
+
+  [webhosthidden]
+  interface IViewManagerWithNativeProperties
+  {
+    Windows.Foundation.Collections.IMapView<String, ViewManagerPropertyType> NativeProps { get; };
+
+    void UpdateProperties(Windows.UI.Xaml.FrameworkElement view, Windows.Foundation.Collections.IMapView<String, IInspectable> propertyMap);
+  };
+
+  [webhosthidden]
+  interface IViewManagerWithCommands
+  {
+    Windows.Foundation.Collections.IMapView<String, Int64> Commands { get; };
+
+    void DispatchCommand(Windows.UI.Xaml.FrameworkElement view, Int64 commandId, Windows.Foundation.Collections.IVectorView<IInspectable> commandArgs);
+  };
+
+  [webhosthidden]
+  interface IViewManagerWithExportedEventTypeConstants
+  {
+    Windows.Foundation.Collections.IMapView<String, IInspectable> ExportedCustomBubblingEventTypeConstants { get; };
+
+    Windows.Foundation.Collections.IMapView<String, IInspectable> ExportedCustomDirectEventTypeConstants { get; };
+  };
+
+  [webhosthidden]
+  interface IViewManagerWithChildren
+  {
+    void AddView(Windows.UI.Xaml.FrameworkElement parent, Windows.UI.Xaml.UIElement child, Int64 index);
+
+    void RemoveAllChildren(Windows.UI.Xaml.FrameworkElement parent);
+
+    void RemoveChildAt(Windows.UI.Xaml.FrameworkElement parent, Int64 index);
+
+    void ReplaceChild(Windows.UI.Xaml.FrameworkElement parent, Windows.UI.Xaml.UIElement oldChild, Windows.UI.Xaml.UIElement newChild);
+  };
 }

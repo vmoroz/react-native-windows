@@ -30,30 +30,12 @@ class WebSocketJSExecutor : public JSExecutor {
 
 #pragma region JSExecutor members
 
-  void loadApplicationScript(
-      std::unique_ptr<const JSBigString> script,
-#if !defined(OSS_RN)
-      uint64_t scriptVersion,
-#endif
-      std::string sourceURL
-#if !defined(OSS_RN)
-      ,
-      std::string &&bytecodeFileName
-#endif
-      ) override;
-  void setBundleRegistry(
-      std::unique_ptr<RAMBundleRegistry> bundleRegistry) override;
-  virtual void registerBundle(uint32_t bundleId, const std::string &bundlePath)
-      override;
-  void callFunction(
-      const std::string &moduleId,
-      const std::string &methodId,
-      const folly::dynamic &arguments) override;
-  void invokeCallback(const double callbackId, const folly::dynamic &arguments)
-      override;
-  void setGlobalVariable(
-      std::string propName,
-      std::unique_ptr<const JSBigString> jsonValue) override;
+  void loadApplicationScript(std::unique_ptr<const JSBigString> script, std::string sourceURL) override;
+  void setBundleRegistry(std::unique_ptr<RAMBundleRegistry> bundleRegistry) override;
+  virtual void registerBundle(uint32_t bundleId, const std::string &bundlePath) override;
+  void callFunction(const std::string &moduleId, const std::string &methodId, const folly::dynamic &arguments) override;
+  void invokeCallback(const double callbackId, const folly::dynamic &arguments) override;
+  void setGlobalVariable(std::string propName, std::unique_ptr<const JSBigString> jsonValue) override;
   void *getJavaScriptContext() override;
   std::string getDescription() override;
 #ifdef WITH_JSC_MEMORY_PRESSURE
@@ -70,9 +52,7 @@ class WebSocketJSExecutor : public JSExecutor {
  private:
   void PrepareJavaScriptRuntime();
   std::string Call(const std::string &methodName, folly::dynamic &arguments);
-  std::future<std::string> SendMessageAsync(
-      int requestId,
-      std::string &&message);
+  std::future<std::string> SendMessageAsync(int requestId, std::string &&message);
   void OnMessageReceived(const std::string &msg);
   void flush();
 

@@ -4,9 +4,9 @@
 
 #include "ReactInstanceManager.g.h"
 
+#include "IReactContext.h"
 #include "LifecycleState.h"
 #include "NativeModulesProvider.h"
-#include "ReactContext.h"
 #include "ReactInstanceSettings.h"
 #include "ViewManagersProvider.h"
 
@@ -30,8 +30,8 @@ struct ReactInstanceManager : ReactInstanceManagerT<ReactInstanceManager> {
       bool useDeveloperSupport,
       LifecycleState initialLifecycleState);
 
-  IAsyncOperation<ReactContext> GetOrCreateReactContextAsync();
-  ReactContext CurrentReactContext() {
+  IAsyncOperation<IReactContext> GetOrCreateReactContextAsync();
+  IReactContext CurrentReactContext() {
     return m_currentReactContext;
   }
 
@@ -51,7 +51,7 @@ struct ReactInstanceManager : ReactInstanceManagerT<ReactInstanceManager> {
   void OnBackPressed();
 
  private:
-  ReactContext m_currentReactContext{nullptr};
+  IReactContext m_currentReactContext{nullptr};
   Microsoft::ReactNative::ReactInstanceSettings m_instanceSettings{nullptr};
   std::string m_jsBundleFile{};
   std::string m_jsMainModuleName{};
@@ -64,15 +64,12 @@ struct ReactInstanceManager : ReactInstanceManagerT<ReactInstanceManager> {
   //	There should be one react instance creator per instance, as it
   //	both holds the current instance and is responsible for creating new
   //	instances on live reload.
-  std::shared_ptr<react::uwp::IReactInstanceCreator> m_reactInstanceCreator{
-      nullptr};
+  std::shared_ptr<react::uwp::IReactInstanceCreator> m_reactInstanceCreator{nullptr};
 
-  IAsyncOperation<ReactContext> CreateReactContextCoreAsync();
+  IAsyncOperation<IReactContext> CreateReactContextCoreAsync();
 };
 } // namespace winrt::Microsoft::ReactNative::implementation
 
 namespace winrt::Microsoft::ReactNative::factory_implementation {
-struct ReactInstanceManager : ReactInstanceManagerT<
-                                  ReactInstanceManager,
-                                  implementation::ReactInstanceManager> {};
+struct ReactInstanceManager : ReactInstanceManagerT<ReactInstanceManager, implementation::ReactInstanceManager> {};
 } // namespace winrt::Microsoft::ReactNative::factory_implementation

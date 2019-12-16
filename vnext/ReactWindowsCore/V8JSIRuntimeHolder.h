@@ -2,8 +2,8 @@
 
 #include <DevSettings.h>
 
-#include <jsi/RuntimeHolder.h>
-#include <jsi/ScriptStore.h>
+#include <JSI/Shared/RuntimeHolder.h>
+#include <JSI/Shared/ScriptStore.h>
 
 #include <Logging.h>
 
@@ -18,8 +18,7 @@ class V8JSIRuntimeHolder : public facebook::jsi::RuntimeHolderLazyInit {
       std::shared_ptr<facebook::react::DevSettings> devSettings,
       std::shared_ptr<facebook::react::MessageQueueThread> jsQueue,
       std::unique_ptr<facebook::jsi::ScriptStore> &&scriptStore,
-      std::unique_ptr<facebook::jsi::PreparedScriptStore>
-          &&preparedScriptStore) noexcept
+      std::unique_ptr<facebook::jsi::PreparedScriptStore> &&preparedScriptStore) noexcept
       : jsQueue_(std::move(jsQueue)),
         scriptStore_(std::move(scriptStore)),
         preparedScriptStore_(std::move(preparedScriptStore)) {}

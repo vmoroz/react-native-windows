@@ -2,6 +2,34 @@
   "name": "rnpm-plugin-wpf",
   "entries": [
     {
+      "date": "Wed, 06 Nov 2019 13:58:14 GMT",
+      "tag": "rnpm-plugin-wpf_v0.2.15",
+      "version": "0.2.15",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Build fixes",
+            "author": "anandrag@microsoft.com",
+            "commit": "04b58d679ba04baca23348928fad5250a34d31b9"
+          }
+        ]
+      }
+    },
+    {
+      "date": "Thu, 17 Oct 2019 20:58:22 GMT",
+      "tag": "rnpm-plugin-wpf_v0.2.14",
+      "version": "0.2.14",
+      "comments": {
+        "none": [
+          {
+            "comment": "Fix two issues: 1) you cannot animated 2 subchannels of the same property with different animations. to fix this we animated yet another property set for translation and scale owned by the props nodes and use one animation to animate all of the subchannels for the uiElement. 2) Reference parameter names which started with a multi digit number are unsupported so i added an n to the start of each name, which was previously just the node's tag.",
+            "author": "stpete@microsoft.com",
+            "commit": "62049fdbd667fc71ae09b09f074446d8593d826d"
+          }
+        ]
+      }
+    },
+    {
       "date": "Thu, 03 Oct 2019 22:17:13 GMT",
       "tag": "rnpm-plugin-wpf_v0.2.14",
       "version": "0.2.14",
