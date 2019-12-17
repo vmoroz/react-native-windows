@@ -1,6 +1,7 @@
-#pragma once
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
+
+#pragma once
 
 //#include <SDKDDKVer.h>
 //
@@ -36,6 +37,7 @@
 #include <cxxreact/JSBigString.h>
 #include <cxxreact/JSExecutor.h>
 #include <fbsystrace.h>
+#include <folly/dynamic.h>
 #include <folly/Memory.h>
 #include <folly/Optional.h>
 #include <folly/json.h>

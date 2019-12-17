@@ -323,96 +323,47 @@ namespace Microsoft.ReactNative.Managed
 
     public static void ReadValue<T1>(this IJSValueReader reader, out Tuple<T1> value)
     {
-      value = (reader.ValueType == JSValueType.Array
-        && reader.TryReadArrayItem(out T1 t1)
-        && reader.SkipArrayToEnd())
-      ? new Tuple<T1>(t1)
-      : default(Tuple<T1>);
+      reader.ReadArgs(out T1 v1);
+      value = Tuple.Create(v1);
     }
 
     public static void ReadValue<T1, T2>(this IJSValueReader reader, out Tuple<T1, T2> value)
     {
-      value = (reader.ValueType == JSValueType.Array
-        && reader.TryReadArrayItem(out T1 t1)
-        && reader.TryReadArrayItem(out T2 t2)
-        && reader.SkipArrayToEnd())
-      ? new Tuple<T1, T2>(t1, t2)
-      : default(Tuple<T1, T2>);
+      reader.ReadArgs(out T1 v1, out T2 v2);
+      value = Tuple.Create(v1, v2);
     }
 
     public static void ReadValue<T1, T2, T3>(this IJSValueReader reader, out Tuple<T1, T2, T3> value)
     {
-      value = (reader.ValueType == JSValueType.Array
-        && reader.TryReadArrayItem(out T1 t1)
-        && reader.TryReadArrayItem(out T2 t2)
-        && reader.TryReadArrayItem(out T3 t3)
-        && reader.SkipArrayToEnd())
-      ? new Tuple<T1, T2, T3>(t1, t2, t3)
-      : default(Tuple<T1, T2, T3>);
+      reader.ReadArgs(out T1 v1, out T2 v2, out T3 v3);
+      value = Tuple.Create(v1, v2, v3);
     }
 
     public static void ReadValue<T1, T2, T3, T4>(this IJSValueReader reader, out Tuple<T1, T2, T3, T4> value)
     {
-      value = (reader.ValueType == JSValueType.Array
-        && reader.TryReadArrayItem(out T1 t1)
-        && reader.TryReadArrayItem(out T2 t2)
-        && reader.TryReadArrayItem(out T3 t3)
-        && reader.TryReadArrayItem(out T4 t4)
-        && reader.SkipArrayToEnd())
-      ? new Tuple<T1, T2, T3, T4>(t1, t2, t3, t4)
-      : default(Tuple<T1, T2, T3, T4>);
+      reader.ReadArgs(out T1 v1, out T2 v2, out T3 v3, out T4 v4);
+      value = Tuple.Create(v1, v2, v3, v4);
     }
 
     public static void ReadValue<T1, T2, T3, T4, T5>(
       this IJSValueReader reader, out Tuple<T1, T2, T3, T4, T5> value)
     {
-      value = (reader.ValueType == JSValueType.Array
-        && reader.TryReadArrayItem(out T1 t1)
-        && reader.TryReadArrayItem(out T2 t2)
-        && reader.TryReadArrayItem(out T3 t3)
-        && reader.TryReadArrayItem(out T4 t4)
-        && reader.TryReadArrayItem(out T5 t5)
-        && reader.SkipArrayToEnd())
-      ? new Tuple<T1, T2, T3, T4, T5>(t1, t2, t3, t4, t5)
-      : default(Tuple<T1, T2, T3, T4, T5>);
+      reader.ReadArgs(out T1 v1, out T2 v2, out T3 v3, out T4 v4, out T5 v5);
+      value = Tuple.Create(v1, v2, v3, v4, v5);
     }
 
     public static void ReadValue<T1, T2, T3, T4, T5, T6>(
       this IJSValueReader reader, out Tuple<T1, T2, T3, T4, T5, T6> value)
     {
-      value = (reader.ValueType == JSValueType.Array
-        && reader.TryReadArrayItem(out T1 t1)
-        && reader.TryReadArrayItem(out T2 t2)
-        && reader.TryReadArrayItem(out T3 t3)
-        && reader.TryReadArrayItem(out T4 t4)
-        && reader.TryReadArrayItem(out T5 t5)
-        && reader.TryReadArrayItem(out T6 t6)
-        && reader.SkipArrayToEnd())
-      ? new Tuple<T1, T2, T3, T4, T5, T6>(t1, t2, t3, t4, t5, t6)
-      : default(Tuple<T1, T2, T3, T4, T5, T6>);
+      reader.ReadArgs(out T1 v1, out T2 v2, out T3 v3, out T4 v4, out T5 v5, out T6 v6);
+      value = Tuple.Create(v1, v2, v3, v4, v5, v6);
     }
 
     public static void ReadValue<T1, T2, T3, T4, T5, T6, T7>(
       this IJSValueReader reader, out Tuple<T1, T2, T3, T4, T5, T6, T7> value)
     {
-      value = (reader.ValueType == JSValueType.Array
-        && reader.TryReadArrayItem(out T1 t1)
-        && reader.TryReadArrayItem(out T2 t2)
-        && reader.TryReadArrayItem(out T3 t3)
-        && reader.TryReadArrayItem(out T4 t4)
-        && reader.TryReadArrayItem(out T5 t5)
-        && reader.TryReadArrayItem(out T6 t6)
-        && reader.TryReadArrayItem(out T7 t7)
-        && reader.SkipArrayToEnd())
-      ? new Tuple<T1, T2, T3, T4, T5, T6, T7>(t1, t2, t3, t4, t5, t6, t7)
-      : default(Tuple<T1, T2, T3, T4, T5, T6, T7>);
-    }
-
-    public static bool TryReadArrayItem<T>(this IJSValueReader reader, out T value)
-    {
-      bool result = reader.GetNextArrayItem();
-      value = result ? reader.ReadValue<T>() : default(T);
-      return result;
+      reader.ReadArgs(out T1 v1, out T2 v2, out T3 v3, out T4 v4, out T5 v5, out T6 v6, out T7 v7);
+      value = Tuple.Create(v1, v2, v3, v4, v5, v6, v7);
     }
 
     public static bool GetNextArrayItem(this IJSValueReader reader, ref bool success)

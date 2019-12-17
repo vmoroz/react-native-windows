@@ -112,7 +112,7 @@ namespace Microsoft.ReactNative.Managed
       return ValueEquals(other);
     }
 
-    private bool ValueEquals(in JSValue other)
+    private bool ValueEquals(JSValue other)
     {
       if (Type == other.Type)
       {
