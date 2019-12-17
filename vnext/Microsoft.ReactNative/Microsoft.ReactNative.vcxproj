@@ -64,9 +64,9 @@
   <ImportGroup Label="ExtensionSettings">
   </ImportGroup>
   <ImportGroup Label="Shared" />
-    <Import Project="..\Chakra\Chakra.vcxitems" Label="Shared" />
-    <Import Project="..\JSI\Shared\JSI.Shared.vcxitems" Label="Shared" />
-    <Import Project="..\Shared\Shared.vcxitems" Label="Shared" />
+  <Import Project="..\Chakra\Chakra.vcxitems" Label="Shared" />
+  <Import Project="..\JSI\Shared\JSI.Shared.vcxitems" Label="Shared" />
+  <Import Project="..\Shared\Shared.vcxitems" Label="Shared" />
   <ImportGroup Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
@@ -152,6 +152,7 @@
     <ClInclude Include="Modules\Animated\AnimatedNodeType.h" />
     <ClInclude Include="Modules\Animated\AnimationDriver.h" />
     <ClInclude Include="Modules\Animated\AnimationType.h" />
+    <ClInclude Include="Modules\Animated\CalculatedAnimationDriver.h" />
     <ClInclude Include="Modules\Animated\DecayAnimationDriver.h" />
     <ClInclude Include="Modules\Animated\DiffClampAnimatedNode.h" />
     <ClInclude Include="Modules\Animated\DivisionAnimatedNode.h" />
@@ -246,6 +247,7 @@
     <ClInclude Include="Utils\LocalBundleReader.h" />
     <ClInclude Include="Utils\PropertyHandlerUtils.h" />
     <ClInclude Include="Utils\PropertyUtils.h" />
+    <ClInclude Include="Utils\ResourceBrushUtils.h" />
     <ClInclude Include="Utils\UwpPreparedScriptStore.h" />
     <ClInclude Include="Utils\UwpScriptStore.h" />
     <ClInclude Include="ViewManagersProvider.h" />
@@ -267,9 +269,12 @@
     <ClInclude Include="Views\PopupViewManager.h" />
     <ClInclude Include="Views\RawTextViewManager.h" />
     <ClInclude Include="Views\ReactControl.h" />
+    <ClInclude Include="Views\RefreshControlManager.h" />
     <ClInclude Include="Views\RootViewManager.h" />
     <ClInclude Include="Views\ScrollContentViewManager.h" />
     <ClInclude Include="Views\ScrollViewManager.h" />
+    <ClInclude Include="Views\SIPEventHandler.h" />
+    <ClInclude Include="Views\SliderViewManager.h" />
     <ClInclude Include="Views\SwitchViewManager.h" />
     <ClInclude Include="Views\TextInputViewManager.h" />
     <ClInclude Include="Views\TextViewManager.h" />
@@ -301,6 +306,7 @@
     <ClCompile Include="Modules\Animated\AdditionAnimatedNode.cpp" />
     <ClCompile Include="Modules\Animated\AnimatedNode.cpp" />
     <ClCompile Include="Modules\Animated\AnimationDriver.cpp" />
+    <ClCompile Include="Modules\Animated\CalculatedAnimationDriver.cpp" />
     <ClCompile Include="Modules\Animated\DecayAnimationDriver.cpp" />
     <ClCompile Include="Modules\Animated\DiffClampAnimatedNode.cpp" />
     <ClCompile Include="Modules\Animated\DivisionAnimatedNode.cpp" />
@@ -394,6 +400,7 @@
     <ClCompile Include="Utils\AccessibilityUtils.cpp" />
     <ClCompile Include="Utils\Helpers.cpp" />
     <ClCompile Include="Utils\LocalBundleReader.cpp" />
+    <ClCompile Include="Utils\ResourceBrushUtils.cpp" />
     <ClCompile Include="Utils\UwpPreparedScriptStore.cpp" />
     <ClCompile Include="Utils\UwpScriptStore.cpp" />
     <ClCompile Include="Utils\ValueUtils.cpp" />
@@ -418,10 +425,13 @@
     <ClCompile Include="Views\RawTextViewManager.cpp" />
     <ClCompile Include="Views\ReactControl.cpp" />
     <ClCompile Include="Views\ReactRootView2.cpp" />
+    <ClCompile Include="Views\RefreshControlManager.cpp" />
     <ClCompile Include="Views\RootViewManager.cpp" />
     <ClCompile Include="Views\ScrollContentViewManager.cpp" />
     <ClCompile Include="Views\ScrollViewManager.cpp" />
     <ClCompile Include="Views\ShadowNodeBase.cpp" />
+    <ClCompile Include="Views\SIPEventHandler.cpp" />
+    <ClCompile Include="Views\SliderViewManager.cpp" />
     <ClCompile Include="Views\SwitchViewManager.cpp" />
     <ClCompile Include="Views\TextInputViewManager.cpp" />
     <ClCompile Include="Views\TextViewManager.cpp" />

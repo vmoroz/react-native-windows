@@ -45,10 +45,13 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Microsoft.ReactNative.Cxx.U
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Microsoft.ReactNative.Managed.UnitTests", "..\..\..\vnext\Microsoft.ReactNative.Managed.UnitTests\Microsoft.ReactNative.Managed.UnitTests.csproj", "{46D76F7A-8FD9-4A7D-8102-2857E5DA6B84}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Shared", "..\..\..\vnext\Shared\Shared.vcxitems", "{2049DBE9-8D13-42C9-AE4B-413AE38FFFD0}"
+EndProject
 Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
 		..\..\..\vnext\Microsoft.ReactNative.SharedManaged\Microsoft.ReactNative.SharedManaged.projitems*{09f4e6c1-2d12-4059-aa96-0b190861fd6a}*SharedItemsImports = 4
 		..\..\..\vnext\JSI\Shared\JSI.Shared.vcxitems*{0cc28589-39e4-4288-b162-97b959f8b843}*SharedItemsImports = 9
+		..\..\..\vnext\Shared\Shared.vcxitems*{2049dbe9-8d13-42c9-ae4b-413ae38fffd0}*SharedItemsImports = 9
 		..\..\..\vnext\Microsoft.ReactNative.SharedManaged\Microsoft.ReactNative.SharedManaged.projitems*{46d76f7a-8fd9-4a7d-8102-2857e5da6b84}*SharedItemsImports = 4
 		..\..\..\vnext\Microsoft.ReactNative.Cxx\Microsoft.ReactNative.Cxx.vcxitems*{47eec7f3-40d3-49ba-82c1-eaf103b54215}*SharedItemsImports = 4
 		..\..\..\vnext\Microsoft.ReactNative.SharedManaged\Microsoft.ReactNative.SharedManaged.projitems*{67a1076f-7790-4203-86ea-4402ccb5e782}*SharedItemsImports = 13
@@ -282,6 +285,7 @@ Global
 		{FCA38F3C-7C73-4C47-BE4E-32F77FA8538D} = {5EA20F54-880A-49F3-99FA-4B3FE54E8AB1}
 		{6C60E295-C8CA-4DC5-B8BE-09888F58B249} = {5EA20F54-880A-49F3-99FA-4B3FE54E8AB1}
 		{46D76F7A-8FD9-4A7D-8102-2857E5DA6B84} = {5EA20F54-880A-49F3-99FA-4B3FE54E8AB1}
+		{2049DBE9-8D13-42C9-AE4B-413AE38FFFD0} = {5EA20F54-880A-49F3-99FA-4B3FE54E8AB1}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {AE882847-CAE9-450F-8962-E76672DC23CE}
