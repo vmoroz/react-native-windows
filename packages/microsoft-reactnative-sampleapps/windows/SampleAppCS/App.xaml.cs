@@ -3,7 +3,7 @@
 
 using Microsoft.ReactNative;
 
-namespace SampleApp
+namespace SampleAppCS
 {
     /// <summary>
     /// Provides application-specific behavior to supplement the default
