@@ -5,8 +5,8 @@
 
 #include "App.h"
 #include "ReactPackageProvider.h"
-#include "winrt/SampleLibraryCpp.h"
 #include "winrt/SampleLibraryCS.h"
+#include "winrt/SampleLibraryCpp.h"
 
 namespace winrt::SampleAppCpp::implementation {
 
