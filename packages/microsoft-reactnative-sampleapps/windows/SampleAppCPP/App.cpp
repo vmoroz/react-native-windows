@@ -5,7 +5,7 @@
 
 #include "App.h"
 #include "ReactPackageProvider.h"
-#include "winrt/SampleLibraryCPP.h"
+#include "winrt/SampleLibraryCpp.h"
 #include "winrt/SampleLibraryCS.h"
 
 namespace winrt::SampleAppCpp::implementation {
@@ -36,7 +36,7 @@ App::App() noexcept {
 #endif
 
   PackageProviders().Append(make<ReactPackageProvider>()); // Includes all modules in this project
-  PackageProviders().Append(winrt::SampleLibraryCPP::ReactPackageProvider());
+  PackageProviders().Append(winrt::SampleLibraryCpp::ReactPackageProvider());
   PackageProviders().Append(winrt::SampleLibraryCS::ReactPackageProvider());
 
   InitializeComponent();
