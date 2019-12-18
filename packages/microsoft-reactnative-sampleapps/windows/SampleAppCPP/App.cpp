@@ -8,7 +8,7 @@
 #include "winrt/SampleLibraryCPP.h"
 #include "winrt/SampleLibraryCS.h"
 
-namespace winrt::SampleApp::implementation {
+namespace winrt::SampleAppCpp::implementation {
 
 /// <summary>
 /// Initializes the singleton application object.  This is the first line of
@@ -47,4 +47,4 @@ App::App() noexcept {
   m_inner.as<::IUnknown>()->Release();
 }
 
-} // namespace winrt::SampleApp::implementation
+} // namespace winrt::SampleAppCpp::implementation

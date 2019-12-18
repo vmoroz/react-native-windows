@@ -6,8 +6,8 @@
     <CppWinRTOptimized>true</CppWinRTOptimized>
     <MinimalCoreWin>true</MinimalCoreWin>
     <ProjectGuid>{93f7572c-64b9-4096-9ef9-6ba0ede2b50d}</ProjectGuid>
-    <ProjectName>SampleAppCPP</ProjectName>
-    <RootNamespace>SampleApp</RootNamespace>
+    <ProjectName>SampleAppCpp</ProjectName>
+    <RootNamespace>SampleAppCpp</RootNamespace>
     <DefaultLanguage>en-US</DefaultLanguage>
     <MinimumVisualStudioVersion>15.0</MinimumVisualStudioVersion>
     <AppContainerApplication>true</AppContainerApplication>
