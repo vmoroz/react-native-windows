@@ -530,4 +530,10 @@
     <RemoveDir Directories="$(IdlHeaderDirectory)" ContinueOnError="true" />
     <RemoveDir Directories="$(UnmergedWinmdDirectory)" ContinueOnError="true" />
   </Target>
+  <Target Name="PreventMicrosoftUIXamlCopy" AfterTargets="ResolveReferences">
+    <ItemGroup>
+      <!-- TODO: add filter specific to Microsoft.UI.Xaml -->
+      <ReferenceCopyLocalPaths Remove="@(ReferenceCopyLocalPaths)"  />
+    </ItemGroup>
+  </Target>
 </Project>
