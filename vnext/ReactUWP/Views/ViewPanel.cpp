@@ -9,6 +9,10 @@
 #include <winrt/Windows.Foundation.h>
 #include <winrt/Windows.UI.Xaml.Interop.h>
 
+#if __has_include("react.uwp.ViewPanel.g.cpp")
+#include "react.uwp.ViewPanel.g.cpp"
+#endif
+
 namespace winrt {
 using namespace Windows::UI;
 using namespace Windows::UI::Xaml;

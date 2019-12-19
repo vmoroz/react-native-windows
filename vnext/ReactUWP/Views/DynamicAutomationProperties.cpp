@@ -8,6 +8,10 @@
 #include <winrt/Windows.Foundation.h>
 #include <winrt/Windows.UI.Xaml.Interop.h>
 
+#if __has_include("react.uwp.DynamicAutomationProperties.g.cpp")
+#include "react.uwp.DynamicAutomationProperties.g.cpp"
+#endif
+
 namespace winrt {
 using namespace Windows::Foundation;
 using namespace Windows::UI;

@@ -9,6 +9,10 @@
 #include <winrt/Windows.UI.Xaml.Interop.h>
 #include <winrt/Windows.UI.Xaml.Media.h>
 
+#if __has_include("react.uwp.DynamicAutomationPeer.g.cpp")
+#include "react.uwp.DynamicAutomationPeer.g.cpp"
+#endif
+
 namespace winrt {
 using namespace Windows::Foundation;
 using namespace Windows::UI::Xaml;
