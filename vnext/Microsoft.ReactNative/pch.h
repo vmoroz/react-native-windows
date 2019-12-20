@@ -26,8 +26,8 @@
 #include <winrt/Windows.System.h>
 #include <winrt/Windows.UI.Composition.h>
 #include <winrt/Windows.UI.Core.h>
-#include <winrt/Windows.UI.Xaml.Controls.h>
 #include <winrt/Windows.UI.Xaml.Controls.Primitives.h>
+#include <winrt/Windows.UI.Xaml.Controls.h>
 #include <winrt/Windows.UI.Xaml.Media.h>
 #include <winrt/Windows.Web.Http.Headers.h>
 #include "HResult.h"
@@ -37,9 +37,9 @@
 #include <cxxreact/JSBigString.h>
 #include <cxxreact/JSExecutor.h>
 #include <fbsystrace.h>
-#include <folly/dynamic.h>
 #include <folly/Memory.h>
 #include <folly/Optional.h>
+#include <folly/dynamic.h>
 #include <folly/json.h>
 
 #include <condition_variable>
