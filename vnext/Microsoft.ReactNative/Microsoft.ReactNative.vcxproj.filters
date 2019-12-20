@@ -12,9 +12,6 @@
     <ClCompile Include="ReactInstanceManagerBuilder.cpp" />
     <ClCompile Include="ReactSupport.cpp" />
     <ClCompile Include="ViewManagersProvider.cpp" />
-    <ClCompile Include="Views\ReactRootView2.cpp">
-      <Filter>Views</Filter>
-    </ClCompile>
     <ClCompile Include="ABIViewManager.cpp" />
     <ClCompile Include="..\ReactUWP\Base\InstanceFactory.cpp">
       <Filter>Base</Filter>
@@ -299,6 +296,9 @@
       <Filter>Views</Filter>
     </ClCompile>
     <ClCompile Include="..\ReactUWP\Views\WebViewManager.cpp">
+      <Filter>Views</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ReactUWP\Views\ReactRootView.cpp">
       <Filter>Views</Filter>
     </ClCompile>
   </ItemGroup>
@@ -629,9 +629,9 @@
     <Midl Include="ReactInstanceSettings.idl" />
     <Midl Include="ReactNativeHost.idl" />
     <Midl Include="ReactOptionsBuilder.idl" />
-    <Midl Include="ReactRootView.idl" />
     <Midl Include="IBoxedValue.idl" />
     <Midl Include="IReactContext.idl" />
+    <Midl Include="ReactRootView2.idl" />
     <Midl Include="..\ReactUWP\Views\cppwinrt\AccessibilityAction.idl">
       <Filter>Views\cppwinrt</Filter>
     </Midl>

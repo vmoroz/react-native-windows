@@ -282,8 +282,8 @@
     <ClInclude Include="ReactPackageBuilder.h">
       <DependentUpon>IReactPackageBuilder.idl</DependentUpon>
     </ClInclude>
-    <ClInclude Include="ReactRootView.h">
-      <DependentUpon>ReactRootView.idl</DependentUpon>
+    <ClInclude Include="ReactRootView2.h">
+      <DependentUpon>ReactRootView2.idl</DependentUpon>
       <SubType>Code</SubType>
     </ClInclude>
     <ClInclude Include="ReactSupport.h" />
@@ -372,6 +372,7 @@
     <ClCompile Include="..\ReactUWP\Views\PopupViewManager.cpp" />
     <ClCompile Include="..\ReactUWP\Views\RawTextViewManager.cpp" />
     <ClCompile Include="..\ReactUWP\Views\ReactControl.cpp" />
+    <ClCompile Include="..\ReactUWP\Views\ReactRootView.cpp" />
     <ClCompile Include="..\ReactUWP\Views\RefreshControlManager.cpp" />
     <ClCompile Include="..\ReactUWP\Views\RootViewManager.cpp" />
     <ClCompile Include="..\ReactUWP\Views\ScrollContentViewManager.cpp" />
@@ -443,18 +444,21 @@
     <ClCompile Include="ReactPackageBuilder.cpp">
       <DependentUpon>IReactPackageBuilder.idl</DependentUpon>
     </ClCompile>
-    <ClCompile Include="ReactRootView.cpp">
-      <DependentUpon>ReactRootView.idl</DependentUpon>
+    <ClCompile Include="ReactRootView2.cpp">
+      <DependentUpon>ReactRootView2.idl</DependentUpon>
       <SubType>Code</SubType>
     </ClCompile>
     <ClCompile Include="ReactSupport.cpp" />
     <ClCompile Include="ViewManagersProvider.cpp" />
-    <ClCompile Include="Views\ReactRootView2.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <Midl Include="..\ReactUWP\Views\cppwinrt\AccessibilityAction.idl" />
+    <Midl Include="..\ReactUWP\Views\cppwinrt\AccessibilityAction.idl">
+      <PreprocessorDefinitions>REACT_IDL_ROOT_NAMESPACE=Microsoft.ReactNative</PreprocessorDefinitions>
+    </Midl>
     <Midl Include="..\ReactUWP\Views\cppwinrt\BorderEffect.idl" />
-    <Midl Include="..\ReactUWP\Views\cppwinrt\DynamicAutomationPeer.idl" />
+    <Midl Include="..\ReactUWP\Views\cppwinrt\DynamicAutomationPeer.idl">
+      <PreprocessorDefinitions>REACT_IDL_ROOT_NAMESPACE=Microsoft.ReactNative</PreprocessorDefinitions>
+    </Midl>
     <Midl Include="..\ReactUWP\Views\cppwinrt\ViewPanel.idl" />
     <Midl Include="IBackgroundEventListener.idl" />
     <Midl Include="IBoxedValue.idl" />
@@ -486,7 +490,7 @@
       <SubType>Designer</SubType>
     </Midl>
     <Midl Include="ReactOptionsBuilder.idl" />
-    <Midl Include="ReactRootView.idl">
+    <Midl Include="ReactRootView2.idl">
       <SubType>Designer</SubType>
     </Midl>
   </ItemGroup>

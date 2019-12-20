@@ -4,3 +4,7 @@
 #pragma once
 
 #include "react.uwp.DynamicAutomationProperties.g.h"
+
+namespace winrt::react::uwp {
+  using AccessibilityAction = winrt::Microsoft::ReactNative::AccessibilityAction;
+}
