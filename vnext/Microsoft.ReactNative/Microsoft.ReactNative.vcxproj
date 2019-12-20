@@ -441,10 +441,12 @@
   </ItemGroup>
   <ItemGroup>
     <Midl Include="..\ReactUWP\Views\cppwinrt\AccessibilityAction.idl">
+      <!-- The AccessibilityAction must be in the project namespace to be usable by Xaml -->
       <PreprocessorDefinitions>PROJECT_ROOT_NAMESPACE=$(RootNamespace)</PreprocessorDefinitions>
     </Midl>
     <Midl Include="..\ReactUWP\Views\cppwinrt\BorderEffect.idl" />
     <Midl Include="..\ReactUWP\Views\cppwinrt\DynamicAutomationPeer.idl">
+      <!-- The AccessibilityAction must be in the project namespace to be usable by Xaml -->
       <PreprocessorDefinitions>PROJECT_ROOT_NAMESPACE=$(RootNamespace)</PreprocessorDefinitions>
     </Midl>
     <Midl Include="..\ReactUWP\Views\cppwinrt\ViewPanel.idl" />
@@ -531,7 +533,8 @@
   </Target>
   <Target Name="PreventMicrosoftUIXamlCopy" AfterTargets="ResolveReferences">
     <ItemGroup>
-      <!-- TODO: add filter specific to Microsoft.UI.Xaml -->
+      <!-- We do not copy references because copying Microsoft.UI.Xaml related files
+           causes WinMD merge conflicts in user projects as they also reference the same files. -->
       <ReferenceCopyLocalPaths Remove="@(ReferenceCopyLocalPaths)" />
     </ItemGroup>
   </Target>

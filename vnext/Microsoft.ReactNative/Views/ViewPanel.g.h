@@ -3,4 +3,6 @@
 
 #pragma once
 
+// In Microsoft.ReactNative project the ViewPanel.g.h file
+// is generated with the 'react.uwp.' prefix.
 #include "react.uwp.ViewPanel.g.h"
