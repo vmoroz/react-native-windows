@@ -10,8 +10,8 @@
 
 import "AccessibilityAction.idl";
 
-#ifndef REACT_IDL_ROOT_NAMESPACE
-#define REACT_IDL_ROOT_NAMESPACE react.uwp
+#ifndef PROJECT_ROOT_NAMESPACE
+#define PROJECT_ROOT_NAMESPACE react.uwp
 #endif
 
 namespace react.uwp
@@ -64,7 +64,7 @@ namespace react.uwp
 	};
 
 	delegate void AccessibilityInvokeEventHandler();
-	delegate void AccessibilityActionEventHandler(REACT_IDL_ROOT_NAMESPACE.AccessibilityAction action);
+	delegate void AccessibilityActionEventHandler(PROJECT_ROOT_NAMESPACE.AccessibilityAction action);
 
 	[default_interface]
 	[webhosthidden]
@@ -108,8 +108,8 @@ namespace react.uwp
 		static AccessibilityInvokeEventHandler GetAccessibilityInvokeEventHandler(Windows.UI.Xaml.UIElement element);
 
 		static Windows.UI.Xaml.DependencyProperty AccessibilityActionsProperty { get; };
-		static void SetAccessibilityActions(Windows.UI.Xaml.UIElement element, Windows.Foundation.Collections.IVector<REACT_IDL_ROOT_NAMESPACE.AccessibilityAction> value);
-		static Windows.Foundation.Collections.IVector<REACT_IDL_ROOT_NAMESPACE.AccessibilityAction> GetAccessibilityActions(Windows.UI.Xaml.UIElement element);
+		static void SetAccessibilityActions(Windows.UI.Xaml.UIElement element, Windows.Foundation.Collections.IVector<PROJECT_ROOT_NAMESPACE.AccessibilityAction> value);
+		static Windows.Foundation.Collections.IVector<PROJECT_ROOT_NAMESPACE.AccessibilityAction> GetAccessibilityActions(Windows.UI.Xaml.UIElement element);
 
 		static Windows.UI.Xaml.DependencyProperty AccessibilityActionEventHandlerProperty { get; };
 		static void SetAccessibilityActionEventHandler(Windows.UI.Xaml.UIElement element, AccessibilityActionEventHandler value);

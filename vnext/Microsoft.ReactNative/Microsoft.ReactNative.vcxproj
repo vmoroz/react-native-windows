@@ -441,11 +441,11 @@
   </ItemGroup>
   <ItemGroup>
     <Midl Include="..\ReactUWP\Views\cppwinrt\AccessibilityAction.idl">
-      <PreprocessorDefinitions>REACT_IDL_ROOT_NAMESPACE=Microsoft.ReactNative</PreprocessorDefinitions>
+      <PreprocessorDefinitions>PROJECT_ROOT_NAMESPACE=$(RootNamespace)</PreprocessorDefinitions>
     </Midl>
     <Midl Include="..\ReactUWP\Views\cppwinrt\BorderEffect.idl" />
     <Midl Include="..\ReactUWP\Views\cppwinrt\DynamicAutomationPeer.idl">
-      <PreprocessorDefinitions>REACT_IDL_ROOT_NAMESPACE=Microsoft.ReactNative</PreprocessorDefinitions>
+      <PreprocessorDefinitions>PROJECT_ROOT_NAMESPACE=$(RootNamespace)</PreprocessorDefinitions>
     </Midl>
     <Midl Include="..\ReactUWP\Views\cppwinrt\ViewPanel.idl" />
     <Midl Include="IBackgroundEventListener.idl" />
