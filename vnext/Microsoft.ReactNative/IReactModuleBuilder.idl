@@ -3,6 +3,7 @@
 
 import "IJSValueReader.idl";
 import "IJSValueWriter.idl";
+import "NoExceptionAttribute.idl";
 
 namespace Microsoft.ReactNative {
 
@@ -28,7 +29,9 @@ namespace Microsoft.ReactNative {
 
   [webhosthidden]
   interface IReactModuleBuilder {
+    [noexcept2]
     void SetEventEmitterName(String name);
+    [noexcept2]
     void AddMethod(String name, MethodReturnType returnType, MethodDelegate method);
     void AddSyncMethod(String name, SyncMethodDelegate method);
     void AddConstantProvider(ConstantProvider constantProvider);

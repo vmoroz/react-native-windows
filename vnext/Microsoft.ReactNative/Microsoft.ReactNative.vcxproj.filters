@@ -642,6 +642,7 @@
     <Midl Include="..\ReactUWP\Views\cppwinrt\ViewPanel.idl">
       <Filter>Views\cppwinrt</Filter>
     </Midl>
+    <Midl Include="NoExceptionAttribute.idl" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

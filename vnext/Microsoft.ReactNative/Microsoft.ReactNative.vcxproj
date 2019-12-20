@@ -459,6 +459,7 @@
     <Midl Include="IReactPackageBuilder.idl" />
     <Midl Include="IReactPackageProvider.idl" />
     <Midl Include="IViewManager.idl" />
+    <Midl Include="NoExceptionAttribute.idl" />
     <Midl Include="ReactApplication.idl" />
     <Midl Include="ReactApplicationDelegate.idl">
       <SubType>Designer</SubType>

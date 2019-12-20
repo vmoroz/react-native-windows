@@ -1,0 +1,5 @@
+namespace Windows.Foundation.Metadata {
+  [attributeusage(target_method, target_property)]
+  [attributename("noexcept2")]
+  attribute NoExceptionAttribute {}
+} // namespace Windows.Foundation.Metadata
