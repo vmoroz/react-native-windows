@@ -618,7 +618,6 @@
     <Midl Include="IJSValueWriter.idl" />
     <Midl Include="ILifecycleEventListener.idl" />
     <Midl Include="IReactModuleBuilder.idl" />
-    <Midl Include="IReactOptions.idl" />
     <Midl Include="IReactPackageBuilder.idl" />
     <Midl Include="IReactPackageProvider.idl" />
     <Midl Include="IViewManager.idl" />
@@ -628,7 +627,6 @@
     <Midl Include="ReactInstanceManager.idl" />
     <Midl Include="ReactInstanceSettings.idl" />
     <Midl Include="ReactNativeHost.idl" />
-    <Midl Include="ReactOptionsBuilder.idl" />
     <Midl Include="IBoxedValue.idl" />
     <Midl Include="IReactContext.idl" />
     <Midl Include="ReactRootView2.idl" />

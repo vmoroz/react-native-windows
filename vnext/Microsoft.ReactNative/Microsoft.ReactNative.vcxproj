@@ -273,12 +273,6 @@
       <DependentUpon>ReactNativeHost.idl</DependentUpon>
       <SubType>Code</SubType>
     </ClInclude>
-    <ClInclude Include="ReactOptions.h">
-      <DependentUpon>IReactOptions.idl</DependentUpon>
-    </ClInclude>
-    <ClInclude Include="ReactOptionsBuilder.h">
-      <DependentUpon>ReactOptionsBuilder.idl</DependentUpon>
-    </ClInclude>
     <ClInclude Include="ReactPackageBuilder.h">
       <DependentUpon>IReactPackageBuilder.idl</DependentUpon>
     </ClInclude>
@@ -435,12 +429,6 @@
       <DependentUpon>ReactNativeHost.idl</DependentUpon>
       <SubType>Code</SubType>
     </ClCompile>
-    <ClCompile Include="ReactOptions.cpp">
-      <DependentUpon>IReactOptions.idl</DependentUpon>
-    </ClCompile>
-    <ClCompile Include="ReactOptionsBuilder.cpp">
-      <DependentUpon>ReactOptionsBuilder.idl</DependentUpon>
-    </ClCompile>
     <ClCompile Include="ReactPackageBuilder.cpp">
       <DependentUpon>IReactPackageBuilder.idl</DependentUpon>
     </ClCompile>
@@ -466,7 +454,6 @@
     <Midl Include="IJSValueWriter.idl" />
     <Midl Include="ILifecycleEventListener.idl" />
     <Midl Include="IReactModuleBuilder.idl" />
-    <Midl Include="IReactOptions.idl" />
     <Midl Include="IReactPackageBuilder.idl" />
     <Midl Include="IReactPackageProvider.idl" />
     <Midl Include="IViewManager.idl" />
@@ -489,7 +476,6 @@
     <Midl Include="ReactNativeHost.idl">
       <SubType>Designer</SubType>
     </Midl>
-    <Midl Include="ReactOptionsBuilder.idl" />
     <Midl Include="ReactRootView2.idl">
       <SubType>Designer</SubType>
     </Midl>
