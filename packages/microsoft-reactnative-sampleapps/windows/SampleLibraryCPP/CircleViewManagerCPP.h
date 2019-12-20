@@ -3,16 +3,16 @@
 
 #pragma once
 
-#include "winrt/Microsoft.ReactNative.Bridge.h"
+#include "winrt/Microsoft.ReactNative.h"
 
-namespace winrt::SampleLibraryCPP::implementation {
+namespace winrt::SampleLibraryCpp::implementation {
 
-struct CircleViewManagerCPP : winrt::implements<
-                                  CircleViewManagerCPP,
-                                  winrt::Microsoft::ReactNative::Bridge::IViewManager,
-                                  winrt::Microsoft::ReactNative::Bridge::IViewManagerWithChildren> {
+struct CircleViewManagerCpp : winrt::implements<
+                                  CircleViewManagerCpp,
+                                  winrt::Microsoft::ReactNative::IViewManager,
+                                  winrt::Microsoft::ReactNative::IViewManagerWithChildren> {
  public:
-  CircleViewManagerCPP();
+  CircleViewManagerCpp();
 
   // IViewManager
   winrt::hstring Name() noexcept;
@@ -68,4 +68,4 @@ struct HeightToCornerRadiusConverter
   // IValueConverter
 };
 
-} // namespace winrt::SampleLibraryCPP::implementation
+} // namespace winrt::SampleLibraryCpp::implementation
