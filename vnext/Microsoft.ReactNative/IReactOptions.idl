@@ -5,7 +5,7 @@ import "IReactPackageProvider.idl";
 
 namespace Microsoft.ReactNative {
   interface IReactOptions {
-    IVectorView<Microsoft.ReactNative.Bridge.IReactPackageProvider> PackageProviders { get; };
+    IVectorView<IReactPackageProvider> PackageProviders { get; };
     String MainComponentName { get; };
     Boolean UseDeveloperSupport { get; };
     String JavaScriptMainModuleName { get; };

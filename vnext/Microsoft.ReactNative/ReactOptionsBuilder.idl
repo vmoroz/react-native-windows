@@ -6,11 +6,12 @@ import "IReactOptions.idl";
 namespace Microsoft.ReactNative {
 
   [webhosthidden]
-  [default_interface] runtimeclass ReactOptionsBuilder {
+  [default_interface]
+  runtimeclass ReactOptionsBuilder {
     ReactOptionsBuilder();
     ReactOptionsBuilder(IReactOptions options);
 
-    IVector<Microsoft.ReactNative.Bridge.IReactPackageProvider> PackageProviders { get; };
+    IVector<IReactPackageProvider> PackageProviders { get; };
     String MainComponentName { get; set; };
     Boolean UseDeveloperSupport { get; set; };
     String JavaScriptMainModuleName { get; set; };

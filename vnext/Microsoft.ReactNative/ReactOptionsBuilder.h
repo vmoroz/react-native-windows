@@ -10,12 +10,9 @@ namespace winrt::Microsoft::ReactNative::implementation {
 struct ReactOptionsBuilder : ReactOptionsBuilderT<ReactOptionsBuilder> {
   ReactOptionsBuilder() = default;
 
-  ReactOptionsBuilder(
-      Microsoft::ReactNative::IReactOptions const &options) noexcept;
+  ReactOptionsBuilder(Microsoft::ReactNative::IReactOptions const &options) noexcept;
 
-  Windows::Foundation::Collections::IVector<
-      Microsoft::ReactNative::Bridge::IReactPackageProvider>
-  PackageProviders() noexcept;
+  Windows::Foundation::Collections::IVector<IReactPackageProvider> PackageProviders() noexcept;
 
   hstring MainComponentName() noexcept;
   void MainComponentName(hstring const &value) noexcept;
@@ -39,8 +36,6 @@ struct ReactOptionsBuilder : ReactOptionsBuilderT<ReactOptionsBuilder> {
 
 namespace winrt::Microsoft::ReactNative::factory_implementation {
 
-struct ReactOptionsBuilder : ReactOptionsBuilderT<
-                                 ReactOptionsBuilder,
-                                 implementation::ReactOptionsBuilder> {};
+struct ReactOptionsBuilder : ReactOptionsBuilderT<ReactOptionsBuilder, implementation::ReactOptionsBuilder> {};
 
 } // namespace winrt::Microsoft::ReactNative::factory_implementation

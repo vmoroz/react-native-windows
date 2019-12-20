@@ -5,7 +5,6 @@
 #include "ReactOptions.h"
 
 using namespace winrt::Windows::Foundation::Collections;
-using namespace winrt::Microsoft::ReactNative::Bridge;
 
 namespace winrt::Microsoft::ReactNative {
 

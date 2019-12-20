@@ -8,25 +8,22 @@ namespace winrt::Microsoft::ReactNative {
 
 struct ReactOptionsData {
   ReactOptionsData() = default;
-  ReactOptionsData(
-      Microsoft::ReactNative::IReactOptions const &options) noexcept;
+  ReactOptionsData(Microsoft::ReactNative::IReactOptions const &options) noexcept;
 
   ReactOptionsData DeepCopy() const noexcept;
 
-  Windows::Foundation::Collections::IVector<Bridge::IReactPackageProvider>
-      PackageProviders{single_threaded_vector<Bridge::IReactPackageProvider>()};
+  Windows::Foundation::Collections::IVector<IReactPackageProvider> PackageProviders{
+      single_threaded_vector<IReactPackageProvider>()};
   hstring MainComponentName{L""};
   bool UseDeveloperSupport{false};
   hstring JavaScriptMainModuleName{L""};
   hstring JavaScriptBundleFile{L""};
 };
 
-struct ReactOptions
-    : implements<ReactOptions, Microsoft::ReactNative::IReactOptions> {
+struct ReactOptions : implements<ReactOptions, IReactOptions> {
   ReactOptions(ReactOptionsData &&data) noexcept;
 
-  Windows::Foundation::Collections::IVectorView<Bridge::IReactPackageProvider>
-  PackageProviders() noexcept;
+  Windows::Foundation::Collections::IVectorView<IReactPackageProvider> PackageProviders() noexcept;
 
   hstring MainComponentName() noexcept;
   bool UseDeveloperSupport() noexcept;
