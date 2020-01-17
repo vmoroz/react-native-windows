@@ -19,8 +19,8 @@ LIBLET_PUBLICAPI void ErrorProvider<std::exception_ptr, ExceptionErrorProviderGu
     bool shouldHandle) const;
 
 template <>
-LIBLET_PUBLICAPI Mso::CntPtr<Mso::IErrorString>
-ErrorProvider<std::exception_ptr, ExceptionErrorProviderGuid>::ToString(const ErrorCode &errorCode) const noexcept;
+LIBLET_PUBLICAPI Mso::CntPtr<Mso::IErrorString> ErrorProvider<std::exception_ptr, ExceptionErrorProviderGuid>::ToString(
+    const ErrorCode &errorCode) const noexcept;
 
 } // namespace Mso
 

@@ -106,8 +106,10 @@ struct ActiveObjectBase : IUnknown {
   template <class TCallback>
   void InvokeInQueue(TCallback &&callback) noexcept {
     using Callback = std::decay_t<TCallback>;
-    m_queue.InvokeElsePost([weakThis = Mso::WeakPtr<ActiveObjectBase>{this},
-                            callback = Callback{std::forward<TCallback>(callback)}]() mutable noexcept {
+    m_queue.InvokeElsePost([
+      weakThis = Mso::WeakPtr<ActiveObjectBase>{this},
+      callback = Callback{std::forward<TCallback>(callback)}
+    ]() mutable noexcept {
       if (auto strongThis = weakThis.GetStrongPtr()) {
         callback();
       }
@@ -119,15 +121,19 @@ struct ActiveObjectBase : IUnknown {
   template <class TCallback>
   void InvokeInQueueStrong(TCallback &&callback) noexcept {
     using Callback = std::decay_t<TCallback>;
-    m_queue.InvokeElsePost([strongThis = Mso::CntPtr<ActiveObjectBase>{this},
-                            callback = Callback{std::forward<TCallback>(callback)}]() mutable noexcept { callback(); });
+    m_queue.InvokeElsePost([
+      strongThis = Mso::CntPtr<ActiveObjectBase>{this},
+      callback = Callback{std::forward<TCallback>(callback)}
+    ]() mutable noexcept { callback(); });
   }
 
   template <class TCallback>
   void InvokeInQueueStrong(TCallback &&callback) const noexcept {
     using Callback = std::decay_t<TCallback>;
-    m_queue.InvokeElsePost([strongThis = Mso::CntPtr<const ActiveObjectBase>{this},
-                            callback = Callback{std::forward<TCallback>(callback)}]() mutable noexcept { callback(); });
+    m_queue.InvokeElsePost([
+      strongThis = Mso::CntPtr<const ActiveObjectBase>{this},
+      callback = Callback{std::forward<TCallback>(callback)}
+    ]() mutable noexcept { callback(); });
   }
 
   //! Returns true if method is called from the associated queue.

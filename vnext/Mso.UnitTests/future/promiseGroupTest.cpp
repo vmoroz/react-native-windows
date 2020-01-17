@@ -185,15 +185,15 @@ TEST_CLASS_EX (PromiseGroupTest, LibletAwareMemLeakDetection) {
     // modify original vector and see that the Promise still has the original copy.
     vec.push_back(4);
 
-    auto future1 = p1.AddFuture().Then([&](std::vector<int> &value) noexcept {
+    auto future1 = p1.AddFuture().Then([&](std::vector<int> & value) noexcept {
       std::vector<int> v1 = std::move(value);
       TestCheckEqual(3, v1.size());
     });
-    auto future2 = p1.AddFuture().Then([&](std::vector<int> &value) noexcept {
+    auto future2 = p1.AddFuture().Then([&](std::vector<int> & value) noexcept {
       std::vector<int> v1 = std::move(value);
       TestCheckEqual(3, v1.size());
     });
-    auto future3 = p1.AddFuture().Then([&](std::vector<int> &value) noexcept {
+    auto future3 = p1.AddFuture().Then([&](std::vector<int> & value) noexcept {
       std::vector<int> v1 = std::move(value);
       TestCheckEqual(3, v1.size());
     });
@@ -212,15 +212,15 @@ TEST_CLASS_EX (PromiseGroupTest, LibletAwareMemLeakDetection) {
 
     TestCheck(vec.empty());
 
-    auto future1 = p1.AddFuture().Then([&](std::vector<int> &value) noexcept {
+    auto future1 = p1.AddFuture().Then([&](std::vector<int> & value) noexcept {
       std::vector<int> v1 = std::move(value);
       TestCheckEqual(3, v1.size());
     });
-    auto future2 = p1.AddFuture().Then([&](std::vector<int> &value) noexcept {
+    auto future2 = p1.AddFuture().Then([&](std::vector<int> & value) noexcept {
       std::vector<int> v1 = std::move(value);
       TestCheckEqual(3, v1.size());
     });
-    auto future3 = p1.AddFuture().Then([&](std::vector<int> &value) noexcept {
+    auto future3 = p1.AddFuture().Then([&](std::vector<int> & value) noexcept {
       std::vector<int> v1 = std::move(value);
       TestCheckEqual(3, v1.size());
     });
@@ -367,8 +367,9 @@ TEST_CLASS_EX (PromiseGroupTest, LibletAwareMemLeakDetection) {
 
   TEST_METHOD(PromiseGroup_EmplaceValue_NoArgs) {
     Mso::PromiseGroup<EmplacedType> p1;
-    auto future = p1.AddFuture().Then(
-        [&](const EmplacedType &value) noexcept { ValidateEmplacedType(value, 1, 2, 3, MSO_LINE_STR); });
+    auto future = p1.AddFuture().Then([&](const EmplacedType &value) noexcept {
+      ValidateEmplacedType(value, 1, 2, 3, MSO_LINE_STR);
+    });
 
     p1.EmplaceValue();
     Mso::FutureWait(future);
@@ -376,8 +377,9 @@ TEST_CLASS_EX (PromiseGroupTest, LibletAwareMemLeakDetection) {
 
   TEST_METHOD(PromiseGroup_EmplaceValue_OneArg) {
     Mso::PromiseGroup<EmplacedType> p1;
-    auto future = p1.AddFuture().Then(
-        [&](const EmplacedType &value) noexcept { ValidateEmplacedType(value, 5, 2, 3, MSO_LINE_STR); });
+    auto future = p1.AddFuture().Then([&](const EmplacedType &value) noexcept {
+      ValidateEmplacedType(value, 5, 2, 3, MSO_LINE_STR);
+    });
 
     p1.EmplaceValue(5);
     Mso::FutureWait(future);
@@ -385,8 +387,9 @@ TEST_CLASS_EX (PromiseGroupTest, LibletAwareMemLeakDetection) {
 
   TEST_METHOD(PromiseGroup_EmplaceValue_TwoArgs) {
     Mso::PromiseGroup<EmplacedType> p1;
-    auto future = p1.AddFuture().Then(
-        [&](const EmplacedType &value) noexcept { ValidateEmplacedType(value, 5, 6, 3, MSO_LINE_STR); });
+    auto future = p1.AddFuture().Then([&](const EmplacedType &value) noexcept {
+      ValidateEmplacedType(value, 5, 6, 3, MSO_LINE_STR);
+    });
 
     p1.EmplaceValue(5, 6);
     Mso::FutureWait(future);
@@ -394,8 +397,9 @@ TEST_CLASS_EX (PromiseGroupTest, LibletAwareMemLeakDetection) {
 
   TEST_METHOD(PromiseGroup_EmplaceValue_ThreeArgs) {
     Mso::PromiseGroup<EmplacedType> p1;
-    auto future = p1.AddFuture().Then(
-        [&](const EmplacedType &value) noexcept { ValidateEmplacedType(value, 5, 6, 7, MSO_LINE_STR); });
+    auto future = p1.AddFuture().Then([&](const EmplacedType &value) noexcept {
+      ValidateEmplacedType(value, 5, 6, 7, MSO_LINE_STR);
+    });
 
     p1.EmplaceValue(5, 6, 7);
     Mso::FutureWait(future);
@@ -464,8 +468,9 @@ TEST_CLASS_EX (PromiseGroupTest, LibletAwareMemLeakDetection) {
 
   TEST_METHOD(PromiseGroup_TryEmplaceValue_NoArgs) {
     Mso::PromiseGroup<EmplacedType> p1;
-    auto future = p1.AddFuture().Then(
-        [&](const EmplacedType &value) noexcept { ValidateEmplacedType(value, 1, 2, 3, MSO_LINE_STR); });
+    auto future = p1.AddFuture().Then([&](const EmplacedType &value) noexcept {
+      ValidateEmplacedType(value, 1, 2, 3, MSO_LINE_STR);
+    });
 
     TestCheck(p1.TryEmplaceValue());
     Mso::FutureWait(future);
@@ -473,8 +478,9 @@ TEST_CLASS_EX (PromiseGroupTest, LibletAwareMemLeakDetection) {
 
   TEST_METHOD(PromiseGroup_TryEmplaceValue_OneArg) {
     Mso::PromiseGroup<EmplacedType> p1;
-    auto future = p1.AddFuture().Then(
-        [&](const EmplacedType &value) noexcept { ValidateEmplacedType(value, 5, 2, 3, MSO_LINE_STR); });
+    auto future = p1.AddFuture().Then([&](const EmplacedType &value) noexcept {
+      ValidateEmplacedType(value, 5, 2, 3, MSO_LINE_STR);
+    });
 
     TestCheck(p1.TryEmplaceValue(5));
     Mso::FutureWait(future);
@@ -482,8 +488,9 @@ TEST_CLASS_EX (PromiseGroupTest, LibletAwareMemLeakDetection) {
 
   TEST_METHOD(PromiseGroup_TryEmplaceValue_TwoArgs) {
     Mso::PromiseGroup<EmplacedType> p1;
-    auto future = p1.AddFuture().Then(
-        [&](const EmplacedType &value) noexcept { ValidateEmplacedType(value, 5, 6, 3, MSO_LINE_STR); });
+    auto future = p1.AddFuture().Then([&](const EmplacedType &value) noexcept {
+      ValidateEmplacedType(value, 5, 6, 3, MSO_LINE_STR);
+    });
 
     TestCheck(p1.TryEmplaceValue(5, 6));
     Mso::FutureWait(future);
@@ -491,8 +498,9 @@ TEST_CLASS_EX (PromiseGroupTest, LibletAwareMemLeakDetection) {
 
   TEST_METHOD(PromiseGroup_TryEmplaceValue_ThreeArgs) {
     Mso::PromiseGroup<EmplacedType> p1;
-    auto future = p1.AddFuture().Then(
-        [&](const EmplacedType &value) noexcept { ValidateEmplacedType(value, 5, 6, 7, MSO_LINE_STR); });
+    auto future = p1.AddFuture().Then([&](const EmplacedType &value) noexcept {
+      ValidateEmplacedType(value, 5, 6, 7, MSO_LINE_STR);
+    });
 
     TestCheck(p1.TryEmplaceValue(5, 6, 7));
     Mso::FutureWait(future);

@@ -30,8 +30,7 @@ template <class T>
 inline PromiseGroup<T>::PromiseGroup(std::nullptr_t) noexcept {}
 
 template <class T>
-inline PromiseGroup<T>::PromiseGroup(Mso::CntPtr<Mso::Futures::IFuture> &&state) noexcept
-    : m_state(std::move(state)) {}
+inline PromiseGroup<T>::PromiseGroup(Mso::CntPtr<Mso::Futures::IFuture> &&state) noexcept : m_state(std::move(state)) {}
 
 template <class T>
 inline PromiseGroup<T>::PromiseGroup(const PromiseGroup &other) noexcept : m_state(other.m_state) {}

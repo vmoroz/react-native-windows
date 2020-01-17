@@ -95,14 +95,18 @@ TEST_CLASS(FunctorTest) {
   }
 
   TEST_METHOD(Functor_ctor_Copy) {
-    Mso::Functor<int(int, int)> f1 = [](int x, int y) noexcept { return x + y; };
+    Mso::Functor<int(int, int)> f1 = [](int x, int y) noexcept {
+      return x + y;
+    };
     Mso::Functor<int(int, int)> f2(f1);
     TestCheck(!f1.IsEmpty());
     TestCheck(f1 == f2);
   }
 
   TEST_METHOD(Functor_ctor_Move) {
-    Mso::Functor<int(int, int)> f1 = [](int x, int y) noexcept { return x + y; };
+    Mso::Functor<int(int, int)> f1 = [](int x, int y) noexcept {
+      return x + y;
+    };
     Mso::Functor<int(int, int)> f2(f1); // copy of f1
     Mso::Functor<int(int, int)> f3(std::move(f1));
     TestCheck(f1.IsEmpty());
@@ -192,20 +196,26 @@ TEST_CLASS(FunctorTest) {
   }
 
   TEST_METHOD(Functor_ctor_Lambda) {
-    Mso::Functor<int(int, int)> f1 = [](int x, int y) noexcept { return x + y; };
+    Mso::Functor<int(int, int)> f1 = [](int x, int y) noexcept {
+      return x + y;
+    };
     TestCheck(!f1.IsEmpty());
     TestCheckEqual(5, f1(2, 3));
   }
 
   TEST_METHOD(Functor_ctor_Lambda_copy) {
-    auto lambda = [](int x, int y) noexcept { return x + y; };
+    auto lambda = [](int x, int y) noexcept {
+      return x + y;
+    };
     Mso::Functor<int(int, int)> f1(lambda);
     TestCheck(!f1.IsEmpty());
     TestCheckEqual(5, f1(2, 3));
   }
 
   TEST_METHOD(Functor_ctor_Lambda_move) {
-    auto lambda = [](int x, int y) noexcept { return x + y; };
+    auto lambda = [](int x, int y) noexcept {
+      return x + y;
+    };
     Mso::Functor<int(int, int)> f1(std::move(lambda));
     TestCheck(!f1.IsEmpty());
     TestCheckEqual(5, f1(2, 3));
@@ -244,7 +254,7 @@ TEST_CLASS(FunctorTest) {
   }
 
   TEST_METHOD(Functor_ctor_MutableLambda) {
-    Mso::Functor<int()> increment([i = 0]() mutable noexcept -> int { return i++; });
+    Mso::Functor<int()> increment([i = 0]() mutable noexcept->int { return i++; });
 
     TestCheckEqual(0, increment());
     TestCheckEqual(1, increment());
@@ -253,7 +263,7 @@ TEST_CLASS(FunctorTest) {
   TEST_METHOD(Functor_ctor_MutableLambda_NoCapture) {
     static int i = 0;
     i = 0;
-    Mso::Functor<int()> increment([]() mutable noexcept -> int { return i++; });
+    Mso::Functor<int()> increment([]() mutable noexcept->int { return i++; });
 
     TestCheckEqual(0, increment());
     TestCheckEqual(1, increment());
@@ -269,7 +279,7 @@ TEST_CLASS(FunctorTest) {
   TEST_METHOD(Functor_ctor_StdFunctionCopy) {
     int callCount = 0;
     int value = 0;
-    auto func = std::function<int(int)>([&callCount, &value](int v) noexcept {
+    auto func = std::function<int(int)>([&callCount, &value ](int v) noexcept {
       ++callCount;
       value = v;
       return v;
@@ -283,7 +293,7 @@ TEST_CLASS(FunctorTest) {
   TEST_METHOD(Functor_ctor_ConstStdFunctionCopy) {
     int callCount = 0;
     int value = 0;
-    const auto func = std::function<int(int)>([&callCount, &value](int v) noexcept {
+    const auto func = std::function<int(int)>([&callCount, &value ](int v) noexcept {
       ++callCount;
       value = v;
       return v;
@@ -297,7 +307,7 @@ TEST_CLASS(FunctorTest) {
   TEST_METHOD(Functor_ctor_StdFunctionMove) {
     int callCount = 0;
     int value = 0;
-    auto func = std::function<int(int)>([&callCount, &value](int v) noexcept {
+    auto func = std::function<int(int)>([&callCount, &value ](int v) noexcept {
       ++callCount;
       value = v;
       return v;
@@ -331,37 +341,43 @@ TEST_CLASS(FunctorTest) {
 
   TEST_METHOD(Functor_ctor_StdFunctionCopy_DifferentSignature_PassToMethod) {
     int callCount = 0;
-    auto func = std::function<void(Mso::CntPtr<StructParam>)>(
-        [&callCount](Mso::CntPtr<StructParam>) noexcept { ++callCount; });
+    auto func =
+        std::function<void(Mso::CntPtr<StructParam>)>([&callCount](Mso::CntPtr<StructParam>) noexcept { ++callCount; });
     MyFunctorExecutor::Execute({func, Mso::TerminateOnException});
     TestCheckEqual(1, callCount);
   }
 
   TEST_METHOD(Functor_ctor_ConstStdFunctionCopy_DifferentSignature_PassToMethod) {
     int callCount = 0;
-    const auto func = std::function<void(Mso::CntPtr<StructParam>)>(
-        [&callCount](Mso::CntPtr<StructParam>) noexcept { ++callCount; });
+    const auto func =
+        std::function<void(Mso::CntPtr<StructParam>)>([&callCount](Mso::CntPtr<StructParam>) noexcept { ++callCount; });
     MyFunctorExecutor::Execute({func, Mso::TerminateOnException});
     TestCheckEqual(1, callCount);
   }
 
   TEST_METHOD(Functor_ctor_StdFunctionMove_DifferentSignature_PassToMethod) {
     int callCount = 0;
-    auto func = std::function<void(Mso::CntPtr<StructParam>)>(
-        [&callCount](Mso::CntPtr<StructParam>) noexcept { ++callCount; });
+    auto func =
+        std::function<void(Mso::CntPtr<StructParam>)>([&callCount](Mso::CntPtr<StructParam>) noexcept { ++callCount; });
     MyFunctorExecutor::Execute({std::move(func), Mso::TerminateOnException});
     TestCheckEqual(1, callCount);
   }
 
   TEST_METHOD(Functor_Assign_nullptr) {
-    Mso::Functor<int(int, int)> f1 = [](int x, int y) noexcept { return x + y; };
+    Mso::Functor<int(int, int)> f1 = [](int x, int y) noexcept {
+      return x + y;
+    };
     f1 = nullptr;
     TestCheck(f1.IsEmpty());
   }
 
   TEST_METHOD(Functor_Assign_Copy) {
-    Mso::Functor<int(int, int)> f1 = [](int x, int y) noexcept { return x + y; };
-    Mso::Functor<int(int, int)> f2 = [](int x, int y) noexcept { return x - y; };
+    Mso::Functor<int(int, int)> f1 = [](int x, int y) noexcept {
+      return x + y;
+    };
+    Mso::Functor<int(int, int)> f2 = [](int x, int y) noexcept {
+      return x - y;
+    };
     TestCheck(f1 != f2);
     Mso::Functor<int(int, int)> f3(f1); // copy of f1
     f1 = f2;
@@ -371,8 +387,12 @@ TEST_CLASS(FunctorTest) {
   }
 
   TEST_METHOD(Functor_Assign_Move) {
-    Mso::Functor<int(int, int)> f1 = [](int x, int y) noexcept { return x + y; };
-    Mso::Functor<int(int, int)> f2 = [](int x, int y) noexcept { return x - y; };
+    Mso::Functor<int(int, int)> f1 = [](int x, int y) noexcept {
+      return x + y;
+    };
+    Mso::Functor<int(int, int)> f2 = [](int x, int y) noexcept {
+      return x - y;
+    };
     Mso::Functor<int(int, int)> f3(f1); // copy of f1
     Mso::Functor<int(int, int)> f4(f2); // copy of f2
     f1 = std::move(f2);
@@ -393,7 +413,7 @@ TEST_CLASS(FunctorTest) {
   }
 
   TESTMETHOD_REQUIRES_SEH(Functor_operator_call_Throws) {
-    Mso::Functor<int(int)> f1 = ([](int) noexcept -> int {
+    Mso::Functor<int(int)> f1 = ([](int) noexcept->int {
       OACR_NOEXCEPT_MAYTERMINATE;
 #pragma warning(suppress : 4297) // Suppress warning about throwing in noexcept function.
       throw std::runtime_error("Test error");
@@ -414,7 +434,9 @@ TEST_CLASS(FunctorTest) {
 
   TEST_METHOD(Functor_operator_call_Void) {
     int result = 0;
-    Mso::Functor<void(int, int)> f1 = [&result](int x, int y) noexcept { result = x + y; };
+    Mso::Functor<void(int, int)> f1 = [&result](int x, int y) noexcept {
+      result = x + y;
+    };
     TestCheck(!f1.IsEmpty());
     f1(4, 6);
     TestCheckEqual(10, result);
@@ -427,22 +449,30 @@ TEST_CLASS(FunctorTest) {
   }
 
   TEST_METHOD(Functor_IsEmpty) {
-    Mso::Functor<int(int, int)> f1 = [](int x, int y) noexcept { return x + y; };
+    Mso::Functor<int(int, int)> f1 = [](int x, int y) noexcept {
+      return x + y;
+    };
     Mso::Functor<int(int, int)> f2;
     TestCheck(!f1.IsEmpty());
     TestCheck(f2.IsEmpty());
   }
 
   TEST_METHOD(Functor_operator_bool) {
-    Mso::Functor<int(int, int)> f1 = [](int x, int y) noexcept { return x + y; };
+    Mso::Functor<int(int, int)> f1 = [](int x, int y) noexcept {
+      return x + y;
+    };
     Mso::Functor<int(int, int)> f2;
     TestCheck(f1);
     TestCheck(!f2);
   }
 
   TEST_METHOD(Functor_Swap) {
-    Mso::Functor<int(int, int)> f1 = [](int x, int y) noexcept { return x + y; };
-    Mso::Functor<int(int, int)> f2 = [](int x, int y) noexcept { return x - y; };
+    Mso::Functor<int(int, int)> f1 = [](int x, int y) noexcept {
+      return x + y;
+    };
+    Mso::Functor<int(int, int)> f2 = [](int x, int y) noexcept {
+      return x - y;
+    };
     Mso::Functor<int(int, int)> f3(f1); // copy of f1
     Mso::Functor<int(int, int)> f4(f2); // copy of f2
     f1.Swap(f2);
@@ -452,8 +482,12 @@ TEST_CLASS(FunctorTest) {
 
   TEST_METHOD(Functor_std_swap) {
     using std::swap; // The typical pattern how to call the swap method.
-    Mso::Functor<int(int, int)> f1 = [](int x, int y) noexcept { return x + y; };
-    Mso::Functor<int(int, int)> f2 = [](int x, int y) noexcept { return x - y; };
+    Mso::Functor<int(int, int)> f1 = [](int x, int y) noexcept {
+      return x + y;
+    };
+    Mso::Functor<int(int, int)> f2 = [](int x, int y) noexcept {
+      return x - y;
+    };
     Mso::Functor<int(int, int)> f3(f1); // copy of f1
     Mso::Functor<int(int, int)> f4(f2); // copy of f2
     swap(f1, f2); // Never use the std prefix for swap: the swap can be overridden in the namespace of T.
@@ -462,14 +496,18 @@ TEST_CLASS(FunctorTest) {
   }
 
   TEST_METHOD(Functor_Get) {
-    Mso::Functor<int(int, int)> f1 = [](int x, int y) noexcept { return x + y; };
+    Mso::Functor<int(int, int)> f1 = [](int x, int y) noexcept {
+      return x + y;
+    };
     Mso::Functor<int(int, int)> f2;
     TestCheck(f1.Get() != nullptr);
     TestCheck(f2.Get() == nullptr);
   }
 
   TEST_METHOD(Functor_Detach) {
-    Mso::Functor<int(int, int)> f1 = [](int x, int y) noexcept { return x + y; };
+    Mso::Functor<int(int, int)> f1 = [](int x, int y) noexcept {
+      return x + y;
+    };
 
     Mso::CntPtr<Mso::IFunctor<int, int, int>> impl{f1.Detach(), Mso::AttachTag};
     TestCheck(f1.IsEmpty());
@@ -478,8 +516,12 @@ TEST_CLASS(FunctorTest) {
 
   TEST_METHOD(Functor_operator_Equal) {
     using std::swap; // The typical pattern how to call the swap method.
-    Mso::Functor<int(int, int)> f1 = [](int x, int y) noexcept { return x + y; };
-    Mso::Functor<int(int, int)> f2 = [](int x, int y) noexcept { return x - y; };
+    Mso::Functor<int(int, int)> f1 = [](int x, int y) noexcept {
+      return x + y;
+    };
+    Mso::Functor<int(int, int)> f2 = [](int x, int y) noexcept {
+      return x - y;
+    };
     Mso::Functor<int(int, int)> f3(f1); // copy of f1
     Mso::Functor<int(int, int)> f4;
     TestCheck(f1 == f3);
@@ -513,7 +555,9 @@ TEST_CLASS(FunctorTest) {
   }
 
   TEST_METHOD(Functor_GenericLambda) {
-    auto adder = [](const auto &a, const auto &b) noexcept { return a + b; };
+    auto adder = [](const auto &a, const auto &b) noexcept {
+      return a + b;
+    };
 
     Mso::Functor<int(int, int)> fnInt = adder;
     Mso::Functor<double(double, double)> fnDouble = adder;
@@ -531,14 +575,18 @@ TEST_CLASS(FunctorTest) {
   }
 
   TEST_METHOD(FunctorThrow_ctor_Copy) {
-    Mso::FunctorThrow<int(int, int)> f1 = [](int x, int y) noexcept { return x + y; };
+    Mso::FunctorThrow<int(int, int)> f1 = [](int x, int y) noexcept {
+      return x + y;
+    };
     Mso::FunctorThrow<int(int, int)> f2(f1);
     TestCheck(!f1.IsEmpty());
     TestCheck(f1 == f2);
   }
 
   TEST_METHOD(FunctorThrow_ctor_Move) {
-    Mso::FunctorThrow<int(int, int)> f1 = [](int x, int y) noexcept { return x + y; };
+    Mso::FunctorThrow<int(int, int)> f1 = [](int x, int y) noexcept {
+      return x + y;
+    };
     Mso::FunctorThrow<int(int, int)> f2(f1); // copy of f1
     Mso::FunctorThrow<int(int, int)> f3(std::move(f1));
     TestCheck(f1.IsEmpty());
@@ -621,20 +669,26 @@ TEST_CLASS(FunctorTest) {
   }
 
   TEST_METHOD(FunctorThrow_ctor_Lambda) {
-    Mso::FunctorThrow<int(int, int)> f1 = [](int x, int y) noexcept { return x + y; };
+    Mso::FunctorThrow<int(int, int)> f1 = [](int x, int y) noexcept {
+      return x + y;
+    };
     TestCheck(!f1.IsEmpty());
     TestCheckEqual(5, f1(2, 3));
   }
 
   TEST_METHOD(FunctorThrow_ctor_Lambda_copy) {
-    auto lambda = [](int x, int y) noexcept { return x + y; };
+    auto lambda = [](int x, int y) noexcept {
+      return x + y;
+    };
     Mso::FunctorThrow<int(int, int)> f1(lambda);
     TestCheck(!f1.IsEmpty());
     TestCheckEqual(5, f1(2, 3));
   }
 
   TEST_METHOD(FunctorThrow_ctor_Lambda_move) {
-    auto lambda = [](int x, int y) noexcept { return x + y; };
+    auto lambda = [](int x, int y) noexcept {
+      return x + y;
+    };
     Mso::FunctorThrow<int(int, int)> f1(std::move(lambda));
     TestCheck(!f1.IsEmpty());
     TestCheckEqual(5, f1(2, 3));
@@ -673,7 +727,7 @@ TEST_CLASS(FunctorTest) {
   }
 
   TEST_METHOD(FunctorThrow_ctor_MutableLambda) {
-    Mso::FunctorThrow<int()> increment([i = 0]() mutable noexcept -> int { return i++; });
+    Mso::FunctorThrow<int()> increment([i = 0]() mutable noexcept->int { return i++; });
 
     TestCheckEqual(0, increment());
     TestCheckEqual(1, increment());
@@ -682,7 +736,7 @@ TEST_CLASS(FunctorTest) {
   TEST_METHOD(FunctorThrow_ctor_MutableLambda_NoCapture) {
     static int i = 0;
     i = 0;
-    Mso::FunctorThrow<int()> increment([]() mutable noexcept -> int { return i++; });
+    Mso::FunctorThrow<int()> increment([]() mutable noexcept->int { return i++; });
 
     TestCheckEqual(0, increment());
     TestCheckEqual(1, increment());
@@ -697,7 +751,7 @@ TEST_CLASS(FunctorTest) {
   TEST_METHOD(FunctorThrow_ctor_StdFunctionCopy) {
     int callCount = 0;
     int value = 0;
-    auto func = std::function<int(int)>([&callCount, &value](int v) noexcept {
+    auto func = std::function<int(int)>([&callCount, &value ](int v) noexcept {
       ++callCount;
       value = v;
       return v;
@@ -711,7 +765,7 @@ TEST_CLASS(FunctorTest) {
   TEST_METHOD(FunctorThrow_ctor_ConstStdFunctionCopy) {
     int callCount = 0;
     int value = 0;
-    const auto func = std::function<int(int)>([&callCount, &value](int v) noexcept {
+    const auto func = std::function<int(int)>([&callCount, &value ](int v) noexcept {
       ++callCount;
       value = v;
       return v;
@@ -725,7 +779,7 @@ TEST_CLASS(FunctorTest) {
   TEST_METHOD(FunctorThrow_ctor_StdFunctionMove) {
     int callCount = 0;
     int value = 0;
-    auto func = std::function<int(int)>([&callCount, &value](int v) noexcept {
+    auto func = std::function<int(int)>([&callCount, &value ](int v) noexcept {
       ++callCount;
       value = v;
       return v;
@@ -759,37 +813,43 @@ TEST_CLASS(FunctorTest) {
 
   TEST_METHOD(FunctorThrow_ctor_StdFunctionCopy_DifferentSignature_PassToMethod) {
     int callCount = 0;
-    auto func = std::function<void(Mso::CntPtr<StructParam>)>(
-        [&callCount](Mso::CntPtr<StructParam>) noexcept { ++callCount; });
+    auto func =
+        std::function<void(Mso::CntPtr<StructParam>)>([&callCount](Mso::CntPtr<StructParam>) noexcept { ++callCount; });
     MyFunctorThrowExecutor::Execute(func);
     TestCheckEqual(1, callCount);
   }
 
   TEST_METHOD(FunctorThrow_ctor_ConstStdFunctionCopy_DifferentSignature_PassToMethod) {
     int callCount = 0;
-    const auto func = std::function<void(Mso::CntPtr<StructParam>)>(
-        [&callCount](Mso::CntPtr<StructParam>) noexcept { ++callCount; });
+    const auto func =
+        std::function<void(Mso::CntPtr<StructParam>)>([&callCount](Mso::CntPtr<StructParam>) noexcept { ++callCount; });
     MyFunctorThrowExecutor::Execute(func);
     TestCheckEqual(1, callCount);
   }
 
   TEST_METHOD(FunctorThrow_ctor_StdFunctionMove_DifferentSignature_PassToMethod) {
     int callCount = 0;
-    auto func = std::function<void(Mso::CntPtr<StructParam>)>(
-        [&callCount](Mso::CntPtr<StructParam>) noexcept { ++callCount; });
+    auto func =
+        std::function<void(Mso::CntPtr<StructParam>)>([&callCount](Mso::CntPtr<StructParam>) noexcept { ++callCount; });
     MyFunctorThrowExecutor::Execute(std::move(func));
     TestCheckEqual(1, callCount);
   }
 
   TEST_METHOD(FunctorThrow_Assign_nullptr) {
-    Mso::FunctorThrow<int(int, int)> f1 = [](int x, int y) noexcept { return x + y; };
+    Mso::FunctorThrow<int(int, int)> f1 = [](int x, int y) noexcept {
+      return x + y;
+    };
     f1 = nullptr;
     TestCheck(f1.IsEmpty());
   }
 
   TEST_METHOD(FunctorThrow_Assign_Copy) {
-    Mso::FunctorThrow<int(int, int)> f1 = [](int x, int y) noexcept { return x + y; };
-    Mso::FunctorThrow<int(int, int)> f2 = [](int x, int y) noexcept { return x - y; };
+    Mso::FunctorThrow<int(int, int)> f1 = [](int x, int y) noexcept {
+      return x + y;
+    };
+    Mso::FunctorThrow<int(int, int)> f2 = [](int x, int y) noexcept {
+      return x - y;
+    };
     TestCheck(f1 != f2);
     Mso::FunctorThrow<int(int, int)> f3(f1); // copy of f1
     f1 = f2;
@@ -799,8 +859,12 @@ TEST_CLASS(FunctorTest) {
   }
 
   TEST_METHOD(FunctorThrow_Assign_Move) {
-    Mso::FunctorThrow<int(int, int)> f1 = [](int x, int y) noexcept { return x + y; };
-    Mso::FunctorThrow<int(int, int)> f2 = [](int x, int y) noexcept { return x - y; };
+    Mso::FunctorThrow<int(int, int)> f1 = [](int x, int y) noexcept {
+      return x + y;
+    };
+    Mso::FunctorThrow<int(int, int)> f2 = [](int x, int y) noexcept {
+      return x - y;
+    };
     Mso::FunctorThrow<int(int, int)> f3(f1); // copy of f1
     Mso::FunctorThrow<int(int, int)> f4(f2); // copy of f2
     f1 = std::move(f2);
@@ -838,7 +902,9 @@ TEST_CLASS(FunctorTest) {
 
   TEST_METHOD(FunctorThrow_operator_call_Void) {
     int result = 0;
-    Mso::FunctorThrow<void(int, int)> f1 = [&result](int x, int y) noexcept { result = x + y; };
+    Mso::FunctorThrow<void(int, int)> f1 = [&result](int x, int y) noexcept {
+      result = x + y;
+    };
     TestCheck(!f1.IsEmpty());
     f1(4, 6);
     TestCheckEqual(10, result);
@@ -851,22 +917,30 @@ TEST_CLASS(FunctorTest) {
   }
 
   TEST_METHOD(FunctorThrow_IsEmpty) {
-    Mso::FunctorThrow<int(int, int)> f1 = [](int x, int y) noexcept { return x + y; };
+    Mso::FunctorThrow<int(int, int)> f1 = [](int x, int y) noexcept {
+      return x + y;
+    };
     Mso::FunctorThrow<int(int, int)> f2;
     TestCheck(!f1.IsEmpty());
     TestCheck(f2.IsEmpty());
   }
 
   TEST_METHOD(FunctorThrow_operator_bool) {
-    Mso::FunctorThrow<int(int, int)> f1 = [](int x, int y) noexcept { return x + y; };
+    Mso::FunctorThrow<int(int, int)> f1 = [](int x, int y) noexcept {
+      return x + y;
+    };
     Mso::FunctorThrow<int(int, int)> f2;
     TestCheck(f1);
     TestCheck(!f2);
   }
 
   TEST_METHOD(FunctorThrow_Swap) {
-    Mso::FunctorThrow<int(int, int)> f1 = [](int x, int y) noexcept { return x + y; };
-    Mso::FunctorThrow<int(int, int)> f2 = [](int x, int y) noexcept { return x - y; };
+    Mso::FunctorThrow<int(int, int)> f1 = [](int x, int y) noexcept {
+      return x + y;
+    };
+    Mso::FunctorThrow<int(int, int)> f2 = [](int x, int y) noexcept {
+      return x - y;
+    };
     Mso::FunctorThrow<int(int, int)> f3(f1); // copy of f1
     Mso::FunctorThrow<int(int, int)> f4(f2); // copy of f2
     f1.Swap(f2);
@@ -876,8 +950,12 @@ TEST_CLASS(FunctorTest) {
 
   TEST_METHOD(FunctorThrow_std_swap) {
     using std::swap; // The typical pattern how to call the swap method.
-    Mso::FunctorThrow<int(int, int)> f1 = [](int x, int y) noexcept { return x + y; };
-    Mso::FunctorThrow<int(int, int)> f2 = [](int x, int y) noexcept { return x - y; };
+    Mso::FunctorThrow<int(int, int)> f1 = [](int x, int y) noexcept {
+      return x + y;
+    };
+    Mso::FunctorThrow<int(int, int)> f2 = [](int x, int y) noexcept {
+      return x - y;
+    };
     Mso::FunctorThrow<int(int, int)> f3(f1); // copy of f1
     Mso::FunctorThrow<int(int, int)> f4(f2); // copy of f2
     swap(f1, f2); // Never use the std prefix for swap: the swap can be overridden in the namespace of T.
@@ -886,14 +964,18 @@ TEST_CLASS(FunctorTest) {
   }
 
   TEST_METHOD(FunctorThrow_Get) {
-    Mso::FunctorThrow<int(int, int)> f1 = [](int x, int y) noexcept { return x + y; };
+    Mso::FunctorThrow<int(int, int)> f1 = [](int x, int y) noexcept {
+      return x + y;
+    };
     Mso::FunctorThrow<int(int, int)> f2;
     TestCheck(f1.Get() != nullptr);
     TestCheck(f2.Get() == nullptr);
   }
 
   TEST_METHOD(FunctorThrow_Detach) {
-    Mso::FunctorThrow<int(int, int)> f1 = [](int x, int y) noexcept { return x + y; };
+    Mso::FunctorThrow<int(int, int)> f1 = [](int x, int y) noexcept {
+      return x + y;
+    };
 
     Mso::CntPtr<Mso::IFunctorThrow<int, int, int>> impl{f1.Detach(), Mso::AttachTag};
     TestCheck(f1.IsEmpty());
@@ -902,8 +984,12 @@ TEST_CLASS(FunctorTest) {
 
   TEST_METHOD(FunctorThrow_operator_Equal) {
     using std::swap; // The typical pattern how to call the swap method.
-    Mso::FunctorThrow<int(int, int)> f1 = [](int x, int y) noexcept { return x + y; };
-    Mso::FunctorThrow<int(int, int)> f2 = [](int x, int y) noexcept { return x - y; };
+    Mso::FunctorThrow<int(int, int)> f1 = [](int x, int y) noexcept {
+      return x + y;
+    };
+    Mso::FunctorThrow<int(int, int)> f2 = [](int x, int y) noexcept {
+      return x - y;
+    };
     Mso::FunctorThrow<int(int, int)> f3(f1); // copy of f1
     Mso::FunctorThrow<int(int, int)> f4;
     TestCheck(f1 == f3);
@@ -980,7 +1066,9 @@ TEST_CLASS(FunctorTest) {
 
   TEST_METHOD(Functor_MoveOnlyLambda) {
     std::unique_ptr<int> uniquePtr = std::make_unique<int>(123450);
-    auto lambda = [capturedUniquePtr = std::move(uniquePtr)](int x) noexcept { return *capturedUniquePtr + x; };
+    auto lambda = [capturedUniquePtr = std::move(uniquePtr)](int x) noexcept {
+      return *capturedUniquePtr + x;
+    };
 
     Mso::Functor<int(int)> f1 = std::move(lambda);
 
@@ -991,7 +1079,7 @@ TEST_CLASS(FunctorTest) {
   TEST_METHOD(Functor_LambdaMoveOnlyParam) {
     std::unique_ptr<int> uniquePtr = std::make_unique<int>(123450);
 
-    Mso::Functor<int(std::unique_ptr<int> &&)> f1 = [](std::unique_ptr<int> &&uniquePtrParam) noexcept {
+    Mso::Functor<int(std::unique_ptr<int> &&)> f1 = [](std::unique_ptr<int> && uniquePtrParam) noexcept {
       std::unique_ptr<int> movedPtr = std::move(uniquePtrParam);
       return *movedPtr + 6;
     };
@@ -1090,14 +1178,18 @@ TestClassComponent(FunctorNoexceptTest, Mso.Functor.Noexcept) TEST_CLASS(Functor
   }
 
   TEST_METHOD(Functor_noexcept_ctor_Copy) {
-    Mso::Functor<int(int, int) noexcept> f1 = [](int x, int y) noexcept { return x + y; };
+    Mso::Functor<int(int, int) noexcept> f1 = [](int x, int y) noexcept {
+      return x + y;
+    };
     Mso::Functor<int(int, int) noexcept> f2(f1);
     TestCheck(!f1.IsEmpty());
     TestCheck(f1 == f2);
   }
 
   TEST_METHOD(Functor_noexcept_ctor_Move) {
-    Mso::Functor<int(int, int) noexcept> f1 = [](int x, int y) noexcept { return x + y; };
+    Mso::Functor<int(int, int) noexcept> f1 = [](int x, int y) noexcept {
+      return x + y;
+    };
     Mso::Functor<int(int, int) noexcept> f2(f1); // copy of f1
     Mso::Functor<int(int, int) noexcept> f3(std::move(f1));
     TestCheck(f1.IsEmpty());
@@ -1180,20 +1272,26 @@ TestClassComponent(FunctorNoexceptTest, Mso.Functor.Noexcept) TEST_CLASS(Functor
   }
 
   TEST_METHOD(Functor_noexcept_ctor_Lambda) {
-    Mso::Functor<int(int, int) noexcept> f1 = [](int x, int y) noexcept { return x + y; };
+    Mso::Functor<int(int, int) noexcept> f1 = [](int x, int y) noexcept {
+      return x + y;
+    };
     TestCheck(!f1.IsEmpty());
     TestCheckEqual(5, f1(2, 3));
   }
 
   TEST_METHOD(Functor_noexcept_ctor_Lambda_copy) {
-    auto lambda = [](int x, int y) noexcept { return x + y; };
+    auto lambda = [](int x, int y) noexcept {
+      return x + y;
+    };
     Mso::Functor<int(int, int) noexcept> f1(lambda);
     TestCheck(!f1.IsEmpty());
     TestCheckEqual(5, f1(2, 3));
   }
 
   TEST_METHOD(Functor_noexcept_ctor_Lambda_move) {
-    auto lambda = [](int x, int y) noexcept { return x + y; };
+    auto lambda = [](int x, int y) noexcept {
+      return x + y;
+    };
     Mso::Functor<int(int, int) noexcept> f1(std::move(lambda));
     TestCheck(!f1.IsEmpty());
     TestCheckEqual(5, f1(2, 3));
@@ -1240,7 +1338,7 @@ TestClassComponent(FunctorNoexceptTest, Mso.Functor.Noexcept) TEST_CLASS(Functor
   TEST_METHOD(Functor_noexcept_ctor_StdFunctionCopy) {
     int callCount = 0;
     int value = 0;
-    auto func = std::function<int(int)>([&callCount, &value](int v) noexcept {
+    auto func = std::function<int(int)>([&callCount, &value ](int v) noexcept {
       ++callCount;
       value = v;
       return v;
@@ -1254,7 +1352,7 @@ TestClassComponent(FunctorNoexceptTest, Mso.Functor.Noexcept) TEST_CLASS(Functor
   TEST_METHOD(Functor_noexcept_ctor_ConstStdFunctionCopy) {
     int callCount = 0;
     int value = 0;
-    const auto func = std::function<int(int)>([&callCount, &value](int v) noexcept {
+    const auto func = std::function<int(int)>([&callCount, &value ](int v) noexcept {
       ++callCount;
       value = v;
       return v;
@@ -1268,7 +1366,7 @@ TestClassComponent(FunctorNoexceptTest, Mso.Functor.Noexcept) TEST_CLASS(Functor
   TEST_METHOD(Functor_noexcept_ctor_StdFunctionMove) {
     int callCount = 0;
     int value = 0;
-    auto func = std::function<int(int)>([&callCount, &value](int v) noexcept {
+    auto func = std::function<int(int)>([&callCount, &value ](int v) noexcept {
       ++callCount;
       value = v;
       return v;
@@ -1302,37 +1400,43 @@ TestClassComponent(FunctorNoexceptTest, Mso.Functor.Noexcept) TEST_CLASS(Functor
 
   TEST_METHOD(Functor_noexcept_ctor_StdFunctionCopy_DifferentSignature_PassToMethod) {
     int callCount = 0;
-    auto func = std::function<void(Mso::CntPtr<StructParam>)>(
-        [&callCount](Mso::CntPtr<StructParam>) noexcept { ++callCount; });
+    auto func =
+        std::function<void(Mso::CntPtr<StructParam>)>([&callCount](Mso::CntPtr<StructParam>) noexcept { ++callCount; });
     MyFunctorExecutor::Execute({func, Mso::TerminateOnException});
     TestCheckEqual(1, callCount);
   }
 
   TEST_METHOD(Functor_noexcept_ctor_ConstStdFunctionCopy_DifferentSignature_PassToMethod) {
     int callCount = 0;
-    const auto func = std::function<void(Mso::CntPtr<StructParam>)>(
-        [&callCount](Mso::CntPtr<StructParam>) noexcept { ++callCount; });
+    const auto func =
+        std::function<void(Mso::CntPtr<StructParam>)>([&callCount](Mso::CntPtr<StructParam>) noexcept { ++callCount; });
     MyFunctorExecutor::Execute({func, Mso::TerminateOnException});
     TestCheckEqual(1, callCount);
   }
 
   TEST_METHOD(Functor_noexcept_ctor_StdFunctionMove_DifferentSignature_PassToMethod) {
     int callCount = 0;
-    auto func = std::function<void(Mso::CntPtr<StructParam>)>(
-        [&callCount](Mso::CntPtr<StructParam>) noexcept { ++callCount; });
+    auto func =
+        std::function<void(Mso::CntPtr<StructParam>)>([&callCount](Mso::CntPtr<StructParam>) noexcept { ++callCount; });
     MyFunctorExecutor::Execute({std::move(func), Mso::TerminateOnException});
     TestCheckEqual(1, callCount);
   }
 
   TEST_METHOD(Functor_noexcept_Assign_nullptr) {
-    Mso::Functor<int(int, int) noexcept> f1 = [](int x, int y) noexcept { return x + y; };
+    Mso::Functor<int(int, int) noexcept> f1 = [](int x, int y) noexcept {
+      return x + y;
+    };
     f1 = nullptr;
     TestCheck(f1.IsEmpty());
   }
 
   TEST_METHOD(Functor_noexcept_Assign_Copy) {
-    Mso::Functor<int(int, int) noexcept> f1 = [](int x, int y) noexcept { return x + y; };
-    Mso::Functor<int(int, int) noexcept> f2 = [](int x, int y) noexcept { return x - y; };
+    Mso::Functor<int(int, int) noexcept> f1 = [](int x, int y) noexcept {
+      return x + y;
+    };
+    Mso::Functor<int(int, int) noexcept> f2 = [](int x, int y) noexcept {
+      return x - y;
+    };
     TestCheck(f1 != f2);
     Mso::Functor<int(int, int) noexcept> f3(f1); // copy of f1
     f1 = f2;
@@ -1342,8 +1446,12 @@ TestClassComponent(FunctorNoexceptTest, Mso.Functor.Noexcept) TEST_CLASS(Functor
   }
 
   TEST_METHOD(Functor_noexcept_Assign_Move) {
-    Mso::Functor<int(int, int) noexcept> f1 = [](int x, int y) noexcept { return x + y; };
-    Mso::Functor<int(int, int) noexcept> f2 = [](int x, int y) noexcept { return x - y; };
+    Mso::Functor<int(int, int) noexcept> f1 = [](int x, int y) noexcept {
+      return x + y;
+    };
+    Mso::Functor<int(int, int) noexcept> f2 = [](int x, int y) noexcept {
+      return x - y;
+    };
     Mso::Functor<int(int, int) noexcept> f3(f1); // copy of f1
     Mso::Functor<int(int, int) noexcept> f4(f2); // copy of f2
     f1 = std::move(f2);
@@ -1364,7 +1472,7 @@ TestClassComponent(FunctorNoexceptTest, Mso.Functor.Noexcept) TEST_CLASS(Functor
   }
 
   TESTMETHOD_REQUIRES_SEH(Functor_operator_call_Throws) {
-    Mso::Functor<int(int) noexcept> f1 = ([](int) noexcept -> int {
+    Mso::Functor<int(int) noexcept> f1 = ([](int) noexcept->int {
       OACR_NOEXCEPT_MAYTERMINATE;
 #pragma warning(suppress : 4297) // Suppress warning about throwing in noexcept function.
       throw std::runtime_error("Test error");
@@ -1385,7 +1493,9 @@ TestClassComponent(FunctorNoexceptTest, Mso.Functor.Noexcept) TEST_CLASS(Functor
 
   TEST_METHOD(Functor_noexcept_operator_call_Void) {
     int result = 0;
-    Mso::Functor<void(int, int) noexcept> f1 = [&result](int x, int y) noexcept { result = x + y; };
+    Mso::Functor<void(int, int) noexcept> f1 = [&result](int x, int y) noexcept {
+      result = x + y;
+    };
     TestCheck(!f1.IsEmpty());
     f1(4, 6);
     TestCheckEqual(10, result);
@@ -1398,22 +1508,30 @@ TestClassComponent(FunctorNoexceptTest, Mso.Functor.Noexcept) TEST_CLASS(Functor
   }
 
   TEST_METHOD(Functor_noexcept_IsEmpty) {
-    Mso::Functor<int(int, int) noexcept> f1 = [](int x, int y) noexcept { return x + y; };
+    Mso::Functor<int(int, int) noexcept> f1 = [](int x, int y) noexcept {
+      return x + y;
+    };
     Mso::Functor<int(int, int) noexcept> f2;
     TestCheck(!f1.IsEmpty());
     TestCheck(f2.IsEmpty());
   }
 
   TEST_METHOD(Functor_noexcept_operator_bool) {
-    Mso::Functor<int(int, int) noexcept> f1 = [](int x, int y) noexcept { return x + y; };
+    Mso::Functor<int(int, int) noexcept> f1 = [](int x, int y) noexcept {
+      return x + y;
+    };
     Mso::Functor<int(int, int) noexcept> f2;
     TestCheck(f1);
     TestCheck(!f2);
   }
 
   TEST_METHOD(Functor_noexcept_Swap) {
-    Mso::Functor<int(int, int) noexcept> f1 = [](int x, int y) noexcept { return x + y; };
-    Mso::Functor<int(int, int) noexcept> f2 = [](int x, int y) noexcept { return x - y; };
+    Mso::Functor<int(int, int) noexcept> f1 = [](int x, int y) noexcept {
+      return x + y;
+    };
+    Mso::Functor<int(int, int) noexcept> f2 = [](int x, int y) noexcept {
+      return x - y;
+    };
     Mso::Functor<int(int, int) noexcept> f3(f1); // copy of f1
     Mso::Functor<int(int, int) noexcept> f4(f2); // copy of f2
     f1.Swap(f2);
@@ -1423,8 +1541,12 @@ TestClassComponent(FunctorNoexceptTest, Mso.Functor.Noexcept) TEST_CLASS(Functor
 
   TEST_METHOD(Functor_noexcept_std_swap) {
     using std::swap; // The typical pattern how to call the swap method.
-    Mso::Functor<int(int, int) noexcept> f1 = [](int x, int y) noexcept { return x + y; };
-    Mso::Functor<int(int, int) noexcept> f2 = [](int x, int y) noexcept { return x - y; };
+    Mso::Functor<int(int, int) noexcept> f1 = [](int x, int y) noexcept {
+      return x + y;
+    };
+    Mso::Functor<int(int, int) noexcept> f2 = [](int x, int y) noexcept {
+      return x - y;
+    };
     Mso::Functor<int(int, int) noexcept> f3(f1); // copy of f1
     Mso::Functor<int(int, int) noexcept> f4(f2); // copy of f2
     swap(f1, f2); // Never use the std prefix for swap: the swap can be overridden in the namespace of T.
@@ -1433,14 +1555,18 @@ TestClassComponent(FunctorNoexceptTest, Mso.Functor.Noexcept) TEST_CLASS(Functor
   }
 
   TEST_METHOD(Functor_noexcept_Get) {
-    Mso::Functor<int(int, int) noexcept> f1 = [](int x, int y) noexcept { return x + y; };
+    Mso::Functor<int(int, int) noexcept> f1 = [](int x, int y) noexcept {
+      return x + y;
+    };
     Mso::Functor<int(int, int) noexcept> f2;
     TestCheck(f1.Get() != nullptr);
     TestCheck(f2.Get() == nullptr);
   }
 
   TEST_METHOD(Functor_noexcept_Detach) {
-    Mso::Functor<int(int, int) noexcept> f1 = [](int x, int y) noexcept { return x + y; };
+    Mso::Functor<int(int, int) noexcept> f1 = [](int x, int y) noexcept {
+      return x + y;
+    };
 
     Mso::CntPtr<Mso::IFunctor<int, int, int>> impl{f1.Detach(), Mso::AttachTag};
     TestCheck(f1.IsEmpty());
@@ -1449,8 +1575,12 @@ TestClassComponent(FunctorNoexceptTest, Mso.Functor.Noexcept) TEST_CLASS(Functor
 
   TEST_METHOD(Functor_noexcept_operator_Equal) {
     using std::swap; // The typical pattern how to call the swap method.
-    Mso::Functor<int(int, int) noexcept> f1 = [](int x, int y) noexcept { return x + y; };
-    Mso::Functor<int(int, int) noexcept> f2 = [](int x, int y) noexcept { return x - y; };
+    Mso::Functor<int(int, int) noexcept> f1 = [](int x, int y) noexcept {
+      return x + y;
+    };
+    Mso::Functor<int(int, int) noexcept> f2 = [](int x, int y) noexcept {
+      return x - y;
+    };
     Mso::Functor<int(int, int) noexcept> f3(f1); // copy of f1
     Mso::Functor<int(int, int) noexcept> f4;
     TestCheck(f1 == f3);

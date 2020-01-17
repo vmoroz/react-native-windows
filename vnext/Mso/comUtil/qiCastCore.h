@@ -145,8 +145,7 @@ HRESULT HrQueryFrom(Mso::CntPtr<T> &target, const TOther &other, const IID &riid
 }
 
 template <typename T, typename TOther>
-HRESULT
-HrQueryFrom(Mso::CntPtr<T> &target, const Mso::CntPtr<TOther> &other, const IID &riid = __uuidof(T)) noexcept {
+HRESULT HrQueryFrom(Mso::CntPtr<T> &target, const Mso::CntPtr<TOther> &other, const IID &riid = __uuidof(T)) noexcept {
   if (other == nullptr)
     return E_POINTER;
   return const_cast<Mso::CntPtr<TOther> &>(other)->QueryInterface(

@@ -32,7 +32,7 @@ TEST_CLASS_EX (WhenAnyTest, LibletAwareMemLeakDetection) {
       return 5;
     });
 
-    auto fr = Mso::WhenAny({f1, f2, f3}).Then([](int r) noexcept -> int { return r; });
+    auto fr = Mso::WhenAny({f1, f2, f3}).Then([](int r) noexcept->int { return r; });
 
     TestCheckEqual(3, Mso::FutureWaitAndGetValue(fr));
     finished13.Set();
@@ -62,7 +62,7 @@ TEST_CLASS_EX (WhenAnyTest, LibletAwareMemLeakDetection) {
       return 5;
     });
 
-    auto fr = Mso::WhenAny({f1, f2, f3}).Then([](Mso::Maybe<int> &&result) noexcept {
+    auto fr = Mso::WhenAny({f1, f2, f3}).Then([](Mso::Maybe<int> && result) noexcept {
       TestCheck(result.IsError());
       TestCheck(Mso::CancellationErrorProvider().IsOwnedErrorCode(result.GetError()));
       return 42;
@@ -119,7 +119,7 @@ TEST_CLASS_EX (WhenAnyTest, LibletAwareMemLeakDetection) {
                                     return 5;
                                   })};
 
-    auto fr = Mso::WhenAny(futures).Then([](Mso::Maybe<int> &&result) noexcept {
+    auto fr = Mso::WhenAny(futures).Then([](Mso::Maybe<int> && result) noexcept {
       TestCheck(result.IsError());
       TestCheck(Mso::CancellationErrorProvider().IsOwnedErrorCode(result.GetError()));
       return 42;
@@ -151,7 +151,7 @@ TEST_CLASS_EX (WhenAnyTest, LibletAwareMemLeakDetection) {
                                                    return 5;
                                                  })};
 
-    auto fr = Mso::WhenAny(futures).Then([](int r) noexcept -> int { return r; });
+    auto fr = Mso::WhenAny(futures).Then([](int r) noexcept->int { return r; });
 
     TestCheckEqual(3, Mso::FutureWaitAndGetValue(fr));
     finished13.Set();
@@ -182,7 +182,7 @@ TEST_CLASS_EX (WhenAnyTest, LibletAwareMemLeakDetection) {
                                         return 5;
                                       })};
 
-    auto fr = Mso::WhenAny(futures).Then([](Mso::Maybe<int> &&result) noexcept {
+    auto fr = Mso::WhenAny(futures).Then([](Mso::Maybe<int> && result) noexcept {
       TestCheck(result.IsError());
       TestCheck(Mso::CancellationErrorProvider().IsOwnedErrorCode(result.GetError()));
       return 42;
@@ -252,7 +252,7 @@ TEST_CLASS_EX (WhenAnyTest, LibletAwareMemLeakDetection) {
       r3 = 5;
     });
 
-    auto fr = Mso::WhenAny({f1, f2, f3}).Then([&](Mso::Maybe<void> &&result) noexcept {
+    auto fr = Mso::WhenAny({f1, f2, f3}).Then([&](Mso::Maybe<void> && result) noexcept {
       TestCheck(result.IsError());
       TestCheck(Mso::CancellationErrorProvider().IsOwnedErrorCode(result.GetError()));
       return 42;
@@ -317,7 +317,7 @@ TEST_CLASS_EX (WhenAnyTest, LibletAwareMemLeakDetection) {
                                      r3 = 5;
                                    })};
 
-    auto fr = Mso::WhenAny(futures).Then([&](Mso::Maybe<void> &&result) noexcept {
+    auto fr = Mso::WhenAny(futures).Then([&](Mso::Maybe<void> && result) noexcept {
       TestCheck(result.IsError());
       TestCheck(Mso::CancellationErrorProvider().IsOwnedErrorCode(result.GetError()));
       return 42;
@@ -388,7 +388,7 @@ TEST_CLASS_EX (WhenAnyTest, LibletAwareMemLeakDetection) {
           r3 = 5;
         })};
 
-    auto fr = Mso::WhenAny(futures).Then([&](Mso::Maybe<void> &&result) noexcept {
+    auto fr = Mso::WhenAny(futures).Then([&](Mso::Maybe<void> && result) noexcept {
       TestCheck(result.IsError());
       TestCheck(Mso::CancellationErrorProvider().IsOwnedErrorCode(result.GetError()));
       return 42;

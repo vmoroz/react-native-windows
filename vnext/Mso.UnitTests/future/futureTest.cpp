@@ -188,7 +188,7 @@ TEST_CLASS_EX (Future2Test, LibletAwareMemLeakDetection) {
 
   TEST_METHOD(Futureint_Then_Moves) {
     Mso::Promise<std::unique_ptr<int>> p1;
-    auto f1 = p1.AsFuture().Then(Mso::Executors::Concurrent{}, [&](std::unique_ptr<int> &value) noexcept {
+    auto f1 = p1.AsFuture().Then(Mso::Executors::Concurrent{}, [&](std::unique_ptr<int> & value) noexcept {
       std::unique_ptr<int> v = std::move(value); // We can move value because only one continuation is allowed.
       TestCheck(*v == 5);
     });
@@ -224,7 +224,7 @@ TEST_CLASS_EX (Future2Test, LibletAwareMemLeakDetection) {
     Mso::Promise<int> p1;
     p1.SetValue(5);
 
-    auto f1 = p1.AsFuture().Then(Mso::Executors::Concurrent{}, [&, ob = std::move(observer)](int &value) noexcept {
+    auto f1 = p1.AsFuture().Then(Mso::Executors::Concurrent{}, [&, ob = std::move(observer) ](int &value) noexcept {
       TestCheck(value == 5);
       ;
     });
@@ -331,8 +331,8 @@ TEST_CLASS_EX (Future2Test, LibletAwareMemLeakDetection) {
     Mso::Promise<std::unique_ptr<int>> p1;
     auto f1 =
         p1.AsFuture()
-            .Then(Mso::Executors::Concurrent{}, [&](std::unique_ptr<int> &value) noexcept { return std::move(value); })
-            .Then(Mso::Executors::Concurrent{}, [&](std::unique_ptr<int> &value) noexcept {
+            .Then(Mso::Executors::Concurrent{}, [&](std::unique_ptr<int> & value) noexcept { return std::move(value); })
+            .Then(Mso::Executors::Concurrent{}, [&](std::unique_ptr<int> & value) noexcept {
               std::unique_ptr<int> v = std::move(value); // We can move value because only one continuation is allowed.
               TestCheck(*v == 5);
             });
@@ -388,9 +388,10 @@ TEST_CLASS_EX (Future2Test, LibletAwareMemLeakDetection) {
     bool isFutureCompleted = false;
     bool isCancelCalled = false;
     Mso::Promise<int> p1;
-    auto f1 = p1.AsFuture().Then(
-        MockExecutorOnCancel(/*shouldVEC:*/ false, &isCancelCalled),
-        [&](int /*value*/) noexcept { isFutureCompleted = true; });
+    auto f1 =
+        p1.AsFuture().Then(MockExecutorOnCancel(/*shouldVEC:*/ false, &isCancelCalled), [&](int /*value*/) noexcept {
+          isFutureCompleted = true;
+        });
     p1.SetValue(5); // MockExecutorOnCancel will check synchronously VEC for OnCancel.
     auto result = Mso::FutureWait(f1);
     TestCheck(result.IsError());
@@ -454,7 +455,7 @@ TEST_CLASS_EX (Future2Test, LibletAwareMemLeakDetection) {
     auto f1 = p1.AsFuture()
                   .Then(
                       Mso::Executors::Concurrent{},
-                      [&](std::unique_ptr<int> &ptr) noexcept {
+                      [&](std::unique_ptr<int> & ptr) noexcept {
                         return Mso::PostFuture(Mso::Executors::Concurrent{}, [&]() noexcept {
                           // We can capture ptr by reference because the outer future is in progress until this future
                           // finishes.
@@ -673,9 +674,11 @@ TEST_CLASS_EX (Future2Test, LibletAwareMemLeakDetection) {
 
   TEST_METHOD(Futurevoid_Then) {
     Mso::Promise<void> p1;
-    auto f1 = p1.AsFuture().Then(Mso::Executors::Concurrent{}, [&]() noexcept {
+    auto f1 = p1.AsFuture().Then(
+        Mso::Executors::Concurrent{},
+        [&]() noexcept {
 
-    });
+        });
 
     p1.SetValue();
     Mso::FutureWait(f1);
@@ -705,7 +708,7 @@ TEST_CLASS_EX (Future2Test, LibletAwareMemLeakDetection) {
     Mso::Promise<void> p1;
     p1.SetValue();
 
-    auto f1 = p1.AsFuture().Then(Mso::Executors::Concurrent{}, [&, ob = std::move(observer)]() noexcept { ; });
+    auto f1 = p1.AsFuture().Then(Mso::Executors::Concurrent{}, [&, ob = std::move(observer) ]() noexcept { ; });
 
     Mso::FutureWait(f1);
 
@@ -837,9 +840,10 @@ TEST_CLASS_EX (Future2Test, LibletAwareMemLeakDetection) {
     bool isFutureCompleted = false;
     bool isCancelCalled = false;
     Mso::Promise<void> p1;
-    auto f1 = p1.AsFuture().Then(
-        MockExecutorOnCancel(/*shouldVEC:*/ false, &isCancelCalled),
-        [&](void /*value*/) noexcept { isFutureCompleted = true; });
+    auto f1 =
+        p1.AsFuture().Then(MockExecutorOnCancel(/*shouldVEC:*/ false, &isCancelCalled), [&](void /*value*/) noexcept {
+          isFutureCompleted = true;
+        });
     p1.SetValue(); // MockExecutorOnCancel will check synchronously VEC for OnCancel.
     auto result = Mso::FutureWait(f1);
     TestCheck(result.IsError());
@@ -876,9 +880,11 @@ TEST_CLASS_EX (Future2Test, LibletAwareMemLeakDetection) {
     p1.SetValue();
     auto f1 = p1.AsFuture();
 
-    auto fr = f1.Then(Mso::Executors::Concurrent{}, [&]() noexcept {
+    auto fr = f1.Then(
+        Mso::Executors::Concurrent{},
+        [&]() noexcept {
 
-    });
+        });
 
     Mso::FutureWait(fr);
     TestCheckCrash(f1.Then(Mso::Executors::Concurrent{}, [&](void /*value*/) noexcept {}));
@@ -890,13 +896,17 @@ TEST_CLASS_EX (Future2Test, LibletAwareMemLeakDetection) {
                   .Then(
                       Mso::Executors::Concurrent{},
                       [&]() noexcept {
-                        return Mso::PostFuture(Mso::Executors::Concurrent{}, [&]() noexcept {
+                        return Mso::PostFuture(
+                            Mso::Executors::Concurrent{},
+                            [&]() noexcept {
 
-                        });
+                            });
                       })
-                  .Then(Mso::Executors::Concurrent{}, [&]() noexcept {
+                  .Then(
+                      Mso::Executors::Concurrent{},
+                      [&]() noexcept {
 
-                  });
+                      });
 
     p1.SetValue();
     Mso::FutureWait(f1);

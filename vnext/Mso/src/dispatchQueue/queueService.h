@@ -51,11 +51,11 @@ struct QueueService : Mso::UnknownObject<Mso::RefCountStrategy::WeakRef, IDispat
   void InvokeTask(DispatchTask &&task, std::optional<std::chrono::steady_clock::time_point> endTime) noexcept override;
   void CancelTask(DispatchTask &&task) noexcept override;
 
-private:
+ private:
   bool TrySwapLocalValue(
-     SwapDispatchLocalValueCallback swapLocalValue,
-     void *tlsValue,
-     LocalValueSwapAction action) noexcept;
+      SwapDispatchLocalValueCallback swapLocalValue,
+      void *tlsValue,
+      LocalValueSwapAction action) noexcept;
 
  private:
   const Mso::CntPtr<IDispatchQueueScheduler> m_scheduler;

@@ -101,7 +101,7 @@ See the msoGuid.h for the usage guidelines.
 // __uuidof(type) implementation for Clang. In VC++ we use the native __uuidof() operator.
 #if !COMPILER_SUPPORTS_UUID
 #undef __uuidof
-#define __uuidof(type) ::Mso::Details::GuidUtils::GuidOf<type>::Value
+#define __uuidof(type)::Mso::Details::GuidUtils::GuidOf < type> ::Value
 #endif
 
 /// A macro to be used instead of __uuidof(expr). For types use __uuidof(type). E.g. __uuidof_expr(this).

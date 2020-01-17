@@ -33,7 +33,10 @@ struct LooperScheduler : Mso::UnknownObject<Mso::RefCountStrategy::WeakRef, IDis
 //=============================================================================
 
 LooperScheduler::LooperScheduler() noexcept
-    : m_looperThread{[weakSelf = Mso::WeakPtr{this}]() noexcept { RunLoop(weakSelf); }} {}
+    : m_looperThread{[weakSelf = Mso::WeakPtr{this}]() noexcept {RunLoop(weakSelf);
+} // namespace Mso
+}
+{}
 
 LooperScheduler::~LooperScheduler() noexcept {
   AwaitTermination();

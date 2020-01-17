@@ -274,7 +274,7 @@
 // special reason.
 // e.g. a wrapper function to another function that needs to be reviewed
 //_Needsreview_ __inline BOOL MsoGetStringTypeExW(LCID Locale, DWORD dwInfoType, LPCWSTR lpSrcStr, int cchSrc, LPWORD
-//lpCharType)
+// lpCharType)
 //{
 //   return OACR_REVIEWED_CALL("hannesr", GetStringTypeExW(Locale, dwInfoType, lpSrcStr, cchSrc, lpCharType));
 //}

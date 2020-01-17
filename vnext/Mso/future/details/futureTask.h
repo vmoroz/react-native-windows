@@ -198,8 +198,7 @@ struct ResultSetter<Mso::Future<T>> {
         /*CatchType:  */ CompletionTaskType>::Traits;
 
     ByteArrayView completionTaskBuffer;
-    Mso::CntPtr<IFuture> completionFuture =
-        MakeFuture(futureTraits, sizeof(CompletionTaskType), &completionTaskBuffer);
+    Mso::CntPtr<IFuture> completionFuture = MakeFuture(futureTraits, sizeof(CompletionTaskType), &completionTaskBuffer);
     ::new (completionTaskBuffer.Data()) Mso::CntPtr<IFuture>(future);
 
     Mso::GetIFuture(value)->AddContinuation(std::move(completionFuture));
