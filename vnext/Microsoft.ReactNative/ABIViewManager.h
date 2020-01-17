@@ -62,6 +62,7 @@ class ABIViewManager : public react::uwp::FrameworkElementViewManager {
 
   std::string m_name;
   ReactNative::IViewManager m_viewManager;
+  IViewManagerWithReactContext m_viewManagerWithReactContext;
   IViewManagerWithExportedViewConstants m_viewManagerWithExportedViewConstants;
   IViewManagerWithNativeProperties m_viewManagerWithNativeProperties;
   IViewManagerWithCommands m_viewManagerWithCommands;

@@ -1,7 +1,68 @@
 # Change Log - react-native-windows
 
-This log was last generated on Fri, 27 Dec 2019 17:01:20 GMT and should not be manually modified.
+This log was last generated on Thu, 16 Jan 2020 05:34:40 GMT and should not be manually modified.
 
+## 0.60.0-vnext.115
+Thu, 16 Jan 2020 05:34:40 GMT
+
+### Changes
+
+- Add initial set of React Native Patches (nick@nickgerleman.com)
+## 0.60.0-vnext.114
+Thu, 16 Jan 2020 03:02:14 GMT
+
+### Changes
+
+- convert haste imports to use relative requires (kmelmon@microsoft.com)
+## 0.60.0-vnext.113
+Wed, 15 Jan 2020 21:22:45 GMT
+
+### Changes
+
+- Upgrade to OpenSSL 1.1.1d/0. (julio.rocha@microsoft.com)
+## 0.60.0-vnext.112
+Thu, 09 Jan 2020 23:20:10 GMT
+
+### Changes
+
+- Header Refactoring Around jsireact to Unblock ms/rn (nick@nickgerleman.com)
+## 0.60.0-vnext.111
+Thu, 09 Jan 2020 22:06:05 GMT
+
+### Changes
+
+- Add GetFacebookReactInstance :: uwpInstance -> react::Instance (zihanc@microsoft.com)
+- Added unit tests for Events with JSValue args (jthysell@microsoft.com)
+## 0.60.0-vnext.110
+Wed, 08 Jan 2020 23:03:25 GMT
+
+### Changes
+
+- Image - basic svg support (mcota@microsoft.com)
+## 0.60.0-vnext.109
+Wed, 08 Jan 2020 01:43:57 GMT
+
+### Changes
+
+- Fixing bugs when using .NetNative (jthysell@microsoft.com)
+## 0.60.0-vnext.108
+Tue, 07 Jan 2020 19:44:17 GMT
+
+### Changes
+
+- Fix RNTester bundle (#2728) (acoates@microsoft.com)
+## 0.60.0-vnext.107
+Mon, 06 Jan 2020 21:29:21 GMT
+
+### Changes
+
+- Call StartAnimatiom on m_scaleCombined for ScaleX / ScaleY animations (thshea@microsoft.com)
+## 0.60.0-vnext.106
+Mon, 30 Dec 2019 22:14:37 GMT
+
+### Changes
+
+- Avoid app crash because content is not bundled for the first time (licanhua@live.com)
 ## 0.60.0-vnext.105
 Fri, 27 Dec 2019 17:01:20 GMT
 
