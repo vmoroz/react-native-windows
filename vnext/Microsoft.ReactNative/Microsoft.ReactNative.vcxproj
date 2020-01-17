@@ -269,15 +269,6 @@
       <DependentUpon>IReactContext.idl</DependentUpon>
       <SubType>Code</SubType>
     </ClInclude>
-    <ClInclude Include="ReactHost\InstanceFactory.h" />
-    <ClInclude Include="ReactHost\IReactInstanceInternal.h" />
-    <ClInclude Include="ReactHost\JSBundle.h" />
-    <ClInclude Include="ReactHost\JSExceptionInfo.h" />
-    <ClInclude Include="ReactHost\MsoUtils.h" />
-    <ClInclude Include="ReactHost\PropertyBag.h" />
-    <ClInclude Include="ReactHost\PropertyBag_internal.h" />
-    <ClInclude Include="ReactHost\React.h" />
-    <ClInclude Include="ReactHost\ReactHost.h" />
     <ClInclude Include="ReactInstanceCreator.h" />
     <ClInclude Include="ReactInstance.h">
       <DependentUpon>ReactInstance.idl</DependentUpon>
@@ -430,10 +421,6 @@
       <DependentUpon>IReactContext.idl</DependentUpon>
       <SubType>Code</SubType>
     </ClCompile>
-    <ClCompile Include="ReactHost\JSBundle.cpp" />
-    <ClCompile Include="ReactHost\MsoUtils.cpp" />
-    <ClCompile Include="ReactHost\PropertyBag.cpp" />
-    <ClCompile Include="ReactHost\ReactHost.cpp" />
     <ClCompile Include="ReactInstanceCreator.cpp" />
     <ClCompile Include="ReactInstance.cpp">
       <DependentUpon>ReactInstance.idl</DependentUpon>
