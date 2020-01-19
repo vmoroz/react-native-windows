@@ -2,6 +2,8 @@
 // Licensed under the MIT License.
 
 #include "ReactInstanceWin32.h"
+#include "MsoUtils.h"
+#include "MoveOnCopy.h"
 
 //#include "BytecodeHelpers.h"
 //#include "CxxModuleProviderRegistry.h"

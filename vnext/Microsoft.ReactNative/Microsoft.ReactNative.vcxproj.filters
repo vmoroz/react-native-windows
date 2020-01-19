@@ -297,6 +297,27 @@
     <ClCompile Include="ABIViewManager.cpp" />
     <ClCompile Include="NativeModulesProvider.cpp" />
     <ClCompile Include="pch.cpp" />
+    <ClCompile Include="ReactHost\JSBundle.cpp">
+      <Filter>ReactHost</Filter>
+    </ClCompile>
+    <ClCompile Include="ReactHost\JSBundle_Win32.cpp">
+      <Filter>ReactHost</Filter>
+    </ClCompile>
+    <ClCompile Include="ReactHost\MsoUtils.cpp">
+      <Filter>ReactHost</Filter>
+    </ClCompile>
+    <ClCompile Include="ReactHost\PlatformBundleHelpers_Win.cpp">
+      <Filter>ReactHost</Filter>
+    </ClCompile>
+    <ClCompile Include="ReactHost\PropertyBag.cpp">
+      <Filter>ReactHost</Filter>
+    </ClCompile>
+    <ClCompile Include="ReactHost\ReactHost.cpp">
+      <Filter>ReactHost</Filter>
+    </ClCompile>
+    <ClCompile Include="ReactHost\ReactInstanceWin32.cpp">
+      <Filter>ReactHost</Filter>
+    </ClCompile>
     <ClCompile Include="ReactInstanceCreator.cpp" />
     <ClCompile Include="ReactInstanceManagerBuilder.cpp" />
     <ClCompile Include="ReactSupport.cpp" />
@@ -595,6 +616,48 @@
     <ClInclude Include="LifecycleState.h" />
     <ClInclude Include="NativeModulesProvider.h" />
     <ClInclude Include="pch.h" />
+    <ClInclude Include="ReactHost\InstanceFactory.h">
+      <Filter>ReactHost</Filter>
+    </ClInclude>
+    <ClInclude Include="ReactHost\IReactInstanceInternal.h">
+      <Filter>ReactHost</Filter>
+    </ClInclude>
+    <ClInclude Include="ReactHost\JSBundle.h">
+      <Filter>ReactHost</Filter>
+    </ClInclude>
+    <ClInclude Include="ReactHost\JSExceptionInfo.h">
+      <Filter>ReactHost</Filter>
+    </ClInclude>
+    <ClInclude Include="ReactHost\MoveOnCopy.h">
+      <Filter>ReactHost</Filter>
+    </ClInclude>
+    <ClInclude Include="ReactHost\MsoUtils.h">
+      <Filter>ReactHost</Filter>
+    </ClInclude>
+    <ClInclude Include="ReactHost\PlatformBundleHelpers.h">
+      <Filter>ReactHost</Filter>
+    </ClInclude>
+    <ClInclude Include="ReactHost\PropertyBag.h">
+      <Filter>ReactHost</Filter>
+    </ClInclude>
+    <ClInclude Include="ReactHost\PropertyBag_internal.h">
+      <Filter>ReactHost</Filter>
+    </ClInclude>
+    <ClInclude Include="ReactHost\React.h">
+      <Filter>ReactHost</Filter>
+    </ClInclude>
+    <ClInclude Include="ReactHost\React_Win.h">
+      <Filter>ReactHost</Filter>
+    </ClInclude>
+    <ClInclude Include="ReactHost\ReactHost.h">
+      <Filter>ReactHost</Filter>
+    </ClInclude>
+    <ClInclude Include="ReactHost\ReactInstanceWin32.h">
+      <Filter>ReactHost</Filter>
+    </ClInclude>
+    <ClInclude Include="ReactHost\ReactNativeHeaders.h">
+      <Filter>ReactHost</Filter>
+    </ClInclude>
     <ClInclude Include="ReactInstanceCreator.h" />
     <ClInclude Include="ReactInstanceManagerBuilder.h" />
     <ClInclude Include="ReactSupport.h" />
