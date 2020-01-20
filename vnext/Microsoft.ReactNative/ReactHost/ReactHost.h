@@ -5,12 +5,12 @@
 
 #include <mutex>
 #include <unordered_map>
+#include "IReactInstanceInternal.h"
 #include "InstanceFactory.h"
 #include "MsoUtils.h"
 #include "React.h"
 #include "activeObject/activeObject.h"
 #include "object/refCountedObject.h"
-#include "IReactInstanceInternal.h"
 
 namespace Mso::React {
 
@@ -224,7 +224,7 @@ Mso::Future<void> ReactHost::PostInQueue(TCallback &&callback) noexcept {
   using Callback = std::decay_t<TCallback>;
   return Mso::PostFuture(
       m_executor,
-      [weakThis = Mso::WeakPtr{this}, callback = Callback{std::forward<TCallback>(callback)}]() mutable noexcept {
+      [ weakThis = Mso::WeakPtr{this}, callback = Callback{std::forward<TCallback>(callback)} ]() mutable noexcept {
         if (auto strongThis = weakThis.GetStrongPtr()) {
           return callback();
         }

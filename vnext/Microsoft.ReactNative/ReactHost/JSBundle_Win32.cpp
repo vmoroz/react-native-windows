@@ -6,7 +6,7 @@
 namespace Mso::React {
 
 LIBLET_PUBLICAPI Mso::CntPtr<IJSBundle> MakeFileJSBundle(std::string &&id, std::string &&fileName) noexcept {
-  //TODO: implement
+  // TODO: implement
   return {nullptr};
 }
 

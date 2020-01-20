@@ -32,7 +32,6 @@ struct IReactInstanceWin32 : IUnknown {
   virtual std::shared_ptr<facebook::react::IUIManager> UIManager() const noexcept = 0;
 };
 
-
 MSO_STRUCT_GUID(IFBReactInstance, "81240204-c3b5-4b10-957d-66544e5a301e")
 struct IFBReactInstance : public IUnknown {
   /// Queues up a call to a JS function in the loaded bundle
