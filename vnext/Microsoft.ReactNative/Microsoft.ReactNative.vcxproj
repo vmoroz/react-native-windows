@@ -309,6 +309,7 @@
       <SubType>Code</SubType>
     </ClInclude>
     <ClInclude Include="ReactSupport.h" />
+    <ClInclude Include="Threading\MessageDispatchQueue.h" />
     <ClInclude Include="ViewManagersProvider.h" />
   </ItemGroup>
   <ItemGroup>
@@ -467,6 +468,7 @@
       <SubType>Code</SubType>
     </ClCompile>
     <ClCompile Include="ReactSupport.cpp" />
+    <ClCompile Include="Threading\MessageDispatchQueue.cpp" />
     <ClCompile Include="ViewManagersProvider.cpp" />
   </ItemGroup>
   <ItemGroup>
