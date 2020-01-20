@@ -4,6 +4,7 @@
 #include "ReactRootView2.h"
 #include "ReactRootView.g.cpp"
 #include <winrt/Windows.UI.Core.h>
+#include "HResult.h"
 
 using namespace winrt;
 using namespace Windows::UI::Core;

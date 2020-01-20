@@ -3,6 +3,7 @@
 
 #include "pch.h"
 #include "ReactInstanceManagerBuilder.h"
+#include "HResult.h"
 
 namespace winrt::Microsoft::ReactNative::implementation {
 

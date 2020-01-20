@@ -10,10 +10,10 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="SharedPch.cpp" />
+    <ClCompile Include="pch.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="SharedPch.h" />
+    <ClInclude Include="$(SharedPchProjectDir)pch.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

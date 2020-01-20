@@ -9,6 +9,7 @@
 #include "ReactApplicationDelegate.h"
 
 #include "ReactApplicationDelegate.g.cpp"
+#include "HResult.h"
 #include "ReactNativeHost.h"
 
 using namespace winrt;

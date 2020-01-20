@@ -1,6 +1,7 @@
 
 #include "pch.h"
 #include "ReactSupport.h"
+#include <folly/json.h>
 
 using namespace winrt;
 using namespace Windows::Foundation;

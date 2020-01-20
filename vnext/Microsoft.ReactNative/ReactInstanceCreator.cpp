@@ -4,6 +4,7 @@
 #include "pch.h"
 #include "ReactInstanceCreator.h"
 #include <ReactUWP/ReactUwp.h>
+#include "HResult.h"
 
 namespace winrt::Microsoft::ReactNative::implementation {
 

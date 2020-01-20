@@ -593,7 +593,6 @@
     <ClInclude Include="HResult.h" />
     <ClInclude Include="LifecycleState.h" />
     <ClInclude Include="NativeModulesProvider.h" />
-    <ClInclude Include="pch.h" />
     <ClInclude Include="ReactInstanceCreator.h" />
     <ClInclude Include="ReactInstanceManagerBuilder.h" />
     <ClInclude Include="ReactSupport.h" />

@@ -74,6 +74,7 @@
   </ImportGroup>
   <ImportGroup Label="PropertySheets">
     <Import Project="PropertySheet.props" />
+    <Import Project="$(ReactNativeWindowsDir)\PropertySheets\ReactCommunity.cpp.props" />
     <Import Project="$(ReactNativeWindowsDir)\PropertySheets\SharedPch.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
@@ -81,7 +82,8 @@
   <ItemDefinitionGroup>
     <ClCompile>
       <PrecompiledHeader>Use</PrecompiledHeader>
-      <PrecompiledHeaderFile>SharedPch.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderOutputFile>$(SharedPch)</PrecompiledHeaderOutputFile>
       <WarningLevel>Level4</WarningLevel>
       <AdditionalOptions>%(AdditionalOptions) /bigobj</AdditionalOptions>
       <!--Temporarily disable cppwinrt heap enforcement to work around xaml compiler generated std::shared_ptr use -->
@@ -89,7 +91,19 @@
       <DisableSpecificWarnings>
       </DisableSpecificWarnings>
       <AdditionalUsingDirectories>$(WindowsSDK_WindowsMetadata);$(AdditionalUsingDirectories)</AdditionalUsingDirectories>
+      <AdditionalIncludeDirectories>$(FollyDir);$(ReactNativeDir)ReactCommon;$(ReactNativeDir)ReactCommon\jsi;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ReactNativeWindowsDir)ReactUWP;$(ReactNativeWindowsDir)ReactUWP\Views;$(ReactNativeWindowsDir)Microsoft.ReactNative\Views;$(FollyDir);$(ReactNativeDir)ReactCommon;$(ReactNativeDir)ReactCommon\jsi;$(ReactNativeWindowsDir);$(ReactNativeWindowsDir)Common;$(ReactNativeWindowsDir)stubs;$(ReactNativeWindowsDir)include;$(ReactNativeWindowsDir)ReactWindowsCore;$(ReactNativeWindowsDir)ReactWindowsCore\tracing;$(ReactNativeWindowsDir)include\ReactWindowsCore;$(YogaDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      
       <ProgramDataBaseFileName>$(SharedPdb)</ProgramDataBaseFileName>
+      <PreprocessorDefinitions>
+        REACTWINDOWS_BUILD;
+        NOMINMAX;
+        FOLLY_NO_CONFIG;
+        WIN32=0;
+        WINRT=1;
+        _HAS_AUTO_PTR_ETC;
+        %(PreprocessorDefinitions)
+      </PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -112,7 +126,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="SharedPch.cpp">
+    <ClCompile Include="pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
   </ItemGroup>

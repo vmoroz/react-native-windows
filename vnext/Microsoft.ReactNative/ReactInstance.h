@@ -7,6 +7,7 @@
 
 #include <ReactUWP/IReactInstance.h>
 #include <winrt/Microsoft.ReactNative.h>
+#include "HResult.h"
 
 namespace winrt::Microsoft::ReactNative::implementation {
 

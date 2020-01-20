@@ -3,23 +3,17 @@
 
 #pragma once
 
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-
-#ifndef NOGDI
-#define NOGDI
-#endif
+#include <windows.h>
 
 #include <hstring.h>
 #include <oaidl.h>
+#include <unknwn.h>
 #include <werapi.h>
 
 #include <winrt/Windows.Foundation.Collections.h>
 #include <winrt/Windows.Foundation.h>
 #include <winrt/Windows.System.h>
 #include <winrt/Windows.UI.Composition.h>
-#include "HResult.h"
 
 #include <cxxreact/CxxModule.h>
 #include <cxxreact/Instance.h>
@@ -33,5 +27,7 @@
 
 #include <condition_variable>
 #include <functional>
+#include <map>
 #include <memory>
 #include <string>
+#include <vector>

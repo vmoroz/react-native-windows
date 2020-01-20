@@ -1,6 +1,14 @@
 ========================================================================
-    C++/WinRT StaticLibrary1 Project Overview
+    C++/WinRT SharedPCH Project Overview
 ========================================================================
+
+This project implements shared PCH file that uses C++/WinRT headers.
+To use it in your project:
+- Add dependency on SharedPch project.
+- Import the PropertySheets\SharedPch.props into your project.
+
+
+C++/WinRT project notes:
 
 This project demonstrates how to get started authoring Windows Runtime 
 classes directly with standard C++, using the C++/WinRT SDK component 
