@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!--======================================================================================
+  Shared Precompiled Headers 
+  
+  Headers shared between projects are included to SharedPch.h file.
+  Project specific includes are added to project specific pch.h file.
+  ==========================================================================================-->
+  
+  <ImportGroup Label="PropertySheets" />
+  
+  <PropertyGroup Label="UserMacros">
+    <EnableSharedPch Condition=" '$(EnableSharedPch)' == '' ">true</EnableSharedPch>
+    <EnableSharedPch Condition=" '$(RunCodeAnalysis)' == 'true' Or '$(RunCodeAnalysisOnce)' == 'true' ">false</EnableSharedPch>
+    <SharedPchProjectName>SharedPch</SharedPchProjectName>
+    <SharedPchDir>$(BaseIntDir)\$(SharedPchProjectName)\</SharedPchDir>
+    <SharedPchProjectDir>$(ReactNativeWindowsDir)$(SharedPchProjectName)\</SharedPchProjectDir>
+    <SharedPdbFile>vc$(PlatformToolsetVersion).pdb</SharedPdbFile>
+    <SharedIdbFile>vc$(PlatformToolsetVersion).idb</SharedIdbFile>
+    <SharedPch>$(SharedPchDir)SharedPch.pch</SharedPch>
+    <SharedPdb>$(SharedPchDir)$(SharedPdbFile)</SharedPdb>
+    <SharedIdb>$(SharedPchDir)$(SharedIdbFile)</SharedIdb>
+    <CppWinRTPrecompiledHeader>pch.h</CppWinRTPrecompiledHeader>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <BuildMacro Include="SharedPchDir">
+      <Value>$(SharedPchDir)</Value>
+    </BuildMacro>
+    <BuildMacro Include="SharedPch">
+      <Value>$(SharedPch)</Value>
+    </BuildMacro>
+    <BuildMacro Include="SharedPdb">
+      <Value>$(SharedPdb)</Value>
+    </BuildMacro>
+    <BuildMacro Include="SharedIdb">
+      <Value>$(SharedIdb)</Value>
+    </BuildMacro>
+  </ItemGroup>
+
+  <!-- ClCompile target deletes SharedPch.pch if it does not find its vc141.pdb and vc141.idb files locally.
+       We copy them to project's $(IntDir) to enable the PCH file re-use. -->
+  <Target Name="CopySharedPchPdbFile" BeforeTargets="ClCompile"
+          Condition=" '$(EnableSharedPch)' == 'true' And '$(MSBuildProjectName)' != '$(SharedPchProjectName)' And Exists('$(SharedPdb)') "
+          Inputs="$(SharedPdb)"
+          Outputs="$(IntDir)$(SharedPdbFile)">
+    <Copy SourceFiles="$(SharedPdb)"
+          DestinationFiles="$(IntDir)$(SharedPdbFile)">
+      <Output TaskParameter="DestinationFiles" ItemName="FileWrites"/>
+    </Copy>
+  </Target>
+  <Target Name="CopySharedPchIdbFile" BeforeTargets="ClCompile"
+          Condition=" '$(EnableSharedPch)' == 'true' And '$(MSBuildProjectName)' != '$(SharedPchProjectName)' And Exists('$(SharedIdb)') "
+          Inputs="$(SharedIdb)"
+          Outputs="$(IntDir)$(SharedIdbFile)">
+    <Copy SourceFiles="$(SharedIdb)"
+          DestinationFiles="$(IntDir)$(SharedIdbFile)">
+      <Output TaskParameter="DestinationFiles" ItemName="FileWrites"/>
+    </Copy>
+  </Target>
+
+  <!-- Set the PCH file for all projects that support shared PCH -->
+  <PropertyGroup>
+    <ProjectPrecompiledHeaderOutputFile>$(IntDir)$(TargetName).pch</ProjectPrecompiledHeaderOutputFile>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(SharedPchProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderOutputFile>$(ProjectPrecompiledHeaderOutputFile)</PrecompiledHeaderOutputFile>
+      <!-- Provides a #define with the project's PCH file name. It is used by pch.cpp. Backslash is not friendly with C-strings - replace with forward slash. -->
+      <PreprocessorDefinitions Condition=" '$(MSBuildProjectName)' != '$(SharedPchProjectName)' ">PrecompiledHeaderOutputFile="$(ProjectPrecompiledHeaderOutputFile.Replace("\", "/"))";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+
+  <!-- Add pch.cpp file to all projects that support shared PCH. This file creates Project.pch based of SharedPch.pch and pch.h -->
+  <ItemGroup Condition=" '$(MSBuildProjectName)' != '$(SharedPchProjectName)' ">
+    <ClCompile Include="$(SharedPchProjectDir)pch.cpp" Condition=" '$(EnableSharedPch)' == 'true' ">
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>SharedPch.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderOutputFile>$(SharedPch)</PrecompiledHeaderOutputFile>
+      <AdditionalOptions>/Yc %(AdditionalOptions)</AdditionalOptions>
+      <ProgramDataBaseFileName>$(SharedPdb)</ProgramDataBaseFileName>
+    </ClCompile>
+    <ClCompile Include="$(SharedPchProjectDir)ProjectPch.cpp" Condition=" '$(EnableSharedPch)' != 'true' ">
+      <PrecompiledHeader>Create</PrecompiledHeader>
+    </ClCompile>
+  </ItemGroup>
+
+  <!-- Include SharedPch.h -->
+  <ItemGroup>
+    <ClInclude Include="$(SharedPchProjectDir)SharedPch.h" />
+  </ItemGroup>
+
+</Project>

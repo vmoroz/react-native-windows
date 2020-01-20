@@ -51,6 +51,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Mso.UnitTests", "..\..\..\v
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Mso", "..\..\..\vnext\Mso\Mso.vcxitems", "{84E05BFA-CBAF-4F0D-BFB6-4CE85742A57E}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SharedPch", "..\..\..\vnext\SharedPch\SharedPch.vcxproj", "{7559A830-AAD6-4FC8-A028-2105C8B99BF8}"
+EndProject
 Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
 		..\..\..\vnext\Microsoft.ReactNative.SharedManaged\Microsoft.ReactNative.SharedManaged.projitems*{09f4e6c1-2d12-4059-aa96-0b190861fd6a}*SharedItemsImports = 4
@@ -286,6 +288,20 @@ Global
 		{1958CEAA-FBE0-44E3-8A99-90AD85531FFE}.Release|x64.Build.0 = Release|x64
 		{1958CEAA-FBE0-44E3-8A99-90AD85531FFE}.Release|x86.ActiveCfg = Release|Win32
 		{1958CEAA-FBE0-44E3-8A99-90AD85531FFE}.Release|x86.Build.0 = Release|Win32
+		{7559A830-AAD6-4FC8-A028-2105C8B99BF8}.Debug|ARM.ActiveCfg = Debug|ARM
+		{7559A830-AAD6-4FC8-A028-2105C8B99BF8}.Debug|ARM.Build.0 = Debug|ARM
+		{7559A830-AAD6-4FC8-A028-2105C8B99BF8}.Debug|ARM64.ActiveCfg = Debug|Win32
+		{7559A830-AAD6-4FC8-A028-2105C8B99BF8}.Debug|x64.ActiveCfg = Debug|x64
+		{7559A830-AAD6-4FC8-A028-2105C8B99BF8}.Debug|x64.Build.0 = Debug|x64
+		{7559A830-AAD6-4FC8-A028-2105C8B99BF8}.Debug|x86.ActiveCfg = Debug|Win32
+		{7559A830-AAD6-4FC8-A028-2105C8B99BF8}.Debug|x86.Build.0 = Debug|Win32
+		{7559A830-AAD6-4FC8-A028-2105C8B99BF8}.Release|ARM.ActiveCfg = Release|ARM
+		{7559A830-AAD6-4FC8-A028-2105C8B99BF8}.Release|ARM.Build.0 = Release|ARM
+		{7559A830-AAD6-4FC8-A028-2105C8B99BF8}.Release|ARM64.ActiveCfg = Release|Win32
+		{7559A830-AAD6-4FC8-A028-2105C8B99BF8}.Release|x64.ActiveCfg = Release|x64
+		{7559A830-AAD6-4FC8-A028-2105C8B99BF8}.Release|x64.Build.0 = Release|x64
+		{7559A830-AAD6-4FC8-A028-2105C8B99BF8}.Release|x86.ActiveCfg = Release|Win32
+		{7559A830-AAD6-4FC8-A028-2105C8B99BF8}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -306,6 +322,7 @@ Global
 		{2049DBE9-8D13-42C9-AE4B-413AE38FFFD0} = {5EA20F54-880A-49F3-99FA-4B3FE54E8AB1}
 		{1958CEAA-FBE0-44E3-8A99-90AD85531FFE} = {5EA20F54-880A-49F3-99FA-4B3FE54E8AB1}
 		{84E05BFA-CBAF-4F0D-BFB6-4CE85742A57E} = {5EA20F54-880A-49F3-99FA-4B3FE54E8AB1}
+		{7559A830-AAD6-4FC8-A028-2105C8B99BF8} = {5EA20F54-880A-49F3-99FA-4B3FE54E8AB1}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {AE882847-CAE9-450F-8962-E76672DC23CE}

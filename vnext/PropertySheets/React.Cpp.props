@@ -65,6 +65,8 @@
         _SILENCE_ALL_CXX17_DEPRECATION_WARNINGS;
         BOOST_SYSTEM_SOURCE;
         BOOST_ERROR_CODE_HEADER_ONLY;
+        WIN32_LEAN_AND_MEAN;
+        WINRT_LEAN_AND_MEAN;
         %(PreprocessorDefinitions)
       </PreprocessorDefinitions>
       <LanguageStandard>stdcpp17</LanguageStandard>
