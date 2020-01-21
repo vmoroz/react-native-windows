@@ -146,16 +146,10 @@
     <ClCompile Include="..\ReactUWP\Sandbox\DevSupportManagerUwpSandbox.cpp">
       <Filter>Sandbox</Filter>
     </ClCompile>
-    <ClCompile Include="..\ReactUWP\Threading\AsyncWorkQueue.cpp">
-      <Filter>Threading</Filter>
-    </ClCompile>
     <ClCompile Include="..\ReactUWP\Threading\BatchingUIMessageQueueThread.cpp">
       <Filter>Threading</Filter>
     </ClCompile>
     <ClCompile Include="..\ReactUWP\Threading\UIMessageQueueThread.cpp">
-      <Filter>Threading</Filter>
-    </ClCompile>
-    <ClCompile Include="..\ReactUWP\Threading\WorkerMessageQueueThread.cpp">
       <Filter>Threading</Filter>
     </ClCompile>
     <ClCompile Include="..\ReactUWP\Utils\AccessibilityUtils.cpp">
@@ -318,6 +312,9 @@
     <ClCompile Include="Threading\MessageDispatchQueue.cpp">
       <Filter>Threading</Filter>
     </ClCompile>
+    <ClCompile Include="Threading\MessageQueueThreadFactory.cpp">
+      <Filter>Threading</Filter>
+    </ClCompile>
     <ClCompile Include="ViewManagersProvider.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -462,22 +459,10 @@
     <ClInclude Include="..\ReactUWP\Polyester\IconViewManager.h">
       <Filter>Polyester</Filter>
     </ClInclude>
-    <ClInclude Include="..\ReactUWP\Threading\AsyncWorkQueue.h">
-      <Filter>Threading</Filter>
-    </ClInclude>
-    <ClInclude Include="..\ReactUWP\Threading\AsyncWorkQueue_Priv.h">
-      <Filter>Threading</Filter>
-    </ClInclude>
     <ClInclude Include="..\ReactUWP\Threading\BatchingUIMessageQueueThread.h">
       <Filter>Threading</Filter>
     </ClInclude>
-    <ClInclude Include="..\ReactUWP\Threading\JSQueueThread.h">
-      <Filter>Threading</Filter>
-    </ClInclude>
     <ClInclude Include="..\ReactUWP\Threading\UIMessageQueueThread.h">
-      <Filter>Threading</Filter>
-    </ClInclude>
-    <ClInclude Include="..\ReactUWP\Threading\WorkerMessageQueueThread.h">
       <Filter>Threading</Filter>
     </ClInclude>
     <ClInclude Include="..\ReactUWP\Utils\CppWinrtLessExceptions.h">
@@ -656,6 +641,9 @@
     <ClInclude Include="ReactInstanceManagerBuilder.h" />
     <ClInclude Include="ReactSupport.h" />
     <ClInclude Include="Threading\MessageDispatchQueue.h">
+      <Filter>Threading</Filter>
+    </ClInclude>
+    <ClInclude Include="Threading\MessageQueueThreadFactory.h">
       <Filter>Threading</Filter>
     </ClInclude>
     <ClInclude Include="ViewManagersProvider.h" />

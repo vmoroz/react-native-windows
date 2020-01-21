@@ -11,6 +11,8 @@
 
 #include "Unicode.h"
 
+#include "Threading/MessageQueueThreadFactory.h"
+
 namespace react {
 namespace uwp {
 
@@ -59,7 +61,7 @@ CreateReactRootView(XamlView parentView, const wchar_t *pJsComponentName, const 
 // order
 REACTWINDOWS_API_(std::shared_ptr<facebook::react::MessageQueueThread>)
 CreateWorkerMessageQueue() {
-  return std::make_shared<WorkerMessageQueueThread>();
+  return MakeSerialQueueThread();
 }
 
 } // namespace uwp

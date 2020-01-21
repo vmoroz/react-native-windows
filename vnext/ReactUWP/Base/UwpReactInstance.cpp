@@ -64,9 +64,8 @@
 #include <Modules/WebSocketModuleUwp.h>
 #include <ReactUWP/Modules/I18nModule.h>
 #include <ReactWindowsCore/IUIManager.h>
-#include <Threading/JSQueueThread.h>
 #include <Threading/UIMessageQueueThread.h>
-#include <Threading/WorkerMessageQueueThread.h>
+#include <Threading/MessageQueueThreadFactory.h>
 
 #include <cxxreact/CxxNativeModule.h>
 #include <cxxreact/Instance.h>
@@ -192,12 +191,11 @@ std::vector<facebook::react::NativeModuleDescription> GetModules(
   modules.emplace_back(
       react::uwp::WebSocketModule::name,
       []() { return std::make_unique<react::uwp::WebSocketModule>(); },
-      std::make_shared<WorkerMessageQueueThread>());
+      MakeSerialQueueThread());
 
   modules.emplace_back(
       NetworkingModule::name,
-      []() { return std::make_unique<NetworkingModule>(); },
-      std::make_shared<WorkerMessageQueueThread>());
+      []() { return std::make_unique<NetworkingModule>(); }, MakeSerialQueueThread());
 
   modules.emplace_back(
       "Timing", [messageQueue]() { return facebook::react::CreateTimingModule(messageQueue); }, messageQueue);
@@ -216,15 +214,14 @@ std::vector<facebook::react::NativeModuleDescription> GetModules(
   modules.emplace_back(
       LocationObserverModule::name,
       [messageQueue]() { return std::make_unique<LocationObserverModule>(messageQueue); },
-      std::make_shared<WorkerMessageQueueThread>()); // TODO: figure out
-                                                     // threading
+      MakeSerialQueueThread()); // TODO: figure out threading
 
   modules.emplace_back(
       facebook::react::AppStateModule::name,
       [appstate = std::move(appstate)]() mutable {
         return std::make_unique<facebook::react::AppStateModule>(std::move(appstate));
       },
-      std::make_shared<WorkerMessageQueueThread>());
+      MakeSerialQueueThread());
 
   modules.emplace_back(
       react::windows::AppThemeModule::name,
@@ -259,7 +256,7 @@ std::vector<facebook::react::NativeModuleDescription> GetModules(
     modules.emplace_back(
         "AsyncLocalStorage",
         []() { return std::make_unique<facebook::react::AsyncStorageModule>(L"asyncStorage"); },
-        std::make_shared<WorkerMessageQueueThread>());
+        MakeSerialQueueThread());
   }
 
   return modules;
@@ -288,7 +285,7 @@ void UwpReactInstance::Start(const std::shared_ptr<IReactInstance> &spThis, cons
   std::pair<std::string, bool> i18nInfo = I18nModule::GetI18nInfo();
 
   // TODO: Figure out threading. What thread should this really be on?
-  m_initThread = std::make_unique<react::uwp::WorkerMessageQueueThread>();
+  m_initThread = MakeSerialQueueThread();
   m_jsThread = std::static_pointer_cast<facebook::react::MessageQueueThread>(m_initThread);
   m_initThread->runOnQueueSync([this,
                                 spThis,
@@ -375,7 +372,7 @@ void UwpReactInstance::Start(const std::shared_ptr<IReactInstance> &spThis, cons
       cxxModules.insert(std::end(cxxModules), std::begin(customCxxModules), std::end(customCxxModules));
     }
 
-    std::shared_ptr<facebook::react::MessageQueueThread> jsQueue = CreateAndStartJSQueueThread();
+    std::shared_ptr<facebook::react::MessageQueueThread> jsQueue = MakeJSQueueThread();
 
 #ifdef PATCH_RN
     if (settings.UseJsi) {

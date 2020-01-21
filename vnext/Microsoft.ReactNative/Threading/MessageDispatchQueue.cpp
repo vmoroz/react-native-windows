@@ -89,11 +89,3 @@ void MessageDispatchQueue::quitSynchronous() {
 }
 
 } // namespace Mso::React
-
-namespace react::uwp {
-
-std::shared_ptr<facebook::react::MessageQueueThread> CreateAndStartJSQueueThread() noexcept {
-  return std::make_shared<Mso::React::MessageDispatchQueue>(Mso::DispatchQueue::MakeLooperQueue(), nullptr, nullptr);
-}
-
-} // namespace react::uwp
