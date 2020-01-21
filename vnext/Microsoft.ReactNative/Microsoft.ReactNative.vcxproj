@@ -362,7 +362,6 @@
     <ClCompile Include="..\ReactUWP\Sandbox\DevSupportManagerUwpSandbox.cpp" />
     <ClCompile Include="..\ReactUWP\Threading\AsyncWorkQueue.cpp" />
     <ClCompile Include="..\ReactUWP\Threading\BatchingUIMessageQueueThread.cpp" />
-    <ClCompile Include="..\ReactUWP\Threading\JSQueueThread.cpp" />
     <ClCompile Include="..\ReactUWP\Threading\UIMessageQueueThread.cpp" />
     <ClCompile Include="..\ReactUWP\Threading\WorkerMessageQueueThread.cpp" />
     <ClCompile Include="..\ReactUWP\Utils\AccessibilityUtils.cpp" />

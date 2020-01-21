@@ -375,7 +375,7 @@ void UwpReactInstance::Start(const std::shared_ptr<IReactInstance> &spThis, cons
       cxxModules.insert(std::end(cxxModules), std::begin(customCxxModules), std::end(customCxxModules));
     }
 
-    std::shared_ptr<facebook::react::CxxMessageQueue> jsQueue = CreateAndStartJSQueueThread();
+    std::shared_ptr<facebook::react::MessageQueueThread> jsQueue = CreateAndStartJSQueueThread();
 
 #ifdef PATCH_RN
     if (settings.UseJsi) {

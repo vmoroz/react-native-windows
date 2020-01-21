@@ -152,9 +152,6 @@
     <ClCompile Include="..\ReactUWP\Threading\BatchingUIMessageQueueThread.cpp">
       <Filter>Threading</Filter>
     </ClCompile>
-    <ClCompile Include="..\ReactUWP\Threading\JSQueueThread.cpp">
-      <Filter>Threading</Filter>
-    </ClCompile>
     <ClCompile Include="..\ReactUWP\Threading\UIMessageQueueThread.cpp">
       <Filter>Threading</Filter>
     </ClCompile>
