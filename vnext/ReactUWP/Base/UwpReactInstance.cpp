@@ -7,7 +7,6 @@
 
 // ReactUWP
 #include <ReactUWP/IXamlRootView.h>
-#include <ReactUWP/Threading/BatchingUIMessageQueueThread.h>
 
 // ReactWindowsCore
 #include <CreateModules.h>
@@ -64,7 +63,6 @@
 #include <Modules/WebSocketModuleUwp.h>
 #include <ReactUWP/Modules/I18nModule.h>
 #include <ReactWindowsCore/IUIManager.h>
-#include <Threading/UIMessageQueueThread.h>
 #include <Threading/MessageQueueThreadFactory.h>
 
 #include <cxxreact/CxxNativeModule.h>
@@ -273,9 +271,8 @@ void UwpReactInstance::Start(const std::shared_ptr<IReactInstance> &spThis, cons
       m_jsThread == nullptr && m_initThread == nullptr && m_instanceWrapper == nullptr);
 
   m_started = true;
-  m_uiDispatcher = winrt::CoreWindow::GetForCurrentThread().Dispatcher();
-  m_defaultNativeThread = std::make_shared<react::uwp::UIMessageQueueThread>(m_uiDispatcher);
-  m_batchingNativeThread = std::make_shared<react::uwp::BatchingUIMessageQueueThread>(m_uiDispatcher);
+  m_defaultNativeThread = MakeUIQueueThread();
+  m_batchingNativeThread = MakeBatchingQueueThread(m_defaultNativeThread);
 
   // Objects that must be created on the UI thread
   m_deviceInfo = std::make_shared<DeviceInfo>(spThis);
@@ -497,7 +494,7 @@ void UwpReactInstance::CallJsFunction(
 }
 
 std::shared_ptr<facebook::react::MessageQueueThread> UwpReactInstance::GetNewUIMessageQueue() const {
-  return std::make_shared<react::uwp::UIMessageQueueThread>(m_uiDispatcher);
+  return MakeUIQueueThread();
 }
 
 const std::shared_ptr<facebook::react::MessageQueueThread> &UwpReactInstance::JSMessageQueueThread() const noexcept {

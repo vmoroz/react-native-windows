@@ -146,10 +146,7 @@
     <ClCompile Include="..\ReactUWP\Sandbox\DevSupportManagerUwpSandbox.cpp">
       <Filter>Sandbox</Filter>
     </ClCompile>
-    <ClCompile Include="..\ReactUWP\Threading\BatchingUIMessageQueueThread.cpp">
-      <Filter>Threading</Filter>
-    </ClCompile>
-    <ClCompile Include="..\ReactUWP\Threading\UIMessageQueueThread.cpp">
+    <ClCompile Include="..\ReactUWP\Threading\BatchingQueueThread.cpp">
       <Filter>Threading</Filter>
     </ClCompile>
     <ClCompile Include="..\ReactUWP\Utils\AccessibilityUtils.cpp">
@@ -459,10 +456,7 @@
     <ClInclude Include="..\ReactUWP\Polyester\IconViewManager.h">
       <Filter>Polyester</Filter>
     </ClInclude>
-    <ClInclude Include="..\ReactUWP\Threading\BatchingUIMessageQueueThread.h">
-      <Filter>Threading</Filter>
-    </ClInclude>
-    <ClInclude Include="..\ReactUWP\Threading\UIMessageQueueThread.h">
+    <ClInclude Include="..\ReactUWP\Threading\BatchingQueueThread.h">
       <Filter>Threading</Filter>
     </ClInclude>
     <ClInclude Include="..\ReactUWP\Utils\CppWinrtLessExceptions.h">

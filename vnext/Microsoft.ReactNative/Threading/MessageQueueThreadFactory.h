@@ -4,6 +4,7 @@
 #pragma once
 
 #include <cxxreact/MessageQueueThread.h>
+#include <ReactWindowsCore/BatchingMessageQueueThread.h>
 
 namespace react::uwp {
 
@@ -13,4 +14,7 @@ std::shared_ptr<facebook::react::MessageQueueThread> MakeUIQueueThread() noexcep
 
 std::shared_ptr<facebook::react::MessageQueueThread> MakeSerialQueueThread() noexcept;
 
-}
+std::shared_ptr<facebook::react::BatchingMessageQueueThread> MakeBatchingQueueThread(
+    std::shared_ptr<facebook::react::MessageQueueThread> const &queueThread) noexcept;
+
+} // namespace react::uwp
