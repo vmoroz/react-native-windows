@@ -38,10 +38,10 @@ void ReactNativeHost::Init() noexcept {
 ReactNative::ReactInstanceManager ReactNativeHost::CreateReactInstanceManager() noexcept {
   auto builder = ReactInstanceManagerBuilder();
   builder.InstanceSettings(InstanceSettings());
-  builder.UseDeveloperSupport(UseDeveloperSupport());
+  builder.UseDeveloperSupport(m_instanceSettings.UseDeveloperSupport());
   builder.InitialLifecycleState(LifecycleState::BeforeCreate);
-  builder.JavaScriptBundleFile(JavaScriptBundleFile());
-  builder.JavaScriptMainModuleName(JavaScriptMainModuleName());
+  builder.JavaScriptBundleFile(m_instanceSettings.JavaScriptBundleFile());
+  builder.JavaScriptMainModuleName(m_instanceSettings.JavaScriptMainModuleName());
   builder.PackageProviders(PackageProviders().GetView());
 
   return builder.Build();
@@ -71,7 +71,7 @@ UIElement ReactNativeHost::GetOrCreateRootView(IInspectable initialProps) noexce
   assert(m_reactRootView != nullptr);
 
   m_reactRootView->OnCreate(*this);
-  m_reactRootView->StartReactApplicationAsync(ReactInstanceManager(), MainComponentName(), props);
+  m_reactRootView->StartReactApplicationAsync(ReactInstanceManager(), m_instanceSettings.MainComponentName(), props);
 
   return *m_reactRootView;
 }

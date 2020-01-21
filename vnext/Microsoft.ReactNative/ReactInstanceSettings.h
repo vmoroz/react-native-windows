@@ -2,9 +2,30 @@
 
 #include "ReactInstanceSettings.g.h"
 
+#ifndef REACT_DEFAULT_USE_DEVELOPER_SUPPORT
+#if _DEBUG
+#define REACT_DEFAULT_USE_DEVELOPER_SUPPORT true
+#else
+#define REACT_DEFAULT_USE_DEVELOPER_SUPPORT false
+#endif // _DEBUG
+#endif // REACT_DEFAULT_USE_DEVELOPER_SUPPORT
+
 namespace winrt::Microsoft::ReactNative::implementation {
 struct ReactInstanceSettings : ReactInstanceSettingsT<ReactInstanceSettings> {
   ReactInstanceSettings() = default;
+
+  hstring MainComponentName() noexcept;
+  void MainComponentName(hstring const &value) noexcept;
+
+  bool UseDeveloperSupport() noexcept;
+  void UseDeveloperSupport(bool value) noexcept;
+
+  hstring JavaScriptMainModuleName() noexcept;
+  void JavaScriptMainModuleName(hstring const &value) noexcept;
+
+  hstring JavaScriptBundleFile() noexcept;
+  void JavaScriptBundleFile(hstring const &value) noexcept;
+
 
   bool UseWebDebugger() {
     return m_useWebDebugger;
@@ -84,6 +105,12 @@ struct ReactInstanceSettings : ReactInstanceSettingsT<ReactInstanceSettings> {
   }
 
  private:
+  hstring m_mainComponentName{};
+  bool m_useDeveloperSupport{REACT_DEFAULT_USE_DEVELOPER_SUPPORT};
+  hstring m_javaScriptMainModuleName{};
+  hstring m_javaScriptBundleFile{};
+
+
 #if _DEBUG
   // TODO: Discuss whether this is where we should have these set by default
   //       versus in the new project template.  This makes it easier for a
@@ -105,6 +132,39 @@ struct ReactInstanceSettings : ReactInstanceSettingsT<ReactInstanceSettings> {
   hstring m_debugBundlePath{};
   hstring m_bundleRootPath{};
 };
+
+inline hstring ReactInstanceSettings::MainComponentName() noexcept {
+  return m_mainComponentName;
+}
+
+inline void ReactInstanceSettings::MainComponentName(hstring const &value) noexcept {
+  m_mainComponentName = value;
+}
+
+inline bool ReactInstanceSettings::UseDeveloperSupport() noexcept {
+  return m_useDeveloperSupport;
+}
+
+inline void ReactInstanceSettings::UseDeveloperSupport(bool value) noexcept {
+  m_useDeveloperSupport = value;
+}
+
+inline hstring ReactInstanceSettings::JavaScriptMainModuleName() noexcept {
+  return m_javaScriptMainModuleName;
+}
+
+inline void ReactInstanceSettings::JavaScriptMainModuleName(hstring const &value) noexcept {
+  m_javaScriptMainModuleName = value;
+}
+
+inline hstring ReactInstanceSettings::JavaScriptBundleFile() noexcept {
+  return m_javaScriptBundleFile;
+}
+
+inline void ReactInstanceSettings::JavaScriptBundleFile(hstring const &value) noexcept {
+  m_javaScriptBundleFile = value;
+}
+
 } // namespace winrt::Microsoft::ReactNative::implementation
 
 namespace winrt::Microsoft::ReactNative::factory_implementation {

@@ -60,10 +60,10 @@ ReactNative::ReactNativeHost ReactApplication::Host() noexcept {
     m_host = make<ReactNativeHost>();
     m_host.InstanceSettings(InstanceSettings());
     m_host.PackageProviders(PackageProviders());
-    m_host.MainComponentName(MainComponentName());
-    m_host.UseDeveloperSupport(UseDeveloperSupport());
-    m_host.JavaScriptMainModuleName(JavaScriptMainModuleName());
-    m_host.JavaScriptBundleFile(JavaScriptBundleFile());
+    m_host.InstanceSettings().MainComponentName(MainComponentName());
+    m_host.InstanceSettings().UseDeveloperSupport(UseDeveloperSupport());
+    m_host.InstanceSettings().JavaScriptMainModuleName(JavaScriptMainModuleName());
+    m_host.InstanceSettings().JavaScriptBundleFile(JavaScriptBundleFile());
   }
 
   return m_host;
