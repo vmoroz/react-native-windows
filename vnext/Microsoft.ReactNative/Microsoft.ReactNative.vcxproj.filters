@@ -285,6 +285,9 @@
     <ClCompile Include="ABIViewManager.cpp" />
     <ClCompile Include="NativeModulesProvider.cpp" />
     <ClCompile Include="pch.cpp" />
+    <ClCompile Include="ReactHost\AsyncActionQueue.cpp">
+      <Filter>ReactHost</Filter>
+    </ClCompile>
     <ClCompile Include="ReactHost\JSBundle.cpp">
       <Filter>ReactHost</Filter>
     </ClCompile>
@@ -592,6 +595,9 @@
     <ClInclude Include="LifecycleState.h" />
     <ClInclude Include="NativeModulesProvider.h" />
     <ClInclude Include="pch.h" />
+    <ClInclude Include="ReactHost\AsyncActionQueue.h">
+      <Filter>ReactHost</Filter>
+    </ClInclude>
     <ClInclude Include="ReactHost\InstanceFactory.h">
       <Filter>ReactHost</Filter>
     </ClInclude>

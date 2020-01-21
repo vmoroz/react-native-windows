@@ -5,6 +5,7 @@
 
 #include <mutex>
 #include <unordered_map>
+#include "AsyncActionQueue.h"
 #include "IReactInstanceInternal.h"
 #include "InstanceFactory.h"
 #include "MsoUtils.h"
@@ -15,49 +16,6 @@
 namespace Mso::React {
 
 class ReactViewHost;
-class ReactHost;
-
-//! The async action is a Functor that returns void Future.
-using AsyncAction = Mso::Functor<Mso::Future<void>()>;
-
-//! The queue that executes actions in the sequential order.
-//! Each action returns Mso::Future<void> to indicate its completion.
-//! The next action does not start until the previous action is completed.
-struct AsyncActionQueue final : Mso::RefCountedObjectNoVTable<Mso::RefCountStrategy::WeakRef, AsyncActionQueue> {
-  //! Creates a new AsyncActionQueue that is based on the provided sequential queue.
-  AsyncActionQueue(Mso::DispatchQueue const &queue) noexcept;
-  AsyncActionQueue() = delete;
-  MSO_NO_COPY_CTOR_AND_ASSIGNMENT(AsyncActionQueue);
-
-  //! Posts a new action to the AsyncActionQueue and returns Future indicating when it is completed.
-  Mso::Future<void> PostAction(AsyncAction &&action) noexcept;
-
-  //! Posts a new action to the AsyncActionQueue and returns Future indicating when the last one is completed.
-  //! For the empty list it returns succeeded Future immediately.
-  Mso::Future<void> PostActions(std::initializer_list<AsyncAction> actions) noexcept;
-
-  //! Returns the queue associated with the AsyncActionQueue.
-  Mso::DispatchQueue const &Queue() noexcept;
-
- private:
-  struct Entry {
-    AsyncAction Action;
-    Mso::Promise<void> Result;
-  };
-
- private:
-  //! Invokes action in the m_queue and observes its result.
-  void InvokeAction(Entry &&entry) noexcept;
-
-  //! Completes the action, and then starts the next one.
-  void CompleteAction(Entry &&entry, Mso::Maybe<void> &&result) noexcept;
-
- private:
-  const Mso::DispatchQueue m_queue;
-  const Mso::ActiveField<std::vector<Entry>> m_actions{m_queue};
-  const Mso::ActiveField<bool> m_isInvoking{m_queue};
-  const Mso::InvokeElsePostExecutor m_executor{m_queue};
-};
 
 //! ReactHost manages lifetime of ReactNative instance.
 //! It is associated with a native queue that is used modify its state.
@@ -224,7 +182,7 @@ Mso::Future<void> ReactHost::PostInQueue(TCallback &&callback) noexcept {
   using Callback = std::decay_t<TCallback>;
   return Mso::PostFuture(
       m_executor,
-      [ weakThis = Mso::WeakPtr{this}, callback = Callback{std::forward<TCallback>(callback)} ]() mutable noexcept {
+      [weakThis = Mso::WeakPtr{this}, callback = Callback{std::forward<TCallback>(callback)}]() mutable noexcept {
         if (auto strongThis = weakThis.GetStrongPtr()) {
           return callback();
         }

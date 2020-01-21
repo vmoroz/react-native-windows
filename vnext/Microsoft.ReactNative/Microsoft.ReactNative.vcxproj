@@ -265,6 +265,7 @@
       <DependentUpon>IReactContext.idl</DependentUpon>
       <SubType>Code</SubType>
     </ClInclude>
+    <ClInclude Include="ReactHost\AsyncActionQueue.h" />
     <ClInclude Include="ReactHost\InstanceFactory.h" />
     <ClInclude Include="ReactHost\IReactInstanceInternal.h" />
     <ClInclude Include="ReactHost\JSBundle.h" />
@@ -428,6 +429,7 @@
       <DependentUpon>IReactContext.idl</DependentUpon>
       <SubType>Code</SubType>
     </ClCompile>
+    <ClCompile Include="ReactHost\AsyncActionQueue.cpp" />
     <ClCompile Include="ReactHost\JSBundle.cpp" />
     <ClCompile Include="ReactHost\JSBundle_Win32.cpp" />
     <ClCompile Include="ReactHost\MsoUtils.cpp" />
