@@ -10,6 +10,7 @@
 
 #include "ReactApplicationDelegate.g.cpp"
 #include "ReactNativeHost.h"
+#include "ReactSupport.h"
 
 using namespace winrt;
 using namespace Windows::Foundation;
@@ -74,7 +75,20 @@ UIElement ReactApplicationDelegate::OnCreate(hstring const &arguments) noexcept 
   host.OnResume([=]() { m_application.Exit(); });
 
   ApplyArguments(host, arguments.c_str());
-  return host.GetOrCreateRootView(nullptr);
+
+  if (m_reactRootView != nullptr) {
+    return *m_reactRootView;
+  }
+
+  folly::dynamic props = ConvertToDynamic(nullptr);
+
+  m_reactRootView = std::make_shared<ReactRootView>();
+
+  m_reactRootView->OnCreate(host);
+  m_reactRootView->StartReactApplicationAsync(
+      host.ReactInstanceManager(), host.InstanceSettings().MainComponentName(), props);
+
+  return *m_reactRootView;
 }
 
 void ReactApplicationDelegate::OnResuming(IInspectable const &sender, IInspectable const &args) noexcept {

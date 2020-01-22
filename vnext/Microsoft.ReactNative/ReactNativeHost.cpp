@@ -47,33 +47,12 @@ ReactNative::ReactInstanceManager ReactNativeHost::CreateReactInstanceManager() 
   return builder.Build();
 }
 
-std::shared_ptr<ReactRootView> ReactNativeHost::CreateRootView() noexcept {
-  auto rootView = std::make_shared<ReactRootView>();
-  return rootView;
-}
-
 ReactNative::ReactInstanceManager ReactNativeHost::ReactInstanceManager() noexcept {
   if (m_reactInstanceManager == nullptr) {
     m_reactInstanceManager = CreateReactInstanceManager();
   }
 
   return m_reactInstanceManager;
-}
-
-UIElement ReactNativeHost::GetOrCreateRootView(IInspectable initialProps) noexcept {
-  if (m_reactRootView != nullptr) {
-    return *m_reactRootView;
-  }
-
-  folly::dynamic props = ConvertToDynamic(initialProps);
-
-  m_reactRootView = CreateRootView();
-  assert(m_reactRootView != nullptr);
-
-  m_reactRootView->OnCreate(*this);
-  m_reactRootView->StartReactApplicationAsync(ReactInstanceManager(), m_instanceSettings.MainComponentName(), props);
-
-  return *m_reactRootView;
 }
 
 ReactNative::ReactInstanceSettings ReactNativeHost::InstanceSettings() noexcept {

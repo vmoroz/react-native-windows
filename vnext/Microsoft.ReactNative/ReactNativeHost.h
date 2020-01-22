@@ -25,8 +25,6 @@ namespace winrt::Microsoft::ReactNative::implementation {
 struct ReactNativeHost : ReactNativeHostT<ReactNativeHost> {
   ReactNativeHost() noexcept;
 
-  UIElement GetOrCreateRootView(IInspectable initialProps) noexcept;
-
   ReactNative::ReactInstanceManager ReactInstanceManager() noexcept;
   ReactNative::ReactInstanceSettings InstanceSettings() noexcept;
   void InstanceSettings(ReactNative::ReactInstanceSettings const &value) noexcept;
@@ -42,14 +40,11 @@ struct ReactNativeHost : ReactNativeHostT<ReactNativeHost> {
  private:
   void Init() noexcept;
   ReactNative::ReactInstanceManager CreateReactInstanceManager() noexcept;
-  std::shared_ptr<ReactRootView> CreateRootView() noexcept;
 
  private:
   ReactNative::ReactInstanceSettings m_instanceSettings;
   ReactNative::ReactInstanceManager m_reactInstanceManager{nullptr};
   Windows::Foundation::Collections::IVector<IReactPackageProvider> m_packageProviders{nullptr};
-
-  std::shared_ptr<ReactRootView> m_reactRootView{nullptr};
 };
 
 } // namespace winrt::Microsoft::ReactNative::implementation

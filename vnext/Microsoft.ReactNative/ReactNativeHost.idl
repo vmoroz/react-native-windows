@@ -23,8 +23,6 @@ namespace Microsoft.ReactNative {
 
     [noexcept2] IVector<IReactPackageProvider> PackageProviders { get; set; };
 
-    [noexcept2] Windows.UI.Xaml.UIElement GetOrCreateRootView(IInspectable initialProps);
-
     [noexcept2] void OnSuspend();
     [noexcept2] void OnEnteredBackground();
     [noexcept2] void OnLeavingBackground();
