@@ -292,11 +292,6 @@
       <DependentUpon>ReactInstance.idl</DependentUpon>
       <SubType>Code</SubType>
     </ClInclude>
-    <ClInclude Include="ReactInstanceManager.h">
-      <DependentUpon>ReactInstanceManager.idl</DependentUpon>
-      <SubType>Code</SubType>
-    </ClInclude>
-    <ClInclude Include="ReactInstanceManagerBuilder.h" />
     <ClInclude Include="ReactInstanceSettings.h">
       <DependentUpon>ReactInstanceSettings.idl</DependentUpon>
       <SubType>Code</SubType>
@@ -453,11 +448,6 @@
       <DependentUpon>ReactInstance.idl</DependentUpon>
       <SubType>Code</SubType>
     </ClCompile>
-    <ClCompile Include="ReactInstanceManager.cpp">
-      <DependentUpon>ReactInstanceManager.idl</DependentUpon>
-      <SubType>Code</SubType>
-    </ClCompile>
-    <ClCompile Include="ReactInstanceManagerBuilder.cpp" />
     <ClCompile Include="ReactInstanceSettings.cpp">
       <DependentUpon>ReactInstanceSettings.idl</DependentUpon>
       <SubType>Code</SubType>
@@ -505,9 +495,6 @@
       <SubType>Designer</SubType>
     </Midl>
     <Midl Include="ReactInstance.idl">
-      <SubType>Designer</SubType>
-    </Midl>
-    <Midl Include="ReactInstanceManager.idl">
       <SubType>Designer</SubType>
     </Midl>
     <Midl Include="ReactInstanceSettings.idl">

@@ -4,9 +4,10 @@
 
 #include "ReactNativeHost.g.h"
 
-#include "ReactInstanceManager.h"
+#include "NativeModulesProvider.h"
 #include "ReactInstanceSettings.h"
 #include "ReactRootView2.h"
+#include "ViewManagersProvider.h"
 
 #include <ReactUWP/IReactInstance.h>
 #include <ReactUWP/IXamlRootView.h>
@@ -25,10 +26,9 @@ namespace winrt::Microsoft::ReactNative::implementation {
 struct ReactNativeHost : ReactNativeHostT<ReactNativeHost> {
   ReactNativeHost() noexcept;
 
-  ReactNative::ReactInstanceManager ReactInstanceManager() noexcept;
+  ReactNative::IReactContext CurrentReactContext() noexcept;
   ReactNative::ReactInstanceSettings InstanceSettings() noexcept;
   void InstanceSettings(ReactNative::ReactInstanceSettings const &value) noexcept;
-  bool HasInstance() noexcept;
   Windows::Foundation::Collections::IVector<IReactPackageProvider> PackageProviders() noexcept;
   void PackageProviders(Windows::Foundation::Collections::IVector<IReactPackageProvider> const &value) noexcept;
 
@@ -37,14 +37,30 @@ struct ReactNativeHost : ReactNativeHostT<ReactNativeHost> {
   void OnLeavingBackground() noexcept;
   void OnResume(OnResumeAction const &action) noexcept;
 
+  void OnBackPressed();
+
+  IAsyncOperation<IReactContext> GetOrCreateReactContextAsync() noexcept;
+
+  std::shared_ptr<react::uwp::IReactInstanceCreator> InstanceCreator() noexcept;
+  std::shared_ptr<react::uwp::IReactInstance> Instance() noexcept;
+
  private:
   void Init() noexcept;
-  ReactNative::ReactInstanceManager CreateReactInstanceManager() noexcept;
+  IAsyncOperation<IReactContext> CreateReactContextCoreAsync() noexcept;
 
  private:
   ReactNative::ReactInstanceSettings m_instanceSettings;
-  ReactNative::ReactInstanceManager m_reactInstanceManager{nullptr};
   Windows::Foundation::Collections::IVector<IReactPackageProvider> m_packageProviders{nullptr};
+
+  IReactContext m_currentReactContext{nullptr};
+  std::shared_ptr<NativeModulesProvider> m_modulesProvider{nullptr};
+  std::shared_ptr<ViewManagersProvider> m_viewManagersProvider{nullptr};
+  IReactPackageBuilder m_packageBuilder;
+
+  //	There should be one react instance creator per instance, as it
+  //	both holds the current instance and is responsible for creating new
+  //	instances on live reload.
+  std::shared_ptr<react::uwp::IReactInstanceCreator> m_reactInstanceCreator{nullptr};
 };
 
 } // namespace winrt::Microsoft::ReactNative::implementation
@@ -65,13 +81,17 @@ inline void ReactNativeHost::InstanceSettings(ReactNative::ReactInstanceSettings
   m_instanceSettings = value;
 }
 
-inline bool ReactNativeHost::HasInstance() noexcept {
-  return m_reactInstanceManager != nullptr;
-}
-
 inline void ReactNativeHost::PackageProviders(
     Windows::Foundation::Collections::IVector<IReactPackageProvider> const &value) noexcept {
   m_packageProviders = value;
+}
+
+inline ReactNative::IReactContext ReactNativeHost::CurrentReactContext() noexcept {
+  return m_currentReactContext;
+}
+
+inline std::shared_ptr<react::uwp::IReactInstance> ReactNativeHost::Instance() noexcept {
+  return InstanceCreator()->getInstance();
 }
 
 } // namespace winrt::Microsoft::ReactNative::implementation

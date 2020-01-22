@@ -23,7 +23,7 @@ namespace winrt::Microsoft::ReactNative::implementation {
 static void ApplyArguments(ReactNative::ReactNativeHost const &host, std::wstring const &arguments) noexcept {
   // Microsoft::ReactNative::implementation::ReactNativeHost* hostImpl {
   // get_self<Microsoft::ReactNative::implementation::ReactNativeHost>(host)};
-  if (!arguments.empty() && host.HasInstance()) {
+  if (!arguments.empty() /*&& host.HasInstance()*/) {
     // TODO: check for 'remoteDebugging'.  Return if not found.  Otherwise,
     // validate a value is provided and then parse it to set the
     // ReactInstanceManager.DevSupportManager.IsRemoteDebuggingEnabled flag
@@ -86,7 +86,7 @@ UIElement ReactApplicationDelegate::OnCreate(hstring const &arguments) noexcept 
 
   m_reactRootView->OnCreate(host);
   m_reactRootView->StartReactApplicationAsync(
-      host.ReactInstanceManager(), host.InstanceSettings().MainComponentName(), props);
+      host, host.InstanceSettings().MainComponentName(), props);
 
   return *m_reactRootView;
 }
