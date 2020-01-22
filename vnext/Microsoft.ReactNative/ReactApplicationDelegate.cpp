@@ -80,6 +80,12 @@ UIElement ReactApplicationDelegate::OnCreate(hstring const &arguments) noexcept 
     return *m_reactRootView;
   }
 
+  // Nudge the ReactNativeHost to create the instance and wrapping context
+  ReactNativeHost *reactNativeHostImpl{get_self<ReactNativeHost>(host)};
+
+  reactNativeHostImpl->GetOrCreateReactContextAsync();
+
+
   folly::dynamic props = ConvertToDynamic(nullptr);
 
   m_reactRootView = winrt::make_self<ReactRootView>();
