@@ -303,6 +303,7 @@
     <ClCompile Include="ReactHost\ReactHost.cpp">
       <Filter>ReactHost</Filter>
     </ClCompile>
+    <ClCompile Include="XamlHelpers.cpp" />
     <ClCompile Include="ReactHost\ReactInstanceWin32.cpp">
       <Filter>ReactHost</Filter>
     </ClCompile>
@@ -588,6 +589,7 @@
     <ClInclude Include="..\ReactUWP\Views\WebViewManager.h">
       <Filter>Views</Filter>
     </ClInclude>
+    <ClInclude Include="XamlHelpers.h" />
     <ClInclude Include="ABICxxModule.h" />
     <ClInclude Include="ABIViewManager.h" />
     <ClInclude Include="Crash.h" />
@@ -679,6 +681,7 @@
     <Midl Include="ReactInstanceSettings.idl" />
     <Midl Include="ReactNativeHost.idl" />
     <Midl Include="ReactRootView2.idl" />
+    <Midl Include="XamlHelper.idl" />
   </ItemGroup>
   <ItemGroup>
     <None Include="microsoft.reactnative.def" />
