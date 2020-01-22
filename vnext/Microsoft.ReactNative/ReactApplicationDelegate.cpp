@@ -82,7 +82,7 @@ UIElement ReactApplicationDelegate::OnCreate(hstring const &arguments) noexcept 
 
   folly::dynamic props = ConvertToDynamic(nullptr);
 
-  m_reactRootView = std::make_shared<ReactRootView>();
+  m_reactRootView = winrt::make_self<ReactRootView>();
 
   m_reactRootView->OnCreate(host);
   m_reactRootView->StartReactApplicationAsync(

@@ -27,7 +27,7 @@ struct ReactApplicationDelegate : ReactApplicationDelegateT<ReactApplicationDele
  private:
   Windows::UI::Xaml::Application m_application{nullptr};
   IReactApplication m_reactApplication{nullptr};
-  std::shared_ptr<ReactRootView> m_reactRootView{nullptr};
+  winrt::com_ptr<ReactRootView> m_reactRootView{nullptr};
 };
 
 } // namespace winrt::Microsoft::ReactNative::implementation
