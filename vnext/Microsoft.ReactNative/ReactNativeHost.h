@@ -43,7 +43,6 @@ struct ReactNativeHost : ReactNativeHostT<ReactNativeHost> {
   std::shared_ptr<react::uwp::IReactInstance> Instance() noexcept;
 
  private:
-  void Init() noexcept;
   IAsyncOperation<IReactContext> CreateReactContextCoreAsync() noexcept;
 
  private:
