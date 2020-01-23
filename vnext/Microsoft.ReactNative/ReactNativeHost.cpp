@@ -62,49 +62,22 @@ void ReactNativeHost::InstanceSettings(ReactNative::ReactInstanceSettings const 
 }
 
 IAsyncAction ReactNativeHost::ReloadInstance() noexcept {
-  return Mso::FutureToAsyncAction(m_reactHost->ReloadInstance());
-}
+  // return Mso::FutureToAsyncAction(m_reactHost->ReloadInstance());
 
-inline std::shared_ptr<react::uwp::IReactInstance> ReactNativeHost::Instance() noexcept {
-  return InstanceCreator()->getInstance();
-}
-
-std::shared_ptr<react::uwp::IReactInstanceCreator> ReactNativeHost::InstanceCreator() noexcept {
-  if (m_reactInstanceCreator == nullptr) {
-    m_reactInstanceCreator = std::make_shared<ReactInstanceCreator>(
-        m_instanceSettings,
-        to_string(m_instanceSettings.JavaScriptBundleFile()),
-        to_string(m_instanceSettings.JavaScriptMainModuleName()),
-        m_modulesProvider,
-        m_viewManagersProvider);
-  }
-
-  return m_reactInstanceCreator;
-}
-
-IAsyncOperation<IReactContext> ReactNativeHost::GetOrCreateReactContextAsync() noexcept {
   if (m_currentReactContext != nullptr)
-    co_return m_currentReactContext;
+    co_return;
 
-  m_currentReactContext = co_await CreateReactContextCoreAsync();
-
-  co_return m_currentReactContext;
-}
-
-// TODO: Should we make this method async?  On first run when getInstance
-// is called it starts things up. Does this need to block?
-IAsyncOperation<IReactContext> ReactNativeHost::CreateReactContextCoreAsync() noexcept {
   /* TODO hook up an exception handler if UseDeveloperSupport is set
-  if (m_useDeveloperSupport) {
-    if (m_nativeModuleCallExceptionHandler) {
-      reactContext.NativeModuleCallExceptionHandler =
-          m_nativeModuleCallExceptionHandler;
-    } else {
-      reactContext.NativeModuleCallExceptionHandler =
-        m_devSupportManager.HandleException;
-    }
-  }
-  */
+if (m_useDeveloperSupport) {
+if (m_nativeModuleCallExceptionHandler) {
+  reactContext.NativeModuleCallExceptionHandler =
+      m_nativeModuleCallExceptionHandler;
+} else {
+  reactContext.NativeModuleCallExceptionHandler =
+    m_devSupportManager.HandleException;
+}
+}
+*/
 
   if (m_modulesProvider == nullptr) {
     m_modulesProvider = std::make_shared<NativeModulesProvider>();
@@ -136,7 +109,7 @@ IAsyncOperation<IReactContext> ReactNativeHost::CreateReactContextCoreAsync() no
 
   auto reactInstance = InstanceCreator()->getInstance();
 
-  auto reactContext = winrt::make<ReactContext>(reactInstance).as<IReactContext>();
+  m_currentReactContext = winrt::make<ReactContext>(reactInstance).as<IReactContext>();
 
   // TODO: Investigate whether we need the equivalent of the
   // LimitedConcurrencyActionQueue from the C# implementation that is used to
@@ -145,7 +118,24 @@ IAsyncOperation<IReactContext> ReactNativeHost::CreateReactContextCoreAsync() no
   // would be created before the instance and set as its queue configuration.
   // It's then used by the instance internally as part of this InitializeAsync.
 
-  co_return reactContext;
+  co_return;
+}
+
+inline std::shared_ptr<react::uwp::IReactInstance> ReactNativeHost::Instance() noexcept {
+  return InstanceCreator()->getInstance();
+}
+
+std::shared_ptr<react::uwp::IReactInstanceCreator> ReactNativeHost::InstanceCreator() noexcept {
+  if (m_reactInstanceCreator == nullptr) {
+    m_reactInstanceCreator = std::make_shared<ReactInstanceCreator>(
+        m_instanceSettings,
+        to_string(m_instanceSettings.JavaScriptBundleFile()),
+        to_string(m_instanceSettings.JavaScriptMainModuleName()),
+        m_modulesProvider,
+        m_viewManagersProvider);
+  }
+
+  return m_reactInstanceCreator;
 }
 
 // TODO: Create a LifeCycleStateMachine in constructor to raise events in response

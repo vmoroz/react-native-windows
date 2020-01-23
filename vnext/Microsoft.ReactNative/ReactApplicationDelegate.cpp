@@ -74,10 +74,7 @@ UIElement ReactApplicationDelegate::OnCreate(hstring const &arguments) noexcept 
   }
 
   // Nudge the ReactNativeHost to create the instance and wrapping context
-  ReactNativeHost *reactNativeHostImpl{get_self<ReactNativeHost>(host)};
-
-  reactNativeHostImpl->GetOrCreateReactContextAsync();
-
+  host.ReloadInstance();
 
   folly::dynamic props = ConvertToDynamic(nullptr);
 

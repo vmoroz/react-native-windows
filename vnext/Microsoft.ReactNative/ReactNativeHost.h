@@ -39,13 +39,8 @@ struct ReactNativeHost : ReactNativeHostT<ReactNativeHost> {
   void OnBackPressed() noexcept;
 
  public:
-  IAsyncOperation<IReactContext> GetOrCreateReactContextAsync() noexcept;
-
   std::shared_ptr<react::uwp::IReactInstanceCreator> InstanceCreator() noexcept;
   std::shared_ptr<react::uwp::IReactInstance> Instance() noexcept;
-
- private:
-  IAsyncOperation<IReactContext> CreateReactContextCoreAsync() noexcept;
 
  private:
   Windows::Foundation::Collections::IVector<IReactPackageProvider> m_packageProviders{nullptr};
