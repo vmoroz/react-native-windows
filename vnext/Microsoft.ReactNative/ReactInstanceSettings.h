@@ -9,10 +9,12 @@
 #define REACT_DEFAULT_USE_DEVELOPER_SUPPORT true
 #define REACT_DEFAULT_USE_WEB_DEBUGGER true
 #define REACT_DEFAULT_USE_LIVE_RELOAD true
+#define REACT_DEFAULT_ENABLE_DEVELOPER_MENU true
 #else
 #define REACT_DEFAULT_USE_DEVELOPER_SUPPORT false
 #define REACT_DEFAULT_USE_WEB_DEBUGGER false
 #define REACT_DEFAULT_USE_LIVE_RELOAD false
+#define REACT_DEFAULT_ENABLE_DEVELOPER_MENU false
 #endif // _DEBUG
 
 namespace winrt::Microsoft::ReactNative::implementation {
@@ -76,7 +78,7 @@ struct ReactInstanceSettings : ReactInstanceSettingsT<ReactInstanceSettings> {
   bool m_useJsi{true};
   bool m_enableJITCompilation{true};
   bool m_enableByteCodeCaching{false};
-  bool m_enableDeveloperMenu{false};
+  bool m_enableDeveloperMenu{REACT_DEFAULT_ENABLE_DEVELOPER_MENU};
   hstring m_byteCodeFileUri{};
   hstring m_debugHost{};
   hstring m_debugBundlePath{};

@@ -16,14 +16,6 @@
 
 #include <ReactHost/React.h>
 
-#ifndef REACT_DEFAULT_ENABLE_DEVELOPER_MENU
-#if _DEBUG
-#define REACT_DEFAULT_ENABLE_DEVELOPER_MENU true
-#else
-#define REACT_DEFAULT_ENABLE_DEVELOPER_MENU false
-#endif // _DEBUG
-#endif // REACT_DEFAULT_ENABLE_DEVELOPER_MENU
-
 namespace winrt::Microsoft::ReactNative::implementation {
 
 struct ReactNativeHost : ReactNativeHostT<ReactNativeHost> {

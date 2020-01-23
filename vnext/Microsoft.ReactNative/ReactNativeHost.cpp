@@ -47,10 +47,6 @@ void ReactNativeHost::Init() noexcept {
 ReactNative::ReactInstanceSettings ReactNativeHost::InstanceSettings() noexcept {
   if (!m_instanceSettings) {
     m_instanceSettings = make<ReactInstanceSettings>();
-    m_instanceSettings.UseWebDebugger(false);
-    m_instanceSettings.UseLiveReload(true);
-    m_instanceSettings.UseJsi(true);
-    m_instanceSettings.EnableDeveloperMenu(REACT_DEFAULT_ENABLE_DEVELOPER_MENU);
   }
 
   return m_instanceSettings;
