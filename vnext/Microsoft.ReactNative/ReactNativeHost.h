@@ -28,7 +28,7 @@ struct ReactNativeHost : ReactNativeHostT<ReactNativeHost> {
   void PackageProviders(Windows::Foundation::Collections::IVector<IReactPackageProvider> const &value) noexcept;
 
   ReactNative::ReactInstanceSettings InstanceSettings() noexcept;
-  void InstanceSettings(ReactNative::ReactInstanceSettings const& value) noexcept;
+  void InstanceSettings(ReactNative::ReactInstanceSettings const &value) noexcept;
 
   Windows::Foundation::IAsyncAction ReloadInstance() noexcept;
 
@@ -39,7 +39,6 @@ struct ReactNativeHost : ReactNativeHostT<ReactNativeHost> {
   void OnBackPressed() noexcept;
 
  public:
-  std::shared_ptr<react::uwp::IReactInstanceCreator> InstanceCreator() noexcept;
   std::shared_ptr<react::uwp::IReactInstance> Instance() noexcept;
 
  private:
@@ -51,12 +50,8 @@ struct ReactNativeHost : ReactNativeHostT<ReactNativeHost> {
   std::shared_ptr<ViewManagersProvider> m_viewManagersProvider{nullptr};
   IReactPackageBuilder m_packageBuilder;
 
-  //	There should be one react instance creator per instance, as it
-  //	both holds the current instance and is responsible for creating new
-  //	instances on live reload.
-  std::shared_ptr<react::uwp::IReactInstanceCreator> m_reactInstanceCreator{nullptr};
-
   Mso::CntPtr<Mso::React::IReactHost> m_reactHost;
+  std::shared_ptr<react::uwp::IReactInstance> m_instance;
 };
 
 } // namespace winrt::Microsoft::ReactNative::implementation

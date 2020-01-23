@@ -7,7 +7,6 @@
 
 #include "IReactContext.h"
 #include "ReactHost/AsyncFuture.h"
-#include "ReactInstanceCreator.h"
 #include "ReactInstanceSettings.h"
 #include "ReactPackageBuilder.h"
 #include "ReactRootView2.h"
@@ -107,7 +106,7 @@ if (m_nativeModuleCallExceptionHandler) {
   // TODO: Could access to the module registry be easier if the ReactInstance
   // implementation were lifted up into this project.
 
-  auto reactInstance = InstanceCreator()->getInstance();
+  auto reactInstance = Instance();
 
   m_currentReactContext = winrt::make<ReactContext>(reactInstance).as<IReactContext>();
 
@@ -121,21 +120,45 @@ if (m_nativeModuleCallExceptionHandler) {
   co_return;
 }
 
-inline std::shared_ptr<react::uwp::IReactInstance> ReactNativeHost::Instance() noexcept {
-  return InstanceCreator()->getInstance();
-}
+std::shared_ptr<react::uwp::IReactInstance> ReactNativeHost::Instance() noexcept {
+  if (m_instance)
+    return m_instance;
 
-std::shared_ptr<react::uwp::IReactInstanceCreator> ReactNativeHost::InstanceCreator() noexcept {
-  if (m_reactInstanceCreator == nullptr) {
-    m_reactInstanceCreator = std::make_shared<ReactInstanceCreator>(
-        m_instanceSettings,
-        to_string(m_instanceSettings.JavaScriptBundleFile()),
-        to_string(m_instanceSettings.JavaScriptMainModuleName()),
-        m_modulesProvider,
-        m_viewManagersProvider);
+  std::shared_ptr<react::uwp::IReactInstance> reactInstance =
+      react::uwp::CreateReactInstance(m_modulesProvider, m_viewManagersProvider);
+
+  react::uwp::ReactInstanceSettings settings;
+  settings.BundleRootPath = to_string(m_instanceSettings.BundleRootPath());
+  settings.ByteCodeFileUri = to_string(m_instanceSettings.ByteCodeFileUri());
+  settings.DebugBundlePath = to_string(m_instanceSettings.DebugBundlePath());
+  settings.DebugHost = to_string(m_instanceSettings.DebugHost());
+  settings.EnableByteCodeCaching = m_instanceSettings.EnableByteCodeCaching();
+  settings.EnableDeveloperMenu = m_instanceSettings.EnableDeveloperMenu();
+  settings.EnableJITCompilation = m_instanceSettings.EnableJITCompilation();
+  settings.UseDirectDebugger = m_instanceSettings.UseDirectDebugger();
+  settings.UseJsi = m_instanceSettings.UseJsi();
+  settings.UseLiveReload = m_instanceSettings.UseLiveReload();
+  settings.UseWebDebugger = m_instanceSettings.UseWebDebugger();
+
+  reactInstance->Start(reactInstance, settings);
+
+  std::string jsBundleFile = to_string(m_instanceSettings.JavaScriptBundleFile());
+  std::string jsMainModuleName = to_string(m_instanceSettings.JavaScriptMainModuleName());
+  if (jsBundleFile.empty()) {
+    if (!jsMainModuleName.empty()) {
+      jsBundleFile = jsMainModuleName;
+    } else {
+      jsBundleFile = "index.windows";
+    }
   }
 
-  return m_reactInstanceCreator;
+  reactInstance->loadBundle(std::move(jsBundleFile));
+
+  m_instance = reactInstance;
+
+  //TODO: InitReactNative();
+
+  return m_instance;
 }
 
 // TODO: Create a LifeCycleStateMachine in constructor to raise events in response

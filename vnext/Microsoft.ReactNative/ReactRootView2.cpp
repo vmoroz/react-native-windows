@@ -48,12 +48,7 @@ fire_and_forget ReactRootView::StartReactApplicationAsync(
   m_moduleName = componentName;
   m_initialProps = initialProps;
 
-  // Nudge the ReactNativeHost to create the instance and wrapping context
-  ReactNativeHost *reactNativeHostImpl{get_self<ReactNativeHost>(reactNativeHost)};
-
-  auto instanceCreator = reactNativeHostImpl->InstanceCreator();
-
-  m_xamlView = react::uwp::CreateReactRootView(*this, componentName.c_str(), instanceCreator);
+  m_xamlView = react::uwp::CreateReactRootView(*this, componentName.c_str(), reactNativeHost);
 
   if (m_xamlView == nullptr)
     co_return;

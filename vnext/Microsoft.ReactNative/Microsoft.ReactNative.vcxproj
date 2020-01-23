@@ -288,7 +288,6 @@
     <ClInclude Include="ReactHost\ReactInstanceWin32.h" />
     <ClInclude Include="ReactHost\ReactNativeHeaders.h" />
     <ClInclude Include="ReactHost\React_Win.h" />
-    <ClInclude Include="ReactInstanceCreator.h" />
     <ClInclude Include="ReactInstance.h">
       <DependentUpon>ReactInstance.idl</DependentUpon>
       <SubType>Code</SubType>
@@ -444,7 +443,6 @@
     <ClCompile Include="ReactHost\PropertyBag.cpp" />
     <ClCompile Include="ReactHost\ReactHost.cpp" />
     <ClCompile Include="ReactHost\ReactInstanceWin32.cpp" />
-    <ClCompile Include="ReactInstanceCreator.cpp" />
     <ClCompile Include="ReactInstance.cpp">
       <DependentUpon>ReactInstance.idl</DependentUpon>
       <SubType>Code</SubType>

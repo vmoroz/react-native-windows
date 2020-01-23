@@ -306,7 +306,6 @@
     <ClCompile Include="ReactHost\ReactInstanceWin32.cpp">
       <Filter>ReactHost</Filter>
     </ClCompile>
-    <ClCompile Include="ReactInstanceCreator.cpp" />
     <ClCompile Include="ReactSupport.cpp" />
     <ClCompile Include="Threading\MessageDispatchQueue.cpp">
       <Filter>Threading</Filter>
@@ -639,7 +638,6 @@
     <ClInclude Include="ReactHost\ReactNativeHeaders.h">
       <Filter>ReactHost</Filter>
     </ClInclude>
-    <ClInclude Include="ReactInstanceCreator.h" />
     <ClInclude Include="ReactSupport.h" />
     <ClInclude Include="Threading\MessageDispatchQueue.h">
       <Filter>Threading</Filter>
