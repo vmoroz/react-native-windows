@@ -5,6 +5,7 @@
 #ifndef MSO_OBJECT_UNKNOWNOBJECT_H
 #define MSO_OBJECT_UNKNOWNOBJECT_H
 
+#include "comUtil/IUnknownShim.h"
 #include "compilerAdapters/compilerWarnings.h"
 #include "object/objectRefCount.h"
 #include "object/objectWithWeakRef.h"
@@ -647,7 +648,7 @@ class AgileUnknownObject : public UnknownObject<TBaseTypes...> {
   using AgileUnknownObjectType = AgileUnknownObject;
 
  private:
-  Mso::CntPtr<IUnknown> m_ftm;
+  Mso::CntPtr<Mso::IUnknown> m_ftm;
 };
 
 } // namespace Mso

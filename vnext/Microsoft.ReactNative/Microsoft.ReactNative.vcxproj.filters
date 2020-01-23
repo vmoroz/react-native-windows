@@ -597,6 +597,9 @@
     <ClInclude Include="ReactHost\AsyncActionQueue.h">
       <Filter>ReactHost</Filter>
     </ClInclude>
+    <ClInclude Include="ReactHost\AsyncFuture.h">
+      <Filter>ReactHost</Filter>
+    </ClInclude>
     <ClInclude Include="ReactHost\InstanceFactory.h">
       <Filter>ReactHost</Filter>
     </ClInclude>

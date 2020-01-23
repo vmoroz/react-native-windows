@@ -11,6 +11,7 @@
 #include "ReactPackageBuilder.h"
 #include "ReactRootView2.h"
 #include "ReactSupport.h"
+#include "ReactHost/AsyncFuture.h"
 
 #include <NativeModuleProvider.h>
 #include <ViewManager.h>
@@ -24,6 +25,7 @@ using namespace Windows::UI::Xaml::Controls;
 namespace winrt::Microsoft::ReactNative::implementation {
 
 ReactNativeHost::ReactNativeHost() noexcept {
+  //m_reactHost = Mso::React::MakeReactHost();
   Init();
 
   // TODO: Create a LifeCycleStateMachine to raise events in response
@@ -65,9 +67,8 @@ auto ReactNativeHost::PackageProviders() noexcept -> IVector<IReactPackageProvid
 }
 
 IAsyncAction ReactNativeHost::ReloadInstanceWithSettings(
-    ReactNative::ReactInstanceSettings const &instanceSettings) noexcept {
-  // TODO: Implement
-  co_await std::chrono::seconds{1};
+    ReactNative::ReactInstanceSettings const &/*instanceSettings*/) noexcept {
+  return Mso::FutureToAsyncAction(m_reactHost->ReloadInstance());
 }
 
 void ReactNativeHost::OnSuspend() noexcept {
