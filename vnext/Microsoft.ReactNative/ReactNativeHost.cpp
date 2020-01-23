@@ -33,6 +33,22 @@ ReactNativeHost::ReactNativeHost() noexcept : m_reactHost{Mso::React::MakeReactH
 #endif
 }
 
+inline ReactNative::IReactContext ReactNativeHost::CurrentReactContext() noexcept {
+  return m_currentReactContext;
+}
+
+IVector<IReactPackageProvider> ReactNativeHost::PackageProviders() noexcept {
+  if (!m_packageProviders) {
+    m_packageProviders = single_threaded_vector<IReactPackageProvider>();
+  }
+
+  return m_packageProviders;
+}
+
+void ReactNativeHost::PackageProviders(IVector<IReactPackageProvider> const &value) noexcept {
+  m_packageProviders = value;
+}
+
 ReactNative::ReactInstanceSettings ReactNativeHost::InstanceSettings() noexcept {
   if (!m_instanceSettings) {
     m_instanceSettings = make<ReactInstanceSettings>();
@@ -41,17 +57,16 @@ ReactNative::ReactInstanceSettings ReactNativeHost::InstanceSettings() noexcept 
   return m_instanceSettings;
 }
 
-auto ReactNativeHost::PackageProviders() noexcept -> IVector<IReactPackageProvider> {
-  if (!m_packageProviders) {
-    m_packageProviders = single_threaded_vector<IReactPackageProvider>();
-  }
-
-  return m_packageProviders;
+void ReactNativeHost::InstanceSettings(ReactNative::ReactInstanceSettings const &value) noexcept {
+  m_instanceSettings = value;
 }
 
-IAsyncAction ReactNativeHost::ReloadInstanceWithSettings(
-    ReactNative::ReactInstanceSettings const & /*instanceSettings*/) noexcept {
+IAsyncAction ReactNativeHost::ReloadInstance() noexcept {
   return Mso::FutureToAsyncAction(m_reactHost->ReloadInstance());
+}
+
+inline std::shared_ptr<react::uwp::IReactInstance> ReactNativeHost::Instance() noexcept {
+  return InstanceCreator()->getInstance();
 }
 
 std::shared_ptr<react::uwp::IReactInstanceCreator> ReactNativeHost::InstanceCreator() noexcept {
@@ -185,8 +200,8 @@ void ReactNativeHost::OnResume(OnResumeAction const &action) noexcept {
   //_lifecycleStateMachine.OnResume();
 }
 
-void ReactNativeHost::OnBackPressed() {
-  throw hresult_not_implemented(L"TODO: ReactNativeHost::OnBackPressed not implemented");
+void ReactNativeHost::OnBackPressed() noexcept {
+  OutputDebugStringW(L"TODO: ReactNativeHost::OnBackPressed not implemented");
 
   // DispatcherHelpers.AssertOnDispatcher();
   // var reactContext = _currentReactContext;

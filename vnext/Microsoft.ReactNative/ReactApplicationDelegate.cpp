@@ -32,14 +32,10 @@ static void ApplyArguments(ReactNative::ReactNativeHost const &host, std::wstrin
 
 ReactApplicationDelegate::ReactApplicationDelegate(Application const &application) noexcept
     : m_application(application) {
-  if (application == nullptr) {
-    throw winrt::hresult_null_argument(); // ArgumentNullException
-  }
+  VerifyElseCrash(application);
 
   m_reactApplication = application.as<IReactApplication>();
-  if (m_reactApplication == nullptr) {
-    throw winrt::hresult_invalid_argument(L"Expected argument to implement 'IReactApplication' interface");
-  }
+  VerifyElseCrashSz(m_reactApplication, "Expected argument to implement 'IReactApplication' interface");
 
   m_application.Resuming({this, &ReactApplicationDelegate::OnResuming});
   m_application.Suspending({this, &ReactApplicationDelegate::OnSuspending});
@@ -53,13 +49,10 @@ void ReactApplicationDelegate::OnActivated(IActivatedEventArgs const &args) noex
       auto protocolArgs = args.as<IProtocolActivatedEventArgs>();
       // auto uri = protocolArgs.Uri;
 
-      // TODO: Need to support deep linking by integrating with the Linking
-      // module
+      // TODO: Need to support deep linking by integrating with the Linking module
       if (args.PreviousExecutionState() != ApplicationExecutionState::Running) {
-        // TODO... Figure out the right activation path for
-        // PreviousExecutionState
-        throw winrt::hresult_not_implemented(
-            L"ReactApplicationDelegate.OnActivated doesn't handle PreviousExecutionState other than Running");
+        // TODO... Figure out the right activation path for PreviousExecutionState
+        VerifyElseCrashSz(false, "ReactApplicationDelegate.OnActivated doesn't handle PreviousExecutionState other than Running");
       } else {
         // TODO... Figure out the right activation path
         OutputDebugStringW(

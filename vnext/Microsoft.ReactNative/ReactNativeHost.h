@@ -19,24 +19,26 @@
 namespace winrt::Microsoft::ReactNative::implementation {
 
 struct ReactNativeHost : ReactNativeHostT<ReactNativeHost> {
+ public: // ReactNativeHost ABI API
   ReactNativeHost() noexcept;
 
   ReactNative::IReactContext CurrentReactContext() noexcept;
-  ReactNative::ReactInstanceSettings InstanceSettings() noexcept;
-  void InstanceSettings(ReactNative::ReactInstanceSettings const &value) noexcept;
+
   Windows::Foundation::Collections::IVector<IReactPackageProvider> PackageProviders() noexcept;
   void PackageProviders(Windows::Foundation::Collections::IVector<IReactPackageProvider> const &value) noexcept;
 
-  Windows::Foundation::IAsyncAction ReloadInstanceWithSettings(
-      ReactNative::ReactInstanceSettings const &instanceSettings) noexcept;
+  ReactNative::ReactInstanceSettings InstanceSettings() noexcept;
+  void InstanceSettings(ReactNative::ReactInstanceSettings const& value) noexcept;
+
+  Windows::Foundation::IAsyncAction ReloadInstance() noexcept;
 
   void OnSuspend() noexcept;
   void OnEnteredBackground() noexcept;
   void OnLeavingBackground() noexcept;
   void OnResume(OnResumeAction const &action) noexcept;
+  void OnBackPressed() noexcept;
 
-  void OnBackPressed();
-
+ public:
   IAsyncOperation<IReactContext> GetOrCreateReactContextAsync() noexcept;
 
   std::shared_ptr<react::uwp::IReactInstanceCreator> InstanceCreator() noexcept;
@@ -46,8 +48,8 @@ struct ReactNativeHost : ReactNativeHostT<ReactNativeHost> {
   IAsyncOperation<IReactContext> CreateReactContextCoreAsync() noexcept;
 
  private:
-  ReactNative::ReactInstanceSettings m_instanceSettings;
   Windows::Foundation::Collections::IVector<IReactPackageProvider> m_packageProviders{nullptr};
+  ReactNative::ReactInstanceSettings m_instanceSettings{nullptr};
 
   IReactContext m_currentReactContext{nullptr};
   std::shared_ptr<NativeModulesProvider> m_modulesProvider{nullptr};
@@ -69,28 +71,3 @@ namespace winrt::Microsoft::ReactNative::factory_implementation {
 struct ReactNativeHost : ReactNativeHostT<ReactNativeHost, implementation::ReactNativeHost> {};
 
 } // namespace winrt::Microsoft::ReactNative::factory_implementation
-
-namespace winrt::Microsoft::ReactNative::implementation {
-
-//=============================================================================
-// ReactNativeHost inline implementation
-//=============================================================================
-
-inline void ReactNativeHost::InstanceSettings(ReactNative::ReactInstanceSettings const &value) noexcept {
-  m_instanceSettings = value;
-}
-
-inline void ReactNativeHost::PackageProviders(
-    Windows::Foundation::Collections::IVector<IReactPackageProvider> const &value) noexcept {
-  m_packageProviders = value;
-}
-
-inline ReactNative::IReactContext ReactNativeHost::CurrentReactContext() noexcept {
-  return m_currentReactContext;
-}
-
-inline std::shared_ptr<react::uwp::IReactInstance> ReactNativeHost::Instance() noexcept {
-  return InstanceCreator()->getInstance();
-}
-
-} // namespace winrt::Microsoft::ReactNative::implementation
