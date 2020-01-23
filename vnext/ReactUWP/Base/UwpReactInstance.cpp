@@ -68,7 +68,7 @@
 #include <cxxreact/CxxNativeModule.h>
 #include <cxxreact/Instance.h>
 
-#include <Windows.ApplicationModel.h>
+//#include <Windows.ApplicationModel.h>
 #include <winrt/Windows.ApplicationModel.h>
 
 #ifdef PATCH_RN
@@ -104,13 +104,12 @@ bool HasPackageIdentity() noexcept {
   static const bool hasPackageIdentity = []() noexcept {
     auto packageStatics = winrt::get_activation_factory<winrt::Windows::ApplicationModel::IPackageStatics>(
         winrt::name_of<winrt::Windows::ApplicationModel::Package>());
-    auto abiPackageStatics =
-        static_cast<ABI::Windows::ApplicationModel::IPackageStatics *>(winrt::get_abi(packageStatics));
-    winrt::com_ptr<ABI::Windows::ApplicationModel::IPackage> dummy;
-    return abiPackageStatics->get_Current(reinterpret_cast<ABI::Windows::ApplicationModel::IPackage **>(
-               winrt::put_abi(dummy))) != HRESULT_FROM_WIN32(APPMODEL_ERROR_NO_PACKAGE);
-  }
-  ();
+    auto abiPackageStatics = static_cast<winrt::impl::abi_t<winrt::Windows::ApplicationModel::IPackageStatics> *>(
+        winrt::get_abi(packageStatics));
+    winrt::com_ptr<winrt::impl::abi_t<winrt::Windows::ApplicationModel::IPackage>> dummy;
+    return abiPackageStatics->get_Current(winrt::put_abi(dummy)) !=
+        winrt::impl::hresult_from_win32(APPMODEL_ERROR_NO_PACKAGE);
+  }();
 
   return hasPackageIdentity;
 }
@@ -192,8 +191,7 @@ std::vector<facebook::react::NativeModuleDescription> GetModules(
       MakeSerialQueueThread());
 
   modules.emplace_back(
-      NetworkingModule::name,
-      []() { return std::make_unique<NetworkingModule>(); }, MakeSerialQueueThread());
+      NetworkingModule::name, []() { return std::make_unique<NetworkingModule>(); }, MakeSerialQueueThread());
 
   modules.emplace_back(
       "Timing", [messageQueue]() { return facebook::react::CreateTimingModule(messageQueue); }, messageQueue);
@@ -228,11 +226,14 @@ std::vector<facebook::react::NativeModuleDescription> GetModules(
       },
       messageQueue);
 
-  modules.emplace_back(AlertModule::name, []() { return std::make_unique<AlertModule>(); }, messageQueue);
+  modules.emplace_back(
+      AlertModule::name, []() { return std::make_unique<AlertModule>(); }, messageQueue);
 
-  modules.emplace_back(ClipboardModule::name, []() { return std::make_unique<ClipboardModule>(); }, messageQueue);
+  modules.emplace_back(
+      ClipboardModule::name, []() { return std::make_unique<ClipboardModule>(); }, messageQueue);
 
-  modules.emplace_back(StatusBarModule::name, []() { return std::make_unique<StatusBarModule>(); }, messageQueue);
+  modules.emplace_back(
+      StatusBarModule::name, []() { return std::make_unique<StatusBarModule>(); }, messageQueue);
 
   modules.emplace_back(
       NativeAnimatedModule::name,

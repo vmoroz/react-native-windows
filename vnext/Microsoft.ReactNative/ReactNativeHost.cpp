@@ -33,6 +33,8 @@ ReactNativeHost::ReactNativeHost() noexcept {
   // support to ReactContext to register modules as background event listeners.
 }
 
+ReactNativeHost::ReactNativeHost(ReactNative::ReactInstanceSettings const & /*instanceSettings*/) noexcept {}
+
 void ReactNativeHost::Init() noexcept {
 #if _DEBUG
   facebook::react::InitializeLogging([](facebook::react::RCTLogLevel /*logLevel*/, const char *message) {
@@ -60,6 +62,12 @@ auto ReactNativeHost::PackageProviders() noexcept -> IVector<IReactPackageProvid
   }
 
   return m_packageProviders;
+}
+
+IAsyncAction ReactNativeHost::ReloadInstanceWithSettings(
+    ReactNative::ReactInstanceSettings const &instanceSettings) noexcept {
+  // TODO: Implement
+  co_await std::chrono::seconds{1};
 }
 
 void ReactNativeHost::OnSuspend() noexcept {

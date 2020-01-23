@@ -13,6 +13,8 @@
 #include <ReactUWP/IXamlRootView.h>
 #include <ReactUWP/ReactUwp.h>
 
+#include <ReactHost/React.h>
+
 #ifndef REACT_DEFAULT_ENABLE_DEVELOPER_MENU
 #if _DEBUG
 #define REACT_DEFAULT_ENABLE_DEVELOPER_MENU true
@@ -25,12 +27,16 @@ namespace winrt::Microsoft::ReactNative::implementation {
 
 struct ReactNativeHost : ReactNativeHostT<ReactNativeHost> {
   ReactNativeHost() noexcept;
+  ReactNativeHost(ReactNative::ReactInstanceSettings const &instanceSettings) noexcept;
 
   ReactNative::IReactContext CurrentReactContext() noexcept;
   ReactNative::ReactInstanceSettings InstanceSettings() noexcept;
   void InstanceSettings(ReactNative::ReactInstanceSettings const &value) noexcept;
   Windows::Foundation::Collections::IVector<IReactPackageProvider> PackageProviders() noexcept;
   void PackageProviders(Windows::Foundation::Collections::IVector<IReactPackageProvider> const &value) noexcept;
+
+  Windows::Foundation::IAsyncAction ReloadInstanceWithSettings(
+      ReactNative::ReactInstanceSettings const &instanceSettings) noexcept;
 
   void OnSuspend() noexcept;
   void OnEnteredBackground() noexcept;

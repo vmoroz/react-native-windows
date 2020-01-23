@@ -14,12 +14,15 @@ namespace Microsoft.ReactNative {
   [default_interface]
   runtimeclass ReactNativeHost {
     [noexcept2] ReactNativeHost();
+    [noexcept2] ReactNativeHost(ReactInstanceSettings instanceSettings);
 
     [noexcept2] IReactContext CurrentReactContext { get; };
 
     [noexcept2] ReactInstanceSettings InstanceSettings{ get; set; };
 
     [noexcept2] IVector<IReactPackageProvider> PackageProviders { get; set; };
+
+    [noexcept2] Windows.Foundation.IAsyncAction ReloadInstanceWithSettings(ReactInstanceSettings instanceSettings);
 
     [noexcept2] void OnSuspend();
     [noexcept2] void OnEnteredBackground();
