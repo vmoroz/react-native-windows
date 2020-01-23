@@ -67,12 +67,11 @@ class ReactHost final : public Mso::ActiveObject<IReactHost> {
 
  private:
   friend MakePolicy;
-  ReactHost(ReactOptions &&options, Mso::Promise<void> &&onInstanceLoaded) noexcept;
+  ReactHost(Mso::DispatchQueue const &queue) noexcept;
   ~ReactHost() noexcept override;
-  void Initialize() noexcept override;
   void Finalize() noexcept override;
 
-  static Mso::DispatchQueue GetNativeQueue(const ReactOptions &options) noexcept;
+  static Mso::DispatchQueue EnsureSerialQueue(Mso::DispatchQueue const &queue) noexcept;
 
   void ForEachViewHost(const Mso::FunctorRef<void(ReactViewHost &)> &action) noexcept;
 
@@ -82,7 +81,6 @@ class ReactHost final : public Mso::ActiveObject<IReactHost> {
  private:
   mutable std::mutex m_mutex;
   const Mso::InvokeElsePostExecutor m_executor{Queue()};
-  const Mso::ActiveField<Mso::Promise<void>> m_onInstanceLoaded{Queue()};
   const Mso::ActiveReadableField<Mso::CntPtr<AsyncActionQueue>> m_actionQueue{Mso::Make<AsyncActionQueue>(Queue()),
                                                                               Queue(),
                                                                               m_mutex};

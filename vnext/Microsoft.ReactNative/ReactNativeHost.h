@@ -27,7 +27,6 @@ namespace winrt::Microsoft::ReactNative::implementation {
 
 struct ReactNativeHost : ReactNativeHostT<ReactNativeHost> {
   ReactNativeHost() noexcept;
-  ReactNativeHost(ReactNative::ReactInstanceSettings const &instanceSettings) noexcept;
 
   ReactNative::IReactContext CurrentReactContext() noexcept;
   ReactNative::ReactInstanceSettings InstanceSettings() noexcept;

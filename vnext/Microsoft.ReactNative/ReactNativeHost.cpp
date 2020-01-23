@@ -25,7 +25,7 @@ using namespace Windows::UI::Xaml::Controls;
 namespace winrt::Microsoft::ReactNative::implementation {
 
 ReactNativeHost::ReactNativeHost() noexcept {
-  //m_reactHost = Mso::React::MakeReactHost();
+  m_reactHost = Mso::React::MakeReactHost();
   Init();
 
   // TODO: Create a LifeCycleStateMachine to raise events in response
@@ -34,8 +34,6 @@ ReactNativeHost::ReactNativeHost() noexcept {
   // register a lifecycle listener. Define the IBackgroundEventListener and add
   // support to ReactContext to register modules as background event listeners.
 }
-
-ReactNativeHost::ReactNativeHost(ReactNative::ReactInstanceSettings const & /*instanceSettings*/) noexcept {}
 
 void ReactNativeHost::Init() noexcept {
 #if _DEBUG

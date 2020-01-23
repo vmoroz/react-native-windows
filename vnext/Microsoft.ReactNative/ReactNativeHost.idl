@@ -14,7 +14,6 @@ namespace Microsoft.ReactNative {
   [default_interface]
   runtimeclass ReactNativeHost {
     [noexcept2] ReactNativeHost();
-    [noexcept2] ReactNativeHost(ReactInstanceSettings instanceSettings);
 
     [noexcept2] IReactContext CurrentReactContext { get; };
 

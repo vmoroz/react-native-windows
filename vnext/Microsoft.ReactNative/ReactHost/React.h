@@ -362,14 +362,6 @@ struct IReactViewHost : IUnknown {
   virtual Mso::Future<void> DetachViewInstance() noexcept = 0;
 };
 
-//! Creates a new instance of IReactHost.
-LIBLET_PUBLICAPI Mso::CntPtr<IReactHost> MakeReactHost(ReactOptions &&options) noexcept;
-
-//! Creates a new instance of IReactHost. Uses the provided onInstanceLoaded promise
-//! to notify about the initial instance loading. Use Mso::Future returned from
-//! the ReloadInstance call to observe instance loading after the reload.
-LIBLET_PUBLICAPI Mso::CntPtr<IReactHost> MakeReactHost(
-    ReactOptions &&options,
-    Mso::Promise<void> &&onInstanceLoaded) noexcept;
+LIBLET_PUBLICAPI Mso::CntPtr<IReactHost> MakeReactHost() noexcept;
 
 } // namespace Mso::React
