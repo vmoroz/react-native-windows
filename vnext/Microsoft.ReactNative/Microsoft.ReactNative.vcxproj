@@ -91,6 +91,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <PrecompiledHeaderOutputFile>$(IntDir)pch.pch</PrecompiledHeaderOutputFile>
+      <ForcedIncludeFiles>pch.h</ForcedIncludeFiles>
       <WarningLevel>Level4</WarningLevel>
       <AdditionalOptions>/await %(AdditionalOptions) /bigobj</AdditionalOptions>
       <!--Temporarily disable cppwinrt heap enforcement to work around xaml compiler generated std::shared_ptr use -->
@@ -244,7 +245,6 @@
     <ClInclude Include="..\ReactUWP\Views\WebViewManager.h" />
     <ClInclude Include="ABICxxModule.h" />
     <ClInclude Include="ABIViewManager.h" />
-    <ClInclude Include="Crash.h" />
     <ClInclude Include="DynamicReader.h">
       <DependentUpon>IJSValueReader.idl</DependentUpon>
     </ClInclude>

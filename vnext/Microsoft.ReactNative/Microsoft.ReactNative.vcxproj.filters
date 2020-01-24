@@ -170,6 +170,18 @@
     <ClCompile Include="..\ReactUWP\Utils\ValueUtils.cpp">
       <Filter>Utils</Filter>
     </ClCompile>
+    <ClCompile Include="..\ReactUWP\Utils\ResourceBrushUtils.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ReactUWP\Utils\UwpPreparedScriptStore.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ReactUWP\Utils\UwpScriptStore.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ReactUWP\Utils\ValueUtils.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
     <ClCompile Include="..\ReactUWP\Views\ActivityIndicatorViewManager.cpp">
       <Filter>Views</Filter>
     </ClCompile>
@@ -287,7 +299,7 @@
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="ReactHost\AsyncActionQueue.cpp">
       <Filter>ReactHost</Filter>
-    </ClCompile>
+    <ClCompile Include="ReactSupport.cpp" />
     <ClCompile Include="ReactHost\JSBundle.cpp">
       <Filter>ReactHost</Filter>
     </ClCompile>
@@ -470,6 +482,21 @@
       <Filter>Utils</Filter>
     </ClInclude>
     <ClInclude Include="..\ReactUWP\Utils\PropertyHandlerUtils.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ReactUWP\Utils\PropertyUtils.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ReactUWP\Utils\ResourceBrushUtils.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ReactUWP\Utils\StandardControlResourceKeyNames.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ReactUWP\Utils\UwpPreparedScriptStore.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ReactUWP\Utils\UwpScriptStore.h">
       <Filter>Utils</Filter>
     </ClInclude>
     <ClInclude Include="..\ReactUWP\Utils\PropertyUtils.h">
@@ -714,7 +741,6 @@
     </Filter>
     <Filter Include="Threading">
       <UniqueIdentifier>{72fbc00f-4a01-4363-8807-378641b7a17c}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Utils">
       <UniqueIdentifier>{7d98959f-0655-4d14-b73a-68f001ff9d12}</UniqueIdentifier>
     </Filter>
