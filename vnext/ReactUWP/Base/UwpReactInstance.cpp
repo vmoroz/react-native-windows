@@ -68,7 +68,6 @@
 #include <cxxreact/CxxNativeModule.h>
 #include <cxxreact/Instance.h>
 
-//#include <Windows.ApplicationModel.h>
 #include <winrt/Windows.ApplicationModel.h>
 
 #ifdef PATCH_RN

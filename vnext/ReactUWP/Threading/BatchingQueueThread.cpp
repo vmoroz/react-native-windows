@@ -2,10 +2,8 @@
 // Licensed under the MIT License.
 
 #include "pch.h"
-
 #include "Threading/BatchingQueueThread.h"
-#include "crash/verifyElseCrash.h"
-#include "debugAssertApi/debugAssertApi.h"
+#include <cassert>
 
 namespace react::uwp {
 
@@ -16,8 +14,8 @@ BatchingQueueThread::BatchingQueueThread(
 BatchingQueueThread::~BatchingQueueThread() noexcept {}
 
 void BatchingQueueThread::runOnQueue(std::function<void()> &&func) noexcept {
-  threadCheck();
-  ensureQueue();
+  ThreadCheck();
+  EnsureQueue();
   m_taskQueue->emplace_back(std::move(func));
 
 //#define TRACK_UI_CALLS
@@ -29,17 +27,17 @@ void BatchingQueueThread::runOnQueue(std::function<void()> &&func) noexcept {
 #endif
 }
 
-void BatchingQueueThread::threadCheck() noexcept {
+void BatchingQueueThread::ThreadCheck() noexcept {
 #if DEBUG
   if (m_expectedThreadId == std::thread::id{}) {
     m_expectedThreadId = std::this_thread::get_id();
   } else {
-    Assert(m_expectedThreadId == std::this_thread::get_id());
+    assert(m_expectedThreadId == std::this_thread::get_id());
   }
 #endif
 }
 
-void BatchingQueueThread::ensureQueue() noexcept {
+void BatchingQueueThread::EnsureQueue() noexcept {
   if (!m_taskQueue) {
     m_taskQueue = std::make_shared<WorkItemQueue>();
     m_taskQueue->reserve(2048);
@@ -47,9 +45,9 @@ void BatchingQueueThread::ensureQueue() noexcept {
 }
 
 void BatchingQueueThread::onBatchComplete() noexcept {
-  threadCheck();
+  ThreadCheck();
   if (m_taskQueue) {
-    m_queueThread->runOnQueue([taskQueue{std::move(m_taskQueue)}]() {
+    m_queueThread->runOnQueue([taskQueue{std::move(m_taskQueue)}]() noexcept{
       for (auto &task : *taskQueue) {
         task();
         task = nullptr;
@@ -59,11 +57,13 @@ void BatchingQueueThread::onBatchComplete() noexcept {
 }
 
 void BatchingQueueThread::runOnQueueSync(std::function<void()> &&func) noexcept {
-  VerifyElseCrashSz(false, "Not supported");
+  assert(false && "Not supported");
+  std::terminate();
 }
 
 void BatchingQueueThread::quitSynchronous() noexcept {
-  VerifyElseCrashSz(false, "Not supported");
+  assert(false && "Not supported");
+  std::terminate();
 }
 
 } // namespace react::uwp

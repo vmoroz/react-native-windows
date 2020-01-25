@@ -183,8 +183,9 @@
     <ClInclude Include="Modules\Animated\SpringAnimationDriver.h" />
     <ClInclude Include="Modules\Animated\TrackingAnimatedNode.h" />
     <ClInclude Include="..\include\ReactUWP\TurboModuleUtils.h" />
+    <ClInclude Include="Threading\BatchingQueueThread.h" />
+    <ClInclude Include="Threading\MessageQueueThreadFactory.h" />
     <ClInclude Include="Utils\ResourceBrushUtils.h" />
-    <ClInclude Include="Threading\BatchingUIMessageQueueThread.h" />
     <ClInclude Include="Utils\CppWinrtLessExceptions.h" />
     <ClInclude Include="Utils\StandardControlResourceKeyNames.h" />
     <ClInclude Include="Utils\UwpPreparedScriptStore.h" Condition="'$(PATCH_RN)' == 'true'" />
@@ -284,9 +285,10 @@
     <ClCompile Include="Modules\Animated\CalculatedAnimationDriver.cpp" />
     <ClCompile Include="Modules\Animated\SpringAnimationDriver.cpp" />
     <ClCompile Include="Modules\Animated\TrackingAnimatedNode.cpp" />
+    <ClCompile Include="Threading\BatchingQueueThread.cpp" />
+    <ClCompile Include="Threading\MessageQueueThreadFactory.cpp" />
     <ClCompile Include="TurboModule\TurboModuleUtils.cpp" />
     <ClCompile Include="Utils\ResourceBrushUtils.cpp" />
-    <ClCompile Include="Threading\BatchingUIMessageQueueThread.cpp" />
     <ClCompile Include="Utils\UwpPreparedScriptStore.cpp" Condition="'$(PATCH_RN)' == 'true'" />
     <ClCompile Include="Utils\UwpScriptStore.cpp" Condition="'$(PATCH_RN)' == 'true'" />
     <ClCompile Include="CxxReactUWP\JSBigString.cpp" />
