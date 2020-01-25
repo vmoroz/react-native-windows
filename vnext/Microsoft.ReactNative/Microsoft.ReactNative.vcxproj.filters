@@ -146,7 +146,19 @@
     <ClCompile Include="..\ReactUWP\Sandbox\DevSupportManagerUwpSandbox.cpp">
       <Filter>Sandbox</Filter>
     </ClCompile>
-    <ClCompile Include="..\ReactUWP\Threading\BatchingQueueThread.cpp">
+    <ClCompile Include="..\ReactUWP\Threading\AsyncWorkQueue.cpp">
+      <Filter>Threading</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ReactUWP\Threading\BatchingUIMessageQueueThread.cpp">
+      <Filter>Threading</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ReactUWP\Threading\JSQueueThread.cpp">
+      <Filter>Threading</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ReactUWP\Threading\UIMessageQueueThread.cpp">
+      <Filter>Threading</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ReactUWP\Threading\WorkerMessageQueueThread.cpp">
       <Filter>Threading</Filter>
     </ClCompile>
     <ClCompile Include="..\ReactUWP\Utils\AccessibilityUtils.cpp">
@@ -285,34 +297,9 @@
     <ClCompile Include="ABIViewManager.cpp" />
     <ClCompile Include="NativeModulesProvider.cpp" />
     <ClCompile Include="pch.cpp" />
-    <ClCompile Include="ReactHost\AsyncActionQueue.cpp">
-      <Filter>ReactHost</Filter>
-    </ClCompile>
-    <ClCompile Include="ReactHost\JSBundle.cpp">
-      <Filter>ReactHost</Filter>
-    </ClCompile>
-    <ClCompile Include="ReactHost\JSBundle_Win32.cpp">
-      <Filter>ReactHost</Filter>
-    </ClCompile>
-    <ClCompile Include="ReactHost\MsoUtils.cpp">
-      <Filter>ReactHost</Filter>
-    </ClCompile>
-    <ClCompile Include="ReactHost\PropertyBag.cpp">
-      <Filter>ReactHost</Filter>
-    </ClCompile>
-    <ClCompile Include="ReactHost\ReactHost.cpp">
-      <Filter>ReactHost</Filter>
-    </ClCompile>
-    <ClCompile Include="ReactHost\ReactInstanceWin32.cpp">
-      <Filter>ReactHost</Filter>
-    </ClCompile>
+    <ClCompile Include="ReactInstanceCreator.cpp" />
+    <ClCompile Include="ReactInstanceManagerBuilder.cpp" />
     <ClCompile Include="ReactSupport.cpp" />
-    <ClCompile Include="Threading\MessageDispatchQueue.cpp">
-      <Filter>Threading</Filter>
-    </ClCompile>
-    <ClCompile Include="Threading\MessageQueueThreadFactory.cpp">
-      <Filter>Threading</Filter>
-    </ClCompile>
     <ClCompile Include="ViewManagersProvider.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -457,7 +444,22 @@
     <ClInclude Include="..\ReactUWP\Polyester\IconViewManager.h">
       <Filter>Polyester</Filter>
     </ClInclude>
-    <ClInclude Include="..\ReactUWP\Threading\BatchingQueueThread.h">
+    <ClInclude Include="..\ReactUWP\Threading\AsyncWorkQueue.h">
+      <Filter>Threading</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ReactUWP\Threading\AsyncWorkQueue_Priv.h">
+      <Filter>Threading</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ReactUWP\Threading\BatchingUIMessageQueueThread.h">
+      <Filter>Threading</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ReactUWP\Threading\JSQueueThread.h">
+      <Filter>Threading</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ReactUWP\Threading\UIMessageQueueThread.h">
+      <Filter>Threading</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ReactUWP\Threading\WorkerMessageQueueThread.h">
       <Filter>Threading</Filter>
     </ClInclude>
     <ClInclude Include="..\ReactUWP\Utils\CppWinrtLessExceptions.h">
@@ -593,58 +595,9 @@
     <ClInclude Include="LifecycleState.h" />
     <ClInclude Include="NativeModulesProvider.h" />
     <ClInclude Include="pch.h" />
-    <ClInclude Include="ReactHost\AsyncActionQueue.h">
-      <Filter>ReactHost</Filter>
-    </ClInclude>
-    <ClInclude Include="ReactHost\AsyncFuture.h">
-      <Filter>ReactHost</Filter>
-    </ClInclude>
-    <ClInclude Include="ReactHost\InstanceFactory.h">
-      <Filter>ReactHost</Filter>
-    </ClInclude>
-    <ClInclude Include="ReactHost\IReactInstanceInternal.h">
-      <Filter>ReactHost</Filter>
-    </ClInclude>
-    <ClInclude Include="ReactHost\JSBundle.h">
-      <Filter>ReactHost</Filter>
-    </ClInclude>
-    <ClInclude Include="ReactHost\JSExceptionInfo.h">
-      <Filter>ReactHost</Filter>
-    </ClInclude>
-    <ClInclude Include="ReactHost\MoveOnCopy.h">
-      <Filter>ReactHost</Filter>
-    </ClInclude>
-    <ClInclude Include="ReactHost\MsoUtils.h">
-      <Filter>ReactHost</Filter>
-    </ClInclude>
-    <ClInclude Include="ReactHost\PropertyBag.h">
-      <Filter>ReactHost</Filter>
-    </ClInclude>
-    <ClInclude Include="ReactHost\PropertyBag_internal.h">
-      <Filter>ReactHost</Filter>
-    </ClInclude>
-    <ClInclude Include="ReactHost\React.h">
-      <Filter>ReactHost</Filter>
-    </ClInclude>
-    <ClInclude Include="ReactHost\React_Win.h">
-      <Filter>ReactHost</Filter>
-    </ClInclude>
-    <ClInclude Include="ReactHost\ReactHost.h">
-      <Filter>ReactHost</Filter>
-    </ClInclude>
-    <ClInclude Include="ReactHost\ReactInstanceWin32.h">
-      <Filter>ReactHost</Filter>
-    </ClInclude>
-    <ClInclude Include="ReactHost\ReactNativeHeaders.h">
-      <Filter>ReactHost</Filter>
-    </ClInclude>
+    <ClInclude Include="ReactInstanceCreator.h" />
+    <ClInclude Include="ReactInstanceManagerBuilder.h" />
     <ClInclude Include="ReactSupport.h" />
-    <ClInclude Include="Threading\MessageDispatchQueue.h">
-      <Filter>Threading</Filter>
-    </ClInclude>
-    <ClInclude Include="Threading\MessageQueueThreadFactory.h">
-      <Filter>Threading</Filter>
-    </ClInclude>
     <ClInclude Include="ViewManagersProvider.h" />
   </ItemGroup>
   <ItemGroup>
@@ -674,6 +627,7 @@
     <Midl Include="ReactApplication.idl" />
     <Midl Include="ReactApplicationDelegate.idl" />
     <Midl Include="ReactInstance.idl" />
+    <Midl Include="ReactInstanceManager.idl" />
     <Midl Include="ReactInstanceSettings.idl" />
     <Midl Include="ReactNativeHost.idl" />
     <Midl Include="ReactRootView2.idl" />
@@ -705,9 +659,6 @@
     </Filter>
     <Filter Include="Polyester">
       <UniqueIdentifier>{c7bc39da-51b4-4410-846f-ffc20dfa57cc}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ReactHost">
-      <UniqueIdentifier>{830ddeaf-e2b3-4609-981f-b9f34145fba9}</UniqueIdentifier>
     </Filter>
     <Filter Include="Sandbox">
       <UniqueIdentifier>{a78b93f6-3e91-4fac-a33c-ba1d1a6662c6}</UniqueIdentifier>

@@ -86,7 +86,7 @@ struct WorkerMessageQueueThread::Impl {
 };
 
 WorkerMessageQueueThread::Impl::Impl() noexcept {
-  [[maybe_unused]] HRESULT hr = CreateAsyncWorkQueue(&m_queue);
+  /*HRESULT hr =*/CreateAsyncWorkQueue(&queue);
   // TODO: Asserts
   // Assert(SUCCEEDED(hr))
 }
