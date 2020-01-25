@@ -48,7 +48,8 @@ fire_and_forget ReactRootView::StartReactApplicationAsync(
   m_moduleName = componentName;
   m_initialProps = initialProps;
 
-  m_xamlView = react::uwp::CreateReactRootView(*this, componentName.c_str(), reactNativeHost);
+  m_xamlView = {};
+  //TODO: react::uwp::CreateReactRootView(*this, componentName.c_str(), reactNativeHost);
 
   if (m_xamlView == nullptr)
     co_return;

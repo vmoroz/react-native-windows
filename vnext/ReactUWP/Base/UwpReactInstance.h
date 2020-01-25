@@ -6,7 +6,6 @@
 #include <IReactInstance.h>
 
 #include <Modules/DeviceInfoModule.h>
-#include <Threading/WorkerMessageQueueThread.h>
 #include <Views/ExpressionAnimationStore.h>
 
 #include <winrt/Windows.UI.Core.h>
