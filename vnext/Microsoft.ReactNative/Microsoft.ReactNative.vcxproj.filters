@@ -224,9 +224,6 @@
     <ClCompile Include="..\ReactUWP\Views\RawTextViewManager.cpp">
       <Filter>Views</Filter>
     </ClCompile>
-    <ClCompile Include="..\ReactUWP\Views\ReactControl.cpp">
-      <Filter>Views</Filter>
-    </ClCompile>
     <ClCompile Include="..\ReactUWP\Views\ReactRootView.cpp">
       <Filter>Views</Filter>
     </ClCompile>
@@ -310,6 +307,9 @@
       <Filter>Threading</Filter>
     </ClCompile>
     <ClCompile Include="ViewManagersProvider.cpp" />
+    <ClCompile Include="Views\ReactControl.cpp">
+      <Filter>Views</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\ReactUWP\Base\UwpReactInstance.h">
@@ -534,9 +534,6 @@
     <ClInclude Include="..\ReactUWP\Views\RawTextViewManager.h">
       <Filter>Views</Filter>
     </ClInclude>
-    <ClInclude Include="..\ReactUWP\Views\ReactControl.h">
-      <Filter>Views</Filter>
-    </ClInclude>
     <ClInclude Include="..\ReactUWP\Views\RefreshControlManager.h">
       <Filter>Views</Filter>
     </ClInclude>
@@ -633,6 +630,9 @@
       <Filter>Threading</Filter>
     </ClInclude>
     <ClInclude Include="ViewManagersProvider.h" />
+    <ClInclude Include="Views\ReactControl.h">
+      <Filter>Views</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Midl Include="..\ReactUWP\Views\cppwinrt\AccessibilityAction.idl">

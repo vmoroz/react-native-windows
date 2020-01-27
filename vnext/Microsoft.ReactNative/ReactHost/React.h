@@ -47,39 +47,11 @@ constexpr const Mso::JSHost::NamedProperty<Mso::IDispatchQueueService> JSDispatc
 constexpr const Mso::JSHost::NamedProperty<Mso::IDispatchQueueService> NativeDispatchQueueProperty{
     "NativeDispatchQueue"};
 
-//! Every individual breaking behavior change on the platform should have its own quirk.  This way if
-//! there is a breaking change that is a significant amount of work for an SDX to fix, they can maintain that
-//! behavior without having to stop getting other new behaviors.
-//! We can also add additional quirks based on what quirk version the SDX is running at.  (Maybe we need to do
-//! something different for an SDX three versions behind, vs one version behind)
-//! Quirks can be shared by the SDX platform, or host specific.
-//! Quirks should be registered by calling RegisterQuirk.  Then they can be set on ReactOptions.
-//! Generally a host specific version config should be used to set the quirks on ReactOptions, rather
-//! then setting them manually.
-using SDXQuirk = uint32_t;
-
 /**An Office wrapper that extends FB's React Instance and makes it a 1:1 relationship with the bundle,
 such that each Office React Instance is capable of loading a single bundle and hosting js in an
 isolated JavaScript execution environment.*/
 MSO_STRUCT_GUID(IReactInstance, "085D524A-AF3B-4839-8056-E5D0E6FC64BC")
 struct IReactInstance : public IUnknown {
-  //! Returns the name of the bundle file this React Instance has loaded.
-  virtual const std::string &JsBundleName() const noexcept = 0;
-
-  //! Returns the SDX base path from where this React Instance has loaded.
-  virtual std::string SDXBasePath() const noexcept = 0;
-
-  //! Returns a flag that indicates some properties of the existing instance has been changed (like using web debugger),
-  //! and this instance should not be cached and served anymore.
-  virtual bool NeedsReload() const noexcept = 0;
-
-  //! Marks this instance as needing reload, due to a fundamental property change (like useWebDebugger).
-  //! After the instance is marked, this instance will not be served through GetOrCreateReactInstance API anymore.
-  virtual void SetAsNeedsReload() noexcept = 0;
-
-  //! Returns if a quirk is set on this instance or not.
-  virtual bool GetQuirk(SDXQuirk quirk) const noexcept = 0;
-
   //! Returns ReactOptions associated with the IReactInstance
   //! The ReactOptions are meant to immutable and give to IReactInstance at its creation.
   virtual const ReactOptions &Options() const noexcept = 0;
