@@ -224,9 +224,6 @@
     <ClCompile Include="..\ReactUWP\Views\RawTextViewManager.cpp">
       <Filter>Views</Filter>
     </ClCompile>
-    <ClCompile Include="..\ReactUWP\Views\ReactRootView.cpp">
-      <Filter>Views</Filter>
-    </ClCompile>
     <ClCompile Include="..\ReactUWP\Views\RefreshControlManager.cpp">
       <Filter>Views</Filter>
     </ClCompile>
@@ -278,6 +275,9 @@
     <ClCompile Include="..\ReactUWP\Views\WebViewManager.cpp">
       <Filter>Views</Filter>
     </ClCompile>
+    <ClCompile Include="..\ReactUWP\Views\XamlFeatures.cpp">
+      <Filter>Views</Filter>
+    </ClCompile>
     <ClCompile Include="ABICxxModule.cpp" />
     <ClCompile Include="ABIViewManager.cpp" />
     <ClCompile Include="NativeModulesProvider.cpp" />
@@ -307,7 +307,7 @@
       <Filter>Threading</Filter>
     </ClCompile>
     <ClCompile Include="ViewManagersProvider.cpp" />
-    <ClCompile Include="Views\ReactControl.cpp">
+    <ClCompile Include="Views\ReactRootControl.cpp">
       <Filter>Views</Filter>
     </ClCompile>
   </ItemGroup>
@@ -579,6 +579,9 @@
     <ClInclude Include="..\ReactUWP\Views\WebViewManager.h">
       <Filter>Views</Filter>
     </ClInclude>
+    <ClInclude Include="..\ReactUWP\Views\XamlFeatures.h">
+      <Filter>Views</Filter>
+    </ClInclude>
     <ClInclude Include="ABICxxModule.h" />
     <ClInclude Include="ABIViewManager.h" />
     <ClInclude Include="HResult.h" />
@@ -630,7 +633,7 @@
       <Filter>Threading</Filter>
     </ClInclude>
     <ClInclude Include="ViewManagersProvider.h" />
-    <ClInclude Include="Views\ReactControl.h">
+    <ClInclude Include="Views\ReactRootControl.h">
       <Filter>Views</Filter>
     </ClInclude>
   </ItemGroup>

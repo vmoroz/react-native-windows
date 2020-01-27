@@ -2,13 +2,13 @@
 // Licensed under the MIT License.
 
 #pragma once
-#include <stdint.h>
 #include <memory>
-#include <set>
 
 #include <IReactInstance.h>
+#include <object/unknownObject.h>
 #include <winrt/Windows.UI.Xaml.Controls.h>
 #include "IXamlRootView.h"
+#include "ReactHost/React.h"
 #include "SIPEventHandler.h"
 #include "TouchEventHandler.h"
 #include "Views/KeyboardEventHandler.h"
@@ -53,8 +53,16 @@ struct ReactRootControl final : std::enable_shared_from_this<ReactRootControl>, 
   void blur(XamlView const &xamlView) noexcept override;
 
  public:
+  //! property ReactViewHost : Mso::React::IReactViewHost
   Mso::React::IReactViewHost *ReactViewHost() noexcept;
   void ReactViewHost(Mso::React::IReactViewHost *viewHost) noexcept;
+
+ public: // IReactViewInstance UI-thread implementation
+  Mso::Future<void> InitRootView(
+      Mso::CntPtr<Mso::React::IReactInstance> &&reactInstance,
+      Mso::React::ReactViewOptions &&viewOptions) noexcept;
+  Mso::Future<void> UpdateRootView() noexcept;
+  Mso::Future<void> UninitRootView() noexcept;
 
  private:
   void PrepareXamlRootView(XamlView const &rootView) noexcept;
@@ -73,16 +81,15 @@ struct ReactRootControl final : std::enable_shared_from_this<ReactRootControl>, 
   void ReloadHost() noexcept;
   void ReloadViewHost() noexcept;
 
-  void AttachRootView() noexcept;
-  void DetachRootView() noexcept;
-
-  void ReloadUI(
-      Mso::CntPtr<Mso::React::IReactInstance> const &reactInstance,
-      Mso::React::ReactViewOptions &&reactViewOptions) noexcept;
-  void UnloadUI() noexcept;
-
  private:
   int64_t m_rootTag{-1};
+
+  std::shared_ptr<TouchEventHandler> m_touchEventHandler;
+  std::shared_ptr<SIPEventHandler> m_SIPEventHandler;
+  std::shared_ptr<PreviewKeyboardEventHandlerOnRoot> m_previewKeyboardEventHandlerOnRoot;
+
+  //  std::shared_ptr<IReactInstance> m_reactInstance;
+
   Mso::DispatchQueue m_uiQueue;
   Mso::CntPtr<Mso::React::IReactViewHost> m_reactViewHost;
   Mso::WeakPtr<Mso::React::IReactInstance> m_weakReactInstance;
@@ -92,8 +99,6 @@ struct ReactRootControl final : std::enable_shared_from_this<ReactRootControl>, 
 
   bool m_useLiveReload{false};
   bool m_useWebDebugger{false};
-  bool m_isRootViewAttaching{false};
-  bool m_isRootViewAttached{false};
   bool m_isUILoading{false};
   bool m_isUILoaded{false};
 
@@ -121,48 +126,43 @@ struct ReactRootControl final : std::enable_shared_from_this<ReactRootControl>, 
   winrt::CoreDispatcher::AcceleratorKeyActivated_revoker m_coreDispatcherAKARevoker{};
 };
 
-//
-// private:
-//  IXamlRootView *m_pParent;
-//
-//  std::string m_jsComponentName;
-//  std::shared_ptr<facebook::react::NativeModuleProvider> m_moduleProvider;
-//  folly::dynamic m_initialProps;
-//  std::shared_ptr<TouchEventHandler> m_touchEventHandler;
-//  std::shared_ptr<SIPEventHandler> m_SIPEventHandler;
-//  std::shared_ptr<PreviewKeyboardEventHandlerOnRoot> m_previewKeyboardEventHandlerOnRoot;
-//
-//  int64_t m_rootTag = -1;
-//
-//  // Visual tree to support safe harbor
-//  // m_rootView
-//  //  safe harbor
-//  //  m_xamlRootView
-//  //    JS created children
-//  XamlView m_xamlRootView{nullptr};
-//  XamlView m_rootView;
-//
-//  ReactInstanceCreator m_instanceCreator;
-//  std::shared_ptr<IReactInstance> m_reactInstance;
-//  bool m_isAttached{false};
-//  LiveReloadCallbackCookie m_liveReloadCallbackCookie{0};
-//  ErrorCallbackCookie m_errorCallbackCookie{0};
-//  DebuggerAttachCallbackCookie m_debuggerAttachCallbackCookie{0};
-//
-//  winrt::ContentControl m_focusSafeHarbor{nullptr};
-//  winrt::ContentControl::LosingFocus_revoker m_focusSafeHarborLosingFocusRevoker{};
-//  winrt::Grid m_redBoxGrid{nullptr};
-//  winrt::Grid m_greenBoxGrid{nullptr};
-//  winrt::TextBlock m_errorTextBlock{nullptr};
-//  winrt::TextBlock m_waitingTextBlock{nullptr};
-//  winrt::Grid m_developerMenuRoot{nullptr};
-//  winrt::Button::Click_revoker m_remoteDebugJSRevoker{};
-//  winrt::Button::Click_revoker m_cancelRevoker{};
-//  winrt::Button::Click_revoker m_toggleInspectorRevoker{};
-//  winrt::Button::Click_revoker m_reloadJSRevoker{};
-//  winrt::Button::Click_revoker m_liveReloadRevoker{};
-//  winrt::Windows::UI::Core::CoreDispatcher m_uiDispatcher;
-//  winrt::CoreDispatcher::AcceleratorKeyActivated_revoker m_coreDispatcherAKARevoker{};
-//};
+//! This class ensures that we access ReactRootView from UI thread.
+struct ReactViewInstance : public Mso::UnknownObject<Mso::RefCountStrategy::WeakRef, Mso::React::IReactViewInstance> {
+  ReactViewInstance(std::weak_ptr<ReactRootControl> &&weakRootControl, Mso::DispatchQueue &&uiQueue) noexcept;
+
+  Mso::Future<void> InitRootView(
+      Mso::CntPtr<Mso::React::IReactInstance> &&reactInstance,
+      Mso::React::ReactViewOptions &&viewOptions) noexcept override;
+  Mso::Future<void> UpdateRootView() noexcept override;
+  Mso::Future<void> UninitRootView() noexcept override;
+
+ private:
+  template <class TAction>
+  Mso::Future<void> PostInUIQueue(TAction &&action) noexcept;
+
+ private:
+  std::weak_ptr<ReactRootControl> m_weakRootControl;
+  Mso::DispatchQueue m_uiQueue;
+};
+
+//===========================================================================
+// ReactViewInstance inline implementation
+//===========================================================================
+
+template <class TAction>
+inline Mso::Future<void> ReactViewInstance::PostInUIQueue(TAction &&action) noexcept {
+  // ReactViewInstance has shorter lifetime than ReactRootControl. Thus, we capture this WeakPtr.
+  return Mso::PostFuture(
+      m_uiQueue, [weakThis = Mso::WeakPtr{this}, action{std::forward<TAction>(action)}]() mutable noexcept {
+        if (auto strongThis = weakThis.GetStrongPtr()) {
+          if (auto rootControl = strongThis->m_weakRootControl.lock()) {
+            action(*rootControl);
+            return Mso::Maybe<void>{};
+          }
+        }
+
+        return Mso::CancellationErrorProvider().MakeMaybe();
+      });
+}
 
 } // namespace react::uwp

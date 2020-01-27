@@ -214,9 +214,6 @@ struct ReactOptions {
   //! It is not safe to expose to Custom Function. Add this flag so we can turn it off for Custom Function.
   bool EnableNativePerformanceNow{true};
 
-  //! This lets us have a mechanism to keep existing SDX behavior in places where we want to change the behavior
-  std::unordered_set<SDXQuirk> Quirks;
-
   ReactDevOptions DeveloperSettings = {};
 
   //! Additional properties associated with the ReactOptions.
@@ -294,14 +291,16 @@ struct DECLSPEC_NOVTABLE IReactHost : IUnknown {
 //! This interface is to be implemented by a platform specific ReactViewInstance that hosts React UI tree.
 MSO_STRUCT_GUID(IReactViewInstance, "29e04f14-9fc9-4dd7-a543-e59db0d57bd2")
 struct IReactViewInstance : IUnknown {
-  //! Reloads React UI tree. We pass reactInstance and viewOptions that essentially represent
-  //! a snapshot of current options.
-  virtual Mso::Future<void> Reload(
+  //! Initialize ReactRootView with the reactInstance and view-specific settings.
+  virtual Mso::Future<void> InitRootView(
       Mso::CntPtr<IReactInstance> &&reactInstance,
       ReactViewOptions &&viewOptions) noexcept = 0;
 
-  //! Unloads React UI tree.
-  virtual Mso::Future<void> Unload() noexcept = 0;
+  //! Update ReactRootView with changes in ReactInstance.
+  virtual Mso::Future<void> UpdateRootView() noexcept = 0;
+
+  //! Uninitialize ReactRootView and destroy UI tree.
+  virtual Mso::Future<void> UninitRootView() noexcept = 0;
 };
 
 //! A host object for ReactView.

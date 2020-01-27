@@ -32,17 +32,6 @@ class ReactInstanceWin32 final
   using Super = ActiveObjectType;
 
  public: // IReactInstance
-  const std::string &JsBundleName() const noexcept override;
-  std::string SDXBasePath() const noexcept override;
-  bool NeedsReload() const noexcept override {
-    VerifyElseCrashSzTag(false, "Not implemented", 0x0285e28e /* tag_c74ko */);
-  }
-  void SetAsNeedsReload() noexcept override {
-    VerifyElseCrashSzTag(false, "Not implemented", 0x0285e28f /* tag_c74kp */);
-  }
-  bool GetQuirk(SDXQuirk /*quirk*/) const noexcept override {
-    VerifyElseCrashSzTag(false, "Not implemented", 0x0285e290 /* tag_c74kq */);
-  }
   const ReactOptions &Options() const noexcept override;
 
  public: // IReactInstanceInternal

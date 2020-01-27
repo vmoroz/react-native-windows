@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
-#include <pch.h>
+#include "pch.h"
 
 #include "ReactRootControl.h"
 
@@ -33,52 +33,6 @@
 #include <object/unknownObject.h>
 
 namespace react::uwp {
-//===========================================================================
-//
-//===========================================================================
-
-//! This class ensures that we access ReactRootView from UI thread.
-struct ReactViewInstance : public Mso::UnknownObject<Mso::RefCountStrategy::WeakRef, Mso::React::IReactViewInstance> {
-  ReactViewInstance(ReactRootView5 *rootView, Mso::DispatchQueue const &uiQueue) noexcept
-      : m_safeRootView{rootView}, m_uiQueue{uiQueue} {}
-
-  Mso::Future<void> Reload(
-      Mso::CntPtr<Mso::React::IReactInstance> const &reactInstance,
-      Mso::React::ReactViewOptions &&viewOptions) noexcept override {
-    return PostInUIQueue(
-        [reactInstance{reactInstance}, viewOptions{std::move(viewOptions)}](ReactRootView5 &rootView) mutable noexcept {
-          rootView.ReloadUI(reactInstance, std::move(viewOptions));
-        });
-  }
-
-  Mso::Future<void> Unload() noexcept override {
-    return PostInUIQueue([](ReactRootView5 &rootView) noexcept { rootView.UnloadUI(); });
-  }
-
-  void OnError() noexcept override {
-    PostInUIQueue([](ReactRootView5 &rootView) noexcept { rootView.OnError(); });
-  }
-
- private:
-  template <class TFunc>
-  Mso::Future<void> PostInUIQueue(TFunc &&func) noexcept {
-    return Mso::PostFuture(
-        m_uiQueue, [weakThis = Mso::WeakPtr{this}, func = std::forward<TFunc>(func)]() mutable noexcept {
-          if (auto strongThis = weakThis.GetStrongPtr()) {
-            if (ReactRootView *rootView = strongThis->m_safeRootView) {
-              func(*rootView);
-              return Mso::MakeSucceededFuture();
-            }
-          }
-
-          return Mso::MakeFailedFuture<void>(Mso::CancellationErrorProvider().MakeErrorCode(true));
-        });
-  }
-
- private:
-  ReactRootView5 m_safeRootView;
-  Mso::DispatchQueue m_uiQueue;
-};
 
 //===========================================================================
 // ReactRootControl implementation
@@ -179,6 +133,142 @@ void ReactRootControl::blur(XamlView const &xamlView) noexcept {
     winrt::FocusManager::TryFocusAsync(m_focusSafeHarbor, winrt::FocusState::Pointer);
   } else
     winrt::FocusManager::TryFocusAsync(xamlView, winrt::FocusState::Pointer);
+}
+
+Mso::Future<void> ReactRootControl::InitRootView(
+    Mso::CntPtr<Mso::React::IReactInstance> &&reactInstance,
+    Mso::React::ReactViewOptions &&viewOptions) noexcept {
+
+  void ReactRootControl::ReloadUI(
+      Mso::CntPtr<Mso::React::IReactInstance> const &reactInstance,
+      Mso::React::ReactViewOptions &&reactViewOptions) noexcept {
+    UnloadUI();
+    VerifyElseCrash(!m_isUILoading);
+    m_isUILoading = true;
+
+    m_weakReactInstance = Mso::WeakPtr{reactInstance.Get()};
+    m_reactOptions = std::make_unique<Mso::React::ReactOptions>(reactInstance->Options());
+    m_reactViewOptions = std::make_unique<Mso::React::ReactViewOptions>(std::move(reactViewOptions));
+
+    const auto &devSettings = m_reactOptions->DeveloperSettings;
+    m_useLiveReload = devSettings.UseLiveReload;
+    m_useWebDebugger = devSettings.UseWebDebugger;
+    SetInError(false);
+
+    const auto &winReactInstance = query_cast<Mso::React::IReactInstanceWin32 &>(*reactInstance);
+    auto fbReactInstance = winReactInstance.InstanceObject();
+    m_fbReactInstance = fbReactInstance;
+
+    folly::dynamic initialProps = (!m_reactViewOptions->InitialProps.empty())
+        ? folly::parseJson(m_reactViewOptions->InitialProps)
+        : folly::dynamic::object();
+
+    fbReactInstance->AttachMeasuredRootView(this, std::move(initialProps));
+
+    // void ReactControl::AttachRoot() noexcept {
+    //  if (m_isAttached)
+    //    return;
+    //
+    //  if (!m_reactInstance)
+    //    m_reactInstance = m_instanceCreator->getInstance();
+    //
+    //  // Handle any errors that occurred during creation before we add our callback
+    //  if (m_reactInstance->IsInError())
+    //    HandleInstanceError();
+    //
+    //  // Show the Waiting for debugger to connect message if the instance is still
+    //  // waiting
+    //  if (m_reactInstance->IsWaitingForDebugger())
+    //    HandleInstanceWaiting();
+    //
+    //  if (!m_touchEventHandler)
+    //    m_touchEventHandler = std::make_shared<TouchEventHandler>(m_reactInstance);
+    //
+    //  if (!m_SIPEventHandler)
+    //    m_SIPEventHandler = std::make_shared<SIPEventHandler>(m_reactInstance);
+    //
+    //  m_previewKeyboardEventHandlerOnRoot = std::make_shared<PreviewKeyboardEventHandlerOnRoot>(m_reactInstance);
+    //
+    //  // Register callback from instance for errors
+    //  m_errorCallbackCookie = m_reactInstance->RegisterErrorCallback([this]() { HandleInstanceError(); });
+    //
+    //  // Register callback from instance for debugger attaching
+    //  m_debuggerAttachCallbackCookie =
+    //      m_reactInstance->RegisterDebuggerAttachCallback([this]() { HandleDebuggerAttach(); });
+    //
+    //  // We assume Attach has been called from the UI thread
+    //#ifdef DEBUG
+    //  auto coreWindow = winrt::CoreWindow::GetForCurrentThread();
+    //  assert(coreWindow != nullptr);
+    //#endif
+    //
+    //  m_touchEventHandler->AddTouchHandlers(m_xamlRootView);
+    //  m_previewKeyboardEventHandlerOnRoot->hook(m_xamlRootView);
+    //  m_SIPEventHandler->AttachView(m_xamlRootView, true /*fireKeyboradEvents*/);
+    //
+    //  auto initialProps = m_initialProps;
+    //  m_reactInstance->AttachMeasuredRootView(m_pParent, std::move(initialProps));
+    //  m_isAttached = true;
+    //
+    //  if (m_reactInstance->GetReactInstanceSettings().EnableDeveloperMenu) {
+    //    InitializeDeveloperMenu();
+    //  }
+    //}
+
+    m_isUILoading = false;
+    m_isUILoaded = true;
+  }
+}
+
+Mso::Future<void> ReactRootControl::UpdateRootView() noexcept {}
+
+Mso::Future<void> ReactRootControl::UninitRootView() noexcept {
+  void ReactRootControl::UnloadUI() noexcept {
+    if (!m_isUILoaded) {
+      return;
+    }
+
+    if (auto fbReactInstance = m_fbReactInstance.lock()) {
+      fbReactInstance->DetachRootView(this);
+    }
+
+    if (m_touchEventHandler != nullptr) {
+      m_touchEventHandler->RemoveTouchHandlers();
+    }
+
+    if (!m_previewKeyboardEventHandlerOnRoot)
+      m_previewKeyboardEventHandlerOnRoot->unhook();
+
+    if (m_reactInstance != nullptr) {
+      m_reactInstance->DetachRootView(m_pParent);
+
+      // If the redbox error UI is shown we need to remove it, otherwise let the
+      // natural teardown process do this
+      if (m_reactInstance->IsInError()) {
+        auto grid(m_xamlRootView.as<winrt::Grid>());
+        if (grid != nullptr)
+          grid.Children().Clear();
+
+        m_redBoxGrid = nullptr;
+        m_errorTextBlock = nullptr;
+      }
+    }
+    //
+    //  m_isAttached = false;
+    //}
+
+    //    // Clear members with a dependency on the reactInstance
+    //    m_touchEventHandler.reset();
+    //
+    //    m_SIPEventHandler.reset();
+
+    m_reactOptions = nullptr;
+    m_reactViewOptions = nullptr;
+    m_weakReactInstance = nullptr;
+    m_fbReactInstance.reset();
+
+    m_isUILoaded = false;
+  }
 }
 
 void ReactRootControl::HandleInstanceError() noexcept {
@@ -458,175 +548,47 @@ Mso::React::IReactViewHost *ReactRootControl::ReactViewHost() noexcept {
 }
 
 void ReactRootControl::ReactViewHost(Mso::React::IReactViewHost *viewHost) noexcept {
+  if (m_reactViewHost.Get() == viewHost) {
+    return;
+  }
+
   if (m_reactViewHost) {
-    DetachRootView();
+    UninitRootView();
+    m_reactViewHost->DetachViewInstance();
   }
 
   m_reactViewHost = viewHost;
 
   if (m_reactViewHost) {
-    AttachRootView();
+    auto viewInstance = Mso::Make<ReactViewInstance>(this, m_uiQueue);
+    m_reactViewHost->AttachViewInstance(*viewInstance);
   }
 }
 
-void ReactRootControl::AttachRootView() noexcept {
-  if (m_isRootViewAttached) {
-    return;
-  }
-  VerifyElseCrash(m_isRootViewAttaching);
+//===========================================================================
+// ReactViewInstance implementation
+//===========================================================================
 
-  m_uiQueue = &Mso::Async::CurrentQueue();
+ReactViewInstance::ReactViewInstance(
+    std::weak_ptr<ReactRootControl> &&weakRootControl,
+    Mso::DispatchQueue &&uiQueue) noexcept
+    : m_weakRootControl{std::move(weakRootControl)}, m_uiQueue{std::move(uiQueue)} {}
 
-  auto viewInstance = Mso::Make<ReactViewInstance>(this, m_uiQueue);
-  m_reactViewHost->AttachViewInstance(*viewInstance);
-
-  m_isRootViewAttaching = false;
-  m_isRootViewAttached = true;
+Mso::Future<void> ReactViewInstance::InitRootView(
+    Mso::CntPtr<Mso::React::IReactInstance> &&reactInstance,
+    Mso::React::ReactViewOptions &&viewOptions) noexcept {
+  return PostInUIQueue([reactInstance{std::move(reactInstance)},
+                        viewOptions{std::move(viewOptions)}](ReactRootControl &rootControl) mutable noexcept {
+    rootControl.InitRootView(std::move(reactInstance), std::move(viewOptions));
+  });
 }
 
-void ReactRootControl::DetachRootView() noexcept {
-  if (!m_isRootViewAttached) {
-    return;
-  }
-
-  UnloadUI();
-
-  VerifyElseCrash(m_reactViewHost);
-  m_reactViewHost->DetachViewInstance();
-
-  m_reactViewHost = nullptr;
-  m_uiQueue = nullptr;
-
-  m_isRootViewAttached = false;
+Mso::Future<void> ReactViewInstance::UpdateRootView() noexcept {
+  return PostInUIQueue([](ReactRootControl &rootControl) mutable noexcept { rootControl.UpdateRootView(); });
 }
 
-void ReactRootControl::ReloadUI(
-    Mso::CntPtr<Mso::React::IReactInstance> const &reactInstance,
-    Mso::React::ReactViewOptions &&reactViewOptions) noexcept {
-  UnloadUI();
-  VerifyElseCrash(!m_isUILoading);
-  m_isUILoading = true;
-
-  m_weakReactInstance = Mso::WeakPtr{reactInstance.Get()};
-  m_reactOptions = std::make_unique<Mso::React::ReactOptions>(reactInstance->Options());
-  m_reactViewOptions = std::make_unique<Mso::React::ReactViewOptions>(std::move(reactViewOptions));
-
-  const auto &devSettings = m_reactOptions->DeveloperSettings;
-  m_useLiveReload = devSettings.UseLiveReload;
-  m_useWebDebugger = devSettings.UseWebDebugger;
-  SetInError(false);
-
-  const auto &winReactInstance = query_cast<Mso::React::IReactInstanceWin32 &>(*reactInstance);
-  auto fbReactInstance = winReactInstance.InstanceObject();
-  m_fbReactInstance = fbReactInstance;
-
-  folly::dynamic initialProps = (!m_reactViewOptions->InitialProps.empty())
-      ? folly::parseJson(m_reactViewOptions->InitialProps)
-      : folly::dynamic::object();
-
-  fbReactInstance->AttachMeasuredRootView(this, std::move(initialProps));
-
-
-  // void ReactControl::AttachRoot() noexcept {
-  //  if (m_isAttached)
-  //    return;
-  //
-  //  if (!m_reactInstance)
-  //    m_reactInstance = m_instanceCreator->getInstance();
-  //
-  //  // Handle any errors that occurred during creation before we add our callback
-  //  if (m_reactInstance->IsInError())
-  //    HandleInstanceError();
-  //
-  //  // Show the Waiting for debugger to connect message if the instance is still
-  //  // waiting
-  //  if (m_reactInstance->IsWaitingForDebugger())
-  //    HandleInstanceWaiting();
-  //
-  //  if (!m_touchEventHandler)
-  //    m_touchEventHandler = std::make_shared<TouchEventHandler>(m_reactInstance);
-  //
-  //  if (!m_SIPEventHandler)
-  //    m_SIPEventHandler = std::make_shared<SIPEventHandler>(m_reactInstance);
-  //
-  //  m_previewKeyboardEventHandlerOnRoot = std::make_shared<PreviewKeyboardEventHandlerOnRoot>(m_reactInstance);
-  //
-  //  // Register callback from instance for errors
-  //  m_errorCallbackCookie = m_reactInstance->RegisterErrorCallback([this]() { HandleInstanceError(); });
-  //
-  //  // Register callback from instance for debugger attaching
-  //  m_debuggerAttachCallbackCookie =
-  //      m_reactInstance->RegisterDebuggerAttachCallback([this]() { HandleDebuggerAttach(); });
-  //
-  //  // We assume Attach has been called from the UI thread
-  //#ifdef DEBUG
-  //  auto coreWindow = winrt::CoreWindow::GetForCurrentThread();
-  //  assert(coreWindow != nullptr);
-  //#endif
-  //
-  //  m_touchEventHandler->AddTouchHandlers(m_xamlRootView);
-  //  m_previewKeyboardEventHandlerOnRoot->hook(m_xamlRootView);
-  //  m_SIPEventHandler->AttachView(m_xamlRootView, true /*fireKeyboradEvents*/);
-  //
-  //  auto initialProps = m_initialProps;
-  //  m_reactInstance->AttachMeasuredRootView(m_pParent, std::move(initialProps));
-  //  m_isAttached = true;
-  //
-  //  if (m_reactInstance->GetReactInstanceSettings().EnableDeveloperMenu) {
-  //    InitializeDeveloperMenu();
-  //  }
-  //}
-
-
-  m_isUILoading = false;
-  m_isUILoaded = true;
-}
-
-void ReactRootControl::UnloadUI() noexcept {
-  if (!m_isUILoaded) {
-    return;
-  }
-
-  if (auto fbReactInstance = m_fbReactInstance.lock()) {
-    fbReactInstance->DetachRootView(this);
-  }
-
-    if (m_touchEventHandler != nullptr) {
-      m_touchEventHandler->RemoveTouchHandlers();
-    }
-  
-    if (!m_previewKeyboardEventHandlerOnRoot)
-      m_previewKeyboardEventHandlerOnRoot->unhook();
-  
-    if (m_reactInstance != nullptr) {
-      m_reactInstance->DetachRootView(m_pParent);
-  
-      // If the redbox error UI is shown we need to remove it, otherwise let the
-      // natural teardown process do this
-      if (m_reactInstance->IsInError()) {
-        auto grid(m_xamlRootView.as<winrt::Grid>());
-        if (grid != nullptr)
-          grid.Children().Clear();
-  
-        m_redBoxGrid = nullptr;
-        m_errorTextBlock = nullptr;
-      }
-    }
-  //
-  //  m_isAttached = false;
-  //}
-
-  //    // Clear members with a dependency on the reactInstance
-  //    m_touchEventHandler.reset();
-  //
-  //    m_SIPEventHandler.reset();
-
-  m_reactOptions = nullptr;
-  m_reactViewOptions = nullptr;
-  m_weakReactInstance = nullptr;
-  m_fbReactInstance.reset();
-
-  m_isUILoaded = false;
+Mso::Future<void> ReactViewInstance::UninitRootView() noexcept {
+  return PostInUIQueue([](ReactRootControl &rootControl) mutable noexcept { rootControl.UninitRootView(); });
 }
 
 } // namespace react::uwp
