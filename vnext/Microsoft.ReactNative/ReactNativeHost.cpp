@@ -9,7 +9,7 @@
 #include "ReactHost/AsyncFuture.h"
 #include "ReactInstanceSettings.h"
 #include "ReactPackageBuilder.h"
-#include "ReactRootView2.h"
+#include "ReactRootView.h"
 #include "ReactSupport.h"
 
 #include <NativeModuleProvider.h>

@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 
 #include "ReactApplicationDelegate.g.h"
-#include "ReactRootView2.h"
+#include "ReactRootView.h"
 
 namespace winrt::Microsoft::ReactNative::implementation {
 

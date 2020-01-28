@@ -314,8 +314,8 @@
     <ClInclude Include="ReactPackageBuilder.h">
       <DependentUpon>IReactPackageBuilder.idl</DependentUpon>
     </ClInclude>
-    <ClInclude Include="ReactRootView2.h">
-      <DependentUpon>ReactRootView2.idl</DependentUpon>
+    <ClInclude Include="ReactRootView.h">
+      <DependentUpon>ReactRootView.idl</DependentUpon>
       <SubType>Code</SubType>
     </ClInclude>
     <ClInclude Include="ReactSupport.h" />
@@ -468,8 +468,8 @@
     <ClCompile Include="ReactPackageBuilder.cpp">
       <DependentUpon>IReactPackageBuilder.idl</DependentUpon>
     </ClCompile>
-    <ClCompile Include="ReactRootView2.cpp">
-      <DependentUpon>ReactRootView2.idl</DependentUpon>
+    <ClCompile Include="ReactRootView.cpp">
+      <DependentUpon>ReactRootView.idl</DependentUpon>
       <SubType>Code</SubType>
     </ClCompile>
     <ClCompile Include="ReactSupport.cpp" />
@@ -513,7 +513,7 @@
     <Midl Include="ReactNativeHost.idl">
       <SubType>Designer</SubType>
     </Midl>
-    <Midl Include="ReactRootView2.idl">
+    <Midl Include="ReactRootView.idl">
       <SubType>Designer</SubType>
     </Midl>
     <Midl Include="XamlHelper.idl" />

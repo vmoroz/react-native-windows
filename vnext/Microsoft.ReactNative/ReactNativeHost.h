@@ -7,7 +7,7 @@
 
 #include "NativeModulesProvider.h"
 #include "ReactInstanceSettings.h"
-#include "ReactRootView2.h"
+#include "ReactRootView.h"
 #include "ViewManagersProvider.h"
 
 #include <ReactUWP/IReactInstance.h>

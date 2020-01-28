@@ -3,7 +3,6 @@
 
 import "IReactPackageProvider.idl";
 import "ReactInstanceSettings.idl";
-import "ReactRootView2.idl";
 
 namespace Microsoft.ReactNative {
 

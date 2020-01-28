@@ -663,7 +663,7 @@
     <Midl Include="ReactInstance.idl" />
     <Midl Include="ReactInstanceSettings.idl" />
     <Midl Include="ReactNativeHost.idl" />
-    <Midl Include="ReactRootView2.idl" />
+    <Midl Include="ReactRootView.idl" />
     <Midl Include="XamlHelper.idl" />
   </ItemGroup>
   <ItemGroup>
