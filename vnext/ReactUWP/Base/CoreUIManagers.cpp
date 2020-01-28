@@ -2,6 +2,8 @@
 // Licensed under the MIT License.
 
 #include "pch.h"
+#include "CoreUIManagers.h"
+
 #include <ReactUWP/IReactInstance.h>
 #include <ReactUWP/ViewManagerProvider.h>
 #include <ReactWindowsCore/IUIManager.h>

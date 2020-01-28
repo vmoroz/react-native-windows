@@ -13,6 +13,9 @@
     <ClCompile Include="ABI\ReactControl_rt.cpp">
       <Filter>ABI</Filter>
     </ClCompile>
+    <ClCompile Include="Base\CoreNativeModules.cpp">
+      <Filter>Base</Filter>
+    </ClCompile>
     <ClCompile Include="Base\CoreUIManagers.cpp">
       <Filter>Base</Filter>
     </ClCompile>
@@ -365,6 +368,9 @@
     </ClInclude>
     <ClInclude Include="ABI\ReactControl_rt.h">
       <Filter>ABI</Filter>
+    </ClInclude>
+    <ClInclude Include="Base\CoreNativeModules.h">
+      <Filter>Base</Filter>
     </ClInclude>
     <ClInclude Include="Base\CoreUIManagers.h">
       <Filter>Base</Filter>
