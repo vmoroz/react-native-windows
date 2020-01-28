@@ -16,6 +16,8 @@
 #include "future/future.h"
 
 #include <ReactUWP/IReactInstance.h>
+#include <ReactUWP/ViewManagerProvider.h>
+#include <NativeModuleProvider.h>
 
 namespace Mso::React {
 
@@ -147,6 +149,8 @@ struct ReactDevOptions {
 struct ReactOptions {
   react::uwp::ReactInstanceSettings LegacySettings;
 
+  std::shared_ptr<facebook::react::NativeModuleProvider> ModuleProvider;
+  std::shared_ptr<react::uwp::ViewManagerProvider> ViewManagerProvider;
 
   //! Identity of the SDX. Must uniquely describe the SDX across the installed product.
   std::string Identity;
@@ -175,7 +179,7 @@ struct ReactOptions {
   std::string DataServiceProviderName;
 
   //! Base path of the SDX. The absolute path of the SDX can be constructed from this and the Identity.
-  std::string SDXBasePath;
+  std::string BundleRootPath;
 
   //! Javascript Bundles
   //! This List includes both Platform and User Javascript Bundles

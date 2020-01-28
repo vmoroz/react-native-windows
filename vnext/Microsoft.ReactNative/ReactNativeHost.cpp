@@ -124,6 +124,14 @@ if (m_nativeModuleCallExceptionHandler) {
   settings.UseWebDebugger = m_instanceSettings.UseWebDebugger();
 
   reactOptions.LegacySettings = std::move(settings);
+
+  reactOptions.DeveloperSettings.SourceBundlePath = settings.DebugBundlePath;
+  reactOptions.DeveloperSettings.UseWebDebugger = settings.UseWebDebugger;
+  reactOptions.DeveloperSettings.UseDirectDebugger = settings.UseDirectDebugger;
+  reactOptions.EnableJITCompilation = settings.EnableJITCompilation;
+  reactOptions.DeveloperSettings.DebugHost = settings.DebugHost;
+  reactOptions.BundleRootPath = settings.BundleRootPath;
+
   // reactInstance->Start(reactInstance, settings);
 
    std::string jsBundleFile = to_string(m_instanceSettings.JavaScriptBundleFile());

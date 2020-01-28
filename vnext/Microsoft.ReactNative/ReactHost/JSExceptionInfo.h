@@ -3,9 +3,9 @@
 
 #pragma once
 
+#include <functional/functor.h>
 #include <string>
 #include <vector>
-#include "functional/functor.h"
 
 namespace Mso::React {
 

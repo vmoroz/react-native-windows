@@ -72,17 +72,20 @@ class ReactInstanceWin final : public Mso::ActiveObject<IReactInstanceInternal, 
   void InitNativeMessageThread() noexcept;
   void InitUIMessageThread() noexcept;
   void InitUIManager() noexcept;
-  CxxModuleProviders GetCxxModuleProviders() noexcept;
   std::string GetBytecodeFileName() noexcept;
   std::string GetDebugHost() noexcept;
   std::function<void()> GetLiveReloadCallback() noexcept;
   std::function<void(std::string)> GetErrorCallback() noexcept;
   facebook::react::NativeLoggingHook GetLoggingCallback() noexcept;
   std::function<void(facebook::react::JSExceptionInfo &&)> GetJSExceptionCallback() noexcept;
+  std::function<void()> GetWaitingForDebuggerCallback() noexcept;
+  std::function<void()> GetDebuggerAttachCallback() noexcept;
 
   void OnError(const Mso::ErrorCode &errorcode) noexcept;
   void OnErrorWithMessage(const std::string &errorMessage) noexcept;
   void OnLiveReload() noexcept;
+  void OnWaitingForDebugger() noexcept;
+  void OnDebuggerAttach() noexcept;
 
   void LoadJSBundles() noexcept;
   friend struct LoadedCallbackGuard;
@@ -116,11 +119,14 @@ class ReactInstanceWin final : public Mso::ActiveObject<IReactInstanceInternal, 
   std::atomic<ReactInstanceState> m_state{ReactInstanceState::Loading};
   std::string m_errorMessage;
 
+  std::shared_ptr<facebook::react::MessageQueueThread> m_batchingUIThread;
+
   std::shared_ptr<react::uwp::IReactInstance> m_legacyReactInstance;
   std::shared_ptr<react::uwp::DeviceInfo> m_deviceInfo;
   std::shared_ptr<facebook::react::AppState> m_appState;
   std::shared_ptr<react::windows::AppTheme> m_appTheme;
   std::pair<std::string, bool> m_i18nInfo{};
+  std::string m_bundleRootPath;
 };
 
 } // namespace Mso::React
