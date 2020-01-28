@@ -12,6 +12,7 @@
 #include <Modules/DeviceInfoModule.h>
 #include <Modules/AppStateModuleUwp.h>
 #include <Modules/AppThemeModuleUwp.h>
+#include <ReactUWP/Modules/I18nModule.h>
 
 #include <tuple>
 

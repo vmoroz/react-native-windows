@@ -7,6 +7,7 @@
 
 #include <ReactUWP/CreateUwpModules.h>
 #include <Threading/MessageDispatchQueue.h>
+#include <ReactUWP/Modules/I18nModule.h>
 //#include "BytecodeHelpers.h"
 //#include "CxxModuleProviderRegistry.h"
 //#include "FastMessageQueueThread.h"
@@ -72,22 +73,22 @@ ReactInstanceWin::~ReactInstanceWin() noexcept {}
 void ReactInstanceWin::Initialize() noexcept {
   InitJSMessageThread();
   InitNativeMessageThread();
-  // TODO: [vmorozov] InitUIMessageThread();
+  InitUIMessageThread();
 
   // TODO: [vmorozov] InitUIManager();
 
   m_legacyReactInstance =
       std::make_shared<react::uwp::UwpReactInstanceProxy>(this, Mso::Copy(m_options.LegacySettings));
 
-  // Objects that must be created on the UI thread
-  Mso::DispatchQueue::MainUIQueue().Post([weakThis = Mso::WeakPtr{this}]() noexcept {
+  Mso::PostFuture(Mso::DispatchQueue::MainUIQueue(), [weakThis = Mso::WeakPtr{this}]() noexcept {
+    // Objects that must be created on the UI thread
     if (auto strongThis = weakThis.GetStrongPtr()) {
       auto const &legacyFuture = strongThis->m_legacyReactInstance;
       strongThis->m_deviceInfo = std::make_shared<react::uwp::DeviceInfo>(legacyFuture);
       strongThis->m_appState = std::make_shared<react::uwp::AppState>(legacyFuture);
       strongThis->m_appTheme =
           std::make_shared<react::uwp::AppTheme>(legacyFuture, strongThis->m_uiMessageThread.LoadWithLock());
-      // strongThis->m_i18nInfo = react::uwp:I18nModule::GetI18nInfo();
+      strongThis->m_i18nInfo = react::uwp::I18nModule::GetI18nInfo();
     }
   });
 
