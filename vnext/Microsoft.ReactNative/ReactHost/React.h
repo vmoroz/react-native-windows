@@ -15,6 +15,8 @@
 #include "errorCode/errorCode.h"
 #include "future/future.h"
 
+#include <ReactUWP/IReactInstance.h>
+
 namespace Mso::React {
 
 // Forward declarations
@@ -143,6 +145,9 @@ struct ReactDevOptions {
 //! A simple struct that describes the basic properties/needs of an SDX. Whenever a new SDX is
 //! getting hosted in React, properties here will be used to construct the SDX.
 struct ReactOptions {
+  react::uwp::ReactInstanceSettings LegacySettings;
+
+
   //! Identity of the SDX. Must uniquely describe the SDX across the installed product.
   std::string Identity;
 

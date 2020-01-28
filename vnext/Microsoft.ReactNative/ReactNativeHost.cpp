@@ -61,10 +61,8 @@ void ReactNativeHost::InstanceSettings(ReactNative::ReactInstanceSettings const 
 }
 
 IAsyncAction ReactNativeHost::ReloadInstance() noexcept {
-  // return Mso::FutureToAsyncAction(m_reactHost->ReloadInstance());
-
-  if (m_currentReactContext != nullptr)
-    co_return;
+  //if (m_currentReactContext != nullptr)
+  //  co_return;
 
   /* TODO hook up an exception handler if UseDeveloperSupport is set
 if (m_useDeveloperSupport) {
@@ -106,18 +104,42 @@ if (m_nativeModuleCallExceptionHandler) {
   // TODO: Could access to the module registry be easier if the ReactInstance
   // implementation were lifted up into this project.
 
-  auto reactInstance = Instance();
+  //auto reactInstance = Instance();
 
-  m_currentReactContext = winrt::make<ReactContext>(reactInstance).as<IReactContext>();
+  //m_currentReactContext = winrt::make<ReactContext>(reactInstance).as<IReactContext>();
 
-  // TODO: Investigate whether we need the equivalent of the
-  // LimitedConcurrencyActionQueue from the C# implementation that is used to
-  // sequence actions in order and ensure async continuations are performed on
-  // the same thread.  It's used as the type of queue for native modules.  It
-  // would be created before the instance and set as its queue configuration.
-  // It's then used by the instance internally as part of this InitializeAsync.
+  Mso::React::ReactOptions reactOptions{};
 
-  co_return;
+  react::uwp::ReactInstanceSettings settings{};
+  settings.BundleRootPath = to_string(m_instanceSettings.BundleRootPath());
+  settings.ByteCodeFileUri = to_string(m_instanceSettings.ByteCodeFileUri());
+  settings.DebugBundlePath = to_string(m_instanceSettings.DebugBundlePath());
+  settings.DebugHost = to_string(m_instanceSettings.DebugHost());
+  settings.EnableByteCodeCaching = m_instanceSettings.EnableByteCodeCaching();
+  settings.EnableDeveloperMenu = m_instanceSettings.EnableDeveloperMenu();
+  settings.EnableJITCompilation = m_instanceSettings.EnableJITCompilation();
+  settings.UseDirectDebugger = m_instanceSettings.UseDirectDebugger();
+  settings.UseJsi = m_instanceSettings.UseJsi();
+  settings.UseLiveReload = m_instanceSettings.UseLiveReload();
+  settings.UseWebDebugger = m_instanceSettings.UseWebDebugger();
+
+  reactOptions.LegacySettings = std::move(settings);
+  // reactInstance->Start(reactInstance, settings);
+
+   std::string jsBundleFile = to_string(m_instanceSettings.JavaScriptBundleFile());
+   std::string jsMainModuleName = to_string(m_instanceSettings.JavaScriptMainModuleName());
+   if (jsBundleFile.empty()) {
+    if (!jsMainModuleName.empty()) {
+      jsBundleFile = jsMainModuleName;
+    } else {
+      jsBundleFile = "index.windows";
+    }
+  }
+
+  // reactInstance->loadBundle(std::move(jsBundleFile));
+  reactOptions.Identity = jsBundleFile;
+
+  return Mso::FutureToAsyncAction(m_reactHost->ReloadInstanceWithOptions(std::move(reactOptions)));
 }
 
 std::shared_ptr<react::uwp::IReactInstance> ReactNativeHost::Instance() noexcept {
