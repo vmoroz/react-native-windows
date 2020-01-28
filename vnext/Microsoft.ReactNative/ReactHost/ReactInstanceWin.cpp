@@ -5,6 +5,8 @@
 #include "MoveOnCopy.h"
 #include "MsoUtils.h"
 
+#include <ReactUWP/CreateUwpModules.h>
+#include <Threading/MessageDispatchQueue.h>
 //#include "BytecodeHelpers.h"
 //#include "CxxModuleProviderRegistry.h"
 //#include "FastMessageQueueThread.h"
@@ -21,6 +23,8 @@
 //#include <ReactNativeHost/ReactErrorProvider.h>
 //#include <telemetryRuleEngineApi/SimpleTelemetryClient.h>
 //#include <ShlwApi.h>
+
+#include <dispatchQueue/dispatchQueue.h>
 
 namespace Mso::React {
 
@@ -68,8 +72,24 @@ ReactInstanceWin::~ReactInstanceWin() noexcept {}
 void ReactInstanceWin::Initialize() noexcept {
   InitJSMessageThread();
   InitNativeMessageThread();
+  // TODO: [vmorozov] InitUIMessageThread();
 
-  InitUIManager();
+  // TODO: [vmorozov] InitUIManager();
+
+  m_legacyReactInstance =
+      std::make_shared<react::uwp::UwpReactInstanceProxy>(this, Mso::Copy(m_options.LegacySettings));
+
+  // Objects that must be created on the UI thread
+  Mso::DispatchQueue::MainUIQueue().Post([weakThis = Mso::WeakPtr{this}]() noexcept {
+    if (auto strongThis = weakThis.GetStrongPtr()) {
+      auto const &legacyFuture = strongThis->m_legacyReactInstance;
+      strongThis->m_deviceInfo = std::make_shared<react::uwp::DeviceInfo>(legacyFuture);
+      strongThis->m_appState = std::make_shared<react::uwp::AppState>(legacyFuture);
+      strongThis->m_appTheme =
+          std::make_shared<react::uwp::AppTheme>(legacyFuture, strongThis->m_uiMessageThread.LoadWithLock());
+      // strongThis->m_i18nInfo = react::uwp:I18nModule::GetI18nInfo();
+    }
+  });
 
   auto cxxModulesProviders = GetCxxModuleProviders();
 
@@ -318,29 +338,31 @@ std::string ReactInstanceWin::LastErrorMessage() const noexcept {
 void ReactInstanceWin::InitJSMessageThread() noexcept {
   // Use the explicit JSQueue if it is provided.
   const auto &properties = m_options.Properties;
-  auto jsDispatchQueue = properties.Get(JSDispatchQueueProperty);
-  // TODO: implement
-  // if (jsDispatchQueue) {
-  //  VerifyElseCrashSzTag(
-  //      Mso::Async::IsSequentialQueue(*jsDispatchQueue), "JS Queue must be sequential", 0x0285e28b /* tag_c74kl */);
-  //} else {
-  //  // Currently we have to use Looper DispatchQueue because our JS Engine based on Chakra uses thread local storage.
-  //  jsDispatchQueue = Mso::Async::CreateLooperScheduler();
-  //}
+  auto jsDispatchQueue = Mso::DispatchQueue{properties.Get(JSDispatchQueueProperty)};
+  if (jsDispatchQueue) {
+    VerifyElseCrashSz(jsDispatchQueue.IsSerial(), "JS Queue must be sequential");
+  } else {
+    // Currently we have to use Looper DispatchQueue because our JS Engine based on Chakra uses thread local storage.
+    jsDispatchQueue = Mso::DispatchQueue::MakeLooperQueue();
+  }
 
   // Create MessageQueueThread for the DispatchQueue
-  // TODO: implement
-  // VerifyElseCrashSzTag(jsDispatchQueue, "m_jsDispatchQueue must not be null", 0x0285e28c /* tag_c74km */);
-  // m_jsMessageThread.Exchange(std::make_shared<FastMessageQueueThread>(
-  //    *jsDispatchQueue, Mso::MakeWeakMemberFunctor(this, &ReactInstanceWin::OnError), Mso::Copy(m_whenDestroyed)));
-  // m_jsDispatchQueue.Exchange(std::move(jsDispatchQueue));
+  VerifyElseCrashSz(jsDispatchQueue, "m_jsDispatchQueue must not be null");
+  m_jsMessageThread.Exchange(std::make_shared<MessageDispatchQueue>(
+      jsDispatchQueue, Mso::MakeWeakMemberFunctor(this, &ReactInstanceWin::OnError), Mso::Copy(m_whenDestroyed)));
+  m_jsDispatchQueue.Exchange(std::move(jsDispatchQueue));
 }
 
 void ReactInstanceWin::InitNativeMessageThread() noexcept {
   // Native queue was already given us in constructor.
-  // TODO: implement
-  // m_nativeMessageThread.Exchange(std::make_shared<FastMessageQueueThread>(
-  //    Queue(), Mso::MakeWeakMemberFunctor(this, &ReactInstanceWin::OnError)));
+  m_nativeMessageThread.Exchange(
+      std::make_shared<MessageDispatchQueue>(Queue(), Mso::MakeWeakMemberFunctor(this, &ReactInstanceWin::OnError)));
+}
+
+void ReactInstanceWin::InitUIMessageThread() noexcept {
+  // Native queue was already given us in constructor.
+  m_uiMessageThread.Exchange(std::make_shared<MessageDispatchQueue>(
+      Mso::DispatchQueue::MainUIQueue(), Mso::MakeWeakMemberFunctor(this, &ReactInstanceWin::OnError)));
 }
 
 void ReactInstanceWin::InitUIManager() noexcept {

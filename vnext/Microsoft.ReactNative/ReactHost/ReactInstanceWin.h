@@ -8,6 +8,13 @@
 #include "React_win.h"
 #include "activeObject/activeObject.h"
 
+#include "UwpReactInstanceProxy.h"
+#include <Modules/DeviceInfoModule.h>
+#include <Modules/AppStateModuleUwp.h>
+#include <Modules/AppThemeModuleUwp.h>
+
+#include <tuple>
+
 namespace Mso::React {
 
 static_assert(
@@ -62,6 +69,7 @@ class ReactInstanceWin final : public Mso::ActiveObject<IReactInstanceInternal, 
  private:
   void InitJSMessageThread() noexcept;
   void InitNativeMessageThread() noexcept;
+  void InitUIMessageThread() noexcept;
   void InitUIManager() noexcept;
   CxxModuleProviders GetCxxModuleProviders() noexcept;
   std::string GetBytecodeFileName() noexcept;
@@ -98,13 +106,20 @@ class ReactInstanceWin final : public Mso::ActiveObject<IReactInstanceInternal, 
                                                                                                          m_mutex};
   const Mso::ActiveReadableField<std::shared_ptr<facebook::react::MessageQueueThread>> m_nativeMessageThread{Queue(),
                                                                                                              m_mutex};
-
+  const Mso::ActiveReadableField<std::shared_ptr<facebook::react::MessageQueueThread>> m_uiMessageThread{Queue(),
+                                                                                                             m_mutex};
   const Mso::ActiveReadableField<std::shared_ptr<facebook::react::IUIManager>> m_uiManager{Queue(), m_mutex};
 
   const Mso::ActiveReadableField<std::shared_ptr<facebook::react::InstanceWrapper>> m_instanceWrapper{Queue(), m_mutex};
   const Mso::ActiveReadableField<std::shared_ptr<facebook::react::Instance>> m_instance{Queue(), m_mutex};
   std::atomic<ReactInstanceState> m_state{ReactInstanceState::Loading};
   std::string m_errorMessage;
+
+  std::shared_ptr<react::uwp::IReactInstance> m_legacyReactInstance;
+  std::shared_ptr<react::uwp::DeviceInfo> m_deviceInfo;
+  std::shared_ptr<facebook::react::AppState> m_appState;
+  std::shared_ptr<react::windows::AppTheme> m_appTheme;
+  std::pair<std::string, bool> m_i18nInfo{};
 };
 
 } // namespace Mso::React

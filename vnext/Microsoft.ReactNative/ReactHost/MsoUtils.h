@@ -38,7 +38,7 @@ template <class T, class TReturn, class... TArgs>
 Mso::Functor<TReturn(TArgs...)> MakeWeakMemberFunctor(T *self, TReturn (T::*memberFunc)(TArgs...)) noexcept {
   return [ weakSelf = Mso::WeakPtr<T>{self}, memberFunc ](TArgs... args) noexcept {
     if (auto strongSelf = weakSelf.GetStrongPtr()) {
-      (strongSelf->*memberFunc)(args...);
+      (strongSelf.Get()->*memberFunc)(args...);
     }
   };
 }

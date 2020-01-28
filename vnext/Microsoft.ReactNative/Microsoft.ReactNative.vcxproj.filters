@@ -5,6 +5,12 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="$(GeneratedFilesDir)module.g.cpp" />
+    <ClCompile Include="..\ReactUWP\Base\CoreNativeModules.cpp">
+      <Filter>Base</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ReactUWP\Base\CoreUIManagers.cpp">
+      <Filter>Base</Filter>
+    </ClCompile>
     <ClCompile Include="..\ReactUWP\CxxReactUWP\JSBigString.cpp">
       <Filter>CxxReactUWP</Filter>
     </ClCompile>
@@ -309,6 +315,9 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\ReactUWP\Base\CoreNativeModules.h">
+      <Filter>Base</Filter>
+    </ClInclude>
     <ClInclude Include="..\ReactUWP\Executors\WebSocketJSExecutorUwp.h">
       <Filter>Executors</Filter>
     </ClInclude>
@@ -675,6 +684,9 @@
     <Text Include="readme.txt" />
   </ItemGroup>
   <ItemGroup>
+    <Filter Include="Base">
+      <UniqueIdentifier>{584ffe39-ae17-4e06-82a4-dc0caa1ac900}</UniqueIdentifier>
+    </Filter>
     <Filter Include="CxxReactUWP">
       <UniqueIdentifier>{3b861ea5-e87b-4783-a4b1-ce28548c1985}</UniqueIdentifier>
     </Filter>

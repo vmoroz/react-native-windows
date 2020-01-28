@@ -168,6 +168,7 @@
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\ReactUWP\Base\CoreNativeModules.h" />
     <ClInclude Include="..\ReactUWP\Executors\WebSocketJSExecutorUwp.h" />
     <ClInclude Include="..\ReactUWP\Modules\AlertModuleUwp.h" />
     <ClInclude Include="..\ReactUWP\Modules\Animated\AdditionAnimatedNode.h" />
@@ -329,6 +330,8 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\ReactUWP\Base\CoreNativeModules.cpp" />
+    <ClCompile Include="..\ReactUWP\Base\CoreUIManagers.cpp" />
     <ClCompile Include="..\ReactUWP\CxxReactUWP\JSBigString.cpp" />
     <ClCompile Include="..\ReactUWP\Executors\WebSocketJSExecutorFactory.cpp" />
     <ClCompile Include="..\ReactUWP\Executors\WebSocketJSExecutorUwp.cpp" />
