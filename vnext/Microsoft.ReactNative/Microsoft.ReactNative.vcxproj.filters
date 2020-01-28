@@ -293,6 +293,9 @@
     <ClCompile Include="ReactHost\PropertyBag.cpp">
       <Filter>ReactHost</Filter>
     </ClCompile>
+    <ClCompile Include="ReactHost\ReactErrorProvider.cpp">
+      <Filter>ReactHost</Filter>
+    </ClCompile>
     <ClCompile Include="ReactHost\ReactHost.cpp">
       <Filter>ReactHost</Filter>
     </ClCompile>
@@ -617,6 +620,9 @@
       <Filter>ReactHost</Filter>
     </ClInclude>
     <ClInclude Include="ReactHost\React_Win.h">
+      <Filter>ReactHost</Filter>
+    </ClInclude>
+    <ClInclude Include="ReactHost\ReactErrorProvider.h">
       <Filter>ReactHost</Filter>
     </ClInclude>
     <ClInclude Include="ReactHost\ReactHost.h">
