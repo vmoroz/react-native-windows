@@ -121,44 +121,46 @@ if (m_nativeModuleCallExceptionHandler) {
 }
 
 std::shared_ptr<react::uwp::IReactInstance> ReactNativeHost::Instance() noexcept {
-  if (m_instance)
-    return m_instance;
+  //if (m_instance)
+  //  return m_instance;
 
-  std::shared_ptr<react::uwp::IReactInstance> reactInstance =
-      react::uwp::CreateReactInstance(m_modulesProvider, m_viewManagersProvider);
+  //std::shared_ptr<react::uwp::IReactInstance> reactInstance =
+  //    react::uwp::CreateReactInstance(m_modulesProvider, m_viewManagersProvider);
 
-  react::uwp::ReactInstanceSettings settings;
-  settings.BundleRootPath = to_string(m_instanceSettings.BundleRootPath());
-  settings.ByteCodeFileUri = to_string(m_instanceSettings.ByteCodeFileUri());
-  settings.DebugBundlePath = to_string(m_instanceSettings.DebugBundlePath());
-  settings.DebugHost = to_string(m_instanceSettings.DebugHost());
-  settings.EnableByteCodeCaching = m_instanceSettings.EnableByteCodeCaching();
-  settings.EnableDeveloperMenu = m_instanceSettings.EnableDeveloperMenu();
-  settings.EnableJITCompilation = m_instanceSettings.EnableJITCompilation();
-  settings.UseDirectDebugger = m_instanceSettings.UseDirectDebugger();
-  settings.UseJsi = m_instanceSettings.UseJsi();
-  settings.UseLiveReload = m_instanceSettings.UseLiveReload();
-  settings.UseWebDebugger = m_instanceSettings.UseWebDebugger();
+  //react::uwp::ReactInstanceSettings settings;
+  //settings.BundleRootPath = to_string(m_instanceSettings.BundleRootPath());
+  //settings.ByteCodeFileUri = to_string(m_instanceSettings.ByteCodeFileUri());
+  //settings.DebugBundlePath = to_string(m_instanceSettings.DebugBundlePath());
+  //settings.DebugHost = to_string(m_instanceSettings.DebugHost());
+  //settings.EnableByteCodeCaching = m_instanceSettings.EnableByteCodeCaching();
+  //settings.EnableDeveloperMenu = m_instanceSettings.EnableDeveloperMenu();
+  //settings.EnableJITCompilation = m_instanceSettings.EnableJITCompilation();
+  //settings.UseDirectDebugger = m_instanceSettings.UseDirectDebugger();
+  //settings.UseJsi = m_instanceSettings.UseJsi();
+  //settings.UseLiveReload = m_instanceSettings.UseLiveReload();
+  //settings.UseWebDebugger = m_instanceSettings.UseWebDebugger();
 
-  reactInstance->Start(reactInstance, settings);
+  //reactInstance->Start(reactInstance, settings);
 
-  std::string jsBundleFile = to_string(m_instanceSettings.JavaScriptBundleFile());
-  std::string jsMainModuleName = to_string(m_instanceSettings.JavaScriptMainModuleName());
-  if (jsBundleFile.empty()) {
-    if (!jsMainModuleName.empty()) {
-      jsBundleFile = jsMainModuleName;
-    } else {
-      jsBundleFile = "index.windows";
-    }
-  }
+  //std::string jsBundleFile = to_string(m_instanceSettings.JavaScriptBundleFile());
+  //std::string jsMainModuleName = to_string(m_instanceSettings.JavaScriptMainModuleName());
+  //if (jsBundleFile.empty()) {
+  //  if (!jsMainModuleName.empty()) {
+  //    jsBundleFile = jsMainModuleName;
+  //  } else {
+  //    jsBundleFile = "index.windows";
+  //  }
+  //}
 
-  reactInstance->loadBundle(std::move(jsBundleFile));
+  //reactInstance->loadBundle(std::move(jsBundleFile));
 
-  m_instance = reactInstance;
+  //m_instance = reactInstance;
 
-  //TODO: InitReactNative();
+  ////TODO: InitReactNative();
 
-  return m_instance;
+  //return m_instance;
+
+  return nullptr;
 }
 
 // TODO: Create a LifeCycleStateMachine in constructor to raise events in response

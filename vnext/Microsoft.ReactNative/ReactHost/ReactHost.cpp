@@ -288,7 +288,7 @@ Mso::Future<void> ReactViewHost::DetachViewInstance() noexcept {
     // We unload the viewInstance here as soon as possible without using the action queue,
     // otherwise we would not have the viewInstance to call the Unload() later.
     m_isViewInstanceLoaded.Store(false);
-    return viewInstance->Unload();
+    return viewInstance->UninitRootView();
   });
 }
 
@@ -338,7 +338,7 @@ Mso::Future<void> ReactViewHost::LoadViewInstanceInQueue() noexcept {
 
   if (auto viewInstance = m_viewInstance.Load().Get()) {
     m_isViewInstanceLoaded.Store(true);
-    return viewInstance->Reload(m_reactHost->Instance(), Mso::Copy(m_options.Load()));
+    return viewInstance->InitRootView(m_reactHost->Instance(), Mso::Copy(m_options.Load()));
   }
 
   return Mso::MakeCanceledFuture();
@@ -372,7 +372,7 @@ Mso::Future<void> ReactViewHost::UnloadViewInstanceInQueue(size_t unloadActionId
 
   if (auto viewInstance = m_viewInstance.Load().Get()) {
     m_isViewInstanceLoaded.Store(false);
-    return viewInstance->Unload();
+    return viewInstance->UninitRootView();
   }
 
   return Mso::MakeCanceledFuture();

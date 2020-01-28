@@ -6,6 +6,8 @@
 #include <string>
 #include "React.h"
 #include <functional/functor.h>
+#include <INativeUIManager.h>
+#include <IReactInstance.h>
 
 namespace Mso::React {
 

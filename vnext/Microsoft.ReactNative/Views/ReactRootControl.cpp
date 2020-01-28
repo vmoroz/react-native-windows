@@ -29,6 +29,7 @@
 #include <winrt/Windows.UI.Xaml.h>
 
 #include <ReactHost/React.h>
+#include <ReactHost/React_Win.h>
 #include <dispatchQueue/dispatchQueue.h>
 #include <object/unknownObject.h>
 
@@ -83,7 +84,7 @@ void ReactRootControl::DetachRoot() noexcept {
 }
 
 std::shared_ptr<IXamlReactControl> ReactRootControl::GetXamlReactControl() const noexcept {
-  return std::static_pointer_cast<IXamlReactControl>(shared_from_this());
+  return std::static_pointer_cast<IXamlReactControl>(const_cast<ReactRootControl *>(this)->shared_from_this());
 }
 
 void ReactRootControl::ResetView() noexcept {
@@ -137,7 +138,7 @@ void ReactRootControl::blur(XamlView const &xamlView) noexcept {
 
 void ReactRootControl::InitRootView(
     Mso::CntPtr<Mso::React::IReactInstance> &&reactInstance,
-    Mso::React::ReactViewOptions &&viewOptions) noexcept {
+    Mso::React::ReactViewOptions &&reactViewOptions) noexcept {
   VerifyElseCrash(m_uiQueue.HasThreadAccess());
 
   if (m_isInitialized) {
@@ -145,7 +146,7 @@ void ReactRootControl::InitRootView(
   }
 
   m_weakReactInstance = Mso::WeakPtr{reactInstance};
-  auto &reactInstanceInternal = query_cast<Mso::React::IReactInstanceInternal &>(*reactInstance);
+  auto &legacyReactInstance = query_cast<Mso::React::ILegacyReactInstance &>(*reactInstance);
   m_reactOptions = std::make_unique<Mso::React::ReactOptions>(reactInstance->Options());
   m_reactViewOptions = std::make_unique<Mso::React::ReactViewOptions>(std::move(reactViewOptions));
 
@@ -156,17 +157,17 @@ void ReactRootControl::InitRootView(
     InitializeDeveloperMenu();
   }
 
-  auto legacyReacyInstance = reactInstanceInternal.LegacyReactInstance();
+  auto uwpReactInstance = legacyReactInstance.UwpReactInstance();
   if (!m_touchEventHandler) {
-    m_touchEventHandler = std::make_shared<TouchEventHandler>(legacyReacyInstance);
+    m_touchEventHandler = std::make_shared<TouchEventHandler>(uwpReactInstance);
   }
 
   if (!m_SIPEventHandler) {
-    m_SIPEventHandler = std::make_shared<SIPEventHandler>(legacyReacyInstance);
+    m_SIPEventHandler = std::make_shared<SIPEventHandler>(uwpReactInstance);
   }
 
   if (!m_previewKeyboardEventHandlerOnRoot) {
-    m_previewKeyboardEventHandlerOnRoot = std::make_shared<PreviewKeyboardEventHandlerOnRoot>(legacyReacyInstance);
+    m_previewKeyboardEventHandlerOnRoot = std::make_shared<PreviewKeyboardEventHandlerOnRoot>(uwpReactInstance);
   }
 
   auto xamlRootView = m_weakXamlRootView.get();
@@ -188,7 +189,7 @@ void ReactRootControl::UpdateRootView() noexcept {
 void ReactRootControl::UpdateRootViewInternal() noexcept {
   if (auto reactInstance = m_weakReactInstance.GetStrongPtr()) {
     switch (reactInstance->State()) {
-      case Mso::React::ReactInstanceState::Loading :
+      case Mso::React::ReactInstanceState::Loading:
         ShowInstanceLoading(*reactInstance);
         break;
       case Mso::React::ReactInstanceState::WaitingForDebugger:
@@ -202,7 +203,6 @@ void ReactRootControl::UpdateRootViewInternal() noexcept {
         break;
       default:
         VerifyElseCrashSz(false, "Unexpected value");
-      }
     }
   }
 }
@@ -248,35 +248,35 @@ void ReactRootControl::UninitRootView() noexcept {
   m_isInitialized = false;
 }
 
-void ReactRootControl::ShowReactLoaded(Mso::React::IReactInstance &reactInstance) noexcept {
+void ReactRootControl::ShowInstanceLoaded(Mso::React::IReactInstance &reactInstance) noexcept {
   if (XamlView xamlRootView = m_weakXamlRootView.get()) {
-    auto xamlRootGrid{xamlRootView.as<winrt::Grid>()};
+    // auto xamlRootGrid{xamlRootView.as<winrt::Grid>()};
 
-    // Remove existing children from root view (from the hosted app)
-    xamlRootGrid.Children().Clear();
-    //
-    //  // Show the Waiting for debugger to connect message if the instance is still
-    //  // waiting
-    //  if (m_reactInstance->IsWaitingForDebugger())
-    //    HandleInstanceWaiting();
-    //
+    //// Remove existing children from root view (from the hosted app)
+    // xamlRootGrid.Children().Clear();
+    ////
+    ////  // Show the Waiting for debugger to connect message if the instance is still
+    ////  // waiting
+    ////  if (m_reactInstance->IsWaitingForDebugger())
+    ////    HandleInstanceWaiting();
+    ////
 
-    if ()
-      const auto &winReactInstance = query_cast<Mso::React::IReactInstanceWin32 &>(*reactInstance);
-    auto fbReactInstance = winReactInstance.InstanceObject();
-    m_fbReactInstance = fbReactInstance;
+    // if ()
+    //  const auto &winReactInstance = query_cast<Mso::React::IReactInstanceWin32 &>(*reactInstance);
+    // auto fbReactInstance = winReactInstance.InstanceObject();
+    // m_fbReactInstance = fbReactInstance;
 
-    folly::dynamic initialProps = (!m_reactViewOptions->InitialProps.empty())
-        ? folly::parseJson(m_reactViewOptions->InitialProps)
-        : folly::dynamic::object();
+    // folly::dynamic initialProps = (!m_reactViewOptions->InitialProps.empty())
+    //    ? folly::parseJson(m_reactViewOptions->InitialProps)
+    //    : folly::dynamic::object();
 
-    fbReactInstance->AttachMeasuredRootView(this, std::move(initialProps));
+    // fbReactInstance->AttachMeasuredRootView(this, std::move(initialProps));
 
-    //  m_reactInstance->AttachMeasuredRootView(m_pParent, std::move(initialProps));
+    ////  m_reactInstance->AttachMeasuredRootView(m_pParent, std::move(initialProps));
 
-    auto &reactInstanceInternal = query_cast<Mso::React::IReactInstanceInternal &>(*reactInstance);
-    reactInstanceInternal.AttachMeasuredRootView(this, m_reactViewOptions->InitialProps);
-    m_isJSViewAttached = true;
+    // auto &reactInstanceInternal = query_cast<Mso::React::IReactInstanceInternal &>(*reactInstance);
+    // reactInstanceInternal.AttachMeasuredRootView(this, m_reactViewOptions->InitialProps);
+    // m_isJSViewAttached = true;
   }
 }
 
@@ -346,16 +346,12 @@ void ReactRootControl::ShowInstanceWaiting(Mso::React::IReactInstance &reactInst
   }
 }
 
-void ReactRootControl::HandleDebuggerAttach() noexcept {
-  VerifyElseCrashSz(m_uiDispatcher.HasThreadAccess(), "Must be called on UI thread");
+void ReactRootControl::ShowInstanceLoading(Mso::React::IReactInstance &reactInstance) noexcept {
+  if (XamlView xamlRootView = m_weakXamlRootView.get()) {
+    auto xamlRootGrid{xamlRootView.as<winrt::Grid>()};
 
-  if (!m_reactInstance->IsWaitingForDebugger() && !m_reactInstance->IsInError()) {
-    if (XamlView xamlRootView = m_weakXamlRootView.get()) {
-      auto xamlRootGrid{xamlRootView.as<winrt::Grid>()};
-
-      // Remove existing children from root view (from the hosted app)
-      xamlRootGrid.Children().Clear();
-    }
+    // Remove existing children from root view (from the hosted app)
+    xamlRootGrid.Children().Clear();
   }
 }
 
@@ -406,7 +402,7 @@ void ReactRootControl::EnsureFocusSafeHarbor() noexcept {
 
 // Set keyboard event listener for developer menu
 void ReactRootControl::InitializeDeveloperMenu() noexcept {
-  VerifyElseCrashSz(m_uiDispatcher.HasThreadAccess(), "Must be called on UI thread");
+  VerifyElseCrashSz(m_uiQueue.HasThreadAccess(), "Must be called on UI thread");
 
   auto coreWindow = winrt::CoreWindow::GetForCurrentThread();
   m_coreDispatcherAKARevoker = coreWindow.Dispatcher().AcceleratorKeyActivated(
@@ -423,7 +419,7 @@ void ReactRootControl::InitializeDeveloperMenu() noexcept {
 }
 
 void ReactRootControl::ShowDeveloperMenu() noexcept {
-  VerifyElseCrashSz(m_uiDispatcher.HasThreadAccess(), "Must be called on UI thread");
+  VerifyElseCrashSz(m_uiQueue.HasThreadAccess(), "Must be called on UI thread");
   VerifyElseCrash(m_developerMenuRoot == nullptr);
 
   if (auto xamlRootView = m_weakXamlRootView.get()) {
@@ -461,28 +457,24 @@ void ReactRootControl::ShowDeveloperMenu() noexcept {
     m_reloadJSRevoker = reloadJSButton.Click(
         winrt::auto_revoke, [this](auto const &sender, winrt::RoutedEventArgs const &args) noexcept {
           DismissDeveloperMenu();
-          Reload(true);
+          ReloadHost();
         });
 
-    const bool useWebDebugger = m_reactInstance->GetReactInstanceSettings().UseWebDebugger;
     remoteDebugJSButton.Content(
-        winrt::box_value(useWebDebugger ? L"Disable Remote JS Debugging" : L"Enable Remote JS Debugging"));
+        winrt::box_value(m_useWebDebugger ? L"Disable Remote JS Debugging" : L"Enable Remote JS Debugging"));
     m_remoteDebugJSRevoker = remoteDebugJSButton.Click(
-        winrt::auto_revoke, [this, useWebDebugger](auto const &sender, winrt::RoutedEventArgs const &args) noexcept {
+        winrt::auto_revoke, [this](auto const &sender, winrt::RoutedEventArgs const &args) noexcept {
           DismissDeveloperMenu();
-          // TODO: [vmorozov] change
-          m_instanceCreator->persistUseWebDebugger(!useWebDebugger);
-          Reload(true);
+          m_useWebDebugger = !m_useWebDebugger;
+          ReloadHost();
         });
 
-    const bool supportLiveReload = m_reactInstance->GetReactInstanceSettings().UseLiveReload;
-    liveReloadButton.Content(winrt::box_value(supportLiveReload ? L"Disable Live Reload" : L"Enable Live Reload"));
-    m_liveReloadRevoker = liveReloadButton.Click(
-        winrt::auto_revoke, [this, supportLiveReload](auto &sender, winrt::RoutedEventArgs const &args) noexcept {
+    liveReloadButton.Content(winrt::box_value(m_useLiveReload ? L"Disable Live Reload" : L"Enable Live Reload"));
+    m_liveReloadRevoker =
+        liveReloadButton.Click(winrt::auto_revoke, [this](auto &sender, winrt::RoutedEventArgs const &args) noexcept {
           DismissDeveloperMenu();
-          // TODO: [vmorozov] change
-          m_instanceCreator->persistUseLiveReload(!supportLiveReload);
-          Reload(true);
+          m_useLiveReload = !m_useLiveReload;
+          ReloadHost();
         });
 
     m_toggleInspectorRevoker = toggleInspector.Click(
@@ -500,7 +492,7 @@ void ReactRootControl::ShowDeveloperMenu() noexcept {
 }
 
 void ReactRootControl::DismissDeveloperMenu() noexcept {
-  VerifyElseCrashSz(m_uiDispatcher.HasThreadAccess(), "Must be called on UI thread");
+  VerifyElseCrashSz(m_uiQueue.HasThreadAccess(), "Must be called on UI thread");
   VerifyElseCrash(m_developerMenuRoot != nullptr);
 
   if (auto xamlRootView = m_weakXamlRootView.get()) {
@@ -519,9 +511,9 @@ bool ReactRootControl::IsDeveloperMenuShowing() const noexcept {
 }
 
 void ReactRootControl::ToggleInspector() noexcept {
-  if (m_reactInstance) {
-    m_reactInstance->CallJsFunction(
-        "RCTDeviceEventEmitter", "emit", folly::dynamic::array("toggleElementInspector", nullptr));
+  if (auto reactInstance = m_weakReactInstance.GetStrongPtr()) {
+    query_cast<Mso::React::ILegacyReactInstance &>(*reactInstance)
+        .CallJsFunction("RCTDeviceEventEmitter", "emit", folly::dynamic::array("toggleElementInspector", nullptr));
   }
 }
 
@@ -538,10 +530,6 @@ void ReactRootControl::ReloadViewHost() noexcept {
   if (auto reactViewHost = m_reactViewHost.Get()) {
     reactViewHost->ReloadViewInstance();
   }
-}
-
-Mso::CntPtr<Mso::React::IReactInstance> ReactRootControl::GetReactInstance() noexcept {
-  return m_weakReactInstance.GetStrongPtr();
 }
 
 Mso::React::IReactViewHost *ReactRootControl::ReactViewHost() noexcept {
@@ -561,7 +549,7 @@ void ReactRootControl::ReactViewHost(Mso::React::IReactViewHost *viewHost) noexc
   m_reactViewHost = viewHost;
 
   if (m_reactViewHost) {
-    auto viewInstance = Mso::Make<ReactViewInstance>(this, m_uiQueue);
+    auto viewInstance = Mso::Make<ReactViewInstance>(weak_from_this(), m_uiQueue);
     m_reactViewHost->AttachViewInstance(*viewInstance);
   }
 }
@@ -572,8 +560,8 @@ void ReactRootControl::ReactViewHost(Mso::React::IReactViewHost *viewHost) noexc
 
 ReactViewInstance::ReactViewInstance(
     std::weak_ptr<ReactRootControl> &&weakRootControl,
-    Mso::DispatchQueue &&uiQueue) noexcept
-    : m_weakRootControl{std::move(weakRootControl)}, m_uiQueue{std::move(uiQueue)} {}
+    Mso::DispatchQueue const &uiQueue) noexcept
+    : m_weakRootControl{std::move(weakRootControl)}, m_uiQueue{uiQueue} {}
 
 Mso::Future<void> ReactViewInstance::InitRootView(
     Mso::CntPtr<Mso::React::IReactInstance> &&reactInstance,

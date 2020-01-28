@@ -129,7 +129,7 @@ struct ReactRootControl final : std::enable_shared_from_this<ReactRootControl>, 
 
 //! This class ensures that we access ReactRootView from UI thread.
 struct ReactViewInstance : public Mso::UnknownObject<Mso::RefCountStrategy::WeakRef, Mso::React::IReactViewInstance> {
-  ReactViewInstance(std::weak_ptr<ReactRootControl> &&weakRootControl, Mso::DispatchQueue &&uiQueue) noexcept;
+  ReactViewInstance(std::weak_ptr<ReactRootControl> &&weakRootControl, Mso::DispatchQueue const &uiQueue) noexcept;
 
   Mso::Future<void> InitRootView(
       Mso::CntPtr<Mso::React::IReactInstance> &&reactInstance,
@@ -162,7 +162,7 @@ inline Mso::Future<void> ReactViewInstance::PostInUIQueue(TAction &&action) noex
           }
         }
 
-        return Mso::CancellationErrorProvider().MakeMaybe();
+        return Mso::CancellationErrorProvider().MakeMaybe<void>();
       });
 }
 

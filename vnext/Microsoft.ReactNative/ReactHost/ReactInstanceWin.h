@@ -27,7 +27,7 @@ static_assert(
     "LogLevel::Fatal value must match");
 
 //! ReactInstance implementation for Windows that is managed by ReactHost.
-class ReactInstanceWin final : public Mso::ActiveObject<IReactInstance, IReactInstanceInternal, ILegacyReactInstance> {
+class ReactInstanceWin final : public Mso::ActiveObject<IReactInstanceInternal, ILegacyReactInstance> {
   using Super = ActiveObjectType;
 
  public: // IReactInstance
@@ -40,6 +40,10 @@ class ReactInstanceWin final : public Mso::ActiveObject<IReactInstance, IReactIn
 
  public: // ILegacyReactInstance
   void CallJsFunction(std::string &&moduleName, std::string &&method, folly::dynamic &&params) noexcept override;
+  void DispatchEvent(int64_t viewTag, std::string &&eventName, folly::dynamic &&eventData) noexcept override;
+  facebook::react::INativeUIManager *NativeUIManager() noexcept override;
+  std::shared_ptr<facebook::react::Instance> GetInnerInstance() noexcept override;
+  std::string GetBundleRootPath() noexcept override;
   std::shared_ptr<react::uwp::IReactInstance> UwpReactInstance() noexcept override;
   void AttachMeasuredRootView(
       facebook::react::IReactRootView *rootView,
@@ -48,9 +52,9 @@ class ReactInstanceWin final : public Mso::ActiveObject<IReactInstance, IReactIn
 
  private:
   friend MakePolicy;
-  UwpReactInstance(
-      const std::shared_ptr<facebook::react::NativeModuleProvider> &moduleProvider,
-      const std::shared_ptr<ViewManagerProvider> &viewManagerProvider = nullptr);
+  //UwpReactInstance(
+  //    const std::shared_ptr<facebook::react::NativeModuleProvider> &moduleProvider,
+  //    const std::shared_ptr<ViewManagerProvider> &viewManagerProvider = nullptr);
   ReactInstanceWin(IReactHost &reactHost, ReactOptions &&options, Mso::Promise<void> &&whenLoaded) noexcept;
   void Initialize() noexcept override;
   ~ReactInstanceWin() override;
@@ -99,6 +103,8 @@ class ReactInstanceWin final : public Mso::ActiveObject<IReactInstance, IReactIn
 
   const Mso::ActiveReadableField<std::shared_ptr<facebook::react::InstanceWrapper>> m_instanceWrapper{Queue(), m_mutex};
   const Mso::ActiveReadableField<std::shared_ptr<facebook::react::Instance>> m_instance{Queue(), m_mutex};
+  std::atomic<ReactInstanceState> m_state{ReactInstanceState::Loading};
+  std::string m_errorMessage;
 };
 
 } // namespace Mso::React
