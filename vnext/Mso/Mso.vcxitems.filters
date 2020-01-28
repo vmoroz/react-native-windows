@@ -359,9 +359,6 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)src\memoryApi\memoryLeakScope_EmptyImpl.cpp">
       <Filter>src\memoryApi</Filter>
     </ClCompile>
-    <ClCompile Include="$(MSBuildThisFileDirectory)src\dispatchQueue\mainUIScheduler_winrt.cpp">
-      <Filter>src\dispatchQueue</Filter>
-    </ClCompile>
     <ClCompile Include="$(MSBuildThisFileDirectory)src\dispatchQueue\looperScheduler.cpp">
       <Filter>src\dispatchQueue</Filter>
     </ClCompile>
@@ -409,6 +406,9 @@
     </ClCompile>
     <ClCompile Include="$(MSBuildThisFileDirectory)src\eventWaitHandle\eventWaitHandleImpl_win.cpp">
       <Filter>src\eventWaitHandle</Filter>
+    </ClCompile>
+    <ClCompile Include="E:\GitHub\vmoroz\react-native-windows\vnext\Mso\src\dispatchQueue\uiScheduler_winrt.cpp">
+      <Filter>src\dispatchQueue</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

@@ -122,6 +122,9 @@ struct DispatchQueue {
   //! Create new looper DispatchQueue on top of new std::thread. It owns the thread until shutdown.
   static DispatchQueue MakeLooperQueue() noexcept;
 
+  //! Create new UI DispatchQueue for the current UI thread.
+  static DispatchQueue MakeCurrentThreadUIQueue() noexcept;
+
   //! Create a concurrent queue on top of platform specific thread pool that uses up to maxThreads threads.
   //! If maxThreads is zero, then it creates a concurrent queue that has a predefined limit on concurrently submitted
   //! work items.
@@ -422,6 +425,9 @@ struct IDispatchQueueStatic : IUnknown {
   //! Create new looper DispatchQueue on top of new std::thread. It owns the thread until shutdown.
   virtual DispatchQueue MakeLooperQueue() noexcept = 0;
 
+  //! Creates new UI DispatchQueue for the current UI thread.
+  virtual DispatchQueue MakeCurrentThreadUIQueue() noexcept = 0;
+
   //! Create a concurrent queue on top of platform specific thread pool that uses up to maxThreads threads.
   //! If maxThreads is zero, then it creates a concurrent queue that has a predefined limit on concurrently submitted
   //! work items.
@@ -549,6 +555,10 @@ inline /*static*/ DispatchQueue DispatchQueue::MakeSerialQueue() noexcept {
 
 inline /*static*/ DispatchQueue DispatchQueue::MakeLooperQueue() noexcept {
   return IDispatchQueueStatic::Instance()->MakeLooperQueue();
+}
+
+inline /*static*/ DispatchQueue DispatchQueue::MakeCurrentThreadUIQueue() noexcept {
+  return IDispatchQueueStatic::Instance()->MakeCurrentThreadUIQueue();
 }
 
 inline /*static*/ DispatchQueue DispatchQueue::MakeConcurrentQueue(uint32_t maxThreads) noexcept {

@@ -48,6 +48,9 @@ class ReactInstanceWin final : public Mso::ActiveObject<IReactInstance, IReactIn
 
  private:
   friend MakePolicy;
+  UwpReactInstance(
+      const std::shared_ptr<facebook::react::NativeModuleProvider> &moduleProvider,
+      const std::shared_ptr<ViewManagerProvider> &viewManagerProvider = nullptr);
   ReactInstanceWin(IReactHost &reactHost, ReactOptions &&options, Mso::Promise<void> &&whenLoaded) noexcept;
   void Initialize() noexcept override;
   ~ReactInstanceWin() override;

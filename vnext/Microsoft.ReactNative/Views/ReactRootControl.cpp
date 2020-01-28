@@ -39,7 +39,7 @@ namespace react::uwp {
 //===========================================================================
 
 ReactRootControl::ReactRootControl(XamlView const &rootView) noexcept
-    : m_weakRootView{rootView}, m_uiDispatcher(winrt::CoreWindow::GetForCurrentThread().Dispatcher()) {
+    : m_weakRootView{rootView}, m_uiQueue(Mso::DispatchQueue::MakeCurrentThreadUIQueue()) {
   PrepareXamlRootView(rootView);
 }
 

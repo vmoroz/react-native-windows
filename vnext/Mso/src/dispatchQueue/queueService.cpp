@@ -48,9 +48,7 @@ void QueueService::Post(DispatchTask &&task) noexcept {
 }
 
 bool QueueService::ShouldYield(TaskYieldReason *yieldReason) noexcept {
-  auto setReason = [&](TaskYieldReason reason) noexcept {
-    return yieldReason ? *yieldReason = reason : reason, true;
-  };
+  auto setReason = [&](TaskYieldReason reason) noexcept { return yieldReason ? *yieldReason = reason : reason, true; };
   std::lock_guard lock{m_mutex};
   return (m_shutdownAction.has_value() && setReason(TaskYieldReason::QueueShutdown)) ||
       (m_suspendCounter > 0 && setReason(TaskYieldReason::QueueSuspended));
@@ -280,6 +278,10 @@ DispatchQueue DispatchQueueStatic::MakeSerialQueue() noexcept {
 
 DispatchQueue DispatchQueueStatic::MakeLooperQueue() noexcept {
   return Mso::Make<QueueService, IDispatchQueueService>(MakeLooperScheduler());
+}
+
+DispatchQueue DispatchQueueStatic::MakeCurrentThreadUIQueue() noexcept {
+  return Mso::Make<QueueService, IDispatchQueueService>(MakeCurrentThreadUIScheduler());
 }
 
 DispatchQueue DispatchQueueStatic::MakeConcurrentQueue(uint32_t maxThreads) noexcept {
