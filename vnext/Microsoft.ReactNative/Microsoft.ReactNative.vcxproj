@@ -168,7 +168,6 @@
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="..\ReactUWP\Base\UwpReactInstance.h" />
     <ClInclude Include="..\ReactUWP\Executors\WebSocketJSExecutorUwp.h" />
     <ClInclude Include="..\ReactUWP\Modules\AlertModuleUwp.h" />
     <ClInclude Include="..\ReactUWP\Modules\Animated\AdditionAnimatedNode.h" />
@@ -296,9 +295,10 @@
     <ClInclude Include="ReactHost\PropertyBag_internal.h" />
     <ClInclude Include="ReactHost\React.h" />
     <ClInclude Include="ReactHost\ReactHost.h" />
-    <ClInclude Include="ReactHost\ReactInstanceWin32.h" />
+    <ClInclude Include="ReactHost\ReactInstanceWin.h" />
     <ClInclude Include="ReactHost\ReactNativeHeaders.h" />
     <ClInclude Include="ReactHost\React_Win.h" />
+    <ClInclude Include="ReactHost\UwpReactInstanceProxy.h" />
     <ClInclude Include="ReactInstance.h">
       <DependentUpon>ReactInstance.idl</DependentUpon>
       <SubType>Code</SubType>
@@ -329,8 +329,6 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\ReactUWP\Base\InstanceFactory.cpp" />
-    <ClCompile Include="..\ReactUWP\Base\UwpReactInstance.cpp" />
     <ClCompile Include="..\ReactUWP\CxxReactUWP\JSBigString.cpp" />
     <ClCompile Include="..\ReactUWP\Executors\WebSocketJSExecutorFactory.cpp" />
     <ClCompile Include="..\ReactUWP\Executors\WebSocketJSExecutorUwp.cpp" />
@@ -453,7 +451,8 @@
     <ClCompile Include="ReactHost\MsoUtils.cpp" />
     <ClCompile Include="ReactHost\PropertyBag.cpp" />
     <ClCompile Include="ReactHost\ReactHost.cpp" />
-    <ClCompile Include="ReactHost\ReactInstanceWin32.cpp" />
+    <ClCompile Include="ReactHost\ReactInstanceWin.cpp" />
+    <ClCompile Include="ReactHost\UwpReactInstanceProxy.cpp" />
     <ClCompile Include="ReactInstance.cpp">
       <DependentUpon>ReactInstance.idl</DependentUpon>
       <SubType>Code</SubType>

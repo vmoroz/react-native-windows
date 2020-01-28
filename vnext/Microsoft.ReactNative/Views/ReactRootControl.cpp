@@ -135,27 +135,134 @@ void ReactRootControl::blur(XamlView const &xamlView) noexcept {
     winrt::FocusManager::TryFocusAsync(xamlView, winrt::FocusState::Pointer);
 }
 
-Mso::Future<void> ReactRootControl::InitRootView(
+void ReactRootControl::InitRootView(
     Mso::CntPtr<Mso::React::IReactInstance> &&reactInstance,
     Mso::React::ReactViewOptions &&viewOptions) noexcept {
+  VerifyElseCrash(m_uiQueue.HasThreadAccess());
 
-  void ReactRootControl::ReloadUI(
-      Mso::CntPtr<Mso::React::IReactInstance> const &reactInstance,
-      Mso::React::ReactViewOptions &&reactViewOptions) noexcept {
-    UnloadUI();
-    VerifyElseCrash(!m_isUILoading);
-    m_isUILoading = true;
+  if (m_isInitialized) {
+    UninitRootView();
+  }
 
-    m_weakReactInstance = Mso::WeakPtr{reactInstance.Get()};
-    m_reactOptions = std::make_unique<Mso::React::ReactOptions>(reactInstance->Options());
-    m_reactViewOptions = std::make_unique<Mso::React::ReactViewOptions>(std::move(reactViewOptions));
+  m_weakReactInstance = Mso::WeakPtr{reactInstance};
+  auto &reactInstanceInternal = query_cast<Mso::React::IReactInstanceInternal &>(*reactInstance);
+  m_reactOptions = std::make_unique<Mso::React::ReactOptions>(reactInstance->Options());
+  m_reactViewOptions = std::make_unique<Mso::React::ReactViewOptions>(std::move(reactViewOptions));
 
-    const auto &devSettings = m_reactOptions->DeveloperSettings;
-    m_useLiveReload = devSettings.UseLiveReload;
-    m_useWebDebugger = devSettings.UseWebDebugger;
-    SetInError(false);
+  const auto &devSettings = m_reactOptions->DeveloperSettings;
+  m_useLiveReload = devSettings.UseLiveReload;
+  m_useWebDebugger = devSettings.UseWebDebugger;
+  if (devSettings.IsDevModeEnabled) {
+    InitializeDeveloperMenu();
+  }
 
-    const auto &winReactInstance = query_cast<Mso::React::IReactInstanceWin32 &>(*reactInstance);
+  auto legacyReacyInstance = reactInstanceInternal.LegacyReactInstance();
+  if (!m_touchEventHandler) {
+    m_touchEventHandler = std::make_shared<TouchEventHandler>(legacyReacyInstance);
+  }
+
+  if (!m_SIPEventHandler) {
+    m_SIPEventHandler = std::make_shared<SIPEventHandler>(legacyReacyInstance);
+  }
+
+  if (!m_previewKeyboardEventHandlerOnRoot) {
+    m_previewKeyboardEventHandlerOnRoot = std::make_shared<PreviewKeyboardEventHandlerOnRoot>(legacyReacyInstance);
+  }
+
+  auto xamlRootView = m_weakXamlRootView.get();
+  m_touchEventHandler->AddTouchHandlers(xamlRootView);
+  m_previewKeyboardEventHandlerOnRoot->hook(xamlRootView);
+  m_SIPEventHandler->AttachView(xamlRootView, /*fireKeyboradEvents:*/ true);
+
+  UpdateRootViewInternal();
+
+  m_isInitialized = true;
+}
+
+void ReactRootControl::UpdateRootView() noexcept {
+  VerifyElseCrash(m_uiQueue.HasThreadAccess());
+  VerifyElseCrash(m_isInitialized);
+  UpdateRootViewInternal();
+}
+
+void ReactRootControl::UpdateRootViewInternal() noexcept {
+  if (auto reactInstance = m_weakReactInstance.GetStrongPtr()) {
+    switch (reactInstance->State()) {
+      case Mso::React::ReactInstanceState::Loading :
+        ShowInstanceLoading(*reactInstance);
+        break;
+      case Mso::React::ReactInstanceState::WaitingForDebugger:
+        ShowInstanceWaiting(*reactInstance);
+        break;
+      case Mso::React::ReactInstanceState::Loaded:
+        ShowInstanceLoaded(*reactInstance);
+        break;
+      case Mso::React::ReactInstanceState::HasError:
+        ShowInstanceError(*reactInstance);
+        break;
+      default:
+        VerifyElseCrashSz(false, "Unexpected value");
+      }
+    }
+  }
+}
+
+void ReactRootControl::UninitRootView() noexcept {
+  if (!m_isInitialized) {
+    return;
+  }
+
+  if (auto fbReactInstance = m_fbReactInstance.lock()) {
+    fbReactInstance->DetachRootView(this);
+  }
+
+  if (m_touchEventHandler != nullptr) {
+    m_touchEventHandler->RemoveTouchHandlers();
+  }
+
+  if (!m_previewKeyboardEventHandlerOnRoot) {
+    m_previewKeyboardEventHandlerOnRoot->unhook();
+  }
+
+  // If the redbox error UI is shown we need to remove it, otherwise let the
+  // natural teardown process do this
+  if (m_redBoxGrid) {
+    if (auto xamlRootView = m_weakXamlRootView.get()) {
+      if (auto grid = xamlRootView.try_as<winrt::Grid>()) {
+        grid.Children().Clear();
+      }
+    }
+
+    m_redBoxGrid = nullptr;
+    m_errorTextBlock = nullptr;
+  }
+
+  // Clear members with a dependency on the reactInstance
+  m_touchEventHandler.reset();
+  m_SIPEventHandler.reset();
+
+  m_reactOptions = nullptr;
+  m_reactViewOptions = nullptr;
+  m_weakReactInstance = nullptr;
+
+  m_isInitialized = false;
+}
+
+void ReactRootControl::ShowReactLoaded(Mso::React::IReactInstance &reactInstance) noexcept {
+  if (XamlView xamlRootView = m_weakXamlRootView.get()) {
+    auto xamlRootGrid{xamlRootView.as<winrt::Grid>()};
+
+    // Remove existing children from root view (from the hosted app)
+    xamlRootGrid.Children().Clear();
+    //
+    //  // Show the Waiting for debugger to connect message if the instance is still
+    //  // waiting
+    //  if (m_reactInstance->IsWaitingForDebugger())
+    //    HandleInstanceWaiting();
+    //
+
+    if ()
+      const auto &winReactInstance = query_cast<Mso::React::IReactInstanceWin32 &>(*reactInstance);
     auto fbReactInstance = winReactInstance.InstanceObject();
     m_fbReactInstance = fbReactInstance;
 
@@ -165,183 +272,77 @@ Mso::Future<void> ReactRootControl::InitRootView(
 
     fbReactInstance->AttachMeasuredRootView(this, std::move(initialProps));
 
-    // void ReactControl::AttachRoot() noexcept {
-    //  if (m_isAttached)
-    //    return;
-    //
-    //  if (!m_reactInstance)
-    //    m_reactInstance = m_instanceCreator->getInstance();
-    //
-    //  // Handle any errors that occurred during creation before we add our callback
-    //  if (m_reactInstance->IsInError())
-    //    HandleInstanceError();
-    //
-    //  // Show the Waiting for debugger to connect message if the instance is still
-    //  // waiting
-    //  if (m_reactInstance->IsWaitingForDebugger())
-    //    HandleInstanceWaiting();
-    //
-    //  if (!m_touchEventHandler)
-    //    m_touchEventHandler = std::make_shared<TouchEventHandler>(m_reactInstance);
-    //
-    //  if (!m_SIPEventHandler)
-    //    m_SIPEventHandler = std::make_shared<SIPEventHandler>(m_reactInstance);
-    //
-    //  m_previewKeyboardEventHandlerOnRoot = std::make_shared<PreviewKeyboardEventHandlerOnRoot>(m_reactInstance);
-    //
-    //  // Register callback from instance for errors
-    //  m_errorCallbackCookie = m_reactInstance->RegisterErrorCallback([this]() { HandleInstanceError(); });
-    //
-    //  // Register callback from instance for debugger attaching
-    //  m_debuggerAttachCallbackCookie =
-    //      m_reactInstance->RegisterDebuggerAttachCallback([this]() { HandleDebuggerAttach(); });
-    //
-    //  // We assume Attach has been called from the UI thread
-    //#ifdef DEBUG
-    //  auto coreWindow = winrt::CoreWindow::GetForCurrentThread();
-    //  assert(coreWindow != nullptr);
-    //#endif
-    //
-    //  m_touchEventHandler->AddTouchHandlers(m_xamlRootView);
-    //  m_previewKeyboardEventHandlerOnRoot->hook(m_xamlRootView);
-    //  m_SIPEventHandler->AttachView(m_xamlRootView, true /*fireKeyboradEvents*/);
-    //
-    //  auto initialProps = m_initialProps;
     //  m_reactInstance->AttachMeasuredRootView(m_pParent, std::move(initialProps));
-    //  m_isAttached = true;
-    //
-    //  if (m_reactInstance->GetReactInstanceSettings().EnableDeveloperMenu) {
-    //    InitializeDeveloperMenu();
-    //  }
-    //}
 
-    m_isUILoading = false;
-    m_isUILoaded = true;
+    auto &reactInstanceInternal = query_cast<Mso::React::IReactInstanceInternal &>(*reactInstance);
+    reactInstanceInternal.AttachMeasuredRootView(this, m_reactViewOptions->InitialProps);
+    m_isJSViewAttached = true;
   }
 }
 
-Mso::Future<void> ReactRootControl::UpdateRootView() noexcept {}
+void ReactRootControl::ShowInstanceError(Mso::React::IReactInstance &reactInstance) noexcept {
+  if (XamlView xamlRootView = m_weakXamlRootView.get()) {
+    auto xamlRootGrid{xamlRootView.as<winrt::Grid>()};
 
-Mso::Future<void> ReactRootControl::UninitRootView() noexcept {
-  void ReactRootControl::UnloadUI() noexcept {
-    if (!m_isUILoaded) {
-      return;
+    // Remove existing children from root view (from the hosted app)
+    xamlRootGrid.Children().Clear();
+
+    // Create Grid & TextBlock to hold error text
+    if (!m_errorTextBlock) {
+      m_errorTextBlock = winrt::TextBlock{};
+      m_redBoxGrid = winrt::Grid{};
+      m_redBoxGrid.Background(winrt::SolidColorBrush{winrt::ColorHelper::FromArgb(0xee, 0xcc, 0, 0)});
+      m_redBoxGrid.Children().Append(m_errorTextBlock);
     }
 
-    if (auto fbReactInstance = m_fbReactInstance.lock()) {
-      fbReactInstance->DetachRootView(this);
-    }
+    // Add red box grid to root view
+    xamlRootGrid.Children().Append(m_redBoxGrid);
 
-    if (m_touchEventHandler != nullptr) {
-      m_touchEventHandler->RemoveTouchHandlers();
-    }
+    // Place error message into TextBlock
+    std::wstring wstrErrorMessage{L"ERROR: Instance failed to start.\n\n"};
+    wstrErrorMessage += Microsoft::Common::Unicode::Utf8ToUtf16(reactInstance.LastErrorMessage()).c_str();
+    m_errorTextBlock.Text(wstrErrorMessage);
 
-    if (!m_previewKeyboardEventHandlerOnRoot)
-      m_previewKeyboardEventHandlerOnRoot->unhook();
-
-    if (m_reactInstance != nullptr) {
-      m_reactInstance->DetachRootView(m_pParent);
-
-      // If the redbox error UI is shown we need to remove it, otherwise let the
-      // natural teardown process do this
-      if (m_reactInstance->IsInError()) {
-        auto grid(m_xamlRootView.as<winrt::Grid>());
-        if (grid != nullptr)
-          grid.Children().Clear();
-
-        m_redBoxGrid = nullptr;
-        m_errorTextBlock = nullptr;
-      }
-    }
-    //
-    //  m_isAttached = false;
-    //}
-
-    //    // Clear members with a dependency on the reactInstance
-    //    m_touchEventHandler.reset();
-    //
-    //    m_SIPEventHandler.reset();
-
-    m_reactOptions = nullptr;
-    m_reactViewOptions = nullptr;
-    m_weakReactInstance = nullptr;
-    m_fbReactInstance.reset();
-
-    m_isUILoaded = false;
+    // Format TextBlock
+    m_errorTextBlock.TextAlignment(winrt::TextAlignment::Center);
+    m_errorTextBlock.TextWrapping(winrt::TextWrapping::Wrap);
+    m_errorTextBlock.FontFamily(winrt::FontFamily(L"Consolas"));
+    m_errorTextBlock.Foreground(winrt::SolidColorBrush(winrt::Colors::White()));
+    winrt::Thickness margin = {10.0f, 10.0f, 10.0f, 10.0f};
+    m_errorTextBlock.Margin(margin);
   }
 }
 
-void ReactRootControl::HandleInstanceError() noexcept {
-  VerifyElseCrashSz(m_uiDispatcher.HasThreadAccess(), "Must be called on UI thread");
+void ReactRootControl::ShowInstanceWaiting(Mso::React::IReactInstance &reactInstance) noexcept {
+  if (XamlView xamlRootView = m_weakXamlRootView.get()) {
+    auto xamlRootGrid{xamlRootView.as<winrt::Grid>()};
 
-  if (m_reactInstance->IsInError()) {
-    if (XamlView xamlRootView = m_weakXamlRootView.get()) {
-      auto xamlRootGrid{xamlRootView.as<winrt::Grid>()};
+    // Remove existing children from root view (from the hosted app)
+    xamlRootGrid.Children().Clear();
 
-      // Remove existing children from root view (from the hosted app)
-      xamlRootGrid.Children().Clear();
-
-      // Create Grid & TextBlock to hold error text
-      if (!m_errorTextBlock) {
-        m_errorTextBlock = winrt::TextBlock{};
-        m_redBoxGrid = winrt::Grid{};
-        m_redBoxGrid.Background(winrt::SolidColorBrush{winrt::ColorHelper::FromArgb(0xee, 0xcc, 0, 0)});
-        m_redBoxGrid.Children().Append(m_errorTextBlock);
-      }
-
-      // Add red box grid to root view
-      xamlRootGrid.Children().Append(m_redBoxGrid);
-
-      // Place error message into TextBlock
-      std::wstring wstrErrorMessage(L"ERROR: Instance failed to start.\n\n");
-      wstrErrorMessage += Microsoft::Common::Unicode::Utf8ToUtf16(m_reactInstance->LastErrorMessage()).c_str();
-      m_errorTextBlock.Text(wstrErrorMessage);
-
-      // Format TextBlock
-      m_errorTextBlock.TextAlignment(winrt::TextAlignment::Center);
-      m_errorTextBlock.TextWrapping(winrt::TextWrapping::Wrap);
-      m_errorTextBlock.FontFamily(winrt::FontFamily(L"Consolas"));
-      m_errorTextBlock.Foreground(winrt::SolidColorBrush(winrt::Colors::White()));
-      winrt::Thickness margin = {10.0f, 10.0f, 10.0f, 10.0f};
-      m_errorTextBlock.Margin(margin);
+    // Create Grid & TextBlock to hold text
+    if (m_waitingTextBlock == nullptr) {
+      m_waitingTextBlock = winrt::TextBlock();
+      m_greenBoxGrid = winrt::Grid{};
+      m_greenBoxGrid.Background(winrt::SolidColorBrush(winrt::ColorHelper::FromArgb(0xff, 0x03, 0x59, 0)));
+      m_greenBoxGrid.Children().Append(m_waitingTextBlock);
+      m_greenBoxGrid.VerticalAlignment(winrt::Windows::UI::Xaml::VerticalAlignment::Top);
     }
-  }
-}
 
-void ReactRootControl::HandleInstanceWaiting() noexcept {
-  VerifyElseCrashSz(m_uiDispatcher.HasThreadAccess(), "Must be called on UI thread");
+    // Add box grid to root view
+    xamlRootGrid.Children().Append(m_greenBoxGrid);
 
-  if (m_reactInstance->IsWaitingForDebugger()) {
-    if (XamlView xamlRootView = m_weakXamlRootView.get()) {
-      auto xamlRootGrid{xamlRootView.as<winrt::Grid>()};
+    // Place message into TextBlock
+    std::wstring wstrMessage(L"Connecting to remote debugger");
+    m_waitingTextBlock.Text(wstrMessage);
 
-      // Remove existing children from root view (from the hosted app)
-      xamlRootGrid.Children().Clear();
-
-      // Create Grid & TextBlock to hold text
-      if (m_waitingTextBlock == nullptr) {
-        m_waitingTextBlock = winrt::TextBlock();
-        m_greenBoxGrid = winrt::Grid();
-        m_greenBoxGrid.Background(winrt::SolidColorBrush(winrt::ColorHelper::FromArgb(0xff, 0x03, 0x59, 0)));
-        m_greenBoxGrid.Children().Append(m_waitingTextBlock);
-        m_greenBoxGrid.VerticalAlignment(winrt::Windows::UI::Xaml::VerticalAlignment::Top);
-      }
-
-      // Add box grid to root view
-      xamlRootGrid.Children().Append(m_greenBoxGrid);
-
-      // Place message into TextBlock
-      std::wstring wstrMessage(L"Connecting to remote debugger");
-      m_waitingTextBlock.Text(wstrMessage);
-
-      // Format TextBlock
-      m_waitingTextBlock.TextAlignment(winrt::TextAlignment::Center);
-      m_waitingTextBlock.TextWrapping(winrt::TextWrapping::Wrap);
-      m_waitingTextBlock.FontFamily(winrt::FontFamily(L"Consolas"));
-      m_waitingTextBlock.Foreground(winrt::SolidColorBrush(winrt::Colors::White()));
-      winrt::Thickness margin = {10.0f, 10.0f, 10.0f, 10.0f};
-      m_waitingTextBlock.Margin(margin);
-    }
+    // Format TextBlock
+    m_waitingTextBlock.TextAlignment(winrt::TextAlignment::Center);
+    m_waitingTextBlock.TextWrapping(winrt::TextWrapping::Wrap);
+    m_waitingTextBlock.FontFamily(winrt::FontFamily(L"Consolas"));
+    m_waitingTextBlock.Foreground(winrt::SolidColorBrush(winrt::Colors::White()));
+    winrt::Thickness margin = {10.0f, 10.0f, 10.0f, 10.0f};
+    m_waitingTextBlock.Margin(margin);
   }
 }
 

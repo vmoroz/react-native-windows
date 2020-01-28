@@ -26,31 +26,31 @@ static_assert(
     static_cast<int32_t>(facebook::react::RCTLogLevel::Fatal) == static_cast<int32_t>(LogLevel::Fatal),
     "LogLevel::Fatal value must match");
 
-//! ReactInstance implementation for Win32 that is managed by ReactHost.
-class ReactInstanceWin32 final
-    : public Mso::ActiveObject<IReactInstanceInternal, IReactInstanceWin32, IFBReactInstance> {
+//! ReactInstance implementation for Windows that is managed by ReactHost.
+class ReactInstanceWin final : public Mso::ActiveObject<IReactInstance, IReactInstanceInternal, ILegacyReactInstance> {
   using Super = ActiveObjectType;
 
  public: // IReactInstance
   const ReactOptions &Options() const noexcept override;
+  ReactInstanceState State() const noexcept override;
+  std::string LastErrorMessage() const noexcept override;
 
  public: // IReactInstanceInternal
   Mso::Future<void> Destroy() noexcept override;
 
- public: // IFBReactInstance
+ public: // ILegacyReactInstance
   void CallJsFunction(std::string &&moduleName, std::string &&method, folly::dynamic &&params) noexcept override;
-  std::shared_ptr<facebook::react::MessageQueueThread> DefaultNativeMessageQueueThread() const noexcept override;
-  std::shared_ptr<facebook::react::MessageQueueThread> JSMessageQueueThread() const noexcept override;
-
- public: // IReactInstanceWin32 members
-  std::shared_ptr<facebook::react::InstanceWrapper> InstanceObject() const noexcept override;
-  std::shared_ptr<facebook::react::IUIManager> UIManager() const noexcept override;
+  std::shared_ptr<react::uwp::IReactInstance> UwpReactInstance() noexcept override;
+  void AttachMeasuredRootView(
+      facebook::react::IReactRootView *rootView,
+      std::string const &initialProps) noexcept override;
+  void DetachRootView(facebook::react::IReactRootView *rootView) noexcept override;
 
  private:
   friend MakePolicy;
-  ReactInstanceWin32(IReactHost &reactHost, ReactOptions &&options, Mso::Promise<void> &&whenLoaded) noexcept;
+  ReactInstanceWin(IReactHost &reactHost, ReactOptions &&options, Mso::Promise<void> &&whenLoaded) noexcept;
   void Initialize() noexcept override;
-  ~ReactInstanceWin32() override;
+  ~ReactInstanceWin() override;
 
  private:
   void InitJSMessageThread() noexcept;

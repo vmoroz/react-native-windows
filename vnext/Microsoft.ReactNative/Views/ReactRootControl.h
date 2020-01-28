@@ -58,19 +58,21 @@ struct ReactRootControl final : std::enable_shared_from_this<ReactRootControl>, 
   void ReactViewHost(Mso::React::IReactViewHost *viewHost) noexcept;
 
  public: // IReactViewInstance UI-thread implementation
-  Mso::Future<void> InitRootView(
+  void InitRootView(
       Mso::CntPtr<Mso::React::IReactInstance> &&reactInstance,
       Mso::React::ReactViewOptions &&viewOptions) noexcept;
-  Mso::Future<void> UpdateRootView() noexcept;
-  Mso::Future<void> UninitRootView() noexcept;
+  void UpdateRootView() noexcept;
+  void UninitRootView() noexcept;
 
  private:
   void PrepareXamlRootView(XamlView const &rootView) noexcept;
-  void HandleInstanceError() noexcept;
-  void HandleInstanceWaiting() noexcept;
-  void HandleDebuggerAttach() noexcept;
-
   void EnsureFocusSafeHarbor() noexcept;
+  void UpdateRootViewInternal() noexcept;
+
+  void ShowInstanceLoading(Mso::React::IReactInstance &reactInstance) noexcept;
+  void ShowInstanceWaiting(Mso::React::IReactInstance &reactInstance) noexcept;
+  void ShowInstanceLoaded(Mso::React::IReactInstance &reactInstance) noexcept;
+  void ShowInstanceError(Mso::React::IReactInstance &reactInstance) noexcept;
 
   void InitializeDeveloperMenu() noexcept;
   void ShowDeveloperMenu() noexcept;
@@ -99,8 +101,8 @@ struct ReactRootControl final : std::enable_shared_from_this<ReactRootControl>, 
 
   bool m_useLiveReload{false};
   bool m_useWebDebugger{false};
-  bool m_isUILoading{false};
-  bool m_isUILoaded{false};
+  bool m_isInitialized{false};
+  bool m_isJSViewAttached{false};
 
   // Visual tree to support safe harbor
   // m_rootView
@@ -122,7 +124,6 @@ struct ReactRootControl final : std::enable_shared_from_this<ReactRootControl>, 
   winrt::Button::Click_revoker m_toggleInspectorRevoker{};
   winrt::Button::Click_revoker m_reloadJSRevoker{};
   winrt::Button::Click_revoker m_liveReloadRevoker{};
-  winrt::Windows::UI::Core::CoreDispatcher m_uiDispatcher{nullptr};
   winrt::CoreDispatcher::AcceleratorKeyActivated_revoker m_coreDispatcherAKARevoker{};
 };
 

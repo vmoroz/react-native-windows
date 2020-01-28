@@ -47,6 +47,13 @@ constexpr const Mso::JSHost::NamedProperty<Mso::IDispatchQueueService> JSDispatc
 constexpr const Mso::JSHost::NamedProperty<Mso::IDispatchQueueService> NativeDispatchQueueProperty{
     "NativeDispatchQueue"};
 
+enum class ReactInstanceState {
+  Loading,
+  WaitingForDebugger,
+  Loaded,
+  HasError,
+};
+
 /**An Office wrapper that extends FB's React Instance and makes it a 1:1 relationship with the bundle,
 such that each Office React Instance is capable of loading a single bundle and hosting js in an
 isolated JavaScript execution environment.*/
@@ -55,6 +62,9 @@ struct IReactInstance : public IUnknown {
   //! Returns ReactOptions associated with the IReactInstance
   //! The ReactOptions are meant to immutable and give to IReactInstance at its creation.
   virtual const ReactOptions &Options() const noexcept = 0;
+
+  virtual ReactInstanceState State() const noexcept = 0;
+  virtual std::string LastErrorMessage() const noexcept = 0;
 };
 
 //! An isolated UI control in the UI tree that is not owned (parented) by another React View.

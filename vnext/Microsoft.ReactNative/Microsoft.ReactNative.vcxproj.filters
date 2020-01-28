@@ -5,12 +5,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="$(GeneratedFilesDir)module.g.cpp" />
-    <ClCompile Include="..\ReactUWP\Base\InstanceFactory.cpp">
-      <Filter>Base</Filter>
-    </ClCompile>
-    <ClCompile Include="..\ReactUWP\Base\UwpReactInstance.cpp">
-      <Filter>Base</Filter>
-    </ClCompile>
     <ClCompile Include="..\ReactUWP\CxxReactUWP\JSBigString.cpp">
       <Filter>CxxReactUWP</Filter>
     </ClCompile>
@@ -296,7 +290,10 @@
     <ClCompile Include="ReactHost\ReactHost.cpp">
       <Filter>ReactHost</Filter>
     </ClCompile>
-    <ClCompile Include="ReactHost\ReactInstanceWin32.cpp">
+    <ClCompile Include="ReactHost\ReactInstanceWin.cpp">
+      <Filter>ReactHost</Filter>
+    </ClCompile>
+    <ClCompile Include="ReactHost\UwpReactInstanceProxy.cpp">
       <Filter>ReactHost</Filter>
     </ClCompile>
     <ClCompile Include="ReactSupport.cpp" />
@@ -312,9 +309,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\ReactUWP\Base\UwpReactInstance.h">
-      <Filter>Base</Filter>
-    </ClInclude>
     <ClInclude Include="..\ReactUWP\Executors\WebSocketJSExecutorUwp.h">
       <Filter>Executors</Filter>
     </ClInclude>
@@ -619,10 +613,13 @@
     <ClInclude Include="ReactHost\ReactHost.h">
       <Filter>ReactHost</Filter>
     </ClInclude>
-    <ClInclude Include="ReactHost\ReactInstanceWin32.h">
+    <ClInclude Include="ReactHost\ReactInstanceWin.h">
       <Filter>ReactHost</Filter>
     </ClInclude>
     <ClInclude Include="ReactHost\ReactNativeHeaders.h">
+      <Filter>ReactHost</Filter>
+    </ClInclude>
+    <ClInclude Include="ReactHost\UwpReactInstanceProxy.h">
       <Filter>ReactHost</Filter>
     </ClInclude>
     <ClInclude Include="ReactSupport.h" />
@@ -678,9 +675,6 @@
     <Text Include="readme.txt" />
   </ItemGroup>
   <ItemGroup>
-    <Filter Include="Base">
-      <UniqueIdentifier>{eaf2746e-5458-40cd-ae5c-38254eee1b4e}</UniqueIdentifier>
-    </Filter>
     <Filter Include="CxxReactUWP">
       <UniqueIdentifier>{3b861ea5-e87b-4783-a4b1-ce28548c1985}</UniqueIdentifier>
     </Filter>
