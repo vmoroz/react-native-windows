@@ -2,12 +2,11 @@
 // Licensed under the MIT License.
 
 #include "pch.h"
-#include "CoreUIManagers.h"
 
+#include <Modules/NativeUIManager.h>
 #include <ReactUWP/IReactInstance.h>
 #include <ReactUWP/ViewManagerProvider.h>
 #include <ReactWindowsCore/IUIManager.h>
-#include <Modules/NativeUIManager.h>
 
 // Standard View Managers
 #include <Views/ActivityIndicatorViewManager.h>
@@ -46,8 +45,8 @@ namespace react::uwp {
 
 REACTWINDOWS_API_(std::shared_ptr<facebook::react::IUIManager>)
 CreateUIManager(
-    std::shared_ptr<IReactInstance> const &instance,
-    std::shared_ptr<ViewManagerProvider> const &viewManagerProvider) noexcept {
+    std::shared_ptr<IReactInstance> instance,
+    const std::shared_ptr<ViewManagerProvider> &viewManagerProvider) {
   std::vector<std::unique_ptr<facebook::react::IViewManager>> viewManagers;
 
   // Custom view managers

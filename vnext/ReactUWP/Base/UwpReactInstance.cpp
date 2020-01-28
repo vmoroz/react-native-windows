@@ -5,10 +5,10 @@
 
 #include "UwpReactInstance.h"
 #include "CoreNativeModules.h"
-#include "CoreUIManagers.h"
 
 // ReactUWP
 #include <ReactUWP/IXamlRootView.h>
+#include <ReactUWP/CreateUwpModules.h>
 
 // Modules
 #include <Modules/AppStateModuleUwp.h>

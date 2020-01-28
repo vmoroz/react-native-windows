@@ -372,9 +372,6 @@
     <ClInclude Include="Base\CoreNativeModules.h">
       <Filter>Base</Filter>
     </ClInclude>
-    <ClInclude Include="Base\CoreUIManagers.h">
-      <Filter>Base</Filter>
-    </ClInclude>
     <ClInclude Include="Base\UwpReactInstance.h">
       <Filter>Base</Filter>
     </ClInclude>

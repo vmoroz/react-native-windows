@@ -179,7 +179,6 @@
     <ClInclude Include="ABI\Instance_rt.h" />
     <ClInclude Include="ABI\ReactControl_rt.h" />
     <ClInclude Include="Base\CoreNativeModules.h" />
-    <ClInclude Include="Base\CoreUIManagers.h" />
     <ClInclude Include="Base\UwpReactInstance.h" />
     <ClInclude Include="Modules\Animated\CalculatedAnimationDriver.h" />
     <ClInclude Include="Modules\Animated\SpringAnimationDriver.h" />
