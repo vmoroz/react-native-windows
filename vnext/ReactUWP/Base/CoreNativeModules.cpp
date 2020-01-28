@@ -39,7 +39,8 @@ bool HasPackageIdentity() noexcept {
     winrt::com_ptr<winrt::impl::abi_t<winrt::Windows::ApplicationModel::IPackage>> dummy;
     return abiPackageStatics->get_Current(winrt::put_abi(dummy)) !=
         winrt::impl::hresult_from_win32(APPMODEL_ERROR_NO_PACKAGE);
-  }();
+  }
+  ();
 
   return hasPackageIdentity;
 }
@@ -104,14 +105,11 @@ std::vector<facebook::react::NativeModuleDescription> GetCoreModules(
       },
       messageQueue);
 
-  modules.emplace_back(
-      AlertModule::name, []() { return std::make_unique<AlertModule>(); }, messageQueue);
+  modules.emplace_back(AlertModule::name, []() { return std::make_unique<AlertModule>(); }, messageQueue);
 
-  modules.emplace_back(
-      ClipboardModule::name, []() { return std::make_unique<ClipboardModule>(); }, messageQueue);
+  modules.emplace_back(ClipboardModule::name, []() { return std::make_unique<ClipboardModule>(); }, messageQueue);
 
-  modules.emplace_back(
-      StatusBarModule::name, []() { return std::make_unique<StatusBarModule>(); }, messageQueue);
+  modules.emplace_back(StatusBarModule::name, []() { return std::make_unique<StatusBarModule>(); }, messageQueue);
 
   modules.emplace_back(
       NativeAnimatedModule::name,

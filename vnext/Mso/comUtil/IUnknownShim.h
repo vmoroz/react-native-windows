@@ -104,7 +104,7 @@ struct IUnknown {
 #endif
 
 namespace Mso {
-  using IUnknown = ::IUnknown;
+using IUnknown = ::IUnknown;
 }
 
 #endif // MSO_COMUTIL_IUNKNOWNSHIM_H

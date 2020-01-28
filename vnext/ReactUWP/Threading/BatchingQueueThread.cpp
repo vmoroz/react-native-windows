@@ -47,7 +47,7 @@ void BatchingQueueThread::EnsureQueue() noexcept {
 void BatchingQueueThread::onBatchComplete() noexcept {
   ThreadCheck();
   if (m_taskQueue) {
-    m_queueThread->runOnQueue([taskQueue{std::move(m_taskQueue)}]() noexcept{
+    m_queueThread->runOnQueue([taskQueue{std::move(m_taskQueue)}]() noexcept {
       for (auto &task : *taskQueue) {
         task();
         task = nullptr;

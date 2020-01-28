@@ -4,8 +4,8 @@
 #pragma once
 
 #include <Modules/AppThemeModule.h>
-#include <ReactWindowsCore/NativeModuleProvider.h>
 #include <ReactUWP/Modules/I18nModule.h>
+#include <ReactWindowsCore/NativeModuleProvider.h>
 #include <memory>
 #include <vector>
 

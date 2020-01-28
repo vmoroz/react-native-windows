@@ -48,10 +48,10 @@ struct ReactInstanceSettings : ReactInstanceSettingsT<ReactInstanceSettings> {
 
   bool EnableJITCompilation() noexcept;
   void EnableJITCompilation(bool value) noexcept;
-    
-  bool EnableByteCodeCaching() noexcept;    
+
+  bool EnableByteCodeCaching() noexcept;
   void EnableByteCodeCaching(bool value) noexcept;
-    
+
   bool EnableDeveloperMenu() noexcept;
   void EnableDeveloperMenu(bool value) noexcept;
 
@@ -60,13 +60,13 @@ struct ReactInstanceSettings : ReactInstanceSettingsT<ReactInstanceSettings> {
 
   hstring DebugHost() noexcept;
   void DebugHost(hstring const &value) noexcept;
-    
+
   hstring DebugBundlePath() noexcept;
   void DebugBundlePath(hstring const &value) noexcept;
-    
+
   hstring BundleRootPath() noexcept;
   void BundleRootPath(hstring const &value) noexcept;
-    
+
  private:
   hstring m_mainComponentName{};
   bool m_useDeveloperSupport{REACT_DEFAULT_USE_DEVELOPER_SUPPORT};

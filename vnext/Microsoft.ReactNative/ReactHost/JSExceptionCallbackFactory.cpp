@@ -8,8 +8,8 @@ namespace Mso::React {
 
 std::function<void(facebook::react::JSExceptionInfo &&)> CreateExceptionCallback(
     OnJSExceptionCallback &&jsExceptionCallback) noexcept {
-  return [exceptionCallback =
-              std::move(jsExceptionCallback)](facebook::react::JSExceptionInfo &&jsExceptionInfo) noexcept {
+  return [exceptionCallback = std::move(jsExceptionCallback)](
+      facebook::react::JSExceptionInfo && jsExceptionInfo) noexcept {
     Mso::React::JSExceptionInfo exceptionInfo;
     exceptionInfo.Callstack = std::move(jsExceptionInfo.callstack);
     exceptionInfo.ExceptionId = jsExceptionInfo.exceptionId;

@@ -15,9 +15,9 @@
 #include "errorCode/errorCode.h"
 #include "future/future.h"
 
+#include <NativeModuleProvider.h>
 #include <ReactUWP/IReactInstance.h>
 #include <ReactUWP/ViewManagerProvider.h>
-#include <NativeModuleProvider.h>
 
 namespace Mso::React {
 

@@ -34,7 +34,7 @@ class ReactControl final : public std::enable_shared_from_this<ReactControl>, pu
 
   virtual ~ReactControl();
 
-  public: // IXamlRootView
+ public: // IXamlRootView
   std::shared_ptr<IReactInstance> GetReactInstance() const noexcept;
   XamlView GetXamlView() const noexcept;
 
@@ -45,7 +45,7 @@ class ReactControl final : public std::enable_shared_from_this<ReactControl>, pu
   void AttachRoot() noexcept;
   void DetachRoot() noexcept;
 
-  public: // IXamlReactControl
+ public: // IXamlReactControl
   void blur(XamlView const &xamlView) noexcept override;
 
   void DetachInstance();

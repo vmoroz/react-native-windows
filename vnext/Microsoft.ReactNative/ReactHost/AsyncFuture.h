@@ -18,7 +18,7 @@ inline winrt::Windows::Foundation::IAsyncAction FutureToAsyncAction(const Mso::F
   auto asyncActionImpl = winrt::make_self<AsyncActionImpl>();
   auto asyncAction = asyncActionImpl.try_as<winrt::Windows::Foundation::IAsyncAction>();
 
-  future.Then(Mso::Executors::Inline{}, [asyncActionImpl](Mso::Maybe<void> &&result) noexcept {
+  future.Then(Mso::Executors::Inline{}, [asyncActionImpl](Mso::Maybe<void> && result) noexcept {
     if (result.IsValue()) {
       asyncActionImpl->set_completed();
     } else {

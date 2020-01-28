@@ -269,7 +269,7 @@ void ReactControl::DetachInstance() {
     // This extends the lifetime of NativeModules which may have
     // pending calls in these queues.
     // TODO prevent or check if even more is queued while these drain.
-    //TODO: [vmorozov] We must remove this 'engineering workaround'
+    // TODO: [vmorozov] We must remove this 'engineering workaround'
     MakeSerialQueueThread()->runOnQueue([instance]() {});
     m_uiDispatcher.RunAsync(winrt::Windows::UI::Core::CoreDispatcherPriority::Normal, [instance]() {});
 

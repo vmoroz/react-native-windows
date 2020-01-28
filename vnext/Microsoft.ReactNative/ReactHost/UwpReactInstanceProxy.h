@@ -23,7 +23,7 @@ struct ViewManagerProvider;
 struct UwpReactInstanceProxy : IReactInstance, std::enable_shared_from_this<UwpReactInstanceProxy> {
   UwpReactInstanceProxy(
       Mso::WeakPtr<Mso::React::IReactInstance> &&weakReactInstance,
-      ReactInstanceSettings&& instanceSettings) noexcept;
+      ReactInstanceSettings &&instanceSettings) noexcept;
 
  public: // IReactInstance
   void Start(const std::shared_ptr<IReactInstance> &spThis, const ReactInstanceSettings &settings) override;

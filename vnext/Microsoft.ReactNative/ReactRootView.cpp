@@ -49,7 +49,7 @@ fire_and_forget ReactRootView::StartReactApplicationAsync(
   m_initialProps = initialProps;
 
   m_xamlView = {};
-  //TODO: react::uwp::CreateReactRootView(*this, componentName.c_str(), reactNativeHost);
+  // TODO: react::uwp::CreateReactRootView(*this, componentName.c_str(), reactNativeHost);
 
   if (m_xamlView == nullptr)
     co_return;
@@ -86,10 +86,10 @@ void ReactRootView::OnAcceleratorKeyActivated(
   // if (host.HasInstance()) {
   //   auto reactInstanceManager = host.ReactInstanceManager();
   //   if (reactInstanceManager.DevSupportManager().IsEnabled()) {
-      
+
   //    auto virtualKey = e.VirtualKey();
   //    auto eventType = e.EventType();
-      
+
   //    if (virtualKey == Windows::System::VirtualKey::Shift) {
   //      s_isShiftKeyDown = IsKeyDown(eventType);
   //    }

@@ -52,7 +52,8 @@ void ReactApplicationDelegate::OnActivated(IActivatedEventArgs const &args) noex
       // TODO: Need to support deep linking by integrating with the Linking module
       if (args.PreviousExecutionState() != ApplicationExecutionState::Running) {
         // TODO... Figure out the right activation path for PreviousExecutionState
-        VerifyElseCrashSz(false, "ReactApplicationDelegate.OnActivated doesn't handle PreviousExecutionState other than Running");
+        VerifyElseCrashSz(
+            false, "ReactApplicationDelegate.OnActivated doesn't handle PreviousExecutionState other than Running");
       } else {
         // TODO... Figure out the right activation path
         OutputDebugStringW(
@@ -81,8 +82,7 @@ UIElement ReactApplicationDelegate::OnCreate(hstring const &arguments) noexcept 
   m_reactRootView = winrt::make_self<ReactRootView>();
 
   m_reactRootView->OnCreate(host);
-  m_reactRootView->StartReactApplicationAsync(
-      host, host.InstanceSettings().MainComponentName(), props);
+  m_reactRootView->StartReactApplicationAsync(host, host.InstanceSettings().MainComponentName(), props);
 
   return *m_reactRootView;
 }

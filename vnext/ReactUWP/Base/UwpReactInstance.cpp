@@ -3,12 +3,12 @@
 
 #include "pch.h"
 
-#include "UwpReactInstance.h"
 #include "CoreNativeModules.h"
+#include "UwpReactInstance.h"
 
 // ReactUWP
-#include <ReactUWP/IXamlRootView.h>
 #include <ReactUWP/CreateUwpModules.h>
+#include <ReactUWP/IXamlRootView.h>
 
 // Modules
 #include <Modules/AppStateModuleUwp.h>
@@ -20,12 +20,12 @@
 #include <CxxMessageQueue.h>
 #include <DevServerHelper.h>
 #include <DevSettings.h>
-#include <InstanceManager.h>
 #include <IUIManager.h>
+#include <InstanceManager.h>
 #include <NativeModuleProvider.h>
 
-#include "Unicode.h"
 #include <Threading/MessageQueueThreadFactory.h>
+#include "Unicode.h"
 
 #include <cxxreact/CxxNativeModule.h>
 #include <cxxreact/Instance.h>

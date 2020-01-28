@@ -8,11 +8,11 @@
 #include "React_win.h"
 #include "activeObject/activeObject.h"
 
-#include "UwpReactInstanceProxy.h"
-#include <Modules/DeviceInfoModule.h>
 #include <Modules/AppStateModuleUwp.h>
 #include <Modules/AppThemeModuleUwp.h>
+#include <Modules/DeviceInfoModule.h>
 #include <ReactUWP/Modules/I18nModule.h>
+#include "UwpReactInstanceProxy.h"
 
 #include <tuple>
 
@@ -60,7 +60,7 @@ class ReactInstanceWin final : public Mso::ActiveObject<IReactInstanceInternal, 
 
  private:
   friend MakePolicy;
-  //UwpReactInstance(
+  // UwpReactInstance(
   //    const std::shared_ptr<facebook::react::NativeModuleProvider> &moduleProvider,
   //    const std::shared_ptr<ViewManagerProvider> &viewManagerProvider = nullptr);
   ReactInstanceWin(IReactHost &reactHost, ReactOptions &&options, Mso::Promise<void> &&whenLoaded) noexcept;
@@ -111,7 +111,7 @@ class ReactInstanceWin final : public Mso::ActiveObject<IReactInstanceInternal, 
   const Mso::ActiveReadableField<std::shared_ptr<facebook::react::MessageQueueThread>> m_nativeMessageThread{Queue(),
                                                                                                              m_mutex};
   const Mso::ActiveReadableField<std::shared_ptr<facebook::react::MessageQueueThread>> m_uiMessageThread{Queue(),
-                                                                                                             m_mutex};
+                                                                                                         m_mutex};
   const Mso::ActiveReadableField<std::shared_ptr<facebook::react::IUIManager>> m_uiManager{Queue(), m_mutex};
 
   const Mso::ActiveReadableField<std::shared_ptr<facebook::react::InstanceWrapper>> m_instanceWrapper{Queue(), m_mutex};

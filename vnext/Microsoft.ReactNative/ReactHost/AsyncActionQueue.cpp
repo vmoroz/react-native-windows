@@ -45,7 +45,8 @@ void AsyncActionQueue::InvokeAction(Entry &&entry) noexcept {
   m_isInvoking.Store(true);
   auto actionResult = entry.Action();
   actionResult.Then(
-      m_executor, [entry = std::move(entry), spThis = Mso::CntPtr{this}](Mso::Maybe<void> &&result) mutable noexcept {
+      m_executor,
+      [ entry = std::move(entry), spThis = Mso::CntPtr{this} ](Mso::Maybe<void> && result) mutable noexcept {
         spThis->CompleteAction(std::move(entry), std::move(result));
       });
 }
