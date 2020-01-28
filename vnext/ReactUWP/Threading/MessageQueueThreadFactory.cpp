@@ -3,6 +3,7 @@
 
 #include "pch.h"
 
+#include <ReactUWP/InstanceFactory.h>
 #include "BatchingQueueThread.h"
 #include "JSQueueThread.h"
 #include "UIMessageQueueThread.h"
@@ -28,6 +29,11 @@ std::shared_ptr<facebook::react::MessageQueueThread> MakeSerialQueueThread() noe
 std::shared_ptr<facebook::react::BatchingMessageQueueThread> MakeBatchingQueueThread(
     std::shared_ptr<facebook::react::MessageQueueThread> const &queueThread) noexcept {
   return std::make_shared<BatchingQueueThread>(queueThread);
+}
+
+REACTWINDOWS_API_(std::shared_ptr<facebook::react::MessageQueueThread>)
+CreateWorkerMessageQueue() {
+  return std::make_shared<WorkerMessageQueueThread>();
 }
 
 } // namespace react::uwp
