@@ -6,27 +6,26 @@
 #include "ReactNativeHost.g.h"
 
 #include "NativeModulesProvider.h"
+#include "ReactHost/React.h"
+#include "ReactInstance.h"
 #include "ReactInstanceSettings.h"
-#include "ReactRootView.h"
 #include "ViewManagersProvider.h"
-
-#include <ReactUWP/IReactInstance.h>
-#include <ReactUWP/IXamlRootView.h>
-#include <ReactUWP/ReactUwp.h>
-
-#include <ReactHost/React.h>
 
 namespace winrt::Microsoft::ReactNative::implementation {
 
+// WinRT ABI-safe implementation of ReactHost.
 struct ReactNativeHost : ReactNativeHostT<ReactNativeHost> {
  public: // ReactNativeHost ABI API
   ReactNativeHost() noexcept;
 
+  // property CurrentReactContext
   ReactNative::IReactContext CurrentReactContext() noexcept;
 
+  // property PackageProviders
   Windows::Foundation::Collections::IVector<IReactPackageProvider> PackageProviders() noexcept;
   void PackageProviders(Windows::Foundation::Collections::IVector<IReactPackageProvider> const &value) noexcept;
 
+  // property InstanceSettings
   ReactNative::ReactInstanceSettings InstanceSettings() noexcept;
   void InstanceSettings(ReactNative::ReactInstanceSettings const &value) noexcept;
 
@@ -38,20 +37,17 @@ struct ReactNativeHost : ReactNativeHostT<ReactNativeHost> {
   void OnResume(OnResumeAction const &action) noexcept;
   void OnBackPressed() noexcept;
 
- public:
-  std::shared_ptr<react::uwp::IReactInstance> Instance() noexcept;
-
  private:
-  Windows::Foundation::Collections::IVector<IReactPackageProvider> m_packageProviders{nullptr};
-  ReactNative::ReactInstanceSettings m_instanceSettings{nullptr};
+  Mso::CntPtr<Mso::React::IReactHost> m_reactHost;
 
-  IReactContext m_currentReactContext{nullptr};
+  ReactNative::ReactInstanceSettings m_instanceSettings{nullptr};
+  ReactNative::ReactInstance m_reactInstance{nullptr};
+  ReactNative::IReactContext m_currentReactContext;
+  Windows::Foundation::Collections::IVector<IReactPackageProvider> m_packageProviders;
+  ReactNative::IReactPackageBuilder m_packageBuilder;
+
   std::shared_ptr<NativeModulesProvider> m_modulesProvider{nullptr};
   std::shared_ptr<ViewManagersProvider> m_viewManagersProvider{nullptr};
-  IReactPackageBuilder m_packageBuilder;
-
-  Mso::CntPtr<Mso::React::IReactHost> m_reactHost;
-  std::shared_ptr<react::uwp::IReactInstance> m_instance;
 };
 
 } // namespace winrt::Microsoft::ReactNative::implementation

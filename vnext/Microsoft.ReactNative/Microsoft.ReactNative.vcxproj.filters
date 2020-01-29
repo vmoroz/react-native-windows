@@ -610,7 +610,9 @@
     <ClInclude Include="ReactHost\InstanceFactory.h">
       <Filter>ReactHost</Filter>
     </ClInclude>
-    <ClInclude Include="ReactHost\IReactInstanceInternal.h" />
+    <ClInclude Include="ReactHost\IReactInstanceInternal.h">
+      <Filter>ReactHost</Filter>
+    </ClInclude>
     <ClInclude Include="ReactHost\JSBundle.h">
       <Filter>ReactHost</Filter>
     </ClInclude>
@@ -620,7 +622,9 @@
     <ClInclude Include="ReactHost\JSExceptionInfo.h">
       <Filter>ReactHost</Filter>
     </ClInclude>
-    <ClInclude Include="ReactHost\MoveOnCopy.h" />
+    <ClInclude Include="ReactHost\MoveOnCopy.h">
+      <Filter>ReactHost</Filter>
+    </ClInclude>
     <ClInclude Include="ReactHost\MsoUtils.h">
       <Filter>ReactHost</Filter>
     </ClInclude>

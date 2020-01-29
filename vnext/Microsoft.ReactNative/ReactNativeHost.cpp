@@ -7,14 +7,7 @@
 
 #include "IReactContext.h"
 #include "ReactHost/AsyncFuture.h"
-#include "ReactInstanceSettings.h"
 #include "ReactPackageBuilder.h"
-#include "ReactRootView.h"
-#include "ReactSupport.h"
-
-#include <NativeModuleProvider.h>
-#include <ViewManager.h>
-#include <ViewManagerProvider.h>
 
 using namespace winrt;
 using namespace Windows::Foundation::Collections;
@@ -61,36 +54,13 @@ void ReactNativeHost::InstanceSettings(ReactNative::ReactInstanceSettings const 
 }
 
 IAsyncAction ReactNativeHost::ReloadInstance() noexcept {
-  // if (m_currentReactContext != nullptr)
-  //  co_return;
-
-  /* TODO hook up an exception handler if UseDeveloperSupport is set
-if (m_useDeveloperSupport) {
-if (m_nativeModuleCallExceptionHandler) {
-  reactContext.NativeModuleCallExceptionHandler =
-      m_nativeModuleCallExceptionHandler;
-} else {
-  reactContext.NativeModuleCallExceptionHandler =
-    m_devSupportManager.HandleException;
-}
-}
-*/
-
+  // TODO: [vmorozov] Move this code to ReactHost
   if (m_modulesProvider == nullptr) {
     m_modulesProvider = std::make_shared<NativeModulesProvider>();
-
-    // TODO: Define a CoreModulesPackage, load it here.
-    // TODO: Wrap/re-implement our existing set of core modules and add
-    // them to the CoreModulesPackage.
   }
 
   if (m_viewManagersProvider == nullptr) {
     m_viewManagersProvider = std::make_shared<ViewManagersProvider>();
-
-    // TODO: Register default modules
-    // The registration that currently happens in the moduleregistry.cpp
-    // should happen here if we convert all modules to go through the ABI
-    // rather than directly against facebook's types.
   }
 
   if (!m_packageBuilder) {
@@ -101,38 +71,33 @@ if (m_nativeModuleCallExceptionHandler) {
     }
   }
 
-  // TODO: Could access to the module registry be easier if the ReactInstance
-  // implementation were lifted up into this project.
+  // TODO: [vmorozov] m_currentReactContext = winrt::make<ReactContext>(reactInstance).as<IReactContext>();
 
-  // auto reactInstance = Instance();
-
-  // m_currentReactContext = winrt::make<ReactContext>(reactInstance).as<IReactContext>();
+  react::uwp::ReactInstanceSettings legacySettings{};
+  legacySettings.BundleRootPath = to_string(m_instanceSettings.BundleRootPath());
+  legacySettings.ByteCodeFileUri = to_string(m_instanceSettings.ByteCodeFileUri());
+  legacySettings.DebugBundlePath = to_string(m_instanceSettings.DebugBundlePath());
+  legacySettings.DebugHost = to_string(m_instanceSettings.DebugHost());
+  legacySettings.EnableByteCodeCaching = m_instanceSettings.EnableByteCodeCaching();
+  legacySettings.EnableDeveloperMenu = m_instanceSettings.EnableDeveloperMenu();
+  legacySettings.EnableJITCompilation = m_instanceSettings.EnableJITCompilation();
+  legacySettings.UseDirectDebugger = m_instanceSettings.UseDirectDebugger();
+  legacySettings.UseJsi = m_instanceSettings.UseJsi();
+  legacySettings.UseLiveReload = m_instanceSettings.UseLiveReload();
+  legacySettings.UseWebDebugger = m_instanceSettings.UseWebDebugger();
 
   Mso::React::ReactOptions reactOptions{};
+  reactOptions.DeveloperSettings.SourceBundlePath = legacySettings.DebugBundlePath;
+  reactOptions.DeveloperSettings.UseWebDebugger = legacySettings.UseWebDebugger;
+  reactOptions.DeveloperSettings.UseDirectDebugger = legacySettings.UseDirectDebugger;
+  reactOptions.EnableJITCompilation = legacySettings.EnableJITCompilation;
+  reactOptions.DeveloperSettings.DebugHost = legacySettings.DebugHost;
+  reactOptions.BundleRootPath = legacySettings.BundleRootPath;
+  
+  reactOptions.LegacySettings = std::move(legacySettings);
 
-  react::uwp::ReactInstanceSettings settings{};
-  settings.BundleRootPath = to_string(m_instanceSettings.BundleRootPath());
-  settings.ByteCodeFileUri = to_string(m_instanceSettings.ByteCodeFileUri());
-  settings.DebugBundlePath = to_string(m_instanceSettings.DebugBundlePath());
-  settings.DebugHost = to_string(m_instanceSettings.DebugHost());
-  settings.EnableByteCodeCaching = m_instanceSettings.EnableByteCodeCaching();
-  settings.EnableDeveloperMenu = m_instanceSettings.EnableDeveloperMenu();
-  settings.EnableJITCompilation = m_instanceSettings.EnableJITCompilation();
-  settings.UseDirectDebugger = m_instanceSettings.UseDirectDebugger();
-  settings.UseJsi = m_instanceSettings.UseJsi();
-  settings.UseLiveReload = m_instanceSettings.UseLiveReload();
-  settings.UseWebDebugger = m_instanceSettings.UseWebDebugger();
-
-  reactOptions.LegacySettings = std::move(settings);
-
-  reactOptions.DeveloperSettings.SourceBundlePath = settings.DebugBundlePath;
-  reactOptions.DeveloperSettings.UseWebDebugger = settings.UseWebDebugger;
-  reactOptions.DeveloperSettings.UseDirectDebugger = settings.UseDirectDebugger;
-  reactOptions.EnableJITCompilation = settings.EnableJITCompilation;
-  reactOptions.DeveloperSettings.DebugHost = settings.DebugHost;
-  reactOptions.BundleRootPath = settings.BundleRootPath;
-
-  // reactInstance->Start(reactInstance, settings);
+  reactOptions.ModuleProvider = m_modulesProvider;
+  reactOptions.ViewManagerProvider = m_viewManagersProvider;
 
   std::string jsBundleFile = to_string(m_instanceSettings.JavaScriptBundleFile());
   std::string jsMainModuleName = to_string(m_instanceSettings.JavaScriptMainModuleName());
@@ -144,53 +109,9 @@ if (m_nativeModuleCallExceptionHandler) {
     }
   }
 
-  // reactInstance->loadBundle(std::move(jsBundleFile));
   reactOptions.Identity = jsBundleFile;
 
   return Mso::FutureToAsyncAction(m_reactHost->ReloadInstanceWithOptions(std::move(reactOptions)));
-}
-
-std::shared_ptr<react::uwp::IReactInstance> ReactNativeHost::Instance() noexcept {
-  // if (m_instance)
-  //  return m_instance;
-
-  // std::shared_ptr<react::uwp::IReactInstance> reactInstance =
-  //    react::uwp::CreateReactInstance(m_modulesProvider, m_viewManagersProvider);
-
-  // react::uwp::ReactInstanceSettings settings;
-  // settings.BundleRootPath = to_string(m_instanceSettings.BundleRootPath());
-  // settings.ByteCodeFileUri = to_string(m_instanceSettings.ByteCodeFileUri());
-  // settings.DebugBundlePath = to_string(m_instanceSettings.DebugBundlePath());
-  // settings.DebugHost = to_string(m_instanceSettings.DebugHost());
-  // settings.EnableByteCodeCaching = m_instanceSettings.EnableByteCodeCaching();
-  // settings.EnableDeveloperMenu = m_instanceSettings.EnableDeveloperMenu();
-  // settings.EnableJITCompilation = m_instanceSettings.EnableJITCompilation();
-  // settings.UseDirectDebugger = m_instanceSettings.UseDirectDebugger();
-  // settings.UseJsi = m_instanceSettings.UseJsi();
-  // settings.UseLiveReload = m_instanceSettings.UseLiveReload();
-  // settings.UseWebDebugger = m_instanceSettings.UseWebDebugger();
-
-  // reactInstance->Start(reactInstance, settings);
-
-  // std::string jsBundleFile = to_string(m_instanceSettings.JavaScriptBundleFile());
-  // std::string jsMainModuleName = to_string(m_instanceSettings.JavaScriptMainModuleName());
-  // if (jsBundleFile.empty()) {
-  //  if (!jsMainModuleName.empty()) {
-  //    jsBundleFile = jsMainModuleName;
-  //  } else {
-  //    jsBundleFile = "index.windows";
-  //  }
-  //}
-
-  // reactInstance->loadBundle(std::move(jsBundleFile));
-
-  // m_instance = reactInstance;
-
-  ////TODO: InitReactNative();
-
-  // return m_instance;
-
-  return nullptr;
 }
 
 // TODO: Create a LifeCycleStateMachine in constructor to raise events in response
