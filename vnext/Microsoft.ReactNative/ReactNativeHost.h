@@ -29,7 +29,7 @@ struct ReactNativeHost : ReactNativeHostT<ReactNativeHost> {
   ReactNative::ReactInstanceSettings InstanceSettings() noexcept;
   void InstanceSettings(ReactNative::ReactInstanceSettings const &value) noexcept;
 
-  Windows::Foundation::IAsyncAction ReloadInstance() noexcept;
+  void ReloadInstance() noexcept;
 
   void OnSuspend() noexcept;
   void OnEnteredBackground() noexcept;

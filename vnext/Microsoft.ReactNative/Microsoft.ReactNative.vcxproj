@@ -285,7 +285,6 @@
       <SubType>Code</SubType>
     </ClInclude>
     <ClInclude Include="ReactHost\AsyncActionQueue.h" />
-    <ClInclude Include="ReactHost\AsyncFuture.h" />
     <ClInclude Include="ReactHost\InstanceFactory.h" />
     <ClInclude Include="ReactHost\IReactInstanceInternal.h" />
     <ClInclude Include="ReactHost\JSBundle.h" />

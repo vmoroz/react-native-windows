@@ -6,7 +6,6 @@
 #include "ReactNativeHost.g.cpp"
 
 #include "IReactContext.h"
-#include "ReactHost/AsyncFuture.h"
 #include "ReactPackageBuilder.h"
 
 using namespace winrt;
@@ -53,7 +52,7 @@ void ReactNativeHost::InstanceSettings(ReactNative::ReactInstanceSettings const 
   m_instanceSettings = value;
 }
 
-IAsyncAction ReactNativeHost::ReloadInstance() noexcept {
+void ReactNativeHost::ReloadInstance() noexcept {
   // TODO: [vmorozov] Move this code to ReactHost
   if (m_modulesProvider == nullptr) {
     m_modulesProvider = std::make_shared<NativeModulesProvider>();
@@ -111,7 +110,7 @@ IAsyncAction ReactNativeHost::ReloadInstance() noexcept {
 
   reactOptions.Identity = jsBundleFile;
 
-  return Mso::FutureToAsyncAction(m_reactHost->ReloadInstanceWithOptions(std::move(reactOptions)));
+  m_reactHost->ReloadInstanceWithOptions(std::move(reactOptions));
 }
 
 Mso::React::IReactHost *ReactNativeHost::ReactHost() noexcept {

@@ -18,7 +18,7 @@ namespace Microsoft.ReactNative {
     [noexcept2] IVector<IReactPackageProvider> PackageProviders { get; set; };
     [noexcept2] ReactInstanceSettings InstanceSettings { get; set; };
 
-    [noexcept2] Windows.Foundation.IAsyncAction ReloadInstance();
+    [noexcept2] void ReloadInstance();
 
     [noexcept2] void OnSuspend();
     [noexcept2] void OnEnteredBackground();
