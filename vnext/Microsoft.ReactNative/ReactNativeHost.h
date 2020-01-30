@@ -37,6 +37,9 @@ struct ReactNativeHost : ReactNativeHostT<ReactNativeHost> {
   void OnResume(OnResumeAction const &action) noexcept;
   void OnBackPressed() noexcept;
 
+ public:
+  Mso::React::IReactHost *ReactHost() noexcept;
+
  private:
   Mso::CntPtr<Mso::React::IReactHost> m_reactHost;
 

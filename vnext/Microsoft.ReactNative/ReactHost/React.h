@@ -94,7 +94,7 @@ struct ReactViewOptions {
   std::string ComponentName;
 
   //! Set of initial component properties. It is a JSON string.
-  std::string InitialProps;
+  folly::dynamic InitialProps;
 };
 
 struct ReactDevOptions {

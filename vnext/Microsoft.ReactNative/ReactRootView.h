@@ -4,45 +4,41 @@
 
 #include "ReactRootView.g.h"
 
-#include "ReactNativeHost.h"
-#include "ViewManagerProvider.h"
-
-#include <ReactUWP/IReactInstance.h>
-#include <ReactUWP/IXamlRootView.h>
-#include <ReactUWP/ReactUwp.h>
+#include "ReactHost/React.h"
+#include "Views/ReactRootControl.h"
 
 namespace winrt::Microsoft::ReactNative::implementation {
 
-extern bool s_isShiftKeyDown;
-extern bool s_isControlKeyDown;
-
 struct ReactRootView : ReactRootViewT<ReactRootView> {
-  ReactRootView() = default;
+  ReactRootView() noexcept;
 
-  void OnCreate(ReactNative::ReactNativeHost const &host);
-  fire_and_forget StartReactApplicationAsync(
-      ReactNative::ReactNativeHost const &reactNativeHost,
-      hstring componentName,
-      folly::dynamic initialProps);
+  // property ReactNativeHost
+  ReactNative::ReactNativeHost ReactNativeHost() noexcept;
+  void ReactNativeHost(ReactNative::ReactNativeHost const &value) noexcept;
+
+  // property ComponentName
+  hstring ComponentName() noexcept;
+  void ComponentName(hstring const &value) noexcept;
+
+  // property InitialProps
+  ReactNative::JSValueArgWriter InitialProps() noexcept;
+  void InitialProps(ReactNative::JSValueArgWriter const &value) noexcept;
+
+  void ReloadView() noexcept;
 
  private:
-  std::shared_ptr<react::uwp::IXamlRootView> m_xamlView;
-  hstring m_moduleName{};
-  folly::dynamic m_initialProps{};
+  void Attach() noexcept;
+  void Detach() noexcept;
+
+ private:
   ReactNative::ReactNativeHost m_reactNativeHost{nullptr};
+  hstring m_componentName;
+  ReactNative::JSValueArgWriter m_initialPropsWriter;
+  folly::dynamic m_initialProps;
 
-  static void OnBackRequested(
-      ReactNative::ReactNativeHost const &host,
-      IInspectable const &sender,
-      Windows::UI::Core::BackRequestedEventArgs const &e);
-
-  static void OnAcceleratorKeyActivated(
-      ReactNative::ReactNativeHost const &host,
-      Windows::UI::Core::CoreDispatcher const &sender,
-      Windows::UI::Core::AcceleratorKeyEventArgs const &e);
-
-  static bool IsKeyDown(Windows::UI::Core::CoreAcceleratorKeyEventType t);
+  std::shared_ptr<react::uwp::ReactRootControl> m_rootControl;
 };
+
 } // namespace winrt::Microsoft::ReactNative::implementation
 
 namespace winrt::Microsoft::ReactNative::factory_implementation {

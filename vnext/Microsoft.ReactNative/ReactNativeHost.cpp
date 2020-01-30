@@ -93,7 +93,7 @@ IAsyncAction ReactNativeHost::ReloadInstance() noexcept {
   reactOptions.EnableJITCompilation = legacySettings.EnableJITCompilation;
   reactOptions.DeveloperSettings.DebugHost = legacySettings.DebugHost;
   reactOptions.BundleRootPath = legacySettings.BundleRootPath;
-  
+
   reactOptions.LegacySettings = std::move(legacySettings);
 
   reactOptions.ModuleProvider = m_modulesProvider;
@@ -112,6 +112,10 @@ IAsyncAction ReactNativeHost::ReloadInstance() noexcept {
   reactOptions.Identity = jsBundleFile;
 
   return Mso::FutureToAsyncAction(m_reactHost->ReloadInstanceWithOptions(std::move(reactOptions)));
+}
+
+Mso::React::IReactHost *ReactNativeHost::ReactHost() noexcept {
+  return m_reactHost.Get();
 }
 
 // TODO: Create a LifeCycleStateMachine in constructor to raise events in response
