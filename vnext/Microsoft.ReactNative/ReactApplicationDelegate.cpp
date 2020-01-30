@@ -81,6 +81,10 @@ UIElement ReactApplicationDelegate::OnCreate(hstring const &arguments) noexcept 
   m_reactRootView->ComponentName(host.InstanceSettings().MainComponentName());
   m_reactRootView->ReactNativeHost(host);
 
+  auto resources = Application::Current().Resources();
+  auto brush = resources.Lookup(box_value(L"ApplicationPageBackgroundThemeBrush")).as<Media::SolidColorBrush>();
+  m_reactRootView->Background(brush);
+
   return *m_reactRootView;
 }
 
