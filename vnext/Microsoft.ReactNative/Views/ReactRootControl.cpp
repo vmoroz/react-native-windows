@@ -33,6 +33,8 @@
 #include <dispatchQueue/dispatchQueue.h>
 #include <object/unknownObject.h>
 
+#include <ReactHost/MsoUtils.h>
+
 namespace react::uwp {
 
 //===========================================================================
@@ -250,10 +252,10 @@ void ReactRootControl::UninitRootView() noexcept {
 
 void ReactRootControl::ShowInstanceLoaded(Mso::React::IReactInstance &reactInstance) noexcept {
   if (XamlView xamlRootView = m_weakXamlRootView.get()) {
-    // auto xamlRootGrid{xamlRootView.as<winrt::Grid>()};
+     auto xamlRootGrid{xamlRootView.as<winrt::Grid>()};
 
-    //// Remove existing children from root view (from the hosted app)
-    // xamlRootGrid.Children().Clear();
+    // Remove existing children from root view (from the hosted app)
+     //xamlRootGrid.Children().Clear();
     ////
     ////  // Show the Waiting for debugger to connect message if the instance is still
     ////  // waiting
@@ -261,6 +263,10 @@ void ReactRootControl::ShowInstanceLoaded(Mso::React::IReactInstance &reactInsta
     ////    HandleInstanceWaiting();
     ////
 
+     if (auto reactInstance = m_weakReactInstance.GetStrongPtr()) {
+       auto &legacyInstance = query_cast<Mso::React::ILegacyReactInstance &>(*reactInstance);
+       legacyInstance.AttachMeasuredRootView(this, Mso::Copy(m_reactViewOptions->InitialProps));
+     }
     // if ()
     //  const auto &winReactInstance = query_cast<Mso::React::IReactInstanceWin32 &>(*reactInstance);
     // auto fbReactInstance = winReactInstance.InstanceObject();

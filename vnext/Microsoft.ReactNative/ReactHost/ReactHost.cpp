@@ -420,26 +420,28 @@ ReactHostRegistry::~ReactHostRegistry() noexcept {}
   Mso::FutureWait(Mso::WhenAllCompleted(futures));
 }
 
-/*static*/ Mso::Promise<void> ReactHostRegistry::Register(ReactHost &reactHost) noexcept {
-  std::lock_guard<std::mutex> lock{s_mutex};
+/*static*/ Mso::Promise<void> ReactHostRegistry::Register(ReactHost &/*reactHost*/) noexcept {
+  // TODO:
+  //std::lock_guard<std::mutex> lock{s_mutex};
 
-  if (!s_registry) {
-    // Return an empty Promise to indicate failure to register.
-    return Mso::Promise<void>{nullptr};
-  }
+  //if (!s_registry) {
+  //  // Return an empty Promise to indicate failure to register.
+  //  return Mso::Promise<void>{nullptr};
+  //}
 
-  auto &entries = s_registry->m_entries;
-  uintptr_t reactHostKey = reinterpret_cast<uintptr_t>(&reactHost);
-  auto it = entries.find(reactHostKey);
-  VerifyElseCrashSzTag(it == entries.end(), "The ReactHost is already registered", 0x0281e3dd /* tag_c64p3 */);
+  //auto &entries = s_registry->m_entries;
+  //uintptr_t reactHostKey = reinterpret_cast<uintptr_t>(&reactHost);
+  //auto it = entries.find(reactHostKey);
+  //VerifyElseCrashSzTag(it == entries.end(), "The ReactHost is already registered", 0x0281e3dd /* tag_c64p3 */);
 
   Mso::Promise<void> notifyWhenClosed;
-  Mso::Future<void> whenReactHostClosed = notifyWhenClosed.AsFuture().Then<Mso::Executors::Inline>(
-      [ registry{s_registry}, reactHostKey ](Mso::Maybe<void> && result) noexcept {
-        registry->Unregister(reactHostKey);
-        return std::move(result);
-      });
-  entries.emplace(reactHostKey, Entry{&reactHost, std::move(whenReactHostClosed)});
+  //TODO:
+  //Mso::Future<void> whenReactHostClosed = notifyWhenClosed.AsFuture().Then<Mso::Executors::Inline>(
+  //    [ registry{s_registry}, reactHostKey ](Mso::Maybe<void> && result) noexcept {
+  //      registry->Unregister(reactHostKey);
+  //      return std::move(result);
+  //    });
+  //entries.emplace(reactHostKey, Entry{&reactHost, std::move(whenReactHostClosed)});
   return notifyWhenClosed;
 }
 

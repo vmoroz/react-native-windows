@@ -123,7 +123,9 @@ class ViewShadowNode : public ShadowNodeBase {
 
     if (HasOuterBorder()) {
       auto border = current.try_as<winrt::Border>();
-      border.Child(nullptr);
+      if (border) {
+        border.Child(nullptr);
+      }
     }
   }
 
@@ -157,8 +159,9 @@ class ViewShadowNode : public ShadowNodeBase {
     }
 
     if (HasOuterBorder()) {
-      auto border = current.try_as<winrt::Border>();
-      current = border.Child().try_as<XamlView>();
+      if (auto border = current.try_as<winrt::Border>()) {
+        current = border.Child().try_as<XamlView>();
+      }
     }
 
     auto panel = current.try_as<winrt::react::uwp::ViewPanel>();

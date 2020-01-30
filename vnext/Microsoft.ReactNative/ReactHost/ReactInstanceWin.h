@@ -55,7 +55,7 @@ class ReactInstanceWin final : public Mso::ActiveObject<IReactInstanceInternal, 
   std::shared_ptr<react::uwp::IReactInstance> UwpReactInstance() noexcept override;
   void AttachMeasuredRootView(
       facebook::react::IReactRootView *rootView,
-      std::string const &initialProps) noexcept override;
+      folly::dynamic &&initialProps) noexcept override;
   void DetachRootView(facebook::react::IReactRootView *rootView) noexcept override;
 
  private:
@@ -96,6 +96,7 @@ class ReactInstanceWin final : public Mso::ActiveObject<IReactInstanceInternal, 
   const ReactOptions m_options;
   const Mso::Promise<void> m_whenLoaded;
   const Mso::Promise<void> m_whenDestroyed;
+  const std::shared_ptr<react::uwp::UwpReactInstanceProxy> m_legacyInstance;
 
   std::atomic<bool> m_isLoaded{false};
   std::atomic<bool> m_isDestroyed{false};

@@ -28,7 +28,7 @@ struct ILegacyReactInstance : IUnknown {
 
   virtual void AttachMeasuredRootView(
       facebook::react::IReactRootView *rootView,
-      std::string const &initialProps) noexcept = 0;
+      folly::dynamic &&initialProps) noexcept = 0;
   virtual void DetachRootView(facebook::react::IReactRootView *rootView) noexcept = 0;
 };
 
