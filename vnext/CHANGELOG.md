@@ -1,7 +1,43 @@
 # Change Log - react-native-windows
 
-This log was last generated on Sat, 25 Jan 2020 21:45:06 GMT and should not be manually modified.
+This log was last generated on Thu, 30 Jan 2020 09:17:27 GMT and should not be manually modified.
 
+## 0.60.0-vnext.130
+Thu, 30 Jan 2020 09:17:27 GMT
+
+### Changes
+
+- Add as Windows Overrides (nick@nickgerleman.com)
+## 0.60.0-vnext.129
+Thu, 30 Jan 2020 01:22:53 GMT
+
+### Changes
+
+- Share RCTNetworking Library Between windows and windesktop (nick@nickgerleman.com)
+## 0.60.0-vnext.128
+Wed, 29 Jan 2020 01:55:04 GMT
+
+### Changes
+
+- Fix Crash When Running CLI Projects (nick@nickgerleman.com)
+## 0.60.0-vnext.127
+Tue, 28 Jan 2020 18:08:35 GMT
+
+### Changes
+
+- Make the native build oblivous to the differences between microsoft/react-native and facebook/react-native with patches (nick@nickgerleman.com)
+## 0.60.0-vnext.126
+Tue, 28 Jan 2020 16:46:27 GMT
+
+### Changes
+
+- Add Yoga Patch from microsoft/react-native (nick@nickgerleman.com)
+## 0.60.0-vnext.125
+Tue, 28 Jan 2020 06:50:47 GMT
+
+### Changes
+
+- copy IntegrationTests from fork (kmelmon@microsoft.com)
 ## 0.60.0-vnext.124
 Sat, 25 Jan 2020 21:45:06 GMT
 
