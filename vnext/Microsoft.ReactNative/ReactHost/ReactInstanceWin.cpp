@@ -111,10 +111,11 @@ void ReactInstanceWin::Initialize() noexcept {
   InitNativeMessageThread();
   InitUIMessageThread();
 
-  InitUIManager();
-
   m_legacyReactInstance =
       std::make_shared<react::uwp::UwpReactInstanceProxy>(this, Mso::Copy(m_options.LegacySettings));
+
+  // InitUIManager uses m_legacyReactInstance
+  InitUIManager();
 
   Mso::PostFuture(Mso::DispatchQueue::MainUIQueue(), [weakThis = Mso::WeakPtr{this}]() noexcept {
     // Objects that must be created on the UI thread
