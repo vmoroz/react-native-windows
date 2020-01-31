@@ -407,7 +407,9 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)src\eventWaitHandle\eventWaitHandleImpl_win.cpp">
       <Filter>src\eventWaitHandle</Filter>
     </ClCompile>
-    <ClCompile Include="$(MSBuildThisFileDirectory)src\dispatchQueue\uiScheduler_winrt.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)src\dispatchQueue\uiScheduler_winrt.cpp">
+      <Filter>src\dispatchQueue</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="$(MSBuildThisFileDirectory)future\README.md">
