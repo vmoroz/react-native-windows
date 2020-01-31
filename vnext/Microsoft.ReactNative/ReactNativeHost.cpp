@@ -5,7 +5,6 @@
 #include "ReactNativeHost.h"
 #include "ReactNativeHost.g.cpp"
 
-#include "IReactContext.h"
 #include "ReactPackageBuilder.h"
 
 using namespace winrt;
@@ -22,10 +21,6 @@ ReactNativeHost::ReactNativeHost() noexcept : m_reactHost{Mso::React::MakeReactH
     OutputDebugStringA(str.c_str());
   });
 #endif
-}
-
-inline ReactNative::IReactContext ReactNativeHost::CurrentReactContext() noexcept {
-  return m_currentReactContext;
 }
 
 IVector<IReactPackageProvider> ReactNativeHost::PackageProviders() noexcept {
@@ -53,7 +48,6 @@ void ReactNativeHost::InstanceSettings(ReactNative::ReactInstanceSettings const 
 }
 
 void ReactNativeHost::ReloadInstance() noexcept {
-  // TODO: [vmorozov] Move this code to ReactHost
   if (m_modulesProvider == nullptr) {
     m_modulesProvider = std::make_shared<NativeModulesProvider>();
   }
@@ -69,8 +63,6 @@ void ReactNativeHost::ReloadInstance() noexcept {
       packageProvider.CreatePackage(m_packageBuilder);
     }
   }
-
-  // TODO: [vmorozov] m_currentReactContext = winrt::make<ReactContext>(reactInstance).as<IReactContext>();
 
   react::uwp::ReactInstanceSettings legacySettings{};
   legacySettings.BundleRootPath = to_string(m_instanceSettings.BundleRootPath());

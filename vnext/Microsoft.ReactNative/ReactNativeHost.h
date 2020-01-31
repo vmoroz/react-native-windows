@@ -18,9 +18,6 @@ struct ReactNativeHost : ReactNativeHostT<ReactNativeHost> {
  public: // ReactNativeHost ABI API
   ReactNativeHost() noexcept;
 
-  // property CurrentReactContext
-  ReactNative::IReactContext CurrentReactContext() noexcept;
-
   // property PackageProviders
   Windows::Foundation::Collections::IVector<IReactPackageProvider> PackageProviders() noexcept;
   void PackageProviders(Windows::Foundation::Collections::IVector<IReactPackageProvider> const &value) noexcept;
@@ -45,7 +42,6 @@ struct ReactNativeHost : ReactNativeHostT<ReactNativeHost> {
 
   ReactNative::ReactInstanceSettings m_instanceSettings{nullptr};
   ReactNative::ReactInstance m_reactInstance{nullptr};
-  ReactNative::IReactContext m_currentReactContext;
   Windows::Foundation::Collections::IVector<IReactPackageProvider> m_packageProviders;
   ReactNative::IReactPackageBuilder m_packageBuilder;
 

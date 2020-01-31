@@ -58,7 +58,12 @@ ReactRootControl::~ReactRootControl() noexcept {
 }
 
 std::shared_ptr<IReactInstance> ReactRootControl::GetReactInstance() const noexcept {
-  VerifyElseCrashSz(false, "[vmorozov] Must be implemented");
+  if (auto reactInstance = m_weakReactInstance.GetStrongPtr()) {
+    auto &legacyInstance = query_cast<Mso::React::ILegacyReactInstance &>(*reactInstance);
+    return legacyInstance.UwpReactInstance();
+  }
+
+  return {};
 }
 
 XamlView ReactRootControl::GetXamlView() const noexcept {
