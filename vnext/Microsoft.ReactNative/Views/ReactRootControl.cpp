@@ -257,37 +257,14 @@ void ReactRootControl::UninitRootView() noexcept {
 
 void ReactRootControl::ShowInstanceLoaded(Mso::React::IReactInstance &reactInstance) noexcept {
   if (XamlView xamlRootView = m_weakXamlRootView.get()) {
-     auto xamlRootGrid{xamlRootView.as<winrt::Grid>()};
+    auto xamlRootGrid{xamlRootView.as<winrt::Grid>()};
 
     // Remove existing children from root view (from the hosted app)
-     //xamlRootGrid.Children().Clear();
-    ////
-    ////  // Show the Waiting for debugger to connect message if the instance is still
-    ////  // waiting
-    ////  if (m_reactInstance->IsWaitingForDebugger())
-    ////    HandleInstanceWaiting();
-    ////
+    xamlRootGrid.Children().Clear();
 
-     if (auto reactInstance = m_weakReactInstance.GetStrongPtr()) {
-       auto &legacyInstance = query_cast<Mso::React::ILegacyReactInstance &>(*reactInstance);
-       legacyInstance.AttachMeasuredRootView(this, Mso::Copy(m_reactViewOptions->InitialProps));
-     }
-    // if ()
-    //  const auto &winReactInstance = query_cast<Mso::React::IReactInstanceWin32 &>(*reactInstance);
-    // auto fbReactInstance = winReactInstance.InstanceObject();
-    // m_fbReactInstance = fbReactInstance;
-
-    // folly::dynamic initialProps = (!m_reactViewOptions->InitialProps.empty())
-    //    ? folly::parseJson(m_reactViewOptions->InitialProps)
-    //    : folly::dynamic::object();
-
-    // fbReactInstance->AttachMeasuredRootView(this, std::move(initialProps));
-
-    ////  m_reactInstance->AttachMeasuredRootView(m_pParent, std::move(initialProps));
-
-    // auto &reactInstanceInternal = query_cast<Mso::React::IReactInstanceInternal &>(*reactInstance);
-    // reactInstanceInternal.AttachMeasuredRootView(this, m_reactViewOptions->InitialProps);
-    // m_isJSViewAttached = true;
+    auto &legacyInstance = query_cast<Mso::React::ILegacyReactInstance &>(reactInstance);
+    legacyInstance.AttachMeasuredRootView(this, Mso::Copy(m_reactViewOptions->InitialProps));
+    m_isJSViewAttached = true;
   }
 }
 
@@ -577,18 +554,18 @@ ReactViewInstance::ReactViewInstance(
 Mso::Future<void> ReactViewInstance::InitRootView(
     Mso::CntPtr<Mso::React::IReactInstance> &&reactInstance,
     Mso::React::ReactViewOptions &&viewOptions) noexcept {
-  return PostInUIQueue([ reactInstance{std::move(reactInstance)}, viewOptions{std::move(viewOptions)} ](
-      ReactRootControl & rootControl) mutable noexcept {
+  return PostInUIQueue([reactInstance{std::move(reactInstance)},
+                        viewOptions{std::move(viewOptions)}](ReactRootControl &rootControl) mutable noexcept {
     rootControl.InitRootView(std::move(reactInstance), std::move(viewOptions));
   });
 }
 
 Mso::Future<void> ReactViewInstance::UpdateRootView() noexcept {
-  return PostInUIQueue([](ReactRootControl & rootControl) mutable noexcept { rootControl.UpdateRootView(); });
+  return PostInUIQueue([](ReactRootControl &rootControl) mutable noexcept { rootControl.UpdateRootView(); });
 }
 
 Mso::Future<void> ReactViewInstance::UninitRootView() noexcept {
-  return PostInUIQueue([](ReactRootControl & rootControl) mutable noexcept { rootControl.UninitRootView(); });
+  return PostInUIQueue([](ReactRootControl &rootControl) mutable noexcept { rootControl.UninitRootView(); });
 }
 
 } // namespace react::uwp

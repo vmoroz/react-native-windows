@@ -501,10 +501,10 @@ facebook::react::NativeLoggingHook ReactInstanceWin::GetLoggingCallback() noexce
       ss << "): '" << message << "'\n";
       OutputDebugStringA(ss.str().c_str());
     };
+#else
+    return facebook::react::NativeLoggingHook{};
 #endif
   }
-
-  return facebook::react::NativeLoggingHook{};
 }
 
 std::function<void(facebook::react::JSExceptionInfo &&)> ReactInstanceWin::GetJSExceptionCallback() noexcept {
