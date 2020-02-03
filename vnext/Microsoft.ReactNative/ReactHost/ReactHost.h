@@ -108,9 +108,10 @@ class ReactViewHost final : public ActiveObject<IReactViewHost> {
   Mso::Future<void> DetachViewInstance() noexcept override;
 
  public:
-  Mso::Future<void> LoadViewInstanceInQueue() noexcept;
-  Mso::Future<void> LoadViewInstanceInQueue(ReactViewOptions &&options) noexcept;
-  Mso::Future<void> UnloadViewInstanceInQueue(size_t unloadActionId) noexcept;
+  Mso::Future<void> InitViewInstanceInQueue() noexcept;
+  Mso::Future<void> InitViewInstanceInQueue(ReactViewOptions &&options) noexcept;
+  Mso::Future<void> UpdateViewInstanceInQueue() noexcept;
+  Mso::Future<void> UninitViewInstanceInQueue(size_t unloadActionId) noexcept;
 
  private:
   friend MakePolicy;
@@ -119,9 +120,9 @@ class ReactViewHost final : public ActiveObject<IReactViewHost> {
 
   void SetOptions(ReactViewOptions &&options) noexcept;
 
-  AsyncAction MakeLoadViewInstanceAction() noexcept;
-  AsyncAction MakeLoadViewInstanceAction(ReactViewOptions &&options) noexcept;
-  AsyncAction MakeUnloadViewInstanceAction() noexcept;
+  AsyncAction MakeInitViewInstanceAction() noexcept;
+  AsyncAction MakeInitViewInstanceAction(ReactViewOptions &&options) noexcept;
+  AsyncAction MakeUninitViewInstanceAction() noexcept;
 
  private:
   mutable std::mutex m_mutex;
@@ -130,9 +131,9 @@ class ReactViewHost final : public ActiveObject<IReactViewHost> {
   const Mso::CntPtr<Mso::React::ReactHost> m_reactHost;
   const Mso::ActiveReadableField<ReactViewOptions> m_options{Queue(), m_mutex};
   const Mso::ActiveField<Mso::CntPtr<IReactViewInstance>> m_viewInstance{Queue()};
-  const Mso::ActiveField<size_t> m_pendingUnloadActionId{0, Queue()};
-  const Mso::ActiveField<size_t> m_nextUnloadActionId{0, Queue()};
-  const Mso::ActiveField<bool> m_isViewInstanceLoaded{false, Queue()};
+  const Mso::ActiveField<size_t> m_pendingUninitActionId{0, Queue()};
+  const Mso::ActiveField<size_t> m_nextUninitActionId{0, Queue()};
+  const Mso::ActiveField<bool> m_isViewInstanceInited{false, Queue()};
 };
 
 //! ReactHostRegistry helps with closing of all ReactHosts on Liblet::Uninit.

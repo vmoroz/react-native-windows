@@ -63,6 +63,23 @@
 namespace Mso::React {
 
 //=============================================================================================
+// ReactContext implementation
+//=============================================================================================
+
+ReactContext::ReactContext(Mso::WeakPtr<ReactInstanceWin> &&reactInstance) noexcept
+    : m_reactInstance{std::move(reactInstance)} {}
+
+void ReactContext::CallJSFunction(std::string &&module, std::string &&method, folly::dynamic &&params) noexcept {
+  if (auto instance = m_reactInstance.GetStrongPtr()) {
+    if (instance->State() == ReactInstanceState::Loaded) {
+      if (auto fbInstance = instance->GetInnerInstance()) {
+        fbInstance->callJSFunction(std::move(module), std::move(method), std::move(params));
+      }
+    }
+  }
+}
+
+//=============================================================================================
 // LoadedCallbackGuard ensures that the OnReactInstanceLoaded is always called.
 // It calls OnReactInstanceLoaded in destructor with a cancellation error.
 // If loading was previously succeeded this call with an error code is ignored.
@@ -94,14 +111,21 @@ struct LoadedCallbackGuard {
 ReactInstanceWin::ReactInstanceWin(
     IReactHost &reactHost,
     ReactOptions &&options,
-    Mso::Promise<void> &&whenLoaded) noexcept
+    Mso::Promise<void> &&whenCreated,
+    Mso::Promise<void> &&whenLoaded,
+    Mso::VoidFunctor &&updateUI) noexcept
     : Super{reactHost.NativeQueue()},
       m_weakReactHost{&reactHost},
       m_options{std::move(options)},
+      m_whenCreated{std::move(whenCreated)},
       m_whenLoaded{std::move(whenLoaded)},
+      m_updateUI{std::move(updateUI)},
+      m_reactContext{Mso::Make<ReactContext>(this)},
       m_legacyInstance{std::make_shared<react::uwp::UwpReactInstanceProxy>(
           Mso::WeakPtr<Mso::React::IReactInstance>{this},
-          Mso::Copy(options.LegacySettings))} {}
+          Mso::Copy(options.LegacySettings))} {
+  m_whenCreated.SetValue();
+}
 
 ReactInstanceWin::~ReactInstanceWin() noexcept {}
 
@@ -117,70 +141,75 @@ void ReactInstanceWin::Initialize() noexcept {
   // InitUIManager uses m_legacyReactInstance
   InitUIManager();
 
-  Mso::PostFuture(Mso::DispatchQueue::MainUIQueue(), [weakThis = Mso::WeakPtr{this}]() noexcept {
-    // Objects that must be created on the UI thread
-    if (auto strongThis = weakThis.GetStrongPtr()) {
-      auto const &legacyFuture = strongThis->m_legacyReactInstance;
-      strongThis->m_deviceInfo = std::make_shared<react::uwp::DeviceInfo>(legacyFuture);
-      strongThis->m_appState = std::make_shared<react::uwp::AppState>(legacyFuture);
-      strongThis->m_appTheme =
-          std::make_shared<react::uwp::AppTheme>(legacyFuture, strongThis->m_uiMessageThread.LoadWithLock());
-      strongThis->m_i18nInfo = react::uwp::I18nModule::GetI18nInfo();
-    }
-  }).Then(Queue(), [this, weakThis = Mso::WeakPtr{this}]() noexcept {
-    if (auto strongThis = weakThis.GetStrongPtr()) {
-      // auto cxxModulesProviders = GetCxxModuleProviders();
+  Mso::PostFuture(
+      Mso::DispatchQueue::MainUIQueue(),
+      [weakThis = Mso::WeakPtr{this}]() noexcept {
+        // Objects that must be created on the UI thread
+        if (auto strongThis = weakThis.GetStrongPtr()) {
+          auto const &legacyFuture = strongThis->m_legacyReactInstance;
+          strongThis->m_deviceInfo = std::make_shared<react::uwp::DeviceInfo>(legacyFuture);
+          strongThis->m_appState = std::make_shared<react::uwp::AppState>(legacyFuture);
+          strongThis->m_appTheme =
+              std::make_shared<react::uwp::AppTheme>(legacyFuture, strongThis->m_uiMessageThread.LoadWithLock());
+          strongThis->m_i18nInfo = react::uwp::I18nModule::GetI18nInfo();
+        }
+      })
+      .Then(Queue(), [ this, weakThis = Mso::WeakPtr{this} ]() noexcept {
+        if (auto strongThis = weakThis.GetStrongPtr()) {
+          // auto cxxModulesProviders = GetCxxModuleProviders();
 
-      auto devSettings = std::make_shared<facebook::react::DevSettings>();
-      devSettings->useJITCompilation = m_options.EnableJITCompilation;
-      devSettings->debugHost = GetDebugHost();
-      devSettings->debugBundlePath = m_options.DeveloperSettings.SourceBundlePath;
-      devSettings->liveReloadCallback = GetLiveReloadCallback();
-      devSettings->errorCallback = GetErrorCallback();
-      devSettings->loggingCallback = GetLoggingCallback();
-      devSettings->jsExceptionCallback = GetJSExceptionCallback();
-      devSettings->useDirectDebugger = m_options.DeveloperSettings.UseDirectDebugger;
-      devSettings->debuggerBreakOnNextLine = m_options.DeveloperSettings.DebuggerBreakOnNextLine;
-      devSettings->debuggerPort = m_options.DeveloperSettings.DebuggerPort;
-      devSettings->debuggerRuntimeName = m_options.DeveloperSettings.DebuggerRuntimeName;
-      devSettings->useWebDebugger = m_options.DeveloperSettings.UseWebDebugger;
-      // devSettings->memoryTracker = GetMemoryTracker();
-      devSettings->bundleRootPath = m_options.BundleRootPath.empty() ? "ms-appx:///Bundle/" : m_options.BundleRootPath;
-      m_bundleRootPath = devSettings->bundleRootPath;
+          auto devSettings = std::make_shared<facebook::react::DevSettings>();
+          devSettings->useJITCompilation = m_options.EnableJITCompilation;
+          devSettings->debugHost = GetDebugHost();
+          devSettings->debugBundlePath = m_options.DeveloperSettings.SourceBundlePath;
+          devSettings->liveReloadCallback = GetLiveReloadCallback();
+          devSettings->errorCallback = GetErrorCallback();
+          devSettings->loggingCallback = GetLoggingCallback();
+          devSettings->jsExceptionCallback = GetJSExceptionCallback();
+          devSettings->useDirectDebugger = m_options.DeveloperSettings.UseDirectDebugger;
+          devSettings->debuggerBreakOnNextLine = m_options.DeveloperSettings.DebuggerBreakOnNextLine;
+          devSettings->debuggerPort = m_options.DeveloperSettings.DebuggerPort;
+          devSettings->debuggerRuntimeName = m_options.DeveloperSettings.DebuggerRuntimeName;
+          devSettings->useWebDebugger = m_options.DeveloperSettings.UseWebDebugger;
+          // devSettings->memoryTracker = GetMemoryTracker();
+          devSettings->bundleRootPath =
+              m_options.BundleRootPath.empty() ? "ms-appx:///Bundle/" : m_options.BundleRootPath;
+          m_bundleRootPath = devSettings->bundleRootPath;
 
-      devSettings->waitingForDebuggerCallback = GetWaitingForDebuggerCallback();
-      devSettings->debuggerAttachCallback = GetDebuggerAttachCallback();
+          devSettings->waitingForDebuggerCallback = GetWaitingForDebuggerCallback();
+          devSettings->debuggerAttachCallback = GetDebuggerAttachCallback();
 
-      // Now that ReactNativeWindows is building outside devmain, it is missing
-      // fix given by PR https://github.com/microsoft/react-native-windows/pull/2624 causing
-      // regression. We're turning off console redirection till the fix is available in devmain.
-      // Bug https://office.visualstudio.com/DefaultCollection/OC/_workitems/edit/3441551 is tracking this
-      devSettings->debuggerConsoleRedirection = false; // JSHost::ChangeGate::ChakraCoreDebuggerConsoleRedirection();
+          // Now that ReactNativeWindows is building outside devmain, it is missing
+          // fix given by PR https://github.com/microsoft/react-native-windows/pull/2624 causing
+          // regression. We're turning off console redirection till the fix is available in devmain.
+          // Bug https://office.visualstudio.com/DefaultCollection/OC/_workitems/edit/3441551 is tracking this
+          devSettings->debuggerConsoleRedirection =
+              false; // JSHost::ChangeGate::ChakraCoreDebuggerConsoleRedirection();
 
-      // Acquire default modules and then populate with custom modules
-      std::vector<facebook::react::NativeModuleDescription> cxxModules = react::uwp::GetCoreModules(
-          m_uiManager.Load(),
-          m_batchingUIThread,
-          m_deviceInfo,
-          devSettings,
-          std::move(m_i18nInfo),
-          std::move(m_appState),
-          std::move(m_appTheme),
-          std::weak_ptr{m_legacyReactInstance});
+          // Acquire default modules and then populate with custom modules
+          std::vector<facebook::react::NativeModuleDescription> cxxModules = react::uwp::GetCoreModules(
+              m_uiManager.Load(),
+              m_batchingUIThread,
+              m_deviceInfo,
+              devSettings,
+              std::move(m_i18nInfo),
+              std::move(m_appState),
+              std::move(m_appTheme),
+              std::weak_ptr{m_legacyReactInstance});
 
-      if (m_options.ModuleProvider != nullptr) {
-        std::vector<facebook::react::NativeModuleDescription> customCxxModules =
-            m_options.ModuleProvider->GetModules(m_batchingUIThread);
-        cxxModules.insert(std::end(cxxModules), std::begin(customCxxModules), std::end(customCxxModules));
-      }
+          if (m_options.ModuleProvider != nullptr) {
+            std::vector<facebook::react::NativeModuleDescription> customCxxModules =
+                m_options.ModuleProvider->GetModules(m_reactContext, m_batchingUIThread);
+            cxxModules.insert(std::end(cxxModules), std::begin(customCxxModules), std::end(customCxxModules));
+          }
 
 #ifdef PATCH_RN
-      if (m_options.LegacySettings.UseJsi) {
-        std::unique_ptr<facebook::jsi::ScriptStore> scriptStore = nullptr;
-        std::unique_ptr<facebook::jsi::PreparedScriptStore> preparedScriptStore = nullptr;
+          if (m_options.LegacySettings.UseJsi) {
+            std::unique_ptr<facebook::jsi::ScriptStore> scriptStore = nullptr;
+            std::unique_ptr<facebook::jsi::PreparedScriptStore> preparedScriptStore = nullptr;
 
 #if defined(USE_HERMES)
-        devSettings->jsiRuntimeHolder = std::make_shared<facebook::react::HermesRuntimeHolder>();
+            devSettings->jsiRuntimeHolder = std::make_shared<facebook::react::HermesRuntimeHolder>();
 #elif defined(USE_V8)
             preparedScriptStore =
                 std::make_unique<facebook::react::BasePreparedScriptStoreImpl>(getApplicationLocalFolder());
@@ -196,38 +225,39 @@ void ReactInstanceWin::Initialize() noexcept {
             devSettings->jsiRuntimeHolder = std::make_shared<Microsoft::JSI::ChakraRuntimeHolder>(
                 devSettings, m_jsMessageThread.Load(), std::move(scriptStore), std::move(preparedScriptStore));
 #endif
-      }
+          }
 #endif
 
-      try {
-        // We need to keep the instance wrapper alive as its destruction shuts down the native queue.
-        auto instanceWrapper = facebook::react::CreateReactInstance(
-            std::string(), // bundleRootPath
-            std::move(cxxModules),
-            m_uiManager.Load(),
-            m_jsMessageThread.Load(),
-            Mso::Copy(m_batchingUIThread),
-            std::move(devSettings));
+          try {
+            // We need to keep the instance wrapper alive as its destruction shuts down the native queue.
+            auto instanceWrapper = facebook::react::CreateReactInstance(
+                std::string(), // bundleRootPath
+                std::move(cxxModules),
+                m_uiManager.Load(),
+                m_jsMessageThread.Load(),
+                Mso::Copy(m_batchingUIThread),
+                std::move(devSettings));
 
-        m_instance.Exchange(Mso::Copy(instanceWrapper->GetInstance()));
-        m_instanceWrapper.Exchange(std::move(instanceWrapper));
+            m_instance.Exchange(Mso::Copy(instanceWrapper->GetInstance()));
+            m_instanceWrapper.Exchange(std::move(instanceWrapper));
 
-        if (auto onCreated = m_options.OnInstanceCreated.Get()) {
-          onCreated->Invoke(*this);
+            if (auto onCreated = m_options.OnInstanceCreated.Get()) {
+              onCreated->Invoke(*this);
+            }
+
+            LoadJSBundles();
+
+          } catch (std::exception &e) {
+            OnErrorWithMessage(e.what());
+            OnErrorWithMessage("UwpReactInstance: Failed to create React Instance.");
+          } catch (winrt::hresult_error const &e) {
+            OnErrorWithMessage(Microsoft::Common::Unicode::Utf16ToUtf8(e.message().c_str(), e.message().size()));
+            OnErrorWithMessage("UwpReactInstance: Failed to create React Instance.");
+          } catch (...) {
+            OnErrorWithMessage("UwpReactInstance: Failed to create React Instance.");
+          }
         }
-
-        LoadJSBundles();
-      } catch (std::exception &e) {
-        OnErrorWithMessage(e.what());
-        OnErrorWithMessage("UwpReactInstance: Failed to create React Instance.");
-      } catch (winrt::hresult_error const &e) {
-        OnErrorWithMessage(Microsoft::Common::Unicode::Utf16ToUtf8(e.message().c_str(), e.message().size()));
-        OnErrorWithMessage("UwpReactInstance: Failed to create React Instance.");
-      } catch (...) {
-        OnErrorWithMessage("UwpReactInstance: Failed to create React Instance.");
-      }
-    }
-  });
+      });
 }
 
 void ReactInstanceWin::LoadJSBundles() noexcept {
@@ -251,101 +281,55 @@ void ReactInstanceWin::LoadJSBundles() noexcept {
   //
 
   if (!m_options.DeveloperSettings.UseWebDebugger) {
-    m_jsMessageThread.Load()->runOnQueue(
-        [weakThis = Mso::WeakPtr{this},
-         loadCallbackGuard = Mso::MakeMoveOnCopyWrapper(LoadedCallbackGuard{*this})]() noexcept {
-          if (auto strongThis = weakThis.GetStrongPtr()) {
-            auto instance = strongThis->m_instance.LoadWithLock();
-            auto instanceWrapper = strongThis->m_instanceWrapper.LoadWithLock();
-            if (!instance || !instanceWrapper) {
-              return;
-            }
+    m_jsMessageThread.Load()->runOnQueue([
+      weakThis = Mso::WeakPtr{this},
+      loadCallbackGuard = Mso::MakeMoveOnCopyWrapper(LoadedCallbackGuard{*this})
+    ]() noexcept {
+      if (auto strongThis = weakThis.GetStrongPtr()) {
+        auto instance = strongThis->m_instance.LoadWithLock();
+        auto instanceWrapper = strongThis->m_instanceWrapper.LoadWithLock();
+        if (!instance || !instanceWrapper) {
+          return;
+        }
 
-            auto &options = strongThis->m_options;
+        auto &options = strongThis->m_options;
 
-            try {
-              instanceWrapper->loadBundleSync(Mso::Copy(options.Identity));
-            } catch (...) {
-              strongThis->m_state = ReactInstanceState::HasError;
-              strongThis->OnReactInstanceLoaded(Mso::ExceptionErrorProvider().MakeErrorCode(std::current_exception()));
-              return;
-            }
+        try {
+          instanceWrapper->loadBundleSync(Mso::Copy(options.Identity));
+        } catch (...) {
+          strongThis->m_state = ReactInstanceState::HasError;
+          strongThis->OnReactInstanceLoaded(Mso::ExceptionErrorProvider().MakeErrorCode(std::current_exception()));
+          return;
+        }
 
-            // All JS bundles successfully loaded.
-            strongThis->m_state = ReactInstanceState::Loaded;
-            strongThis->OnReactInstanceLoaded(Mso::ErrorCode{});
-          }
-        });
+        // All JS bundles successfully loaded.
+        strongThis->OnReactInstanceLoaded(Mso::ErrorCode{});
+      }
+    });
   } else {
     // Web Debugging
-    auto instance = m_instance.LoadWithLock();
     auto instanceWrapper = m_instanceWrapper.LoadWithLock();
-    // auto jsBundleInfos = MakePlatformBundleInfos(m_options.JSBundles);
-
-    //// Place platform bundles as (really big) strings into a JS global array.
-    //// A polyfill in JS bundle will pick up and `eval()` them.
-    //// TODO: [vmorozov][OC:3531318] Stop using folly::dynamic
-    // folly::dynamic platformBundleArray = folly::dynamic::array;
-    // for (size_t i = 0; i < jsBundleInfos.size(); i++) {
-    //  // We make a string copy here. Hopefully we can improve it and avoid it in future.
-    //  // TODO: [vmorozov][OC:3531324] Avoid string copy
-    //  platformBundleArray.push_back(jsBundleInfos[i].Bundle->c_str());
-    //}
-
-    // std::string userJSBundleFilePath = GetJSBundleFilePath(m_options.SDXBasePath, m_options.Identity);
-    // if (m_options.JSBundles.size() > 0 &&
-    //    _stricmp(
-    //        userJSBundleFilePath.c_str(),
-    //        m_options.JSBundles[m_options.JSBundles.size() - 1]->Info().FileName.c_str()) != 0) {
-    //  if (PathFileExistsA(userJSBundleFilePath.c_str())) {
-    //    // JS Bundle does not exist in ReactOptions.JSBundle, but exists through Identity. Debugging and Live Reload
-    //    are
-    //    // supported.
-    //    AssertSzTag(
-    //        false,
-    //        ("Web Debugging and Live Reload JS Bundle is being loaded through Legacy ReactOptions.Identity Support.
-    //        Please switch to ReactOptions.JSBundles. JS Bundle: " +
-    //         userJSBundleFilePath)
-    //            .c_str(),
-    //        0x0285e289 /* tag_c74kj */);
-    //    instance->setGlobalVariable(
-    //        "__platformBundles",
-    //        std::make_unique<facebook::react::JSBigStdString>(folly::toJson(platformBundleArray)));
-    //    instanceWrapper->loadBundle(Mso::Copy(m_options.Identity));
-    //  } else {
-    //    // JS Bundle exists in ReactOptions.JSBundle, but not in Identity. Debugging and Live Reload are not
-    //    supported.
-    //    // TODO: [vmorozov][vmorozov:3531328] Address this scenario
-    //    AssertSzTag(
-    //        false,
-    //        "Web Debugging and Live Reload is not yet supported for ReactOptions.JSBundles. Tracked by:
-    //        2960589:Support Web Debugging and Live Reload for ReactOptions.JSBundles", 0x0285e28a /* tag_c74kk */);
-    //  }
-    //} else {
-    // JS Bundle present in ReactOptions.JSBundle and through Identity. Debugging and Live Reload are supported.
-    // instance->setGlobalVariable(
-    //    "__platformBundles", std::make_unique<facebook::react::JSBigStdString>(folly::toJson(platformBundleArray)));
     instanceWrapper->loadBundle(Mso::Copy(m_options.Identity));
-    //}
 
-    m_jsMessageThread.Load()->runOnQueue(
-        [weakThis = Mso::WeakPtr{this},
-         loadCallbackGuard = Mso::MakeMoveOnCopyWrapper(LoadedCallbackGuard{*this})]() noexcept {
-          if (auto strongThis = weakThis.GetStrongPtr()) {
-            strongThis->m_state = ReactInstanceState::Loaded;
-            // All JS bundles successfully loaded.
-            strongThis->OnReactInstanceLoaded(Mso::ErrorCode{});
-          }
-        });
+    m_jsMessageThread.Load()->runOnQueue([
+      weakThis = Mso::WeakPtr{this},
+      loadCallbackGuard = Mso::MakeMoveOnCopyWrapper(LoadedCallbackGuard{*this})
+    ]() noexcept {
+      if (auto strongThis = weakThis.GetStrongPtr()) {
+        // All JS bundles successfully loaded.
+        strongThis->OnReactInstanceLoaded(Mso::ErrorCode{});
+      }
+    });
   }
 }
 
 void ReactInstanceWin::OnReactInstanceLoaded(const Mso::ErrorCode &errorCode) noexcept {
   if (!m_isLoaded) {
-    Queue().InvokeElsePost([weakThis = Mso::WeakPtr{this}, errorCode]() noexcept {
+    Queue().InvokeElsePost([ weakThis = Mso::WeakPtr{this}, errorCode ]() noexcept {
       if (auto strongThis = weakThis.GetStrongPtr()) {
         if (!strongThis->m_isLoaded) {
           strongThis->m_isLoaded = true;
+          strongThis->m_state = ReactInstanceState::Loaded;
           if (auto onLoaded = strongThis->m_options.OnInstanceLoaded.Get()) {
             onLoaded->Invoke(*strongThis, errorCode);
           }
@@ -568,12 +552,12 @@ void ReactInstanceWin::OnErrorWithMessage(const std::string &errorMessage) noexc
   OutputDebugStringA(m_errorMessage.c_str());
   OutputDebugStringA("\n");
 
-  // TODO: [vmorozov] Update UI with error
   OnError(Mso::React::ReactErrorProvider().MakeErrorCode(Mso::React::ReactError{errorMessage.c_str()}));
+  m_updateUI();
 }
 
 void ReactInstanceWin::OnError(const Mso::ErrorCode &errorCode) noexcept {
-  InvokeInQueue([this, errorCode]() noexcept { m_options.OnError(errorCode); });
+  InvokeInQueue([ this, errorCode ]() noexcept { m_options.OnError(errorCode); });
 }
 
 void ReactInstanceWin::OnLiveReload() noexcept {
@@ -598,7 +582,7 @@ void ReactInstanceWin::OnWaitingForDebugger() noexcept {
     }
   }
 
-  // TODO: [vmorozov] reload UI
+  m_updateUI();
 }
 
 std::function<void()> ReactInstanceWin::GetDebuggerAttachCallback() noexcept {
@@ -610,7 +594,7 @@ std::function<void()> ReactInstanceWin::GetDebuggerAttachCallback() noexcept {
 }
 
 void ReactInstanceWin::OnDebuggerAttach() noexcept {
-  // TODO: [vmorozov] implement
+  m_updateUI();
 }
 
 void ReactInstanceWin::CallJsFunction(
@@ -663,9 +647,14 @@ void ReactInstanceWin::DetachRootView(facebook::react::IReactRootView *rootView)
   }
 }
 
-Mso::CntPtr<IReactInstanceInternal>
-MakeReactInstance(IReactHost &reactHost, ReactOptions &&options, Mso::Promise<void> &&whenLoaded) noexcept {
-  return Mso::Make<ReactInstanceWin, IReactInstanceInternal>(reactHost, std::move(options), std::move(whenLoaded));
+Mso::CntPtr<IReactInstanceInternal> MakeReactInstance(
+    IReactHost &reactHost,
+    ReactOptions &&options,
+    Mso::Promise<void> &&whenCreated,
+    Mso::Promise<void> &&whenLoaded,
+    Mso::VoidFunctor &&updateUI) noexcept {
+  return Mso::Make<ReactInstanceWin, IReactInstanceInternal>(
+      reactHost, std::move(options), std::move(whenCreated), std::move(whenLoaded), std::move(updateUI));
 }
 
 } // namespace Mso::React
