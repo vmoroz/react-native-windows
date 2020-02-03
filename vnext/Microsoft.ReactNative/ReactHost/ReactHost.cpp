@@ -65,7 +65,8 @@ Mso::CntPtr<AsyncActionQueue> ReactHost::ActionQueue() const noexcept {
 }
 
 size_t ReactHost::PendingUnloadActionId() const noexcept {
-  return m_pendingUnloadActionId.Load();
+  Mso::Internal::VerifyIsInQueueElseCrash(Queue());
+  return m_pendingUnloadActionId;
 }
 
 bool ReactHost::IsInstanceLoaded() const noexcept {
@@ -115,8 +116,9 @@ AsyncAction ReactHost::MakeLoadInstanceAction(ReactOptions &&options) noexcept {
 }
 
 AsyncAction ReactHost::MakeUnloadInstanceAction() noexcept {
-  size_t unloadActionId = ++m_nextUnloadActionId.Load();
-  m_pendingUnloadActionId.Store(Mso::Copy(unloadActionId));
+  Mso::Internal::VerifyIsInQueueElseCrash(Queue());
+  size_t unloadActionId = ++m_nextUnloadActionId;
+  m_pendingUnloadActionId = unloadActionId;
   return [ spThis = Mso::CntPtr{this}, unloadActionId ]() noexcept {
     return spThis->UnloadInQueue(unloadActionId);
   };
@@ -181,6 +183,8 @@ Mso::Future<void> ReactHost::LoadInQueue(ReactOptions &&options) noexcept {
 }
 
 Mso::Future<void> ReactHost::UnloadInQueue(size_t unloadActionId) noexcept {
+  Mso::Internal::VerifyIsInQueueElseCrash(Queue());
+
   // If the pending unload action Id does not match, then we have newer unload action,
   // and thus we should cancel this one.
   if (unloadActionId != PendingUnloadActionId()) {
@@ -188,7 +192,7 @@ Mso::Future<void> ReactHost::UnloadInQueue(size_t unloadActionId) noexcept {
   }
 
   // Clear the pending unload action Id
-  m_pendingUnloadActionId.Store(0);
+  m_pendingUnloadActionId = 0;
 
   std::vector<Mso::Future<void>> unloadCompletionList;
   ForEachViewHost([&unloadCompletionList](auto &viewHost) noexcept {

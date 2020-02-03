@@ -22,7 +22,6 @@ class ReactViewHost;
 //! - It can reload or unload react instance using Reload and Unload.
 //! - ReactInstance() returns current react native instance.
 //! - NativeQueue() returns the associate native queue.
-//! - RekaContext() returns Reka context proxy that can be used before Reka is initialized.
 //! - Options() - returns options used for creating ReactInstance.
 //!
 //! About the RNH closing sequence:
@@ -89,8 +88,8 @@ class ReactHost final : public Mso::ActiveObject<IReactHost> {
   const Mso::ActiveField<std::unordered_map<uintptr_t, Mso::WeakPtr<ReactViewHost>>> m_viewHosts{Queue()};
   const Mso::ActiveReadableField<Mso::CntPtr<IReactInstanceInternal>> m_reactInstance{Queue(), m_mutex};
   const Mso::ActiveReadableField<Mso::Promise<void>> m_notifyWhenClosed{nullptr, Queue(), m_mutex};
-  const Mso::ActiveField<size_t> m_pendingUnloadActionId{0, Queue()};
-  const Mso::ActiveField<size_t> m_nextUnloadActionId{0, Queue()};
+  size_t m_pendingUnloadActionId{0};
+  size_t m_nextUnloadActionId{0};
   const Mso::ActiveField<bool> m_isInstanceLoaded{false, Queue()};
 };
 
