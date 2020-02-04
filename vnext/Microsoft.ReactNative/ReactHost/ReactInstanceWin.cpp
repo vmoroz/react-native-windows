@@ -11,28 +11,11 @@
 #include <Threading/MessageDispatchQueue.h>
 #include "ReactErrorProvider.h"
 
-#include "Threading/MessageQueueThreadFactory.h"
+#include "Microsoft.ReactNative/Threading/MessageQueueThreadFactory.h"
 
 #include "Unicode.h"
 
 #include "JSExceptionCallbackFactory.h"
-
-//#include "BytecodeHelpers.h"
-//#include "CxxModuleProviderRegistry.h"
-//#include "FastMessageQueueThread.h"
-//#include "JSExceptionCallbackFactory.h"
-//#include "MemoryTrackerImpl.h"
-//#include "PlatformBundleHelpers.h"
-//#include "RekaNativeModule.h"
-//#include "UIManagerProviderRegistry_Win.h"
-//
-//#include "etw/manifest_reactNativeHost.h"
-//#include "etw/etwreactnativehost_shim.h"
-//
-//#include <core/threading.h>
-//#include <ReactNativeHost/ReactErrorProvider.h>
-//#include <telemetryRuleEngineApi/SimpleTelemetryClient.h>
-//#include <ShlwApi.h>
 
 #include <dispatchQueue/dispatchQueue.h>
 
