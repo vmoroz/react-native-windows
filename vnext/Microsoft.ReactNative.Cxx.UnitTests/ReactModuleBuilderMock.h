@@ -15,10 +15,20 @@ struct ReactModuleBuilderMock {
   template <class TResult, class... TArgs>
   void Call1(std::wstring const &methodName, std::function<void(TResult)> const &resolve, TArgs &&... args) noexcept;
 
+  template <class... TArgs>
+  void Call1(std::wstring const &methodName, std::function<void()> const &resolve, TArgs &&... args) noexcept;
+
   template <class TResult, class TError, class... TArgs>
   void Call2(
       std::wstring const &methodName,
       std::function<void(TResult)> const &resolve,
+      std::function<void(TError)> const &reject,
+      TArgs &&... args) noexcept;
+
+  template <class TError, class... TArgs>
+  void Call2(
+      std::wstring const &methodName,
+      std::function<void()> const &resolve,
       std::function<void(TError)> const &reject,
       TArgs &&... args) noexcept;
 
@@ -55,6 +65,7 @@ struct ReactModuleBuilderMock {
 
   template <class T>
   MethodResultCallback ResolveCallback(JSValue const &jsValue, std::function<void(T)> const &resolve) noexcept;
+  MethodResultCallback ResolveCallback(std::function<void()> const &resolve) noexcept;
   template <class T>
   MethodResultCallback RejectCallback(JSValue const &jsValue, std::function<void(T)> const &reject) noexcept;
 
@@ -105,6 +116,17 @@ inline void ReactModuleBuilderMock::Call1(
   }
 }
 
+template <class... TArgs>
+inline void ReactModuleBuilderMock::Call1(
+    std::wstring const &methodName,
+    std::function<void()> const &resolve,
+    TArgs &&... args) noexcept {
+  if (auto method = GetMethod1(methodName)) {
+    JSValue jsValue;
+    method(ArgReader(std::forward<TArgs>(args)...), ArgWriter(jsValue), ResolveCallback(resolve), nullptr);
+  }
+}
+
 template <class TResult, class TError, class... TArgs>
 inline void ReactModuleBuilderMock::Call2(
     std::wstring const &methodName,
@@ -117,6 +139,22 @@ inline void ReactModuleBuilderMock::Call2(
         ArgReader(std::forward<TArgs>(args)...),
         ArgWriter(jsValue),
         ResolveCallback(jsValue, resolve),
+        RejectCallback(jsValue, reject));
+  }
+}
+
+template <class TError, class... TArgs>
+inline void ReactModuleBuilderMock::Call2(
+    std::wstring const &methodName,
+    std::function<void()> const &resolve,
+    std::function<void(TError)> const &reject,
+    TArgs &&... args) noexcept {
+  if (auto method = GetMethod2(methodName)) {
+    JSValue jsValue;
+    method(
+        ArgReader(std::forward<TArgs>(args)...),
+        ArgWriter(jsValue),
+        ResolveCallback(resolve),
         RejectCallback(jsValue, reject));
   }
 }
@@ -144,19 +182,26 @@ inline void ReactModuleBuilderMock::SetEventHandler(
 
 template <class... TArgs>
 inline /*static*/ IJSValueReader ReactModuleBuilderMock::ArgReader(TArgs &&... args) noexcept {
-  return CreateArgReader([&args...](IJSValueWriter const &writer) mutable noexcept {
-    WriteArgs(writer, std::forward<TArgs>(args)...);
-  });
+  return CreateArgReader(
+      [&args...](IJSValueWriter const &writer) mutable noexcept { WriteArgs(writer, std::forward<TArgs>(args)...); });
 }
 
 template <class T>
 inline MethodResultCallback ReactModuleBuilderMock::ResolveCallback(
     JSValue const &jsValue,
     std::function<void(T)> const &resolve) noexcept {
-  return [ this, &jsValue, &resolve ](IJSValueWriter const & /*writer*/) noexcept {
+  return [this, &jsValue, &resolve](IJSValueWriter const & /*writer*/) noexcept {
     std::remove_const_t<std::remove_reference_t<T>> arg;
     ReadArgs(MakeJSValueTreeReader(jsValue), arg);
     resolve(arg);
+    m_isResolveCallbackCalled = true;
+  };
+}
+
+inline MethodResultCallback ReactModuleBuilderMock::ResolveCallback(
+    std::function<void()> const &resolve) noexcept {
+  return [this, &resolve](IJSValueWriter const & /*writer*/) noexcept {
+    resolve();
     m_isResolveCallbackCalled = true;
   };
 }
@@ -165,7 +210,7 @@ template <class T>
 inline MethodResultCallback ReactModuleBuilderMock::RejectCallback(
     JSValue const &jsValue,
     std::function<void(T)> const &reject) noexcept {
-  return [ this, &jsValue, &reject ](IJSValueWriter const & /*writer*/) noexcept {
+  return [this, &jsValue, &reject](IJSValueWriter const & /*writer*/) noexcept {
     std::remove_const_t<std::remove_reference_t<T>> arg;
     ReadArgs(MakeJSValueTreeReader(jsValue), arg);
     reject(arg);
