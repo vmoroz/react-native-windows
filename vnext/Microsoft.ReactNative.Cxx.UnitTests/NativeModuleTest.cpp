@@ -396,10 +396,9 @@ TEST_CLASS (NativeModuleTest) {
   }
 
   TEST_METHOD(TestMethodCall_StaticSayHello) {
-    m_builderMock.Call1(
-        L"StaticSayHello", std::function<void(const std::string &)>([](const std::string &result) noexcept {
-          TestCheck(result == "Hello");
-        }));
+    m_builderMock.Call1(L"StaticSayHello", std::function<void(const std::string &)>([
+                        ](const std::string &result) noexcept { TestCheck(result == "Hello"); }));
+    TestCheck(m_builderMock.IsResolveCallbackCalled());
     TestCheck(m_builderMock.IsResolveCallbackCalled());
   }
 
@@ -446,9 +445,9 @@ TEST_CLASS (NativeModuleTest) {
   }
 
   TEST_METHOD(TestMethodCall_SayHelloCallback) {
-    m_builderMock.Call1(
-        L"SayHelloCallback", std::function<void(const std::string &)>([](const std::string &result) noexcept {
-          TestCheck(result == "Hello_2");
+    m_builderMock.Call1(L"SayHelloCallback", std::function<void(const std::string &)>([
+                        ](const std::string &result) noexcept { TestCheck(result == "Hello_2"); }));
+    TestCheck(m_builderMock.IsResolveCallbackCalled());
         }));
     TestCheck(m_builderMock.IsResolveCallbackCalled());
   }
@@ -466,9 +465,9 @@ TEST_CLASS (NativeModuleTest) {
   }
 
   TEST_METHOD(TestMethodCall_StaticSayHelloCallback) {
-    m_builderMock.Call1(
-        L"StaticSayHelloCallback", std::function<void(const std::string &)>([](const std::string &result) noexcept {
-          TestCheck(result == "Static Hello_2");
+    m_builderMock.Call1(L"StaticSayHelloCallback", std::function<void(const std::string &)>([
+                        ](const std::string &result) noexcept { TestCheck(result == "Static Hello_2"); }));
+    TestCheck(m_builderMock.IsResolveCallbackCalled());
         }));
     TestCheck(m_builderMock.IsResolveCallbackCalled());
   }
