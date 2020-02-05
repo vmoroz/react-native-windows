@@ -346,6 +346,9 @@ struct SimpleNativeModule {
   REACT_EVENT(OnObjectResult3)
   std::function<void(const JSValue &)> OnObjectResult3;
 
+  REACT_FUNCTION(SayHelloWorld)
+  std::function<void(const char *)> SayHelloWorld;
+
   std::string Message;
   static std::string StaticMessage;
 };

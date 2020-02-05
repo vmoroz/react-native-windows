@@ -53,6 +53,9 @@
 // Use with a field for events
 #define REACT_EVENT(/* field, [opt] eventName */...) INTERNAL_REACT_EVENT(__VA_ARGS__)(__VA_ARGS__)
 
+// Use with a field for JS functions
+#define REACT_FUNCTION(/* field, [opt] functionName, [opt] moduleName */...) INTERNAL_REACT_FUNCTION(__VA_ARGS__)(__VA_ARGS__)
+
 namespace winrt::Microsoft::ReactNative {
 
 namespace Internal {
@@ -648,6 +651,24 @@ struct ModuleEventFieldInfo<TFunc<void(TArg)> TModule::*> {
   }
 };
 
+template <class TField>
+struct ModuleFunctionFieldInfo;
+
+template <class TModule, template <class> class TFunc, class... TArgs>
+struct ModuleFunctionFieldInfo<TFunc<void(TArgs...)> TModule::*> {
+  using ModuleType = TModule;
+  using FunctionType = TFunc<void(TArgs...)>;
+  using FieldType = FunctionType TModule::*;
+
+  static ReactFunctionSetter GetFunctionSetter(void *module, FieldType field) noexcept {
+    return [module = static_cast<ModuleType *>(module), field](const ReactEventHandler &eventHandler) noexcept {
+      module->*field = [eventHandler](TArg arg) noexcept {
+        eventHandler([&](const IJSValueWriter &argWriter) noexcept { WriteValue(argWriter, arg); });
+      };
+    };
+  }
+};
+
 struct ReactModuleBuilder {
   ReactModuleBuilder(void *module, IReactModuleBuilder const &moduleBuilder) noexcept
       : m_module{module}, m_moduleBuilder{moduleBuilder} {}
@@ -701,6 +722,12 @@ struct ReactModuleBuilder {
   void RegisterEvent(TField field, wchar_t const *name) noexcept {
     auto eventHandlerSetter = ModuleEventFieldInfo<TField>::GetEventHandlerSetter(m_module, field);
     m_moduleBuilder.AddEventHandlerSetter(name, eventHandlerSetter);
+  }
+
+  template <class TClass, class TField>
+  void RegisterFunction(TField field, wchar_t const *name, wchar_t const *moduleName) noexcept {
+    auto functionSetter = ModuleFunctionFieldInfo<TField>::GetFunctionSetter(m_module, field);
+    m_moduleBuilder.AddFunctionSetter(name, moduleName, functionSetter);
   }
 
  private:

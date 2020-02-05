@@ -22,8 +22,7 @@ namespace Microsoft.ReactNative {
   delegate void SyncMethodDelegate(IJSValueReader inputReader, IJSValueWriter outputWriter);
   delegate void ConstantProvider(IJSValueWriter constantWriter);
 
-  delegate void ReactArgWriter(IJSValueWriter writer);
-  delegate void ReactEventHandler(ReactArgWriter argWriter);
+  delegate void ReactEventHandler(JSValueArgWriter argWriter);
   delegate void ReactEventHandlerSetter(ReactEventHandler eventHandler);
 
   [webhosthidden]
