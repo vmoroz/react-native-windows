@@ -182,15 +182,16 @@ inline void ReactModuleBuilderMock::SetEventHandler(
 
 template <class... TArgs>
 inline /*static*/ IJSValueReader ReactModuleBuilderMock::ArgReader(TArgs &&... args) noexcept {
-  return CreateArgReader(
-      [&args...](IJSValueWriter const &writer) mutable noexcept { WriteArgs(writer, std::forward<TArgs>(args)...); });
+  return CreateArgReader([&args...](IJSValueWriter const &writer) mutable noexcept {
+    WriteArgs(writer, std::forward<TArgs>(args)...);
+  });
 }
 
 template <class T>
 inline MethodResultCallback ReactModuleBuilderMock::ResolveCallback(
     JSValue const &jsValue,
     std::function<void(T)> const &resolve) noexcept {
-  return [this, &jsValue, &resolve](IJSValueWriter const & /*writer*/) noexcept {
+  return [ this, &jsValue, &resolve ](IJSValueWriter const & /*writer*/) noexcept {
     std::remove_const_t<std::remove_reference_t<T>> arg;
     ReadArgs(MakeJSValueTreeReader(jsValue), arg);
     resolve(arg);
@@ -198,9 +199,8 @@ inline MethodResultCallback ReactModuleBuilderMock::ResolveCallback(
   };
 }
 
-inline MethodResultCallback ReactModuleBuilderMock::ResolveCallback(
-    std::function<void()> const &resolve) noexcept {
-  return [this, &resolve](IJSValueWriter const & /*writer*/) noexcept {
+inline MethodResultCallback ReactModuleBuilderMock::ResolveCallback(std::function<void()> const &resolve) noexcept {
+  return [ this, &resolve ](IJSValueWriter const & /*writer*/) noexcept {
     resolve();
     m_isResolveCallbackCalled = true;
   };
@@ -210,7 +210,7 @@ template <class T>
 inline MethodResultCallback ReactModuleBuilderMock::RejectCallback(
     JSValue const &jsValue,
     std::function<void(T)> const &reject) noexcept {
-  return [this, &jsValue, &reject](IJSValueWriter const & /*writer*/) noexcept {
+  return [ this, &jsValue, &reject ](IJSValueWriter const & /*writer*/) noexcept {
     std::remove_const_t<std::remove_reference_t<T>> arg;
     ReadArgs(MakeJSValueTreeReader(jsValue), arg);
     reject(arg);
