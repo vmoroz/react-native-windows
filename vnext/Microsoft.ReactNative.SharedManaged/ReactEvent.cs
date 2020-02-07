@@ -11,6 +11,6 @@ namespace Microsoft.ReactNative.Managed
   // See the ReactEventInfo.MakeEvent for usage.
   static class ReactEventHelper
   {
-    public static ReactArgWriter ArgWriter<T>(T arg) => (IJSValueWriter writer) => writer.WriteValue(arg);
+    public static JSValueArgWriter ArgWriter<T>(T arg) => (IJSValueWriter writer) => writer.WriteValue(arg);
   }
 }

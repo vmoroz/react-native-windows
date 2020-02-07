@@ -42,7 +42,7 @@ namespace Microsoft.ReactNative.Managed.UnitTests
 
     public void AddEventHandlerSetter(string name, ReactEventHandlerSetter eventHandlerSetter)
     {
-      eventHandlerSetter((ReactArgWriter argWriter) =>
+      eventHandlerSetter((JSValueArgWriter argWriter) =>
       {
         if (m_eventHandlers.TryGetValue(name, out var eventHandler))
         {
