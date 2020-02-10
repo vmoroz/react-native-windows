@@ -50,7 +50,14 @@ struct ReactModuleBuilderMock {
   void AddMethod(hstring const &name, MethodReturnType returnType, MethodDelegate const &method) noexcept;
   void AddSyncMethod(hstring const &name, SyncMethodDelegate const &method) noexcept;
   void AddConstantProvider(ConstantProvider const &constantProvider) noexcept;
-  void AddEventHandlerSetter(hstring const &name, ReactEventHandlerSetter const &eventHandlerSetter) noexcept;
+  void AddNativeEventSetter(
+      hstring const &name,
+      hstring const &eventEmitterName,
+      ReactJSFunctionSetter const &nativeEventSetter) noexcept;
+  void AddJSFunctionSetter(
+      hstring const &name,
+      hstring const &moduleName,
+      ReactJSFunctionSetter const &functionSetter) noexcept;
 
  private:
   MethodDelegate GetMethod0(std::wstring const &methodName) const noexcept;
@@ -87,7 +94,14 @@ struct ReactModuleBuilderImpl : implements<ReactModuleBuilderImpl, IReactModuleB
   void AddMethod(hstring const &name, MethodReturnType returnType, MethodDelegate const &method) noexcept;
   void AddSyncMethod(hstring const &name, SyncMethodDelegate const &method) noexcept;
   void AddConstantProvider(ConstantProvider const &constantProvider) noexcept;
-  void AddEventHandlerSetter(hstring const &name, ReactEventHandlerSetter const &eventHandlerSetter) noexcept;
+  void AddNativeEventSetter(
+      hstring const &name,
+      hstring const &eventEmitterName,
+      ReactJSFunctionSetter const &nativeEventSetter) noexcept;
+  void AddJSFunctionSetter(
+      hstring const &name,
+      hstring const &moduleName,
+      ReactJSFunctionSetter const &functionSetter) noexcept;
 
  private:
   ReactModuleBuilderMock &m_mock;
@@ -198,8 +212,7 @@ inline MethodResultCallback ReactModuleBuilderMock::ResolveCallback(
   };
 }
 
-inline MethodResultCallback ReactModuleBuilderMock::ResolveCallback(
-    std::function<void()> const &resolve) noexcept {
+inline MethodResultCallback ReactModuleBuilderMock::ResolveCallback(std::function<void()> const &resolve) noexcept {
   return [this, &resolve](IJSValueWriter const & /*writer*/) noexcept {
     resolve();
     m_isResolveCallbackCalled = true;
@@ -259,10 +272,19 @@ inline void ReactModuleBuilderImpl::AddConstantProvider(ConstantProvider const &
   m_mock.AddConstantProvider(constantProvider);
 }
 
-inline void ReactModuleBuilderImpl::AddEventHandlerSetter(
+inline void ReactModuleBuilderImpl::AddNativeEventSetter(
     hstring const &name,
-    ReactEventHandlerSetter const &eventHandlerSetter) noexcept {
-  m_mock.AddEventHandlerSetter(name, eventHandlerSetter);
+    hstring const &eventEmitterName,
+    ReactJSFunctionSetter const &nativeEventSetter) noexcept {
+  m_mock.AddNativeEventSetter(name, eventEmitterName, nativeEventSetter);
 }
+
+inline void ReactModuleBuilderImpl::AddJSFunctionSetter(
+    hstring const &name,
+    hstring const &moduleName,
+    ReactJSFunctionSetter const &functionSetter) noexcept {
+  m_mock.AddJSFunctionSetter(name, moduleName, functionSetter);
+}
+
 
 } // namespace winrt::Microsoft::ReactNative

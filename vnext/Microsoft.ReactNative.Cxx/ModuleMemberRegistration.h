@@ -42,17 +42,21 @@
 #define INTERNAL_REACT_CONSTANT(...) \
   INTERNAL_REACT_MEMBER_RECOMPOSER2((__VA_ARGS__, INTERNAL_REACT_CONSTANT_2_ARGS, INTERNAL_REACT_CONSTANT_1_ARGS, ))
 
-#define INTERNAL_REACT_EVENT_2_ARGS(field, eventName)                                            \
+#define INTERNAL_REACT_EVENT_3_ARGS(field, eventName, eventEmitterName)                          \
   template <class TClass, class TRegistry>                                                       \
   static void RegisterMember(                                                                    \
       TRegistry &registry, winrt::Microsoft::ReactNative::ReactMemberId<__COUNTER__>) noexcept { \
-    registry.RegisterEvent<TClass>(&TClass::field, eventName);                                   \
+    registry.RegisterEvent<TClass>(&TClass::field, eventName, eventEmitterName);                 \
   }
+
+#define INTERNAL_REACT_EVENT_2_ARGS(field, eventName) \
+  INTERNAL_REACT_EVENT_3_ARGS(field, eventName, /*defined by REACT_MODULE*/ nullptr)
 
 #define INTERNAL_REACT_EVENT_1_ARGS(field) INTERNAL_REACT_EVENT_2_ARGS(field, L## #field)
 
-#define INTERNAL_REACT_EVENT(...) \
-  INTERNAL_REACT_MEMBER_RECOMPOSER2((__VA_ARGS__, INTERNAL_REACT_EVENT_2_ARGS, INTERNAL_REACT_EVENT_1_ARGS, ))
+#define INTERNAL_REACT_EVENT(...)    \
+  INTERNAL_REACT_MEMBER_RECOMPOSER3( \
+      (__VA_ARGS__, INTERNAL_REACT_EVENT_3_ARGS, INTERNAL_REACT_EVENT_2_ARGS, INTERNAL_REACT_EVENT_1_ARGS, ))
 
 #define INTERNAL_REACT_FUNCTION_3_ARGS(field, functionName, moduleName)                          \
   template <class TClass, class TRegistry>                                                       \
