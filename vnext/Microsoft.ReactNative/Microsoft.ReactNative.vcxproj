@@ -163,6 +163,7 @@
     </Midl>
     <ClCompile>
       <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">pch.h</ForcedIncludeFiles>
+      <TreatWarningAsError Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</TreatWarningAsError>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -257,6 +258,7 @@
     <ClInclude Include="..\ReactUWP\Views\XamlFeatures.h" />
     <ClInclude Include="ABICxxModule.h" />
     <ClInclude Include="ABIViewManager.h" />
+    <ClInclude Include="Base\FollyIncludes.h" />
     <ClInclude Include="DynamicReader.h">
       <DependentUpon>IJSValueReader.idl</DependentUpon>
     </ClInclude>
