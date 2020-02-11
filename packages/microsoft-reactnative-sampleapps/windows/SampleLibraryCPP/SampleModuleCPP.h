@@ -75,7 +75,7 @@ struct SampleModuleCppImpl {
   }
 
   REACT_METHOD(ExplicitPromiseMethod);
-  void ExplicitPromiseMethod(winrt::Microsoft::ReactNative::ReactPromise<double> &&result) noexcept {
+  void ExplicitPromiseMethod(winrt::Microsoft::ReactNative::ReactPromise<double> const &result) noexcept {
     DEBUG_OUTPUT("ExplicitPromiseMethod");
     try {
       result.Resolve(M_PI);
@@ -87,7 +87,7 @@ struct SampleModuleCppImpl {
   REACT_METHOD(ExplicitPromiseMethodWithArgs);
   void ExplicitPromiseMethodWithArgs(
       double arg,
-      winrt::Microsoft::ReactNative::ReactPromise<double> &&result) noexcept {
+      winrt::Microsoft::ReactNative::ReactPromise<double> const &result) noexcept {
     DEBUG_OUTPUT("ExplicitPromiseMethodWithArgs", arg);
     try {
       result.Resolve(M_PI);
