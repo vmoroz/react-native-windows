@@ -129,7 +129,7 @@ struct SampleModuleCppImpl {
             TimedEvent(++m_timerCount);
           }
         },
-        std::chrono::milliseconds(TimedEventIntervalMS));
+        TimedEventInterval);
   }
 
   ~SampleModuleCppImpl() {
@@ -139,9 +139,9 @@ struct SampleModuleCppImpl {
   }
 
  private:
-  winrt::Windows::System::Threading::ThreadPoolTimer m_timer = nullptr;
-  int m_timerCount = 0;
-  const int TimedEventIntervalMS = 5000;
+  winrt::Windows::System::Threading::ThreadPoolTimer m_timer{nullptr};
+  int m_timerCount{0};
+  static constexpr std::chrono::milliseconds TimedEventInterval{5000};
 };
 
 } // namespace SampleLibraryCpp
