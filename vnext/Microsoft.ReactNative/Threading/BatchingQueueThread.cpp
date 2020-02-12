@@ -63,8 +63,8 @@ void BatchingQueueThread::runOnQueueSync(std::function<void()> &&func) noexcept 
 
 void BatchingQueueThread::quitSynchronous() noexcept {
   // Used by OInstance
-  //assert(false && "Not supported");
-  //std::terminate();
+  // assert(false && "Not supported");
+  // std::terminate();
 }
 
 } // namespace react::uwp
