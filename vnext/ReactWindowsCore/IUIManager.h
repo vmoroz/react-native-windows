@@ -64,7 +64,9 @@ class IUIManager {
 std::shared_ptr<IUIManager> createIUIManager(
     std::vector<std::unique_ptr<IViewManager>> &&viewManagers,
     INativeUIManager *nativeManager);
-std::unique_ptr<facebook::xplat::module::CxxModule> createUIManagerModule(std::shared_ptr<IUIManager> uimanager);
+std::unique_ptr<facebook::xplat::module::CxxModule> createUIManagerModule(
+    std::shared_ptr<IUIManager> &&uimanager,
+    std::shared_ptr<MessageQueueThread> &&uiQueue) noexcept;
 
 std::shared_ptr<IUIManager> createBatchingUIManager(
     std::vector<std::unique_ptr<IViewManager>> &&viewManagers,

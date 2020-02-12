@@ -173,6 +173,7 @@ void ReactInstanceWin::Initialize() noexcept {
           std::vector<facebook::react::NativeModuleDescription> cxxModules = react::uwp::GetCoreModules(
               m_uiManager.Load(),
               m_batchingUIThread,
+              m_uiMessageThread.Load(),
               m_deviceInfo,
               devSettings,
               std::move(m_i18nInfo),
