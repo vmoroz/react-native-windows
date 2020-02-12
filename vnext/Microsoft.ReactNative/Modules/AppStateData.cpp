@@ -59,7 +59,8 @@ void AppStateData::RaiseEvent(char const *newState) noexcept {
       "RCTDeviceEventEmitter", "emit", folly::dynamic::array("appStateDidChange", std::move(parameters)));
 }
 
-AppState2::AppState2(Mso::React::IReactContext &reactContext) noexcept : m_data{Mso::Make<AppStateData>(reactContext)} {}
+AppState2::AppState2(Mso::React::IReactContext &reactContext) noexcept
+    : m_data{Mso::Make<AppStateData>(reactContext)} {}
 
 AppState2::~AppState2() = default;
 
