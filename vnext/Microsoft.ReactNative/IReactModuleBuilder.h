@@ -22,7 +22,8 @@ struct ReactModuleBuilder : winrt::implements<ReactModuleBuilder, IReactModuleBu
       IInspectable const &nativeModule) noexcept;
 
  private:
-  static MethodResultCallback MakeMethodResultCallback(facebook::xplat::module::CxxModule::Callback &&callback) noexcept;
+  static MethodResultCallback MakeMethodResultCallback(
+      facebook::xplat::module::CxxModule::Callback &&callback) noexcept;
 
  private:
   IReactContext m_reactContext;

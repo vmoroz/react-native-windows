@@ -33,9 +33,9 @@ void ReactModuleBuilderMock::AddConstantProvider(ConstantProvider const &constan
 
 void ReactModuleBuilderMock::AddNativeEventSetter(
     hstring const &name,
-    hstring const &/*eventEmitterName*/,
+    hstring const & /*eventEmitterName*/,
     ReactJSFunctionSetter const &nativeEventSetter) noexcept {
-  nativeEventSetter([this, name = std::wstring{name}](JSValueArgWriter const &argWriter) noexcept {
+  nativeEventSetter([ this, name = std::wstring{name} ](JSValueArgWriter const &argWriter) noexcept {
     auto it = m_eventHandlers.find(name);
     if (it != m_eventHandlers.end()) {
       JSValue jsValue;
@@ -51,9 +51,9 @@ void ReactModuleBuilderMock::AddNativeEventSetter(
 
 void ReactModuleBuilderMock::AddJSFunctionSetter(
     hstring const &name,
-    hstring const &/*moduleName*/,
+    hstring const & /*moduleName*/,
     ReactJSFunctionSetter const &functionSetter) noexcept {
-  functionSetter([this, name = std::wstring{name}](JSValueArgWriter const &argWriter) noexcept {
+  functionSetter([ this, name = std::wstring{name} ](JSValueArgWriter const &argWriter) noexcept {
     auto it = m_eventHandlers.find(name);
     if (it != m_eventHandlers.end()) {
       auto writer = make_self<JSValueTreeWriter>();
