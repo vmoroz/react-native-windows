@@ -1,7 +1,19 @@
 # Change Log - react-native-windows
 
-This log was last generated on Wed, 12 Feb 2020 21:40:06 GMT and should not be manually modified.
+This log was last generated on Thu, 13 Feb 2020 05:48:00 GMT and should not be manually modified.
 
+## 0.61.0-beta.6
+Thu, 13 Feb 2020 05:48:00 GMT
+
+### Changes
+
+- Fixed Microsoft.ReactNative compiler warnings and start treating warnings as errors (vmorozov@microsoft.com)
+## 0.61.0-beta.5
+Thu, 13 Feb 2020 01:37:12 GMT
+
+### Changes
+
+- Set doc generation to output to new path. Update docs to include recent changes. (aschultz@microsoft.com)
 ## 0.61.0-beta.4
 Wed, 12 Feb 2020 21:40:06 GMT
 
