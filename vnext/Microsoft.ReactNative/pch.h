@@ -33,14 +33,8 @@
 #include <winrt/Windows.UI.Xaml.Media.h>
 #include <winrt/Windows.UI.Xaml.h>
 #include "HResult.h"
-#include "Base/FollyIncludes.h"
 
-#include <cxxreact/CxxModule.h>
-#include <cxxreact/Instance.h>
-#include <cxxreact/JSBigString.h>
-#include <cxxreact/JSExecutor.h>
-#include <fbsystrace.h>
-#include <yoga/yoga.h>
+#include "Base/CxxReactIncludes.h"
 
 #include <algorithm>
 #include <atomic>

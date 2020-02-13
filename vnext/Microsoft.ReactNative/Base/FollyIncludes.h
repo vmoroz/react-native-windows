@@ -4,6 +4,11 @@
 #pragma once
 
 #pragma warning(push)
+#pragma warning(disable : 4100) // Line 109: 'requested_digits': unreferenced formal parameter
+#include <double-conversion/double-conversion.h>
+#pragma warning(pop)
+
+#pragma warning(push)
 #pragma warning(disable : 4324) // 'folly::max_align_t': structure was padded due to alignment specifier
 #include <folly/lang/align.h>
 #pragma warning(pop)
