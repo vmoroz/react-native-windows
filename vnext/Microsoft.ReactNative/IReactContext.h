@@ -8,7 +8,7 @@
 
 namespace winrt::Microsoft::ReactNative {
 
-struct ReactContext final : winrt::implements<ReactContext, IReactContext> {
+struct ReactContext : winrt::implements<ReactContext, IReactContext> {
   ReactContext(Mso::CntPtr<Mso::React::IReactContext> &&context) noexcept;
 
  public: // IReactContext
