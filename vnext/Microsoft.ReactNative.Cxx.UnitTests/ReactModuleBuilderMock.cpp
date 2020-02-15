@@ -12,8 +12,58 @@ namespace winrt::Microsoft::ReactNative {
 // ReactModuleBuilderMock implementation
 //===========================================================================
 
-void ReactModuleBuilderMock::SetEventEmitterName(hstring const &name) noexcept {
-  m_eventEmitterName = name;
+ReactModuleBuilderMock::ReactModuleBuilderMock() noexcept : m_reactContext{make<ReactContextMock>(this)} {}
+
+void ReactModuleBuilderMock::ExpectEvent(
+    std::wstring_view eventEmitterName,
+    std::wstring_view eventName,
+    Mso::Functor<void(JSValue const &)> &&checkValue) noexcept {
+  m_jsFunctionHandler = [
+    expectedModuleName = std::wstring{eventEmitterName},
+    expectedFuncName = std::wstring{L"emit"},
+    eventName = to_string(hstring{eventName}),
+    checkValue = std::move(checkValue)
+  ](std::wstring_view moduleName, std::wstring_view funcName, JSValue const &value) noexcept {
+    TestCheck(expectedModuleName == moduleName);
+    TestCheck(expectedFuncName == funcName);
+    TestCheck(value.Type() == JSValueType::Array);
+    TestCheck(value.Array().size() == 2);
+    TestCheck(value[0] == eventName);
+    checkValue(value[1]);
+  };
+}
+
+void ReactModuleBuilderMock::ExpectFunction(
+    std::wstring_view moduleName,
+    std::wstring_view functionName,
+    Mso::Functor<void(JSValueArray const &)> &&checkValues) noexcept {
+  m_jsFunctionHandler = [
+    expectedModuleName = std::wstring{moduleName},
+    expectedFuncName = std::wstring{functionName},
+    checkValues = std::move(checkValues)
+  ](std::wstring_view moduleName, std::wstring_view funcName, JSValue const &value) noexcept {
+    TestCheck(expectedModuleName == moduleName);
+    TestCheck(expectedFuncName == funcName);
+    TestCheck(value.Type() == JSValueType::Array);
+    checkValues(value.Array());
+  };
+}
+
+void ReactModuleBuilderMock::CallJSFunction(
+    std::wstring_view moduleName,
+    std::wstring_view functionName,
+    JSValueArgWriter const &paramsArgWriter) noexcept {
+  auto writer = MakeJSValueTreeWriter();
+  paramsArgWriter(writer);
+  m_jsFunctionHandler(moduleName, functionName, TakeJSValue(writer));
+}
+
+void ReactModuleBuilderMock::AddInitializer(InitializerDelegate const &initializer) noexcept {
+  m_initializers.push_back(initializer);
+}
+
+void ReactModuleBuilderMock::AddConstantProvider(ConstantProviderDelegate const &constantProvider) noexcept {
+  m_constantProviders.push_back(constantProvider);
 }
 
 void ReactModuleBuilderMock::AddMethod(
@@ -27,49 +77,10 @@ void ReactModuleBuilderMock::AddSyncMethod(hstring const &name, SyncMethodDelega
   m_syncMethods.emplace(name, method);
 }
 
-void ReactModuleBuilderMock::AddConstantProvider(ConstantProvider const &constantProvider) noexcept {
-  m_constProviders.push_back(constantProvider);
-}
-
-void ReactModuleBuilderMock::AddNativeEventSetter(
-    hstring const &name,
-    hstring const & /*eventEmitterName*/,
-    ReactJSFunctionSetter const &nativeEventSetter) noexcept {
-  nativeEventSetter([ this, name = std::wstring{name} ](JSValueArgWriter const &argWriter) noexcept {
-    auto it = m_eventHandlers.find(name);
-    if (it != m_eventHandlers.end()) {
-      JSValue jsValue;
-      auto writer = MakeJSValueTreeWriter(jsValue);
-      writer.WriteArrayBegin();
-      argWriter(writer);
-      writer.WriteArrayEnd();
-      auto reader = MakeJSValueTreeReader(jsValue);
-      it->second(reader);
-    }
-  });
-}
-
-void ReactModuleBuilderMock::AddJSFunctionSetter(
-    hstring const &name,
-    hstring const & /*moduleName*/,
-    ReactJSFunctionSetter const &functionSetter) noexcept {
-  functionSetter([ this, name = std::wstring{name} ](JSValueArgWriter const &argWriter) noexcept {
-    auto it = m_eventHandlers.find(name);
-    if (it != m_eventHandlers.end()) {
-      auto writer = make_self<JSValueTreeWriter>();
-      writer->WriteArrayBegin();
-      argWriter(*writer);
-      writer->WriteArrayEnd();
-      auto reader = MakeJSValueTreeReader(writer->TakeValue());
-      it->second(reader);
-    }
-  });
-}
-
 JSValueObject ReactModuleBuilderMock::GetConstants() noexcept {
   auto constantWriter = MakeJSValueTreeWriter();
   constantWriter.WriteObjectBegin();
-  for (const auto &constantProvider : m_constProviders) {
+  for (const auto &constantProvider : m_constantProviders) {
     constantProvider(constantWriter);
   }
 
@@ -112,6 +123,26 @@ SyncMethodDelegate ReactModuleBuilderMock::GetSyncMethod(std::wstring const &met
   auto writer = MakeJSValueTreeWriter();
   argWriter(writer);
   return MakeJSValueTreeReader(TakeJSValue(writer));
+}
+
+Windows::Foundation::IInspectable ReactModuleBuilderMock::CreateModule(
+    ReactModuleProvider const &provider,
+    IReactModuleBuilder const &moduleBuilder) noexcept {
+  auto result = provider(moduleBuilder);
+  for (auto &initializer : m_initializers) {
+    initializer(m_reactContext);
+  }
+
+  return result;
+}
+
+ReactContextMock::ReactContextMock(ReactModuleBuilderMock *builderMock) noexcept : m_builderMock{builderMock} {}
+
+void ReactContextMock::CallJSFunction(
+    hstring const &moduleName,
+    hstring const &functionName,
+    JSValueArgWriter const &paramsArgWriter) noexcept {
+  m_builderMock->CallJSFunction(moduleName, functionName, paramsArgWriter);
 }
 
 } // namespace winrt::Microsoft::ReactNative

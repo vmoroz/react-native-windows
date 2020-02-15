@@ -543,15 +543,23 @@ struct SimpleNativeModule {
     provider.Add(L"const62", "MyConstant62");
   }
 
-  REACT_EVENT(OnIntResult1)
-  std::function<void(int)> OnIntResult1;
+  REACT_EVENT(OnIntEvent)
+  std::function<void(int)> OnIntEvent;
 
-  REACT_EVENT(OnPointResult2, L"onPointResult2")
-  std::function<void(const Point &)> OnPointResult2;
+  // Specify event name different from the field name.
+  REACT_EVENT(OnPointEvent, L"onPointEvent")
+  std::function<void(Point const &)> OnPointEvent;
 
-  REACT_EVENT(OnObjectResult3)
-  std::function<void(const JSValue &)> OnObjectResult3;
+  // By default we use the event emitter from REACT_MODULE which is by default 'RCTDeviceEventEmitter'.
+  // Here we specify event emitter name local for one event.
+  REACT_EVENT(OnStringEvent, L"onStringEvent", L"MyEventEmitter")
+  std::function<void(char const *)> OnStringEvent;
 
+  // Use JSValue which is an immutable JSON-like data representation.
+  REACT_EVENT(OnJSValueEvent)
+  std::function<void(const JSValue &)> OnJSValueEvent;
+
+ public: // Used to report some test messages
   std::string Message;
   static std::string StaticMessage;
 };
@@ -567,7 +575,7 @@ TEST_CLASS (NativeModuleTest) {
   NativeModuleTest() {
     m_moduleBuilder = make<ReactModuleBuilderImpl>(m_builderMock);
     auto provider = MakeModuleProvider<SimpleNativeModule>();
-    m_moduleObject = provider(m_moduleBuilder);
+    m_moduleObject = m_builderMock.CreateModule(provider, m_moduleBuilder);
     auto reactModule = m_moduleObject.as<IBoxedValue>();
     m_module = &BoxedValue<SimpleNativeModule>::GetImpl(reactModule);
   }
@@ -1300,44 +1308,75 @@ TEST_CLASS (NativeModuleTest) {
 
   TEST_METHOD(TestEvent_EventField1) {
     bool eventRaised = false;
-    m_builderMock.SetEventHandler(L"OnIntResult1", std::function<void(int)>([&eventRaised](int eventArg) noexcept {
-                                    TestCheck(eventArg == 42);
-                                    eventRaised = true;
-                                  }));
+    m_builderMock.ExpectEvent(L"RCTDeviceEventEmitter", L"OnIntEvent", [&eventRaised](JSValue const &arg) noexcept {
+      TestCheck(arg == 42);
+      eventRaised = true;
+    });
 
-    m_module->OnIntResult1(42);
-    TestCheck(eventRaised == true);
+    m_module->OnIntEvent(42);
+    TestCheck(eventRaised);
   }
 
   TEST_METHOD(TestEvent_EventField2) {
     bool eventRaised = false;
-    m_builderMock.SetEventHandler(
-        L"onPointResult2", std::function<void(const Point &)>([&eventRaised](const Point &eventArg) noexcept {
-          TestCheck(eventArg.X == 4);
-          TestCheck(eventArg.Y == 2);
-          eventRaised = true;
-        }));
+    m_builderMock.ExpectEvent(L"RCTDeviceEventEmitter", L"onPointEvent", [&eventRaised](JSValue const &arg) noexcept {
+      TestCheck(arg["X"] == 4);
+      TestCheck(arg["Y"] == 2);
+      eventRaised = true;
+    });
 
-    m_module->OnPointResult2(Point{/*X =*/4, /*Y =*/2});
+    m_module->OnPointEvent(Point{/*X =*/4, /*Y =*/2});
     TestCheck(eventRaised == true);
   }
 
   TEST_METHOD(TestEvent_EventField3) {
     bool eventRaised = false;
-    m_builderMock.SetEventHandler(
-        L"OnObjectResult3", std::function<void(const JSValue &)>([&eventRaised](const JSValue &eventArg) noexcept {
-          TestCheck(eventArg.Object().at("X").Int64() == 4);
-          TestCheck(eventArg.Object().at("Y").Int64() == 2);
+    m_builderMock.ExpectEvent(L"MyEventEmitter", L"onStringEvent", [&eventRaised](JSValue const &arg) noexcept {
+      TestCheck(arg == "Hello World!");
+      eventRaised = true;
+    });
+
+    m_module->OnStringEvent("Hello World!");
+    TestCheck(eventRaised == true);
+  }
+
+  TEST_METHOD(TestEvent_EventField4) {
+    bool eventRaised = false;
+    m_builderMock.ExpectEvent(
+        L"RCTDeviceEventEmitter", L"OnJSValueEvent", ([&eventRaised](JSValue const &arg) noexcept {
+          TestCheck(arg["X"] == 4);
+          TestCheck(arg["Y"] == 2);
           eventRaised = true;
         }));
 
-    auto writer = MakeJSValueTreeWriter();
-    writer.WriteObjectBegin();
-    WriteProperty(writer, "X", 4);
-    WriteProperty(writer, "Y", 2);
-    writer.WriteObjectEnd();
+    m_module->OnJSValueEvent(JSValueObject{{"X", 4}, {"Y", 2}});
+    TestCheck(eventRaised == true);
+  }
 
-    m_module->OnObjectResult3(TakeJSValue(writer));
+  TEST_METHOD(TestEvent_EventField5) {
+    bool eventRaised = false;
+    m_builderMock.ExpectEvent(
+        L"RCTDeviceEventEmitter", L"OnJSValueEvent", ([&eventRaised](JSValue const &arg) noexcept {
+          TestCheck(arg[0] == "X");
+          TestCheck(arg[1] == 4);
+          TestCheck(arg[2] == true);
+          TestCheck(arg[3]["Id"] == 42);
+          eventRaised = true;
+        }));
+
+    m_module->OnJSValueEvent(JSValueArray{"X", 4, true, JSValueObject{{"Id", 42}}});
+    TestCheck(eventRaised == true);
+  }
+
+  TEST_METHOD(TestEvent_EventField6) {
+    bool eventRaised = false;
+    m_builderMock.ExpectEvent(
+        L"RCTDeviceEventEmitter", L"OnJSValueEvent", ([&eventRaised](JSValue const &arg) noexcept {
+          TestCheck(arg[0] == 4);
+          eventRaised = true;
+        }));
+
+    m_module->OnJSValueEvent(JSValueArray{4});
     TestCheck(eventRaised == true);
   }
 };

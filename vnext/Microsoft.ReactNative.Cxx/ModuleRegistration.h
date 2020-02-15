@@ -29,7 +29,7 @@
   }
 
 #define INTERNAL_REACT_MODULE_2_ARGS(moduleStruct, moduleName) \
-  INTERNAL_REACT_MODULE_3_ARGS(moduleStruct, moduleName, L"")
+  INTERNAL_REACT_MODULE_3_ARGS(moduleStruct, moduleName, nullptr)
 
 #define INTERNAL_REACT_MODULE_1_ARGS(moduleStruct) INTERNAL_REACT_MODULE_2_ARGS(moduleStruct, L## #moduleStruct)
 
