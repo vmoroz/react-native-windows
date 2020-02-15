@@ -21,6 +21,16 @@ struct Point {
 
 REACT_MODULE(SimpleNativeModule)
 struct SimpleNativeModule {
+  REACT_INIT(Initialize)
+  void Initialize(IReactContext const &context) noexcept {
+    IsInitialized = true;
+    TestCheck(context != nullptr);
+
+    // Event and Function fields are initialized before REACT_INIT method call.
+    TestCheck(this->OnIntEvent != nullptr);
+    TestCheck(this->JSIntFunction != nullptr);
+  }
+
   REACT_METHOD(Add)
   int Add(int x, int y) noexcept {
     return x + y;
@@ -582,6 +592,7 @@ struct SimpleNativeModule {
   std::function<void(const JSValue &)> JSValueFunction;
 
  public: // Used to report some test messages
+  bool IsInitialized{false};
   std::string Message;
   static std::string StaticMessage;
 };
@@ -1479,6 +1490,10 @@ TEST_CLASS (NativeModuleTest) {
 
     m_module->JSValueFunction(JSValueArray{"X", 4, true, JSValueObject{{"Id", 42}}});
     TestCheck(functionCalled == true);
+  }
+
+    TEST_METHOD(TestInitialized) {
+    TestCheck(m_module->IsInitialized);
   }
 };
 
