@@ -20,6 +20,10 @@ struct ReactContext : winrt::implements<ReactContext, IReactContext> {
       hstring const &moduleName,
       hstring const &methodName,
       JSValueArgWriter const &paramsArgWriter) noexcept;
+  void EmitJSEvent(
+      hstring const &eventEmitterName,
+      hstring const &eventName,
+      JSValueArgWriter const &paramsArgWriter) noexcept;
 
  private:
   Mso::CntPtr<Mso::React::IReactContext> m_context;

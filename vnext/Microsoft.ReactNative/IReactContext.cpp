@@ -34,4 +34,17 @@ void ReactContext::CallJSFunction(
   m_context->CallJSFunction(to_string(moduleName), to_string(method), std::move(params));
 }
 
+void ReactContext::EmitJSEvent(
+    hstring const &eventEmitterName,
+    hstring const &eventName,
+    JSValueArgWriter const &paramsArgWriter) noexcept {
+  auto paramsWriter = winrt::make_self<DynamicWriter>();
+  paramsWriter->WriteArrayBegin();
+  paramsWriter->WriteString(winrt::to_hstring(eventName));
+  paramsArgWriter(*paramsWriter);
+  paramsWriter->WriteArrayEnd();
+  auto params = paramsWriter->TakeValue();
+  m_context->CallJSFunction(to_string(eventEmitterName), "emit", std::move(params));
+}
+
 } // namespace winrt::Microsoft::ReactNative
