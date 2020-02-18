@@ -60,6 +60,5 @@ namespace Microsoft.ReactNative.Managed
     {
       reactContext.EmitJSEvent(eventEmitterName, eventName, (IJSValueWriter writer) => writer.WriteValue(arg));
     }
-
   }
 }

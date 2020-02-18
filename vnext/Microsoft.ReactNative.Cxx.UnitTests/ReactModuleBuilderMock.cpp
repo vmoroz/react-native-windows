@@ -18,18 +18,14 @@ void ReactModuleBuilderMock::ExpectEvent(
     std::wstring_view eventEmitterName,
     std::wstring_view eventName,
     Mso::Functor<void(JSValue const &)> &&checkValue) noexcept {
-  m_jsFunctionHandler = [
-    expectedModuleName = std::wstring{eventEmitterName},
-    expectedFuncName = std::wstring{L"emit"},
-    eventName = to_string(hstring{eventName}),
+  m_jsEventHandler = [
+    expectedEventEmitterName = std::wstring{eventEmitterName},
+    expectedEventName = std::wstring{eventName},
     checkValue = std::move(checkValue)
-  ](std::wstring_view moduleName, std::wstring_view funcName, JSValue const &value) noexcept {
-    TestCheck(expectedModuleName == moduleName);
-    TestCheck(expectedFuncName == funcName);
-    TestCheck(value.Type() == JSValueType::Array);
-    TestCheck(value.Array().size() == 2);
-    TestCheck(value[0] == eventName);
-    checkValue(value[1]);
+  ](std::wstring_view eventEmitterName, std::wstring_view eventName, JSValue const &value) noexcept {
+    TestCheck(expectedEventEmitterName == eventEmitterName);
+    TestCheck(expectedEventName == eventName);
+    checkValue(value);
   };
 }
 
@@ -56,6 +52,15 @@ void ReactModuleBuilderMock::CallJSFunction(
   auto writer = MakeJSValueTreeWriter();
   paramsArgWriter(writer);
   m_jsFunctionHandler(moduleName, functionName, TakeJSValue(writer));
+}
+
+void ReactModuleBuilderMock::EmitJSEvent(
+    std::wstring_view eventEmitterName,
+    std::wstring_view eventName,
+    JSValueArgWriter const &paramsArgWriter) noexcept {
+  auto writer = MakeJSValueTreeWriter();
+  paramsArgWriter(writer);
+  m_jsEventHandler(eventEmitterName, eventName, TakeJSValue(writer));
 }
 
 void ReactModuleBuilderMock::AddInitializer(InitializerDelegate const &initializer) noexcept {
@@ -143,6 +148,13 @@ void ReactContextMock::CallJSFunction(
     hstring const &functionName,
     JSValueArgWriter const &paramsArgWriter) noexcept {
   m_builderMock->CallJSFunction(moduleName, functionName, paramsArgWriter);
+}
+
+void ReactContextMock::EmitJSEvent(
+    hstring const &eventEmitterName,
+    hstring const &eventName,
+    JSValueArgWriter const &paramsArgWriter) noexcept {
+  m_builderMock->EmitJSEvent(eventEmitterName, eventName, paramsArgWriter);
 }
 
 } // namespace winrt::Microsoft::ReactNative

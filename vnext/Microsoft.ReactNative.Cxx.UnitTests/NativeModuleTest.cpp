@@ -1492,7 +1492,7 @@ TEST_CLASS (NativeModuleTest) {
     TestCheck(functionCalled == true);
   }
 
-    TEST_METHOD(TestInitialized) {
+  TEST_METHOD(TestInitialized) {
     TestCheck(m_module->IsInitialized);
   }
 };

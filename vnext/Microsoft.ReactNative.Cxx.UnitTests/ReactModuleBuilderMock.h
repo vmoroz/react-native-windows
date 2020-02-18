@@ -70,6 +70,11 @@ struct ReactModuleBuilderMock {
       std::wstring_view functionName,
       JSValueArgWriter const &paramsArgWriter) noexcept;
 
+  void EmitJSEvent(
+      std::wstring_view eventEmitterName,
+      std::wstring_view eventName,
+      JSValueArgWriter const &paramsArgWriter) noexcept;
+
   Windows::Foundation::IInspectable CreateModule(
       ReactModuleProvider const &provider,
       IReactModuleBuilder const &moduleBuilder) noexcept;
@@ -110,6 +115,7 @@ struct ReactModuleBuilderMock {
   bool m_isResolveCallbackCalled;
   bool m_isRejectCallbackCalled;
   Mso::Functor<void(std::wstring_view, std::wstring_view, JSValue const &)> m_jsFunctionHandler;
+  Mso::Functor<void(std::wstring_view, std::wstring_view, JSValue const &)> m_jsEventHandler;
 };
 
 struct ReactContextMock : implements<ReactContextMock, IReactContext> {
@@ -123,6 +129,11 @@ struct ReactContextMock : implements<ReactContextMock, IReactContext> {
   void CallJSFunction(
       hstring const &moduleName,
       hstring const &functionName,
+      JSValueArgWriter const &paramsArgWriter) noexcept;
+
+  void EmitJSEvent(
+      hstring const &eventEmitterName,
+      hstring const &eventName,
       JSValueArgWriter const &paramsArgWriter) noexcept;
 
  private:

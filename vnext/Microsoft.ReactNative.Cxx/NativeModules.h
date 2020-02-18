@@ -681,13 +681,9 @@ struct ModuleEventFieldInfo<TFunc<void(TArg)> TModule::*> {
     return [ module = static_cast<ModuleType *>(module), field, eventName, eventEmitterName ](
         IReactContext const &reactContext) noexcept {
       module->*field = [ reactContext, eventEmitterName, eventName ](TArg arg) noexcept {
-        reactContext.CallJSFunction(
-            eventEmitterName, L"emit", [ eventName, &arg ](IJSValueWriter const &argWriter) noexcept {
-              argWriter.WriteArrayBegin();
-              argWriter.WriteString(winrt::to_hstring(eventName));
-              WriteValue(argWriter, arg);
-              argWriter.WriteArrayEnd();
-            });
+        reactContext.EmitJSEvent(eventEmitterName, eventName, [&arg](IJSValueWriter const &argWriter) noexcept {
+          WriteValue(argWriter, arg);
+        });
       };
     };
   }
