@@ -9,21 +9,24 @@ namespace Microsoft.ReactNative.Managed.UnitTests
 {
   class ReactModuleBuilderMock : IReactModuleBuilder
   {
-    private string m_eventEmitterName;
+    private List<InitializerDelegate> m_initializers = new List<InitializerDelegate>();
     private Dictionary<string, Tuple<MethodReturnType, MethodDelegate>> m_methods =
         new Dictionary<string, Tuple<MethodReturnType, MethodDelegate>>();
     private Dictionary<string, SyncMethodDelegate> m_syncMethods =
         new Dictionary<string, SyncMethodDelegate>();
-    private List<ConstantProvider> m_constProviders = new List<ConstantProvider>();
-    private Dictionary<string, Action<IJSValueReader>> m_eventHandlers =
-        new Dictionary<string, Action<IJSValueReader>>();
+    private List<ConstantProviderDelegate> m_constantProviders = new List<ConstantProviderDelegate>();
 
     public bool IsResolveCallbackCalled { get; private set; }
     public bool IsRejectCallbackCalled { get; private set; }
 
-    public void SetEventEmitterName(string name)
+    public void AddInitializer(InitializerDelegate initializer)
     {
-      m_eventEmitterName = name;
+      m_initializers.Add(initializer);
+    }
+
+    public void AddConstantProvider(ConstantProviderDelegate constantProvider)
+    {
+      m_constantProviders.Add(constantProvider);
     }
 
     public void AddMethod(string name, MethodReturnType returnType, MethodDelegate method)
@@ -34,27 +37,6 @@ namespace Microsoft.ReactNative.Managed.UnitTests
     public void AddSyncMethod(string name, SyncMethodDelegate method)
     {
       m_syncMethods.Add(name, method);
-    }
-
-    public void AddConstantProvider(ConstantProvider constantProvider)
-    {
-      m_constProviders.Add(constantProvider);
-    }
-
-    public void AddEventHandlerSetter(string name, ReactEventHandlerSetter eventHandlerSetter)
-    {
-      eventHandlerSetter((ReactArgWriter argWriter) =>
-      {
-        if (m_eventHandlers.TryGetValue(name, out var eventHandler))
-        {
-          var writer = new JSValueTreeWriter();
-          writer.WriteArrayBegin();
-          argWriter(writer);
-          writer.WriteArrayEnd();
-
-          eventHandler(new JSValueTreeReader(writer.TakeValue()));
-        }
-      });
     }
 
     public void Call0(string methodName) =>
@@ -219,22 +201,13 @@ namespace Microsoft.ReactNative.Managed.UnitTests
     {
       var constantWriter = new JSValueTreeWriter();
       constantWriter.WriteObjectBegin();
-      foreach (var constantProvider in m_constProviders)
+      foreach (var constantProvider in m_constantProviders)
       {
         constantProvider(constantWriter);
       }
 
       constantWriter.WriteObjectEnd();
       return constantWriter.TakeValue().Object;
-    }
-
-    public void SetEventHandler<T>(string eventName, Action<T> eventHandler)
-    {
-      m_eventHandlers.Add(eventName, (IJSValueReader reader) =>
-      {
-        reader.ReadArgs(out T arg);
-        eventHandler(arg);
-      });
     }
   }
 }

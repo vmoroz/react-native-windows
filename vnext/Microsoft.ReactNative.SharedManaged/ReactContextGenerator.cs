@@ -26,19 +26,19 @@ namespace Microsoft.ReactNative.Managed
       return extMethod.First();
     }
 
-    public static MethodInfo DispatchEventOf(Type[] typeArgs)
+    public static MethodInfo DispatchEventOf(params Type[] typeArgs)
     {
       return GetExtensionMethod(nameof(ReactContextExtensions.DispatchEvent), typeArgs,
         typeof(IReactContext), typeof(FrameworkElement), typeof(string));
     }
 
-    public static MethodInfo CallJSFunctionOf(Type[] typeArgs)
+    public static MethodInfo CallJSFunctionOf(params Type[] typeArgs)
     {
       return GetExtensionMethod(nameof(ReactContextExtensions.CallJSFunction), typeArgs,
         typeof(IReactContext), typeof(string), typeof(string));
     }
 
-    public static MethodInfo EmitJSEventOf(Type[] typeArgs)
+    public static MethodInfo EmitJSEventOf(params Type[] typeArgs)
     {
       return GetExtensionMethod(nameof(ReactContextExtensions.EmitJSEvent), typeArgs,
         typeof(IReactContext), typeof(string), typeof(string));

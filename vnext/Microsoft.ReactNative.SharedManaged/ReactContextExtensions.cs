@@ -7,50 +7,10 @@ namespace Microsoft.ReactNative.Managed
 {
   static class ReactContextExtensions
   {
-    public static void DispatchEvent(this IReactContext reactContext, FrameworkElement view, string eventName)
+    public static void DispatchEvent<T>(this IReactContext reactContext, FrameworkElement view, string eventName, T arg)
     {
-      reactContext.DispatchEvent(view, eventName, (IJSValueWriter writer) => writer.WriteArgs());
+      reactContext.DispatchEvent(view, eventName, (IJSValueWriter writer) => writer.WriteValue(arg));
     }
-
-    public static void DispatchEvent<T1>(this IReactContext reactContext, FrameworkElement view, string eventName, T1 arg1)
-    {
-      reactContext.DispatchEvent(view, eventName, (IJSValueWriter writer) => writer.WriteArgs(arg1));
-    }
-
-    public static void DispatchEvent<T1, T2>(this IReactContext reactContext, FrameworkElement view, string eventName, T1 arg1, T2 arg2)
-    {
-      reactContext.DispatchEvent(view, eventName, (IJSValueWriter writer) => writer.WriteArgs(arg1, arg2));
-    }
-
-    public static void DispatchEvent<T1, T2, T3>(this IReactContext reactContext, FrameworkElement view, string eventName, T1 arg1, T2 arg2, T3 arg3)
-    {
-      reactContext.DispatchEvent(view, eventName, (IJSValueWriter writer) => writer.WriteArgs(arg1, arg2, arg3));
-    }
-
-    public static void DispatchEvent<T1, T2, T3, T4>(this IReactContext reactContext,
-      FrameworkElement view, string eventName, T1 arg1, T2 arg2, T3 arg3, T4 arg4)
-    {
-      reactContext.DispatchEvent(view, eventName, (IJSValueWriter writer) => writer.WriteArgs(arg1, arg2, arg3, arg4));
-    }
-
-    public static void DispatchEvent<T1, T2, T3, T4, T5>(this IReactContext reactContext,
-      FrameworkElement view, string eventName, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5)
-    {
-      reactContext.DispatchEvent(view, eventName, (IJSValueWriter writer) => writer.WriteArgs(arg1, arg2, arg3, arg4, arg5));
-    }
-
-    public static void DispatchEvent<T1, T2, T3, T4, T5, T6>(this IReactContext reactContext,
-      FrameworkElement view, string eventName, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6)
-    {
-      reactContext.DispatchEvent(view, eventName, (IJSValueWriter writer) => writer.WriteArgs(arg1, arg2, arg3, arg4, arg5, arg6));
-    }
-
-    public static void DispatchEvent<T1, T2, T3, T4, T5, T6, T7>(this IReactContext reactContext,
-      FrameworkElement view, string eventName, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7)
-    {
-      reactContext.DispatchEvent(view, eventName, (IJSValueWriter writer) => writer.WriteArgs(arg1, arg2, arg3, arg4, arg5, arg6, arg7));
-    }
-
 
     public static void CallJSFunction(this IReactContext reactContext, string moduleName, string methodName)
     {
@@ -96,48 +56,10 @@ namespace Microsoft.ReactNative.Managed
       reactContext.CallJSFunction(moduleName, methodName, (IJSValueWriter writer) => writer.WriteArgs(arg1, arg2, arg3, arg4, arg5, arg6, arg7));
     }
 
-    public static void EmitJSEvent(this IReactContext reactContext, string eventEmitterName, string eventName)
+    public static void EmitJSEvent<T>(this IReactContext reactContext, string eventEmitterName, string eventName, T arg)
     {
-      reactContext.EmitJSEvent(eventEmitterName, eventName, (IJSValueWriter writer) => writer.WriteArgs());
+      reactContext.EmitJSEvent(eventEmitterName, eventName, (IJSValueWriter writer) => writer.WriteValue(arg));
     }
 
-    public static void EmitJSEvent<T1>(this IReactContext reactContext, string eventEmitterName, string eventName, T1 arg1)
-    {
-      reactContext.EmitJSEvent(eventEmitterName, eventName, (IJSValueWriter writer) => writer.WriteArgs(arg1));
-    }
-
-    public static void EmitJSEvent<T1, T2>(this IReactContext reactContext, string eventEmitterName, string eventName, T1 arg1, T2 arg2)
-    {
-      reactContext.EmitJSEvent(eventEmitterName, eventName, (IJSValueWriter writer) => writer.WriteArgs(arg1, arg2));
-    }
-
-    public static void EmitJSEvent<T1, T2, T3>(this IReactContext reactContext, string eventEmitterName, string eventName, T1 arg1, T2 arg2, T3 arg3)
-    {
-      reactContext.EmitJSEvent(eventEmitterName, eventName, (IJSValueWriter writer) => writer.WriteArgs(arg1, arg2, arg3));
-    }
-
-    public static void EmitJSEvent<T1, T2, T3, T4>(this IReactContext reactContext,
-      string eventEmitterName, string eventName, T1 arg1, T2 arg2, T3 arg3, T4 arg4)
-    {
-      reactContext.EmitJSEvent(eventEmitterName, eventName, (IJSValueWriter writer) => writer.WriteArgs(arg1, arg2, arg3, arg4));
-    }
-
-    public static void EmitJSEvent<T1, T2, T3, T4, T5>(this IReactContext reactContext,
-      string eventEmitterName, string eventName, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5)
-    {
-      reactContext.EmitJSEvent(eventEmitterName, eventName, (IJSValueWriter writer) => writer.WriteArgs(arg1, arg2, arg3, arg4, arg5));
-    }
-
-    public static void EmitJSEvent<T1, T2, T3, T4, T5, T6>(this IReactContext reactContext,
-      string eventEmitterName, string eventName, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6)
-    {
-      reactContext.EmitJSEvent(eventEmitterName, eventName, (IJSValueWriter writer) => writer.WriteArgs(arg1, arg2, arg3, arg4, arg5, arg6));
-    }
-
-    public static void EmitJSEvent<T1, T2, T3, T4, T5, T6, T7>(this IReactContext reactContext,
-      string eventEmitterName, string eventName, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6, T7 arg7)
-    {
-      reactContext.EmitJSEvent(eventEmitterName, eventName, (IJSValueWriter writer) => writer.WriteArgs(arg1, arg2, arg3, arg4, arg5, arg6, arg7));
-    }
   }
 }
