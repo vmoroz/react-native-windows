@@ -52,7 +52,7 @@ class SampleModuleCpp {
     log(`Distance between (${point1.x}, ${point1.y}) and (${point2.x}, ${point2.y}) is ${distance}`);
   }
 }
-__fbBatchedBridge.registerLazyCallableModule('SampleModuleCpp', () => new SampleModuleCpp());
+global.__fbBatchedBridge.registerLazyCallableModule('SampleModuleCpp', () => new SampleModuleCpp());
 
 class SampleApp extends Component {
   componentDidMount() {
@@ -97,10 +97,10 @@ class SampleApp extends Component {
 
     var promise2 = NativeModules.SampleModuleCS.ExplicitPromiseMethodWithArgs(numberArg);
     promise2.then(getCallback('SampleModuleCS.ExplicitPromiseMethodWithArgs then => ')).catch(getErrorCallback('SampleModuleCS.ExplicitPromiseMethodWithArgs catch => '));
-    
+
     var promise3 = NativeModules.SampleModuleCS.NegateAsyncPromise(5);
     promise3.then(getCallback('SampleModuleCS.NegateAsyncPromise then => ')).catch(getErrorCallback('SampleModuleCS.NegateAsyncPromise catch => '));
-    
+
     var promise4 = NativeModules.SampleModuleCS.NegateAsyncPromise(-5);
     promise4.then(getCallback('SampleModuleCS.NegateAsyncPromise then => ')).catch(getErrorCallback('SampleModuleCS.NegateAsyncPromise catch => '));
 
@@ -146,7 +146,7 @@ class SampleApp extends Component {
 
     var promise3 = NativeModules.SampleModuleCpp.NegateAsyncPromise(5);
     promise3.then(getCallback('SampleModuleCpp.NegateAsyncPromise then => ')).catch(getErrorCallback('SampleModuleCpp.NegateAsyncPromise catch => '));
-    
+
     var promise4 = NativeModules.SampleModuleCpp.NegateAsyncPromise(-5);
     promise4.then(getCallback('SampleModuleCpp.NegateAsyncPromise then => ')).catch(getErrorCallback('SampleModuleCpp.NegateAsyncPromise catch => '));
 
