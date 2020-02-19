@@ -2,9 +2,12 @@
 // Licensed under the MIT License.
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Runtime.InteropServices;
+using System.Text;
+using Windows.UI.Notifications;
 
 namespace Microsoft.ReactNative.Managed
 {
@@ -188,6 +191,47 @@ namespace Microsoft.ReactNative.Managed
       var writer = new JSValueTreeWriter();
       writer.WriteValue(value);
       return writer.TakeValue();
+    }
+
+    public override string ToString()
+    {
+      switch (Type)
+      {
+        case JSValueType.Null: return "null";
+        case JSValueType.Object:
+          {
+            var sb = new StringBuilder();
+            sb.Append("{");
+            foreach (var prop in Object)
+            {
+              sb.Append(prop.Key);
+              sb.Append(": ");
+              sb.Append(prop.Value.ToString());
+              sb.Append(", ");
+            }
+            sb.Length -= 2;
+            sb.Append("}");
+            return sb.ToString();
+          }
+        case JSValueType.Array:
+          {
+            var sb = new StringBuilder();
+            sb.Append("[");
+            foreach (var item in Array)
+            {
+              sb.Append(item.ToString());
+              sb.Append(", ");
+            }
+            sb.Length -= 2;
+            sb.Append("]");
+            return sb.ToString();
+          }
+        case JSValueType.String: return "\"" + String + "\"";
+        case JSValueType.Boolean: return Boolean ? "true": "false";
+        case JSValueType.Int64: return Int64.ToString();
+        case JSValueType.Double: return Double.ToString();
+        default: return "<Unexpected>";
+      }
     }
 
     public bool TryGetObjectProperty(string propertyName, out JSValue value)
@@ -436,6 +480,22 @@ namespace Microsoft.ReactNative.Managed
       [FieldOffset(0)] public bool BooleanValue;
       [FieldOffset(0)] public long Int64Value;
       [FieldOffset(0)] public double DoubleValue;
+    }
+  }
+
+  class JSValueObject : Dictionary<string, JSValue>
+  {
+    public static implicit operator JSValue(JSValueObject properties)
+    {
+      return new JSValue(new ReadOnlyDictionary<string, JSValue>(properties));
+    }
+  }
+
+  class JSValueArray : List<JSValue>
+  {
+    public static implicit operator JSValue(JSValueArray items)
+    {
+      return new JSValue(new ReadOnlyCollection<JSValue>(items));
     }
   }
 }

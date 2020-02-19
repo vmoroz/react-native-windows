@@ -109,7 +109,7 @@ namespace Microsoft.ReactNative.Managed
     {
       var initializers =
         from method in ModuleType.GetMethods(BindingFlags.Public | BindingFlags.Instance)
-        let initializerAttribute = method.GetCustomAttribute<ReactInitializeAttribute>()
+        let initializerAttribute = method.GetCustomAttribute<ReactInitializerAttribute>()
         where initializerAttribute != null
         select new ReactInitializerInfo(method);
       return initializers.ToList();

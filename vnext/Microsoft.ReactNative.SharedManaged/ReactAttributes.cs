@@ -19,7 +19,7 @@ namespace Microsoft.ReactNative.Managed
   }
 
   [AttributeUsage(AttributeTargets.Method)]
-  class ReactInitializeAttribute : Attribute
+  class ReactInitializerAttribute : Attribute
   {
   }
 

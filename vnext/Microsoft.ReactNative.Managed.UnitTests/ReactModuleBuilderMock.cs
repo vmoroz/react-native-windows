@@ -1,9 +1,11 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Windows.UI.Xaml;
 
 namespace Microsoft.ReactNative.Managed.UnitTests
 {
@@ -15,9 +17,23 @@ namespace Microsoft.ReactNative.Managed.UnitTests
     private Dictionary<string, SyncMethodDelegate> m_syncMethods =
         new Dictionary<string, SyncMethodDelegate>();
     private List<ConstantProviderDelegate> m_constantProviders = new List<ConstantProviderDelegate>();
+    private Action<string, string, JSValue> m_jsEventHandler;
+    private Action<string, string, JSValue> m_jsFunctionHandler;
 
     public bool IsResolveCallbackCalled { get; private set; }
     public bool IsRejectCallbackCalled { get; private set; }
+
+    public T CreateModule<T>(ReactModuleInfo moduleInfo) where T : class
+    {
+      var reactContext = new ReactContextMock(this);
+      var module = (T)moduleInfo.ModuleProvider(this);
+      foreach (var initializer in m_initializers)
+      {
+        initializer(reactContext);
+      }
+
+      return module;
+    }
 
     public void AddInitializer(InitializerDelegate initializer)
     {
@@ -208,6 +224,66 @@ namespace Microsoft.ReactNative.Managed.UnitTests
 
       constantWriter.WriteObjectEnd();
       return constantWriter.TakeValue().Object;
+    }
+
+    public void ExpectEvent(string eventEmitterName, string eventName, Action<JSValue> checkValue)
+    {
+      m_jsEventHandler = (string actualEventEmitterName, string actualEventName, JSValue value) =>
+      {
+        Assert.AreEqual(eventEmitterName, actualEventEmitterName);
+        Assert.AreEqual(eventName, actualEventName);
+        checkValue(value);
+      };
+    }
+
+    public void ExpectFunction(string moduleName, string functionName, Action<IReadOnlyList<JSValue>> checkValues)
+    {
+      m_jsFunctionHandler = (string actualModuleName, string actualFunctionName, JSValue value) =>
+      {
+        Assert.AreEqual(moduleName, actualModuleName);
+        Assert.AreEqual(functionName, actualFunctionName);
+        Assert.AreEqual(JSValueType.Array, value.Type);
+        checkValues(value.Array);
+      };
+    }
+
+    public void CallJSFunction(string moduleName, string functionName, JSValueArgWriter paramsArgWriter)
+    {
+      var writer = new JSValueTreeWriter();
+      paramsArgWriter(writer);
+      m_jsFunctionHandler(moduleName, functionName, writer.TakeValue());
+    }
+
+    public void EmitJSEvent(string eventEmitterName, string eventName, JSValueArgWriter paramsArgWriter)
+    {
+      var writer = new JSValueTreeWriter();
+      paramsArgWriter(writer);
+      m_jsEventHandler(eventEmitterName, eventName, writer.TakeValue());
+    }
+  }
+
+  class ReactContextMock : IReactContext
+  {
+    private ReactModuleBuilderMock m_builder;
+
+    public ReactContextMock(ReactModuleBuilderMock builder)
+    {
+      m_builder = builder;
+    }
+
+    public void DispatchEvent(FrameworkElement view, string eventName, JSValueArgWriter eventDataArgWriter)
+    {
+      throw new NotImplementedException();
+    }
+
+    public void CallJSFunction(string moduleName, string functionName, JSValueArgWriter paramsArgWriter)
+    {
+      m_builder.CallJSFunction(moduleName, functionName, paramsArgWriter);
+    }
+
+    public void EmitJSEvent(string eventEmitterName, string eventName, JSValueArgWriter paramsArgWriter)
+    {
+      m_builder.EmitJSEvent(eventEmitterName, eventName, paramsArgWriter);
     }
   }
 }
