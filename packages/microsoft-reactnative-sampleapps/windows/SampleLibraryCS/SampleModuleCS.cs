@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
+using Microsoft.ReactNative;
 using Microsoft.ReactNative.Managed;
 using System;
 using System.Diagnostics;
@@ -148,11 +149,12 @@ namespace SampleLibraryCS
         #region Events
 
         [ReactEvent("TimedEventCS")]
-        public ReactEvent<int> TimedEvent { get; set; }
+        public Action<int> TimedEvent { get; set; }
 
         #endregion
 
-        public SampleModuleCS()
+        [ReactInitializer]
+        public void Initialize(IReactContext reactContext)
         {
             _timer = ThreadPoolTimer.CreatePeriodicTimer(new TimerElapsedHandler((timer) =>
             {

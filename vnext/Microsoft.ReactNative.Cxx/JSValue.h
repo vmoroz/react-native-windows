@@ -105,7 +105,9 @@ struct JSValue {
   size_t PropertyCount() const noexcept;
   size_t ItemCount() const noexcept;
 
-  template <typename T>
+  template <typename T, std::enable_if_t<std::is_default_constructible_v<T>, int> = 0>
+  T To() const noexcept;
+  template <typename T, std::enable_if_t<std::is_constructible_v<T, std::nullptr_t>, int> = 0>
   T To() const noexcept;
   template <class T>
   static JSValue From(const T &value) noexcept;
@@ -249,9 +251,16 @@ inline double JSValue::Double() const noexcept {
   return (m_type == JSValueType::Double) ? m_double : 0;
 }
 
-template <typename T>
+template <typename T, std::enable_if_t<std::is_default_constructible_v<T>, int>>
 inline T JSValue::To() const noexcept {
   T result;
+  ReadValue(MakeJSValueTreeReader(*this), /*out*/ result);
+  return result;
+}
+
+template <typename T, std::enable_if_t<std::is_constructible_v<T, std::nullptr_t>, int>>
+inline T JSValue::To() const noexcept {
+  T result{nullptr};
   ReadValue(MakeJSValueTreeReader(*this), /*out*/ result);
   return result;
 }
