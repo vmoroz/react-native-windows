@@ -18,6 +18,21 @@ namespace SampleLibraryCpp {
 
 REACT_MODULE(SampleModuleCppImpl, L"SampleModuleCpp");
 struct SampleModuleCppImpl {
+#pragma region Initialization
+
+  REACT_INIT(Initialize)
+  void Initialize(IReactContext const & /*reactContext*/) noexcept {
+    m_timer = winrt::Windows::System::Threading::ThreadPoolTimer::CreatePeriodicTimer(
+        [this](const winrt::Windows::System::Threading::ThreadPoolTimer) noexcept {
+          if (TimedEvent) {
+            TimedEvent(++m_timerCount);
+          }
+        },
+        TimedEventInterval);
+  }
+
+#pragma endregion
+
 #pragma region Constants
 
   REACT_CONSTANT(NumberConstant);
@@ -134,16 +149,6 @@ struct SampleModuleCppImpl {
 #pragma endregion
 
  public:
-  SampleModuleCppImpl() {
-    m_timer = winrt::Windows::System::Threading::ThreadPoolTimer::CreatePeriodicTimer(
-        [this](const winrt::Windows::System::Threading::ThreadPoolTimer) noexcept {
-          if (TimedEvent) {
-            TimedEvent(++m_timerCount);
-          }
-        },
-        TimedEventInterval);
-  }
-
   ~SampleModuleCppImpl() {
     if (m_timer) {
       m_timer.Cancel();
