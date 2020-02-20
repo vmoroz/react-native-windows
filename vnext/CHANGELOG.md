@@ -1,7 +1,19 @@
 # Change Log - react-native-windows
 
-This log was last generated on Wed, 19 Feb 2020 07:10:21 GMT and should not be manually modified.
+This log was last generated on Wed, 19 Feb 2020 23:34:40 GMT and should not be manually modified.
 
+## 0.61.0-beta.14
+Wed, 19 Feb 2020 23:34:40 GMT
+
+### Changes
+
+- Implemented NativeModule initialization with IReactContext (vmorozov@microsoft.com)
+## 0.61.0-beta.13
+Wed, 19 Feb 2020 22:45:15 GMT
+
+### Changes
+
+- Revert "Drop StdCall in favor of Cdecl for x86. (#4115)" (ngerlem@microsoft.com)
 ## 0.61.0-beta.12
 Wed, 19 Feb 2020 07:10:21 GMT
 
