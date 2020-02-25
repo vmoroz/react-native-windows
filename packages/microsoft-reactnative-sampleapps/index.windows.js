@@ -138,6 +138,38 @@ class SampleApp extends Component {
 
     NativeModules.SampleModuleCpp.ExplicitCallbackMethodWithArgs(numberArg, getCallback('SampleModuleCpp.ExplicitCallbackMethodWithArgs => '));
 
+    NativeModules.SampleModuleCpp.TwoCallbacksMethod(/*shouldSucceed:*/true,
+      getCallback('SampleModuleCpp.TwoCallbacksMethod success => '),
+      getCallback('SampleModuleCpp.TwoCallbacksMethod fail => '));
+
+    NativeModules.SampleModuleCpp.TwoCallbacksMethod(/*shouldSucceed:*/false,
+      getCallback('SampleModuleCpp.TwoCallbacksMethod success => '),
+      getCallback('SampleModuleCpp.TwoCallbacksMethod fail => '));
+
+    NativeModules.SampleModuleCpp.TwoCallbacksAsyncMethod(/*shouldSucceed:*/true,
+      getCallback('SampleModuleCpp.TwoCallbacksAsyncMethod success => '),
+      getCallback('SampleModuleCpp.TwoCallbacksAsyncMethod fail => '));
+
+    NativeModules.SampleModuleCpp.TwoCallbacksAsyncMethod(/*shouldSucceed:*/false,
+      getCallback('SampleModuleCpp.TwoCallbacksAsyncMethod success => '),
+      getCallback('SampleModuleCpp.TwoCallbacksAsyncMethod fail => '));
+
+    NativeModules.SampleModuleCpp.ReverseTwoCallbacksMethod(/*shouldSucceed:*/true,
+      getCallback('SampleModuleCpp.ReverseTwoCallbacksMethod fail => '),
+      getCallback('SampleModuleCpp.ReverseTwoCallbacksMethod success => '));
+
+    NativeModules.SampleModuleCpp.ReverseTwoCallbacksMethod(/*shouldSucceed:*/false,
+      getCallback('SampleModuleCpp.ReverseTwoCallbacksMethod fail => '),
+      getCallback('SampleModuleCpp.ReverseTwoCallbacksMethod success => '));
+
+    NativeModules.SampleModuleCpp.ReverseTwoCallbacksAsyncMethod(/*shouldSucceed:*/true,
+      getCallback('SampleModuleCpp.ReverseTwoCallbacksAsyncMethod fail => '),
+      getCallback('SampleModuleCpp.ReverseTwoCallbacksAsyncMethod success => '));
+
+    NativeModules.SampleModuleCpp.ReverseTwoCallbacksAsyncMethod(/*shouldSucceed:*/false,
+      getCallback('SampleModuleCpp.ReverseTwoCallbacksAsyncMethod fail => '),
+      getCallback('SampleModuleCpp.ReverseTwoCallbacksAsyncMethod success => '));
+
     var promise1 = NativeModules.SampleModuleCpp.ExplicitPromiseMethod();
     promise1.then(getCallback('SampleModuleCpp.ExplicitPromiseMethod then => ')).catch(getErrorCallback('SampleModuleCpp.ExplicitPromiseMethod catch => '));
 
