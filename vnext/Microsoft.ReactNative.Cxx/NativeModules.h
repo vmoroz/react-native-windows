@@ -736,17 +736,19 @@ struct ReactModuleBuilder {
   void RegisterModule(wchar_t const *moduleName, wchar_t const *eventEmitterName, ReactMemberId<I>) noexcept {
     RegisterModuleName(moduleName, eventEmitterName);
     RegisterMembers<I + 1>(static_cast<std::make_index_sequence<10> *>(nullptr));
-
-    // Add REACT_INIT initializers after REACT_EVENT and REACT_FUNCTION initializers.
-    // This way REACT_INIT method is invoked after event and function fields are initialized.
-    for (auto &initializer : m_initializers) {
-      m_moduleBuilder.AddInitializer(initializer);
-    }
   }
 
   void RegisterModuleName(wchar_t const *moduleName, wchar_t const *eventEmitterName = nullptr) noexcept {
     m_moduleName = moduleName;
     m_eventEmitterName = eventEmitterName ? eventEmitterName : L"RCTDeviceEventEmitter";
+  }
+
+  void CompleteRegistration() noexcept {
+    // Add REACT_INIT initializers after REACT_EVENT and REACT_FUNCTION initializers.
+    // This way REACT_INIT method is invoked after event and function fields are initialized.
+    for (auto &initializer : m_initializers) {
+      m_moduleBuilder.AddInitializer(initializer);
+    }
   }
 
   template <int I>
@@ -771,7 +773,7 @@ struct ReactModuleBuilder {
   }
 
   template <class TMethod>
-  void RegisterInitMethod(TMethod method, wchar_t const * /*name*/) noexcept {
+  void RegisterInitMethod(TMethod method, wchar_t const * /*name*/ = nullptr) noexcept {
     auto initializer = ModuleInitMethodInfo<TMethod>::GetInitializer(m_module, method);
     m_initializers.push_back(std::move(initializer));
   }
@@ -790,7 +792,7 @@ struct ReactModuleBuilder {
   }
 
   template <class TMethod>
-  void RegisterConstMethod(TMethod method, wchar_t const * /*name*/) noexcept {
+  void RegisterConstMethod(TMethod method, wchar_t const * /*name*/ = nullptr) noexcept {
     auto constantProvider = ModuleConstantInfo<TMethod>::GetConstantProvider(m_module, method);
     m_moduleBuilder.AddConstantProvider(constantProvider);
   }
@@ -802,14 +804,14 @@ struct ReactModuleBuilder {
   }
 
   template <class TField>
-  void RegisterEvent(TField field, wchar_t const *eventName, wchar_t const *eventEmitterName) noexcept {
+  void RegisterEvent(TField field, wchar_t const *eventName, wchar_t const *eventEmitterName = nullptr) noexcept {
     auto eventHandlerInitializer = ModuleEventFieldInfo<TField>::GetEventHandlerInitializer(
         m_module, field, eventName, eventEmitterName ? eventEmitterName : m_eventEmitterName);
     m_moduleBuilder.AddInitializer(eventHandlerInitializer);
   }
 
   template <class TField>
-  void RegisterFunction(TField field, wchar_t const *functionName, wchar_t const *moduleName) noexcept {
+  void RegisterFunction(TField field, wchar_t const *functionName, wchar_t const *moduleName = nullptr) noexcept {
     auto functionInitializer = ModuleFunctionFieldInfo<TField>::GetFunctionInitializer(
         m_module, field, functionName, moduleName ? moduleName : m_moduleName);
     m_moduleBuilder.AddInitializer(functionInitializer);
@@ -849,6 +851,7 @@ inline ReactModuleProvider MakeModuleProvider() noexcept {
     auto module = &BoxedValue<TModule>::GetImpl(moduleObject);
     ReactModuleBuilder builder{module, moduleBuilder};
     RegisterModule(builder);
+    builder.CompleteRegistration();
     return moduleObject;
   };
 }
