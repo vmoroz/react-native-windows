@@ -4,4 +4,5 @@
 namespace Microsoft.ReactNative.Managed
 {
   delegate void ReactCallback<T>(T value);
+  delegate void ReactEvent<T>(T value);
 }
