@@ -2,6 +2,62 @@
   "name": "react-native-windows",
   "entries": [
     {
+      "date": "Thu, 27 Feb 2020 20:18:57 GMT",
+      "tag": "react-native-windows_v0.61.0-beta.27",
+      "version": "0.61.0-beta.27",
+      "comments": {
+        "none": [
+          {
+            "comment": "Add partial generated override manifests",
+            "author": "ngerlem@microsoft.com",
+            "commit": "380d6b1fe5dc69a1b6c6aa55c3aa42d5462c2d58"
+          }
+        ]
+      }
+    },
+    {
+      "date": "Thu, 27 Feb 2020 04:32:20 GMT",
+      "tag": "react-native-windows_v0.61.0-beta.27",
+      "version": "0.61.0-beta.27",
+      "comments": {
+        "none": [
+          {
+            "comment": "Renamed IWebSocket.h to IWebSocketResource.h.",
+            "author": "julio.rocha@microsoft.com",
+            "commit": "4bb365a7fb6dbad1e6dbc9862cb93fd30e064903"
+          }
+        ]
+      }
+    },
+    {
+      "date": "Wed, 26 Feb 2020 18:33:35 GMT",
+      "tag": "react-native-windows_v0.61.0-beta.27",
+      "version": "0.61.0-beta.27",
+      "comments": {
+        "prerelease": [
+          {
+            "comment": "Fixed call of methods with two callbacks",
+            "author": "vmorozov@microsoft.com",
+            "commit": "9014612938e5913c6472871912096a1cfeb99a39"
+          }
+        ]
+      }
+    },
+    {
+      "date": "Wed, 26 Feb 2020 17:21:19 GMT",
+      "tag": "react-native-windows_v0.61.0-beta.26",
+      "version": "0.61.0-beta.26",
+      "comments": {
+        "prerelease": [
+          {
+            "comment": "Standup first TurboModule",
+            "author": "acoates@microsoft.com",
+            "commit": "19c7791f2f786a42bd7af300173ac59cfb0bb922"
+          }
+        ]
+      }
+    },
+    {
       "date": "Wed, 26 Feb 2020 10:17:18 GMT",
       "tag": "react-native-windows_v0.61.0-beta.25",
       "version": "0.61.0-beta.25",

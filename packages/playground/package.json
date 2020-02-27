@@ -5,17 +5,17 @@
   "scripts": {
     "build": "just-scripts build",
     "clean": "just-scripts clean",
+    "lint:fix": "just-scripts lint:fix",
+    "lint": "just-scripts lint",
     "postinstall": "node postinstall.js",
     "start": "react-native start",
-    "lint": "just-scripts lint",
-    "lint:fix": "eslint ./**/*.js ./**/*.ts? --fix",
     "watch": "tsc -w"
   },
   "dependencies": {
     "react": "16.9.0",
     "react-native": "0.61.5",
-    "react-native-windows": "0.61.0-beta.25",
-    "react-native-windows-extended": "0.61.0-beta.33",
+    "react-native-windows": "0.61.0-beta.27",
+    "react-native-windows-extended": "0.61.0-beta.37",
     "rnpm-plugin-windows": "^0.5.1-0"
   },
   "devDependencies": {
