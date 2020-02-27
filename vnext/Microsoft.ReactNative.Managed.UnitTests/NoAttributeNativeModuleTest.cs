@@ -514,7 +514,7 @@ namespace Microsoft.ReactNative.Managed.UnitTests
 
     public void AddMethod<T1>(string name, Func<TModule, Action<T1>> getMethod)
     {
-      m_moduleBuilder.AddMethod(name, MethodReturnType.Callback,
+      m_moduleBuilder.AddMethod(name, MethodReturnType.Void,
         (IJSValueReader inputReader, IJSValueWriter outputWriter, MethodResultCallback resolve, MethodResultCallback reject) =>
         {
           var method = getMethod(m_module);
@@ -525,7 +525,7 @@ namespace Microsoft.ReactNative.Managed.UnitTests
 
     public void AddMethod<T1, T2>(string name, Func<TModule, Action<T1, T2>> getMethod)
     {
-      m_moduleBuilder.AddMethod(name, MethodReturnType.Callback,
+      m_moduleBuilder.AddMethod(name, MethodReturnType.Void,
         (IJSValueReader inputReader, IJSValueWriter outputWriter, MethodResultCallback resolve, MethodResultCallback reject) =>
         {
           var method = getMethod(m_module);
@@ -674,8 +674,29 @@ namespace Microsoft.ReactNative.Managed.UnitTests
 
     public void AddJSEvent<T>(string eventEmitterName, string name, Action<TModule, ReactEvent<T>> setEventHandler)
     {
-      m_initializers.Add(reactContext => {
+      m_moduleBuilder.AddInitializer(reactContext => {
         setEventHandler(m_module, arg => reactContext.EmitJSEvent(eventEmitterName ?? EventEmitterName ?? "RCTDeviceEventEmitter", name, arg));
+      });
+    }
+
+    public void AddJSFunction(string moduleName, string name, Action<TModule, Action> setFunctionHandler)
+    {
+      m_moduleBuilder.AddInitializer(reactContext => {
+        setFunctionHandler(m_module, () => reactContext.CallJSFunction(moduleName ?? ModuleName, name));
+      });
+    }
+
+    public void AddJSFunction<T1>(string moduleName, string name, Action<TModule, Action<T1>> setFunctionHandler)
+    {
+      m_moduleBuilder.AddInitializer(reactContext => {
+        setFunctionHandler(m_module, (T1 arg1) => reactContext.CallJSFunction(moduleName ?? ModuleName, name, arg1));
+      });
+    }
+
+    public void AddJSFunction<T1, T2>(string moduleName, string name, Action<TModule, Action<T1, T2>> setFunctionHandler)
+    {
+      m_moduleBuilder.AddInitializer(reactContext => {
+        setFunctionHandler(m_module, (T1 arg1, T2 arg2) => reactContext.CallJSFunction(moduleName ?? ModuleName, name, arg1, arg2));
       });
     }
 
@@ -693,17 +714,13 @@ namespace Microsoft.ReactNative.Managed.UnitTests
   public class NoAttributeNativeModuleTest
   {
     private ReactModuleBuilderMock m_moduleBuilderMock;
-    private ReactModuleInfo m_moduleInfo;
     private SimpleNativeModule2 m_module;
 
     [TestInitialize]
     public void Initialize()
     {
       m_moduleBuilderMock = new ReactModuleBuilderMock();
-      //m_moduleInfo = new ReactModuleInfo(typeof(SimpleNativeModule2));
       m_module = new SimpleNativeModule2(); // m_moduleBuilderMock.CreateModule<SimpleNativeModule2>(m_moduleInfo);
-      //m_moduleBuilderMock.AddInitializer(m_module.Initialize);
-      //m_moduleBuilderMock.AddMethod("Add", MethodReturnType.Callback, m_module.Add);
 
       var mb = new ModuleMetadataBuilder<SimpleNativeModule2>(m_module, m_moduleBuilderMock);
       mb.ModuleName = "SimpleNativeModule2";
@@ -782,42 +799,21 @@ namespace Microsoft.ReactNative.Managed.UnitTests
       mb.AddJSEvent<string>("MyEventEmitter", "onStringEventProp", (m, handler) => { m.OnStringEventProp = handler; });
       mb.AddJSEvent<JSValue>(null, "OnJSValueEventProp", (m, handler) => { m.OnJSValueEventProp = handler; });
 
+      mb.AddJSFunction<int>(null, "JSIntFunction", (m, handler) => { m.JSIntFunction = handler; });
+      mb.AddJSFunction<Point2>(null, "pointFunc", (m, handler) => { m.JSPointFunction = handler; });
+      mb.AddJSFunction<Point2, Point2>(null, "lineFunc", (m, handler) => { m.JSLineFunction = handler; });
+      mb.AddJSFunction<string>("MyModule", "stringFunc", (m, handler) => { m.JSStringFunction = handler; });
+      mb.AddJSFunction<JSValue>(null, "JSValueFunction", (m, handler) => { m.JSValueFunction = handler; });
+
+      mb.AddJSFunction<int>(null, "JSIntFunctionProp", (m, handler) => { m.JSIntFunctionProp = handler; });
+      mb.AddJSFunction<Point2>(null, "pointFuncProp", (m, handler) => { m.JSPointFunctionProp = handler; });
+      mb.AddJSFunction<Point2, Point2>(null, "lineFuncProp", (m, handler) => { m.JSLineFunctionProp = handler; });
+      mb.AddJSFunction<string>("MyModule", "stringFuncProp", (m, handler) => { m.JSStringFunctionProp = handler; });
+      mb.AddJSFunction<JSValue>(null, "JSValueFunctionProp", (m, handler) => { m.JSValueFunctionProp = handler; });
+
       mb.Complete();
 
-#if false
-
-
-
-      [ReactEvent]
-      public Action<int> OnIntEventProp { get; set; }
-      [ReactEvent("onPointEventProp")]
-      public Action<Point2> OnPointEventProp { get; set; }
-      [ReactEvent("onStringEventProp", EventEmitterName = "MyEventEmitter")]
-      public Action<string> OnStringEventProp { get; set; }
-      [ReactEvent]
-      public Action<JSValue> OnJSValueEventProp { get; set; }
-
-      [ReactFunction]
-      public Action<int> JSIntFunction = null;
-      [ReactFunction("pointFunc")]
-      public Action<Point2> JSPointFunction = null;
-      [ReactFunction("lineFunc")]
-      public Action<Point2, Point2> JSLineFunction = null;
-      [ReactFunction("stringFunc", ModuleName = "MyModule")]
-      public Action<string> JSStringFunction = null;
-      [ReactFunction]
-      public Action<JSValue> JSValueFunction = null;
-      [ReactFunction]
-      public Action<int> JSIntFunctionProp { get; set; }
-      [ReactFunction("pointFuncProp")]
-      public Action<Point2> JSPointFunctionProp { get; set; }
-      [ReactFunction("lineFuncProp")]
-      public Action<Point2, Point2> JSLineFunctionProp { get; set; }
-      [ReactFunction("stringFuncProp", ModuleName = "MyModule")]
-      public Action<string> JSStringFunctionProp { get; set; }
-      [ReactFunction]
-      public Action<JSValue> JSValueFunctionProp { get; set; }
-#endif
+      m_moduleBuilderMock.Initialize();
     }
 
     [TestMethod]
