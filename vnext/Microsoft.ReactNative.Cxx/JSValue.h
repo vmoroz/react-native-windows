@@ -99,18 +99,38 @@ struct JSValue {
   int64_t Int64() const noexcept;
   double Double() const noexcept;
 
+  std::string AsString() const noexcept;
+  bool AsBoolean() const noexcept;
+  int8_t AsInt8() const noexcept;
+  int16_t AsInt16() const noexcept;
+  int32_t AsIn32() const noexcept;
+  int64_t AsIn64() const noexcept;
+  uint8_t AsUInt8() const noexcept;
+  uint16_t AsUInt16() const noexcept;
+  uint32_t AsUIn32() const noexcept;
+  uint64_t AsUIn64() const noexcept;
+  double AsDouble() const noexcept;
+  float AsFloat() const noexcept;
+
+  template <class T, std::enable_if_t<std::is_default_constructible_v<T>, int> = 0>
+  T As() const noexcept;
+  template <
+      class T,
+      std::enable_if_t<!std::is_default_constructible_v<T> && std::is_constructible_v<T, std::nullptr_t>, int> = 0>
+  T As() const noexcept;
+
   JSValueObject TakeObject() noexcept;
   JSValueArray TakeArray() noexcept;
 
   size_t PropertyCount() const noexcept;
   size_t ItemCount() const noexcept;
 
-  template <typename T, std::enable_if_t<std::is_default_constructible_v<T>, int> = 0>
-  T To() const noexcept;
-  template <typename T, std::enable_if_t<std::is_constructible_v<T, std::nullptr_t>, int> = 0>
+  template <class T>
   T To() const noexcept;
   template <class T>
   static JSValue From(const T &value) noexcept;
+
+  std::string ToString() const noexcept;
 
   const JSValue &GetObjectProperty(std::string_view propertyName) const noexcept;
   const JSValue &GetArrayItem(JSValueArray::size_type index) const noexcept;
@@ -251,18 +271,26 @@ inline double JSValue::Double() const noexcept {
   return (m_type == JSValueType::Double) ? m_double : 0;
 }
 
-template <typename T, std::enable_if_t<std::is_default_constructible_v<T>, int>>
-inline T JSValue::To() const noexcept {
+template <class T, std::enable_if_t<std::is_default_constructible_v<T>, int>>
+inline T JSValue::As() const noexcept
+{
   T result;
   ReadValue(MakeJSValueTreeReader(*this), /*out*/ result);
   return result;
 }
 
-template <typename T, std::enable_if_t<std::is_constructible_v<T, std::nullptr_t>, int>>
-inline T JSValue::To() const noexcept {
+template <
+    class T,
+    std::enable_if_t<!std::is_default_constructible_v<T> && std::is_constructible_v<T, std::nullptr_t>, int>>
+inline T JSValue::As() const noexcept {
   T result{nullptr};
   ReadValue(MakeJSValueTreeReader(*this), /*out*/ result);
   return result;
+}
+
+template <class T>
+inline T JSValue::To() const noexcept {
+  return As<T>();
 }
 
 template <class T>

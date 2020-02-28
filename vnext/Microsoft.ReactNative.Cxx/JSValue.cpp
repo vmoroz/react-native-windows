@@ -3,6 +3,9 @@
 
 #include "pch.h"
 #include "JSValue.h"
+#include <iomanip>
+#include <sstream>
+#include <string_view>
 
 namespace winrt::Microsoft::ReactNative {
 
@@ -129,6 +132,107 @@ JSValue JSValue::Copy() const noexcept {
   return result;
 }
 
+std::string JSValue::AsString() const noexcept {
+  switch (m_type) {
+    case JSValueType::String:
+      return m_string;
+    case JSValueType::Boolean:
+      return m_bool ? "true" : "false";
+    case JSValueType::Int64:
+      return std::to_string(m_int64);
+    case JSValueType::Double:
+      return std::to_string(m_double);
+    default:
+      return "";
+  }
+}
+
+bool JSValue::AsBoolean() const noexcept {
+  switch (m_type) {
+    case JSValueType::Object:
+      return true;
+    case JSValueType::Array:
+      return true;
+    case JSValueType::String:
+      return !m_string.empty();
+    case JSValueType::Boolean:
+      return m_bool;
+    case JSValueType::Int64:
+      return m_int64 != 0;
+    case JSValueType::Double:
+      return m_double != 0;
+    default:
+      return false;
+  }
+}
+int8_t JSValue::AsInt8() const noexcept {
+  return static_cast<int8_t>(AsIn64());
+}
+
+int16_t JSValue::AsInt16() const noexcept {
+  return static_cast<int16_t>(AsIn64());
+}
+
+int32_t JSValue::AsIn32() const noexcept {
+  return static_cast<int32_t>(AsIn64());
+}
+
+int64_t JSValue::AsIn64() const noexcept {
+  switch (m_type) {
+    case JSValueType::String: {
+      char *end;
+      int64_t result = strtoll(m_string.c_str(), &end, 10);
+      return (end == m_string.data() + m_string.size()) ? result : 0;
+    }
+    case JSValueType::Boolean:
+      return m_bool ? 1 : 0;
+    case JSValueType::Int64:
+      return m_int64;
+    case JSValueType::Double:
+      return static_cast<int64_t>(m_double);
+    default:
+      return 0;
+  }
+}
+
+uint8_t JSValue::AsUInt8() const noexcept {
+  return static_cast<uint8_t>(AsIn64());
+}
+
+uint16_t JSValue::AsUInt16() const noexcept {
+  return static_cast<uint16_t>(AsIn64());
+}
+
+uint32_t JSValue::AsUIn32() const noexcept {
+  return static_cast<uint32_t>(AsIn64());
+}
+
+uint64_t JSValue::AsUIn64() const noexcept {
+  return static_cast<uint64_t>(AsIn64());
+}
+
+double JSValue::AsDouble() const noexcept {
+  switch (m_type) {
+    case JSValueType::String: {
+      char *end;
+      double result = strtod(m_string.c_str(), &end);
+      return (end == m_string.data() + m_string.size()) ? result : 0;
+    }
+    case JSValueType::Boolean:
+      return m_bool ? 1 : 0;
+    case JSValueType::Int64:
+      return static_cast<double>(m_int64);
+    case JSValueType::Double:
+      return m_double;
+    default:
+      return 0;
+  }
+}
+
+float JSValue::AsFloat() const noexcept {
+  return static_cast<float>(AsDouble());
+}
+
 JSValueObject JSValue::TakeObject() noexcept {
   JSValueObject result;
   if (m_type == JSValueType::Object) {
@@ -147,6 +251,104 @@ JSValueArray JSValue::TakeArray() noexcept {
     m_type = JSValueType::Null;
   }
   return result;
+}
+
+namespace {
+
+struct JsonStringFormatter {
+  JsonStringFormatter(std::string_view stringView) noexcept : m_stringView{stringView} {}
+  friend std::ostream &operator<<(std::ostream &stream, JsonStringFormatter const &formatter) noexcept {
+    auto writeChar = [](std::ostream &stream, char ch) noexcept -> std::ostream & {
+      switch (ch) {
+        case '"':
+          return stream << "\\\"";
+        case '\\':
+          return stream << "\\\\";
+        case '\b':
+          return stream << "\\b";
+        case '\f':
+          return stream << "\\f";
+        case '\n':
+          return stream << "\\n";
+        case '\r':
+          return stream << "\\r";
+        case '\t':
+          return stream << "\\t";
+        default:
+          if ('\x00' <= ch && ch <= '\x1f') {
+            return stream << "\\u" << std::hex << std::setw(4) << std::setfill('0') << (int)ch;
+          } else {
+            return stream << ch;
+          }
+      }
+    };
+
+    stream << '"';
+    for (auto ch : formatter.m_stringView) {
+      writeChar(stream, ch);
+    }
+    return stream << '"';
+  }
+
+ private:
+  std::string_view m_stringView;
+};
+
+struct JsonJSValueFormatter {
+  JsonJSValueFormatter(JSValue const &jsValue) noexcept : m_jsValue{jsValue} {}
+  friend std::ostream &operator<<(std::ostream &stream, JsonJSValueFormatter const &formatter) noexcept {
+    auto getDelimiter = [](bool &start, char const *delimiterStr) noexcept {
+      if (start) {
+        start = false;
+        return "";
+      } else {
+        return delimiterStr;
+      }
+    };
+
+    switch (formatter.m_jsValue.Type()) {
+      case JSValueType::Null:
+        return stream << "null";
+      case JSValueType::Object: {
+        stream << "{";
+        bool start = true;
+        for (auto const &prop : formatter.m_jsValue.Object()) {
+          stream << getDelimiter(start, ", ") << JsonStringFormatter{prop.first} << ": "
+                 << JsonJSValueFormatter{prop.second};
+        }
+        return stream << "}";
+      }
+      case JSValueType::Array: {
+        stream << "[";
+        bool start = true;
+        for (auto const &item : formatter.m_jsValue.Array()) {
+          stream << getDelimiter(start, ", ") << JsonJSValueFormatter{item};
+        }
+        return stream << "]";
+      }
+      case JSValueType::String:
+        return stream << JsonStringFormatter{formatter.m_jsValue.String()};
+      case JSValueType::Boolean:
+        return stream << (formatter.m_jsValue.Boolean() ? "true" : "false");
+      case JSValueType::Int64:
+        return stream << formatter.m_jsValue.Int64();
+      case JSValueType::Double:
+        return stream << formatter.m_jsValue.Double();
+      default:
+        return stream << "<Unexpected>";
+    }
+  }
+
+ private:
+  JSValue const &m_jsValue;
+};
+
+} // namespace
+
+std::string JSValue::ToString() const noexcept {
+  std::ostringstream stream;
+  stream << JsonJSValueFormatter{*this};
+  return stream.str();
 }
 
 size_t JSValue::PropertyCount() const noexcept {
@@ -345,5 +547,4 @@ void swap(JSValue &left, JSValue &right) noexcept {
   right = std::move(left);
   left = std::move(temp);
 }
-
 } // namespace winrt::Microsoft::ReactNative
