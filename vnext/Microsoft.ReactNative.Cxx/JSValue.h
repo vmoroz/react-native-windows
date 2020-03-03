@@ -19,139 +19,410 @@ IJSValueReader MakeJSValueTreeReader(JSValue &&root) noexcept;
 IJSValueWriter MakeJSValueTreeWriter() noexcept;
 JSValue TakeJSValue(IJSValueWriter const &writer) noexcept;
 
-// JSValueObject is based on std::map and has a custom constructor with intializer_list.
+// JSValueObject is based on std::map and has a custom constructor with std::intializer_list.
 // It is possible to write: JSValueObject{{"X", 4}, {"Y", 5}} and pass it as JSValue.
 struct JSValueObject : std::map<std::string, JSValue, std::less<>> {
+#pragma region Constructors
+
+  //! Default constructor.
   JSValueObject() = default;
+
+  //! Construct JSValueObject from the move iterator.
+  template <class TMoveInputIterator>
+  JSValueObject(TMoveInputIterator first, TMoveInputIterator last) noexcept;
+
+  //! Move-construct JSValueObject from the initializer list.
   JSValueObject(std::initializer_list<JSValueObjectKeyValue> initObject) noexcept;
+
+  //! Move-construct JSValueObject from the string-JSValue map.
+  JSValueObject(std::map<std::string, JSValue, std::less<>> &&other) noexcept;
+
+#pragma endregion
+
+#pragma region Copy semantic
+
+  //! Delete copy constructor. Use the Copy method instead.
+  JSValueObject(JSValueObject const &) = delete;
+
+  //! Delete copy assignment. Use the Copy method instead.
+  JSValueObject &operator=(JSValueObject const &) = delete;
+
+  //! Do a deep copy of JSValueObject.
+  JSValueObject Copy() const noexcept;
+
+#pragma endregion
+
+#pragma region Move semantic
+
+  // Default move constructor.
+  JSValueObject(JSValueObject &&) = default;
+
+  // Default move assignment.
+  JSValueObject &operator=(JSValueObject &&) = default;
+
+#pragma endregion
+
+#pragma region Inspect JSValueObject
+
+  //! Return true if this JSValueObject is strictly equal to other JSValueObject.
+  //! Both objects must have the same set of equal properties.
+  //! Property values must have the same type and value.
+  bool Equals(JSValueObject const &other) const noexcept;
+
+  //! Return true if this JSValueObject is strictly equal to other JSValueObject
+  //! after their property values are converted to the same type.
+  bool EqualsAfterConversion(const JSValue &other) const noexcept;
+
+#pragma endregion
+
+#pragma region JSValueObject serialization and deserialization.
+
+  //! Create JSValueObject from IJSValueReader.
+  static JSValueObject ReadFrom(IJSValueReader const &reader) noexcept;
+
+  //! Write this JSValueObject to IJSValueWriter.
+  void WriteTo(IJSValueWriter const &writer) const noexcept;
+
+#pragma endregion
 };
 
-// JSValueArray is based on std::vector and has a custom constructor with intializer_list.
-// It is possible to write: JSValueArray{"X", 4, true} and pass it as JSValue.
+//! JSValueArray is based on std::vector<JSValue> and has a custom constructor with std::intializer_list.
+//! It is possible to write: JSValueArray{"X", 4, true} and pass it as JSValue.
 struct JSValueArray : std::vector<JSValue> {
+#pragma region Constructors
+
+  //! Default constructor.
   JSValueArray() = default;
-  JSValueArray(size_t capacity) noexcept;
-  JSValueArray(std::initializer_list<JSValueArrayItem> initArray) noexcept;
+
+  //! Construct JSValueArray from the move iterator.
+  template <class TMoveInputIterator>
+  JSValueArray(TMoveInputIterator first, TMoveInputIterator last) noexcept;
+
+  //! Move-construct JSValueArray from the initializer list.
+  JSValueArray(std::initializer_list<JSValueArrayItem> initObject) noexcept;
+
+  //! Move-construct JSValueArray from the JSValue vector.
+  JSValueArray(std::vector<JSValue> &&other) noexcept;
+
+#pragma endregion
+
+#pragma region Copy semantic
+
+  //! Delete copy constructor. Use the Copy method instead.
+  JSValueArray(JSValueArray const &) = delete;
+
+  //! Delete copy assignment. Use the Copy method instead.
+  JSValueArray &operator=(JSValueArray const &) = delete;
+
+  //! Do a deep copy of JSValueArray.
+  JSValueArray Copy() const noexcept;
+
+#pragma endregion
+
+#pragma region Move semantic
+
+  // Default move constructor.
+  JSValueArray(JSValueArray &&) = default;
+
+  // Default move assignment.
+  JSValueArray &operator=(JSValueArray &&) = default;
+
+#pragma endregion
+
+#pragma region Inspect JSValueArray
+
+  //! Return true if this JSValueArray is strictly equal to other JSValueArray.
+  //! Both arrays must have the same set of items.
+  //! Items must have the same type and value.
+  bool Equals(JSValueArray const &other) const noexcept;
+
+  //! Return true if this JSValueArray is strictly equal to other JSValueArray
+  //! after their items are converted to the same type.
+  bool EqualsAfterConversion(const JSValue &other) const noexcept;
+
+#pragma endregion
+
+#pragma region JSValueArray serialization and deserialization.
+
+  //! Create JSValueArray from IJSValueReader.
+  static JSValueArray ReadFrom(IJSValueReader const &reader) noexcept;
+
+  //! Write this JSValueArray to IJSValueWriter.
+  void WriteTo(IJSValueWriter const &writer) const noexcept;
+
+#pragma endregion
 };
 
-// A view for JSValueObject
-struct JSValueObjectView {
-  JSValueObjectView(const JSValueObject &object) noexcept;
-  auto begin() const noexcept;
-  auto end() const noexcept;
-
- private:
-  const JSValueObject &m_object;
-};
-
-// A view for JSObjectArray
-struct JSValueArrayView {
-  JSValueArrayView(const JSValueArray &array) noexcept;
-  auto begin() const noexcept;
-  auto end() const noexcept;
-
- private:
-  const JSValueArray &m_array;
-};
-
-// JSValue represents an immutable JavaScript value that can be passed as a parameter.
-// It is created to simplify working with IJSValueReader in some complex cases.
-// It takes more resources than direct use of IJSValueReader, but provides more flexibility.
-// The JSValue is an immutable and is safe to be used from multiple threads.
-// It is move-only to avoid unnecessary or unexpected copying of values.
+//! JSValue represents an immutable JavaScript value that can be passed as a parameter.
+//! It is created to simplify working with IJSValueReader in some complex cases.
+//! It takes more resources than direct use of IJSValueReader, but provides more flexibility.
+//! The JSValue is an immutable and is safe to be used from multiple threads.
+//! It is move-only to avoid unnecessary or unexpected copying of values.
+//! For copy operations the explicit Copy() method must be used.
 struct JSValue {
+#pragma region Predefined constants
+
   static const JSValue Null;
   static const JSValueObject EmptyObject;
   static const JSValueArray EmptyArray;
   static const std::string EmptyString;
 
-  JSValue() noexcept;
-  JSValue(std::nullptr_t) noexcept;
+#pragma endregion
+
+#pragma region Constructors
+
+  //! Create a Null JSValue.
+  constexpr JSValue() noexcept;
+
+  //! Create a Null JSValue.
+  constexpr JSValue(std::nullptr_t) noexcept;
+
+  //! Create an Object JSValue.
   JSValue(JSValueObject &&value) noexcept;
+
+  //! Create an Array JSValue.
   JSValue(JSValueArray &&value) noexcept;
+
+  //! Create a String JSValue.
   JSValue(std::string &&value) noexcept;
+
+  //! Create a String JSValue from any type that can be converted to std::string_view.
   template <class TStringView, std::enable_if_t<std::is_convertible_v<TStringView, std::string_view>, int> = 1>
   JSValue(TStringView value) noexcept;
+
+  //! Create a Boolean JSValue.
   template <class TBool, std::enable_if_t<std::is_same_v<TBool, bool>, int> = 1>
   JSValue(TBool value) noexcept;
+
+  //! Create an Int64 JSValue from any integral type except bool.
   template <class TInt, std::enable_if_t<std::is_integral_v<TInt> && !std::is_same_v<TInt, bool>, int> = 1>
   JSValue(TInt value) noexcept;
+
+  //! Create a Double JSValue.
   JSValue(double value) noexcept;
 
-  JSValue(const JSValue &other) = delete;
-  JSValue &operator=(const JSValue &other) = delete;
+  //! Create JSValue from a type that has WriteValue method defined to write to IJSValueWriter.
+  template <class T>
+  static JSValue From(T const &value) noexcept;
 
-  JSValue(JSValue &&other) noexcept;
-  JSValue &operator=(JSValue &&other) noexcept;
+  //! Create JSValue from JSON string.
+  static JSValue FromJson(std::string_view value) noexcept;
+
+#pragma endregion
+
+#pragma region Destructor
 
   ~JSValue() noexcept;
 
+#pragma endregion
+
+#pragma region JSValue copy semantic
+
+  //! Delete the implicit copy constructor. Use explicit Copy method to avoid unexpected copies.
+  JSValue(const JSValue &other) = delete;
+
+  //! Delete the implicit copy assignment. Use explicit Copy method to avoid unexpected copies.
+  JSValue &operator=(const JSValue &other) = delete;
+
+  //! Do a deep copy of JSValue.
   JSValue Copy() const noexcept;
-  static JSValueObject CopyObject(const JSValueObject &other) noexcept;
-  static JSValueArray CopyArray(const JSValueArray &other) noexcept;
 
+#pragma endregion
+
+#pragma region JSValue move semantic
+
+  //! Move constructor. The 'other' JSValue becomes JSValue::Null.
+  JSValue(JSValue &&other) noexcept;
+
+  //! Move assignment. The 'other' JSValue becomes JSValue::Null.
+  JSValue &operator=(JSValue &&other) noexcept;
+
+  // Move out Object and set this to JSValue::Null. It returns JSValue::EmptyObject if current type is not an object.
+  JSValueObject MoveObject() noexcept;
+
+  // Move out Array and set this to JSValue::Null. It returns JSValue::EmptyArray if current type is not an array.
+  JSValueArray MoveArray() noexcept;
+
+#pragma endregion
+
+#pragma region Inspect JSValue
+
+  //! Get JSValue type.
   JSValueType Type() const noexcept;
+
+  //! Return true if JSValue type is Null.
   bool IsNull() const noexcept;
-  const JSValueObject &Object() const noexcept;
-  const JSValueArray &Array() const noexcept;
-  const std::string &String() const noexcept;
-  bool Boolean() const noexcept;
-  int64_t Int64() const noexcept;
-  double Double() const noexcept;
 
-  std::string AsString() const noexcept;
-  bool AsBoolean() const noexcept;
-  int8_t AsInt8() const noexcept;
-  int16_t AsInt16() const noexcept;
-  int32_t AsIn32() const noexcept;
-  int64_t AsIn64() const noexcept;
-  uint8_t AsUInt8() const noexcept;
-  uint16_t AsUInt16() const noexcept;
-  uint32_t AsUIn32() const noexcept;
-  uint64_t AsUIn64() const noexcept;
-  double AsDouble() const noexcept;
-  float AsFloat() const noexcept;
+  //! Return pointer to JSValueObject if JSValue type is Object, or nullptr otherwise.
+  JSValueObject const *GetIfObject() const noexcept;
 
-  template <class T, std::enable_if_t<std::is_default_constructible_v<T>, int> = 0>
-  T As() const noexcept;
-  template <
-      class T,
-      std::enable_if_t<!std::is_default_constructible_v<T> && std::is_constructible_v<T, std::nullptr_t>, int> = 0>
-  T As() const noexcept;
+  //! Return pointer to JSValueArray if JSValue type is Array, or nullptr otherwise.
+  JSValueArray const *GetIfArray() const noexcept;
 
-  JSValueObject TakeObject() noexcept;
-  JSValueArray TakeArray() noexcept;
+  //! Return pointer to string if JSValue type is String, or nullptr otherwise.
+  std::string const *GetIfString() const noexcept;
 
-  size_t PropertyCount() const noexcept;
-  size_t ItemCount() const noexcept;
+  //! Return pointer to bool value if JSValue type is Boolean, or nullptr otherwise.
+  bool const *GetIfBoolean() const noexcept;
 
-  template <class T>
-  T To() const noexcept;
-  template <class T>
-  static JSValue From(const T &value) noexcept;
+  //! Return pointer to int64_t value if JSValue type is Int64, or nullptr otherwise.
+  int64_t const *GetIfInt64() const noexcept;
 
-  std::string ToString() const noexcept;
+  //! Return pointer to double value if JSValue type is Double, or nullptr otherwise.
+  double const *GetIfDouble() const noexcept;
 
-  const JSValue &GetObjectProperty(std::string_view propertyName) const noexcept;
-  const JSValue &GetArrayItem(JSValueArray::size_type index) const noexcept;
-  const JSValue &operator[](std::string_view propertyName) const noexcept;
-  const JSValue &operator[](JSValueArray::size_type index) const noexcept;
-
+  //! Return true if this JSValue is strictly equal to JSValue.
+  //! Compared values must have the same type and value.
+  //! Objects are equal if they have the same set of equal properties.
+  //! Arrays are equal if they have the same set of equal items.
   bool Equals(const JSValue &other) const noexcept;
 
-  static JSValue ReadFrom(IJSValueReader const &reader) noexcept;
-  static JSValueObject ReadObjectFrom(IJSValueReader const &reader) noexcept;
-  static JSValueArray ReadArrayFrom(IJSValueReader const &reader) noexcept;
+  //! Return true if this JSValue is exact equal to JSValue after they are converted to the same type.
+  //! Null is not converted to other type before comparison.
+  //! Object and Array types are not converted to other types except for Boolean and they are always true.
+  //! String is converted to Double before comparing with a number.
+  //! String is converted to Boolean (true if string is not empty) before comparing with Boolean.
+  //! Boolean is converted to 1 and +0 when comparing with a number.
+  //! Int64 is converted to Double when comparing with Double.
+  bool EqualsAfterConversion(const JSValue &other) const noexcept;
 
+#pragma endregion
+
+#pragma region Inspect JSValueObject
+
+  //! Return property count if JSValue is Object, or 0 otherwise.
+  size_t PropertyCount() const noexcept;
+
+  //! Get a reference to object property value if JSValue type is Object and the property is found,
+  //! or a reference to JSValue::Null otherwise.
+  JSValue const &GetObjectProperty(std::string_view propertyName) const noexcept;
+
+  //! Get a reference to object property value if JSValue type is Object and the property is found,
+  //! or a reference to JSValue::Null otherwise.
+  JSValue const &operator[](std::string_view propertyName) const noexcept;
+
+#pragma endregion
+
+#pragma region Inspect JSValueArray
+
+  //! Return item count if JSValue is Array, or 0 otherwise.
+  size_t ItemCount() const noexcept;
+
+  //! Get a reference to array item if JSValue type is Array and the index is in bounds,
+  //! or a reference to JSValue::Null otherwise.
+  const JSValue &GetArrayItem(JSValueArray::size_type index) const noexcept;
+
+  //! Get a reference to array item if JSValue type is Array and the index is in bounds,
+  //! or a reference to JSValue::Null otherwise.
+  const JSValue &operator[](JSValueArray::size_type index) const noexcept;
+
+#pragma endregion
+
+#pragma region Convert JSValue to other type
+
+  //! Return Object representation of JSValue. It is JSValue::EmptyObject if type is not Object.
+  JSValueObject const &AsObject() const noexcept;
+
+  //! Return Array representation of JSValue. It is JSValue::EmptyArray if type is not Object.
+  JSValueArray const &AsArray() const noexcept;
+
+  //! Return a string representation of JSValue. It is the same as JavaScript String(value) result.
+  std::string AsString() const noexcept;
+
+  //! Return a Boolean representation of JSValue. It is the same as JavaScript Boolean(value) result.
+  bool AsBoolean() const noexcept;
+
+  //! Return an Int8 representation of JSValue. It is the same as JavaScript Number(value) result casted to int8_t.
+  int8_t AsInt8() const noexcept;
+
+  //! Return an Int16 representation of JSValue. It is the same as JavaScript Number(value) result casted to int16_t.
+  int16_t AsInt16() const noexcept;
+
+  //! Return an Int32 representation of JSValue. It is the same as JavaScript Number(value) result casted to int32_t.
+  int32_t AsInt32() const noexcept;
+
+  //! Return an Int64 representation of JSValue. It is the same as JavaScript Number(value) result casted to int64_t.
+  int64_t AsInt64() const noexcept;
+
+  //! Return an UInt8 representation of JSValue. It is the same as JavaScript Number(value) result casted to uint8_t.
+  uint8_t AsUInt8() const noexcept;
+
+  //! Return an UInt16 representation of JSValue. It is the same as JavaScript Number(value) result casted to uint16_t.
+  uint16_t AsUInt16() const noexcept;
+
+  //! Return an UInt32 representation of JSValue. It is the same as JavaScript Number(value) result casted to uint32_t.
+  uint32_t AsUInt32() const noexcept;
+
+  //! Return an UInt64 representation of JSValue. It is the same as JavaScript Number(value) result casted to uint64_t.
+  uint64_t AsUInt64() const noexcept;
+
+  //! Return a Double representation of JSValue. It is the same as JavaScript Number(value) result.
+  double AsDouble() const noexcept;
+
+  //! Return an Float representation of JSValue. It is the same as JavaScript Number(value) result casted to float.
+  float AsFloat() const noexcept;
+
+  //! Return value T that is created from JSValue using the ReadValue function override.
+  //! Default T is constructed by using default constructor.
+  template <
+      class T,
+      std::enable_if_t<std::is_default_constructible_v<T> && !std::is_constructible_v<T, std::nullptr_t>, int> = 0>
+  T As() const noexcept;
+
+  //! Return value T that is created from JSValue using the ReadValue function override.
+  //! Default T is constructed by using constructor that receives nullptr as a parameter.
+  template <class T, std::enable_if_t<std::is_constructible_v<T, std::nullptr_t>, int> = 0>
+  T As() const noexcept;
+
+  //! Return value T that is created from JSValue using the ReadValue function override.
+  //! Default T is constructed from the provided 'default' value.
+  template <class T>
+  T As(T &&default) const noexcept;
+
+  //! Convert JSValue to string similar to console.log()
+  std::string ToString() const noexcept;
+
+#pragma endregion
+
+#pragma region JSValue serialization and deserialization.
+
+  //! Create JSValue from IJSValueReader.
+  static JSValue ReadFrom(IJSValueReader const &reader) noexcept;
+
+  //! Write this JSValue to IJSValueWriter.
   void WriteTo(IJSValueWriter const &writer) const noexcept;
-  static void WriteObjectTo(IJSValueWriter const &writer, JSValueObjectView object) noexcept;
-  static void WriteArrayTo(IJSValueWriter const &writer, JSValueArrayView value) noexcept;
+
+#pragma endregion
+
+#pragma region Deprecated methods
+
+  // The methods below are deprecated in favor of other methods with clearer semantic
+  [[deprecated("Use GetIfObject or AsObject")]] JSValueObject const &Object() const noexcept;
+  [[deprecated("Use GetIfArray or As Array")]] JSValueArray const &Array() const noexcept;
+  [[deprecated("Use GetIfString or AsString")]] std::string const &String() const noexcept;
+  [[deprecated("Use GetIfBoolean or AsBoolean")]] bool Boolean() const noexcept;
+  [[deprecated("Use GetIfInt64 or AsInt64")]] int64_t Int64() const noexcept;
+  [[deprecated("Use GetIfDouble or AsDouble")]] double Double() const noexcept;
+
+  // We have renamed the methods below.
+  template <class T>
+  [[deprecated("Use As<T>")]] T To() const noexcept;
+  [[deprecated("Use MoveObject")]] JSValueObject TakeObject() noexcept;
+  [[deprecated("Use MoveArray")]] JSValueArray TakeArray() noexcept;
+
+#pragma endregion
+
+#pragma region Private methods
 
  private:
-  bool ObjectEquals(const JSValueObject &other) const noexcept;
-  bool ArrayEquals(const JSValueArray &other) const noexcept;
+  bool ObjectEquals(JSValueObject const &other) const noexcept;
+  bool ArrayEquals(JSValueArray const &other) const noexcept;
   static JSValueObject ReadObjectProperties(IJSValueReader const &reader) noexcept;
   static JSValueArray ReadArrayItems(IJSValueReader const &reader) noexcept;
+
+#pragma endregion
+
+#pragma region Private fields
 
  private: // Instance fields
   JSValueType m_type;
@@ -163,13 +434,19 @@ struct JSValue {
     int64_t m_int64;
     double m_double;
   };
+
+#pragma endregion
 };
+
+#pragma region Standalone JSValue functions
 
 bool operator==(const JSValue &left, const JSValue &right) noexcept;
 bool operator!=(const JSValue &left, const JSValue &right) noexcept;
 void swap(JSValue &left, JSValue &right) noexcept;
 
-// Helps initialize key-value pairs for JSValueObject
+#pragma endregion
+
+//! Helps initialize key-value pairs for JSValueObject
 struct JSValueObjectKeyValue {
   template <class TKey, class TValue>
   JSValueObjectKeyValue(TKey &&key, TValue &&value) noexcept
@@ -179,7 +456,7 @@ struct JSValueObjectKeyValue {
   JSValue Value;
 };
 
-// Helps initialize items for JSValueArray
+//! Helps initialize items for JSValueArray
 struct JSValueArrayItem {
   template <class TItem>
   JSValueArrayItem(TItem &&item) noexcept : Item(std::forward<TItem>(item)) {}
@@ -190,34 +467,6 @@ struct JSValueArrayItem {
 //===========================================================================
 // JSValueObjectKeyValue inline implementation
 //===========================================================================
-
-//===========================================================================
-// JSValueArrayItem inline implementation
-//===========================================================================
-
-inline JSValueObjectView::JSValueObjectView(const JSValueObject &object) noexcept : m_object{object} {}
-
-inline auto JSValueObjectView::begin() const noexcept {
-  return m_object.begin();
-}
-
-inline auto JSValueObjectView::end() const noexcept {
-  return m_object.end();
-}
-
-//===========================================================================
-// JSValueArrayView inline implementation
-//===========================================================================
-
-inline JSValueArrayView::JSValueArrayView(const JSValueArray &array) noexcept : m_array{array} {}
-
-inline auto JSValueArrayView::begin() const noexcept {
-  return m_array.begin();
-}
-
-inline auto JSValueArrayView::end() const noexcept {
-  return m_array.end();
-}
 
 //===========================================================================
 // JSValue inline implementation
@@ -247,6 +496,30 @@ inline bool JSValue::IsNull() const noexcept {
   return m_type == JSValueType::Null;
 }
 
+inline JSValueObject const *JSValue::GetIfObject() const noexcept {
+  return (m_type == JSValueType::Object) ? &m_object : nullptr;
+}
+
+inline JSValueArray const *JSValue::GetIfArray() const noexcept {
+  return (m_type == JSValueType::Array) ? &m_array : nullptr;
+}
+
+inline std::string const *JSValue::GetIfString() const noexcept {
+  return (m_type == JSValueType::String) ? &m_string : nullptr;
+}
+
+inline bool const *JSValue::GetIfBoolean() const noexcept {
+  return (m_type == JSValueType::Boolean) ? &m_bool : nullptr;
+}
+
+inline int64_t const *JSValue::GetIfInt64() const noexcept {
+  return (m_type == JSValueType::Int64) ? &m_int64 : nullptr;
+}
+
+inline double const *JSValue::GetIfDouble() const noexcept {
+  return (m_type == JSValueType::Double) ? &m_double : nullptr;
+}
+
 inline const JSValueObject &JSValue::Object() const noexcept {
   return (m_type == JSValueType::Object) ? m_object : EmptyObject;
 }
@@ -271,9 +544,50 @@ inline double JSValue::Double() const noexcept {
   return (m_type == JSValueType::Double) ? m_double : 0;
 }
 
+template <>
+inline std::string JSValue::As() const noexcept {
+  return AsString();
+}
+
+template <>
+inline bool JSValue::As() const noexcept {
+  return AsBoolean();
+}
+
+template <>
+inline int8_t JSValue::As() const noexcept {
+  return AsInt8();
+}
+
+template <>
+inline int16_t JSValue::As() const noexcept {
+  return AsInt16();
+}
+
+template <>
+inline int32_t JSValue::As() const noexcept {
+  return AsInt32();
+}
+
+template <>
+inline int64_t JSValue::As() const noexcept {
+  return AsInt64();
+}
+
+// inline std::string AsString() const noexcept;
+// bool AsBoolean() const noexcept;
+// int8_t AsInt8() const noexcept;
+// int16_t AsInt16() const noexcept;
+// int32_t AsIn32() const noexcept;
+// int64_t AsIn64() const noexcept;
+// uint8_t AsUInt8() const noexcept;
+// uint16_t AsUInt16() const noexcept;
+// uint32_t AsUIn32() const noexcept;
+// uint64_t AsUIn64() const noexcept;
+// double AsDouble() const noexcept;
+// float AsFloat() const noexcept;
 template <class T, std::enable_if_t<std::is_default_constructible_v<T>, int>>
-inline T JSValue::As() const noexcept
-{
+inline T JSValue::As() const noexcept {
   T result;
   ReadValue(MakeJSValueTreeReader(*this), /*out*/ result);
   return result;

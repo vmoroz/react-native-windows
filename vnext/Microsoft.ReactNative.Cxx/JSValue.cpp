@@ -134,6 +134,12 @@ JSValue JSValue::Copy() const noexcept {
 
 std::string JSValue::AsString() const noexcept {
   switch (m_type) {
+    case JSValueType::Null:
+      return "null";
+    case JSValueType::Object:
+      return "{}"; // TODO: do Log-like formatting
+    case JSValueType::Array:
+      return "[]"; // TODO: do Log-like formatting
     case JSValueType::String:
       return m_string;
     case JSValueType::Boolean:
@@ -165,19 +171,20 @@ bool JSValue::AsBoolean() const noexcept {
       return false;
   }
 }
+
 int8_t JSValue::AsInt8() const noexcept {
-  return static_cast<int8_t>(AsIn64());
+  return static_cast<int8_t>(AsInt64());
 }
 
 int16_t JSValue::AsInt16() const noexcept {
-  return static_cast<int16_t>(AsIn64());
+  return static_cast<int16_t>(AsInt64());
 }
 
-int32_t JSValue::AsIn32() const noexcept {
-  return static_cast<int32_t>(AsIn64());
+int32_t JSValue::AsInt32() const noexcept {
+  return static_cast<int32_t>(AsInt64());
 }
 
-int64_t JSValue::AsIn64() const noexcept {
+int64_t JSValue::AsInt64() const noexcept {
   switch (m_type) {
     case JSValueType::String: {
       char *end;
@@ -196,19 +203,19 @@ int64_t JSValue::AsIn64() const noexcept {
 }
 
 uint8_t JSValue::AsUInt8() const noexcept {
-  return static_cast<uint8_t>(AsIn64());
+  return static_cast<uint8_t>(AsInt64());
 }
 
 uint16_t JSValue::AsUInt16() const noexcept {
-  return static_cast<uint16_t>(AsIn64());
+  return static_cast<uint16_t>(AsInt64());
 }
 
-uint32_t JSValue::AsUIn32() const noexcept {
-  return static_cast<uint32_t>(AsIn64());
+uint32_t JSValue::AsUInt32() const noexcept {
+  return static_cast<uint32_t>(AsInt64());
 }
 
-uint64_t JSValue::AsUIn64() const noexcept {
-  return static_cast<uint64_t>(AsIn64());
+uint64_t JSValue::AsUInt64() const noexcept {
+  return static_cast<uint64_t>(AsInt64());
 }
 
 double JSValue::AsDouble() const noexcept {
