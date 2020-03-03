@@ -143,7 +143,7 @@ bool JSValueArray::EqualsAfterConversion(JSValueArray const &other) const noexce
   JSValueArray array;
   if (reader.ValueType() == JSValueType::Array) {
     while (reader.GetNextArrayItem()) {
-      array.push_back(ReadFrom(reader));
+      array.push_back(JSValue::ReadFrom(reader));
     }
   }
 
