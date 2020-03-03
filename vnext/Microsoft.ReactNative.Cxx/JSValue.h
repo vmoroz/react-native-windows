@@ -41,10 +41,10 @@ struct JSValueObject : std::map<std::string, JSValue, std::less<>> {
 
 #pragma region Copy semantic
 
-  //! Delete copy constructor. Use the Copy method instead.
+  //! Delete copy constructor to avoid unexpected copies. Use the Copy method instead.
   JSValueObject(JSValueObject const &) = delete;
 
-  //! Delete copy assignment. Use the Copy method instead.
+  //! Delete copy assignment to avoid unexpected copies. Use the Copy method instead.
   JSValueObject &operator=(JSValueObject const &) = delete;
 
   //! Do a deep copy of JSValueObject.
@@ -71,7 +71,8 @@ struct JSValueObject : std::map<std::string, JSValue, std::less<>> {
 
   //! Return true if this JSValueObject is strictly equal to other JSValueObject
   //! after their property values are converted to the same type.
-  bool EqualsAfterConversion(const JSValue &other) const noexcept;
+  //! See JSValue::EqualsAfterConversion for details about the conversion.
+  bool EqualsAfterConversion(const JSValueObject &other) const noexcept;
 
 #pragma endregion
 
@@ -85,6 +86,13 @@ struct JSValueObject : std::map<std::string, JSValue, std::less<>> {
 
 #pragma endregion
 };
+
+#pragma region Standalone JSValueObject functions
+
+bool operator==(const JSValueObject &left, const JSValueObject &right) noexcept;
+bool operator!=(const JSValueObject &left, const JSValueObject &right) noexcept;
+
+#pragma endregion
 
 //! JSValueArray is based on std::vector<JSValue> and has a custom constructor with std::intializer_list.
 //! It is possible to write: JSValueArray{"X", 4, true} and pass it as JSValue.
@@ -108,10 +116,10 @@ struct JSValueArray : std::vector<JSValue> {
 
 #pragma region Copy semantic
 
-  //! Delete copy constructor. Use the Copy method instead.
+  //! Delete copy constructor to avoid unexpected copies. Use the Copy method instead.
   JSValueArray(JSValueArray const &) = delete;
 
-  //! Delete copy assignment. Use the Copy method instead.
+  //! Delete copy assignment to avoid unexpected copies. Use the Copy method instead.
   JSValueArray &operator=(JSValueArray const &) = delete;
 
   //! Do a deep copy of JSValueArray.
@@ -138,7 +146,8 @@ struct JSValueArray : std::vector<JSValue> {
 
   //! Return true if this JSValueArray is strictly equal to other JSValueArray
   //! after their items are converted to the same type.
-  bool EqualsAfterConversion(const JSValue &other) const noexcept;
+  //! See JSValue::EqualsAfterConversion for details about the conversion.
+  bool EqualsAfterConversion(const JSValueArray &other) const noexcept;
 
 #pragma endregion
 
@@ -153,12 +162,20 @@ struct JSValueArray : std::vector<JSValue> {
 #pragma endregion
 };
 
+#pragma region Standalone JSValueArray functions
+
+bool operator==(const JSValueArray &left, const JSValueArray &right) noexcept;
+bool operator!=(const JSValueArray &left, const JSValueArray &right) noexcept;
+
+#pragma endregion
+
 //! JSValue represents an immutable JavaScript value that can be passed as a parameter.
 //! It is created to simplify working with IJSValueReader in some complex cases.
 //! It takes more resources than direct use of IJSValueReader, but provides more flexibility.
 //! The JSValue is an immutable and is safe to be used from multiple threads.
 //! It is move-only to avoid unnecessary or unexpected copying of values.
 //! For copy operations the explicit Copy() method must be used.
+//! Note that the move operations are not thread safe.
 struct JSValue {
 #pragma region Predefined constants
 
@@ -172,10 +189,10 @@ struct JSValue {
 #pragma region Constructors
 
   //! Create a Null JSValue.
-  constexpr JSValue() noexcept;
+  JSValue() noexcept;
 
   //! Create a Null JSValue.
-  constexpr JSValue(std::nullptr_t) noexcept;
+  JSValue(std::nullptr_t) noexcept;
 
   //! Create an Object JSValue.
   JSValue(JSValueObject &&value) noexcept;
@@ -205,9 +222,6 @@ struct JSValue {
   template <class T>
   static JSValue From(T const &value) noexcept;
 
-  //! Create JSValue from JSON string.
-  static JSValue FromJson(std::string_view value) noexcept;
-
 #pragma endregion
 
 #pragma region Destructor
@@ -218,10 +232,10 @@ struct JSValue {
 
 #pragma region JSValue copy semantic
 
-  //! Delete the implicit copy constructor. Use explicit Copy method to avoid unexpected copies.
+  //! Delete the copy constructor to avoid unexpected copies. Use the Copy method instead.
   JSValue(const JSValue &other) = delete;
 
-  //! Delete the implicit copy assignment. Use explicit Copy method to avoid unexpected copies.
+  //! Delete the copy assignment to avoid unexpected copies. Use the Copy method instead.
   JSValue &operator=(const JSValue &other) = delete;
 
   //! Do a deep copy of JSValue.
@@ -237,10 +251,12 @@ struct JSValue {
   //! Move assignment. The 'other' JSValue becomes JSValue::Null.
   JSValue &operator=(JSValue &&other) noexcept;
 
-  // Move out Object and set this to JSValue::Null. It returns JSValue::EmptyObject if current type is not an object.
+  //! Move out Object and set this to JSValue::Null. It returns JSValue::EmptyObject
+  //! and keeps this JSValue unchanged if current type is not an object.
   JSValueObject MoveObject() noexcept;
 
-  // Move out Array and set this to JSValue::Null. It returns JSValue::EmptyArray if current type is not an array.
+  //! Move out Array and set this to JSValue::Null. It returns JSValue::EmptyArray
+  //! and keeps this JSValue unchanged if current type is not an array.
   JSValueArray MoveArray() noexcept;
 
 #pragma endregion
@@ -273,11 +289,9 @@ struct JSValue {
 
   //! Return true if this JSValue is strictly equal to JSValue.
   //! Compared values must have the same type and value.
-  //! Objects are equal if they have the same set of equal properties.
-  //! Arrays are equal if they have the same set of equal items.
   bool Equals(const JSValue &other) const noexcept;
 
-  //! Return true if this JSValue is exact equal to JSValue after they are converted to the same type.
+  //! Return true if this JSValue is strictly equal to JSValue after they are converted to the same type.
   //! Null is not converted to other type before comparison.
   //! Object and Array types are not converted to other types except for Boolean and they are always true.
   //! String is converted to Double before comparing with a number.
@@ -377,9 +391,9 @@ struct JSValue {
   //! Return value T that is created from JSValue using the ReadValue function override.
   //! Default T is constructed from the provided 'default' value.
   template <class T>
-  T As(T &&default) const noexcept;
+  T As(T &&defaultValue) const noexcept;
 
-  //! Convert JSValue to string similar to console.log()
+  //! Convert JSValue to JSON string.
   std::string ToString() const noexcept;
 
 #pragma endregion
@@ -412,16 +426,6 @@ struct JSValue {
 
 #pragma endregion
 
-#pragma region Private methods
-
- private:
-  bool ObjectEquals(JSValueObject const &other) const noexcept;
-  bool ArrayEquals(JSValueArray const &other) const noexcept;
-  static JSValueObject ReadObjectProperties(IJSValueReader const &reader) noexcept;
-  static JSValueArray ReadArrayItems(IJSValueReader const &reader) noexcept;
-
-#pragma endregion
-
 #pragma region Private fields
 
  private: // Instance fields
@@ -442,11 +446,11 @@ struct JSValue {
 
 bool operator==(const JSValue &left, const JSValue &right) noexcept;
 bool operator!=(const JSValue &left, const JSValue &right) noexcept;
-void swap(JSValue &left, JSValue &right) noexcept;
 
 #pragma endregion
 
-//! Helps initialize key-value pairs for JSValueObject
+//! Helps initialize key-value pairs for JSValueObject.
+//! It creates its own instance of JSValue which then can be moved to JSValueObject.
 struct JSValueObjectKeyValue {
   template <class TKey, class TValue>
   JSValueObjectKeyValue(TKey &&key, TValue &&value) noexcept
@@ -456,7 +460,8 @@ struct JSValueObjectKeyValue {
   JSValue Value;
 };
 
-//! Helps initialize items for JSValueArray
+//! Helps initialize items for JSValueArray.
+//! It creates its own instance of JSValue which then can be moved to JSValueArray.
 struct JSValueArrayItem {
   template <class TItem>
   JSValueArrayItem(TItem &&item) noexcept : Item(std::forward<TItem>(item)) {}
@@ -465,11 +470,56 @@ struct JSValueArrayItem {
 };
 
 //===========================================================================
-// JSValueObjectKeyValue inline implementation
+// Inline JSValueObject implementation.
 //===========================================================================
 
+template <class TMoveInputIterator>
+JSValueObject::JSValueObject(TMoveInputIterator first, TMoveInputIterator last) noexcept {
+  auto it = first;
+  while (it != last) {
+    auto pair = *it++;
+    try_emplace(std::move(pair.first), std::move(pair.second));
+  }
+}
+
 //===========================================================================
-// JSValue inline implementation
+// Inline JSValueObject standalone function implementations.
+//===========================================================================
+
+inline bool operator==(const JSValueObject &left, const JSValueObject &right) noexcept {
+  return left.Equals(right);
+}
+
+inline bool operator!=(const JSValueObject &left, const JSValueObject &right) noexcept {
+  return !left.Equals(right);
+}
+
+//===========================================================================
+// Inline JSValueArray implementation.
+//===========================================================================
+
+template <class TMoveInputIterator>
+JSValueArray::JSValueArray(TMoveInputIterator first, TMoveInputIterator last) noexcept {
+  auto it = first;
+  while (it != last) {
+    push_back(*it++);
+  }
+}
+
+//===========================================================================
+// Inline JSValueArray standalone function implementations.
+//===========================================================================
+
+inline bool operator==(const JSValueArray &left, const JSValueArray &right) noexcept {
+  return left.Equals(right);
+}
+
+inline bool operator!=(const JSValueArray &left, const JSValueArray &right) noexcept {
+  return !left.Equals(right);
+}
+
+//===========================================================================
+// Inline JSValue implementation.
 //===========================================================================
 
 #pragma warning(push)
@@ -487,6 +537,13 @@ template <class TInt, std::enable_if_t<std::is_integral_v<TInt> && !std::is_same
 inline JSValue::JSValue(TInt value) noexcept : m_type{JSValueType::Int64}, m_int64{static_cast<int64_t>(value)} {}
 inline JSValue::JSValue(double value) noexcept : m_type{JSValueType::Double}, m_double{value} {}
 #pragma warning(pop)
+
+template <class T>
+static JSValue From(T const &value) noexcept {
+  auto writer = MakeJSValueTreeWriter();
+  WriteValue(writer, value);
+  return TakeJSValue(writer);
+}
 
 inline JSValueType JSValue::Type() const noexcept {
   return m_type;
@@ -520,28 +577,12 @@ inline double const *JSValue::GetIfDouble() const noexcept {
   return (m_type == JSValueType::Double) ? &m_double : nullptr;
 }
 
-inline const JSValueObject &JSValue::Object() const noexcept {
+inline JSValueObject const &JSValue::AsObject() const noexcept {
   return (m_type == JSValueType::Object) ? m_object : EmptyObject;
 }
 
-inline const JSValueArray &JSValue::Array() const noexcept {
+inline JSValueArray const &JSValue::AsArray() const noexcept {
   return (m_type == JSValueType::Array) ? m_array : EmptyArray;
-}
-
-inline const std::string &JSValue::String() const noexcept {
-  return (m_type == JSValueType::String) ? m_string : EmptyString;
-}
-
-inline bool JSValue::Boolean() const noexcept {
-  return (m_type == JSValueType::Boolean) ? m_bool : false;
-}
-
-inline int64_t JSValue::Int64() const noexcept {
-  return (m_type == JSValueType::Int64) ? m_int64 : 0;
-}
-
-inline double JSValue::Double() const noexcept {
-  return (m_type == JSValueType::Double) ? m_double : 0;
 }
 
 template <>
@@ -574,44 +615,20 @@ inline int64_t JSValue::As() const noexcept {
   return AsInt64();
 }
 
-// inline std::string AsString() const noexcept;
-// bool AsBoolean() const noexcept;
-// int8_t AsInt8() const noexcept;
-// int16_t AsInt16() const noexcept;
-// int32_t AsIn32() const noexcept;
-// int64_t AsIn64() const noexcept;
-// uint8_t AsUInt8() const noexcept;
-// uint16_t AsUInt16() const noexcept;
-// uint32_t AsUIn32() const noexcept;
-// uint64_t AsUIn64() const noexcept;
-// double AsDouble() const noexcept;
-// float AsFloat() const noexcept;
-template <class T, std::enable_if_t<std::is_default_constructible_v<T>, int>>
+template <
+    class T,
+    std::enable_if_t<std::is_default_constructible_v<T> && !std::is_constructible_v<T, std::nullptr_t>, int>>
 inline T JSValue::As() const noexcept {
   T result;
   ReadValue(MakeJSValueTreeReader(*this), /*out*/ result);
   return result;
 }
 
-template <
-    class T,
-    std::enable_if_t<!std::is_default_constructible_v<T> && std::is_constructible_v<T, std::nullptr_t>, int>>
+template <class T, std::enable_if_t<std::is_constructible_v<T, std::nullptr_t>, int>>
 inline T JSValue::As() const noexcept {
   T result{nullptr};
   ReadValue(MakeJSValueTreeReader(*this), /*out*/ result);
   return result;
-}
-
-template <class T>
-inline T JSValue::To() const noexcept {
-  return As<T>();
-}
-
-template <class T>
-static JSValue From(const T &value) noexcept {
-  auto writer = MakeJSValueTreeWriter();
-  WriteValue(writer, value);
-  return TakeJSValue(writer);
 }
 
 inline const JSValue &JSValue::operator[](std::string_view propertyName) const noexcept {
@@ -622,8 +639,45 @@ inline const JSValue &JSValue::operator[](JSValueArray::size_type index) const n
   return GetArrayItem(index);
 }
 
+inline const JSValueObject &JSValue::Object() const noexcept {
+  return (m_type == JSValueType::Object) ? m_object : EmptyObject;
+}
+
+inline const JSValueArray &JSValue::Array() const noexcept {
+  return (m_type == JSValueType::Array) ? m_array : EmptyArray;
+}
+
+inline const std::string &JSValue::String() const noexcept {
+  return (m_type == JSValueType::String) ? m_string : EmptyString;
+}
+
+inline bool JSValue::Boolean() const noexcept {
+  return (m_type == JSValueType::Boolean) ? m_bool : false;
+}
+
+inline int64_t JSValue::Int64() const noexcept {
+  return (m_type == JSValueType::Int64) ? m_int64 : 0;
+}
+
+inline double JSValue::Double() const noexcept {
+  return (m_type == JSValueType::Double) ? m_double : 0;
+}
+
+template <class T>
+inline T JSValue::To() const noexcept {
+  return As<T>();
+}
+
+inline JSValueObject JSValue::TakeObject() noexcept {
+  return MoveObject();
+}
+
+inline JSValueArray JSValue::TakeArray() noexcept {
+  return MoveArray();
+}
+
 //===========================================================================
-// Standalone inline functions implementation
+// Inline JSValue standalone function implementations.
 //===========================================================================
 
 inline bool operator==(const JSValue &left, const JSValue &right) noexcept {

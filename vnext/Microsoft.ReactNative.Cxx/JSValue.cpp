@@ -19,6 +19,74 @@ JSValueObject::JSValueObject(std::initializer_list<JSValueObjectKeyValue> initOb
   }
 }
 
+JSValueObject::JSValueObject(std::map<std::string, JSValue, std::less<>> &&other) noexcept : map{std::move(other)} {}
+
+JSValueObject JSValueObject::Copy() const noexcept {
+  JSValueObject object;
+  for (auto const &property : *this) {
+    object.try_emplace(property.first, property.second.Copy());
+  }
+
+  return object;
+}
+
+bool JSValueObject::Equals(JSValueObject const &other) const noexcept {
+  if (size() != other.size()) {
+    return false;
+  }
+
+  // std::map keeps key-values in an ordered sequence.
+  // Make sure that pairs are matching at the same position.
+  auto otherIt = other.begin();
+  for (auto const &property : *this) {
+    auto it = otherIt++;
+    if (property.first != it->first || !property.second.Equals(it->second)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+bool JSValueObject::EqualsAfterConversion(JSValueObject const &other) const noexcept {
+  if (size() != other.size()) {
+    return false;
+  }
+
+  // std::map keeps key-values in an ordered sequence.
+  // Make sure that pairs are matching at the same position.
+  auto otherIt = other.begin();
+  for (auto const &property : *this) {
+    auto it = otherIt++;
+    if (property.first != it->first || !property.second.EqualsAfterConversion(it->second)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/*static*/ JSValueObject JSValueObject::ReadFrom(IJSValueReader const &reader) noexcept {
+  JSValueObject object;
+  if (reader.ValueType() == JSValueType::Object) {
+    hstring propertyName;
+    while (reader.GetNextObjectProperty(/*ref*/ propertyName)) {
+      object.try_emplace(to_string(propertyName), JSValue::ReadFrom(reader));
+    }
+  }
+
+  return object;
+}
+
+void JSValueObject::WriteTo(IJSValueWriter const &writer) const noexcept {
+  writer.WriteObjectBegin();
+  for (auto const &property : *this) {
+    writer.WritePropertyName(to_hstring(property.first));
+    property.second.WriteTo(writer);
+  }
+  writer.WriteObjectEnd();
+}
+
 //===========================================================================
 // JSValueArray implementation
 //===========================================================================
@@ -29,7 +97,66 @@ JSValueArray::JSValueArray(std::initializer_list<JSValueArrayItem> initArray) no
   }
 }
 
-JSValueArray::JSValueArray(size_t capacity) noexcept : std::vector<JSValue>(capacity) {}
+JSValueArray::JSValueArray(std::vector<JSValue> &&other) noexcept : vector{std::move(other)} {}
+
+JSValueArray JSValueArray::Copy() const noexcept {
+  JSValueArray array;
+  array.reserve(size());
+  for (auto const &item : *this) {
+    array.push_back(item.Copy());
+  }
+
+  return array;
+}
+
+bool JSValueArray::Equals(JSValueArray const &other) const noexcept {
+  if (size() != other.size()) {
+    return false;
+  }
+
+  auto otherIt = other.begin();
+  for (auto const &item : *this) {
+    if (!item.Equals(*otherIt++)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+bool JSValueArray::EqualsAfterConversion(JSValueArray const &other) const noexcept {
+  if (size() != other.size()) {
+    return false;
+  }
+
+  auto otherIt = other.begin();
+  for (auto const &item : *this) {
+    if (!item.EqualsAfterConversion(*otherIt++)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/*static*/ JSValueArray JSValueArray::ReadFrom(IJSValueReader const &reader) noexcept {
+  JSValueArray array;
+  if (reader.ValueType() == JSValueType::Array) {
+    while (reader.GetNextArrayItem()) {
+      array.push_back(ReadFrom(reader));
+    }
+  }
+
+  return array;
+}
+
+void JSValueArray::WriteTo(IJSValueWriter const &writer) const noexcept {
+  writer.WriteArrayBegin();
+  for (const JSValue &item : *this) {
+    item.WriteTo(writer);
+  }
+  writer.WriteArrayEnd();
+}
 
 //===========================================================================
 // JSValue implementation
@@ -98,9 +225,9 @@ JSValue::~JSValue() noexcept {
 JSValue JSValue::Copy() const noexcept {
   switch (m_type) {
     case JSValueType::Object:
-      return JSValue{CopyObject(m_object)};
+      return JSValue{m_object.Copy()};
     case JSValueType::Array:
-      return JSValue{CopyArray(m_array)};
+      return JSValue{m_array.Copy()};
     case JSValueType::String:
       return JSValue{std::string(m_string)};
     case JSValueType::Boolean:
@@ -114,32 +241,53 @@ JSValue JSValue::Copy() const noexcept {
   }
 }
 
-/*static*/ JSValueObject JSValue::CopyObject(const JSValueObject &other) noexcept {
-  JSValueObject result;
-  for (const auto &property : other) {
-    result.emplace(property.first, property.second.Copy());
+namespace {
+
+struct AsStringFormatter {
+  AsStringFormatter(JSValue const &jsValue) noexcept : m_jsValue{jsValue} {}
+  friend std::ostream &operator<<(std::ostream &stream, AsStringFormatter const &formatter) noexcept {
+    auto const &jsValue = formatter.m_jsValue;
+
+    if (jsValue.IsNull()) {
+      return stream << "null";
+    } else if (jsValue.GetIfObject()) {
+      return stream << "[object Object]";
+    } else if (auto arr = jsValue.GetIfArray()) {
+      bool start = true;
+      for (auto const &item : *arr) {
+        stream << (start ? (start = false, "") : ",") << AsStringFormatter{item};
+      }
+      return stream;
+    } else if (auto str = jsValue.GetIfString()) {
+      return stream << *str;
+    } else if (auto b = jsValue.GetIfBoolean()) {
+      return stream << (*b ? "true" : "false");
+    } else if (auto i = jsValue.GetIfInt64()) {
+      return stream << *i;
+    } else if (auto d = jsValue.GetIfDouble()) {
+      return stream << *d;
+    } else {
+      return stream << "<Unexpected>";
+    }
   }
 
-  return result;
-}
+ private:
+  JSValue const &m_jsValue;
+};
 
-/*static*/ JSValueArray JSValue::CopyArray(const JSValueArray &other) noexcept {
-  JSValueArray result(other.size());
-  for (const auto &item : other) {
-    result.push_back(item.Copy());
-  }
-
-  return result;
-}
+} // namespace
 
 std::string JSValue::AsString() const noexcept {
   switch (m_type) {
     case JSValueType::Null:
       return "null";
     case JSValueType::Object:
-      return "{}"; // TODO: do Log-like formatting
-    case JSValueType::Array:
-      return "[]"; // TODO: do Log-like formatting
+      return "[object Object]";
+    case JSValueType::Array: {
+      std::stringstream ss;
+      ss << AsStringFormatter(*this);
+      return ss.str();
+    }
     case JSValueType::String:
       return m_string;
     case JSValueType::Boolean:
@@ -149,7 +297,7 @@ std::string JSValue::AsString() const noexcept {
     case JSValueType::Double:
       return std::to_string(m_double);
     default:
-      return "";
+      return "<unexpected>";
   }
 }
 
@@ -186,11 +334,10 @@ int32_t JSValue::AsInt32() const noexcept {
 
 int64_t JSValue::AsInt64() const noexcept {
   switch (m_type) {
-    case JSValueType::String: {
-      char *end;
-      int64_t result = strtoll(m_string.c_str(), &end, 10);
-      return (end == m_string.data() + m_string.size()) ? result : 0;
-    }
+    case JSValueType::Object:
+    case JSValueType::Array:
+    case JSValueType::String:
+      return static_cast<int64_t>(AsDouble());
     case JSValueType::Boolean:
       return m_bool ? 1 : 0;
     case JSValueType::Int64:
@@ -218,12 +365,46 @@ uint64_t JSValue::AsUInt64() const noexcept {
   return static_cast<uint64_t>(AsInt64());
 }
 
+namespace {
+
+std::string_view TrimString(std::string const &value) noexcept {
+  constexpr char const *WhiteSpace = " \n\r\t\f\v";
+
+  size_t start = value.find_first_not_of(WhiteSpace);
+  if (start == std::string::npos) {
+    return "";
+  }
+  size_t end = value.find_last_not_of(WhiteSpace);
+  if (end == std::string::npos) {
+    return "";
+  }
+  return {value.data() + start, end - start + 1};
+}
+
+} // namespace
+
 double JSValue::AsDouble() const noexcept {
   switch (m_type) {
+    case JSValueType::Object:
+      return NAN;
+    case JSValueType::Array: {
+      switch (m_array.size()) {
+        case 0:
+          return 0;
+        case 1:
+          return m_array[0].AsDouble();
+        default:
+          return NAN;
+      }
+    }
     case JSValueType::String: {
+      auto trimmedStr = TrimString(m_string);
+      if (trimmedStr.empty()) {
+        return 0;
+      }
       char *end;
-      double result = strtod(m_string.c_str(), &end);
-      return (end == m_string.data() + m_string.size()) ? result : 0;
+      double result = strtod(trimmedStr.data(), &end);
+      return (end == trimmedStr.data() + trimmedStr.size()) ? result : NAN;
     }
     case JSValueType::Boolean:
       return m_bool ? 1 : 0;
@@ -240,7 +421,7 @@ float JSValue::AsFloat() const noexcept {
   return static_cast<float>(AsDouble());
 }
 
-JSValueObject JSValue::TakeObject() noexcept {
+JSValueObject JSValue::MoveObject() noexcept {
   JSValueObject result;
   if (m_type == JSValueType::Object) {
     result = std::move(m_object);
@@ -250,7 +431,7 @@ JSValueObject JSValue::TakeObject() noexcept {
   return result;
 }
 
-JSValueArray JSValue::TakeArray() noexcept {
+JSValueArray JSValue::MoveArray() noexcept {
   JSValueArray result;
   if (m_type == JSValueType::Array) {
     result = std::move(m_array);
@@ -304,45 +485,36 @@ struct JsonStringFormatter {
 struct JsonJSValueFormatter {
   JsonJSValueFormatter(JSValue const &jsValue) noexcept : m_jsValue{jsValue} {}
   friend std::ostream &operator<<(std::ostream &stream, JsonJSValueFormatter const &formatter) noexcept {
-    auto getDelimiter = [](bool &start, char const *delimiterStr) noexcept {
-      if (start) {
-        start = false;
-        return "";
-      } else {
-        return delimiterStr;
-      }
-    };
+    auto const &jsValue = formatter.m_jsValue;
 
-    switch (formatter.m_jsValue.Type()) {
-      case JSValueType::Null:
-        return stream << "null";
-      case JSValueType::Object: {
-        stream << "{";
-        bool start = true;
-        for (auto const &prop : formatter.m_jsValue.Object()) {
-          stream << getDelimiter(start, ", ") << JsonStringFormatter{prop.first} << ": "
-                 << JsonJSValueFormatter{prop.second};
-        }
-        return stream << "}";
+    if (jsValue.IsNull()) {
+      return stream << "null";
+    } else if (auto obj = jsValue.GetIfObject()) {
+      stream << "{";
+      bool start = true;
+      for (auto const &prop : *obj) {
+        stream << start ? (start = false, "") : ", ";
+        stream << JsonStringFormatter{prop.first} << ": " << JsonJSValueFormatter{prop.second};
       }
-      case JSValueType::Array: {
-        stream << "[";
-        bool start = true;
-        for (auto const &item : formatter.m_jsValue.Array()) {
-          stream << getDelimiter(start, ", ") << JsonJSValueFormatter{item};
-        }
-        return stream << "]";
+      return stream << "}";
+    } else if (auto arr = jsValue.GetIfArray()) {
+      stream << "[";
+      bool start = true;
+      for (auto const &item : *arr) {
+        stream << start ? (start = false, "") : ", ";
+        stream << JsonJSValueFormatter{item};
       }
-      case JSValueType::String:
-        return stream << JsonStringFormatter{formatter.m_jsValue.String()};
-      case JSValueType::Boolean:
-        return stream << (formatter.m_jsValue.Boolean() ? "true" : "false");
-      case JSValueType::Int64:
-        return stream << formatter.m_jsValue.Int64();
-      case JSValueType::Double:
-        return stream << formatter.m_jsValue.Double();
-      default:
-        return stream << "<Unexpected>";
+      return stream << "]";
+    } else if (auto str = jsValue.GetIfString()) {
+      return stream << JsonStringFormatter{*str};
+    } else if (auto b = jsValue.GetIfBoolean()) {
+      return stream << (*b ? "true" : "false");
+    } else if (auto i = jsValue.GetIfInt64()) {
+      return stream << *i;
+    } else if (auto d = jsValue.GetIfDouble()) {
+      return stream << *d;
+    } else {
+      return stream << "<Unexpected>";
     }
   }
 
@@ -362,11 +534,7 @@ size_t JSValue::PropertyCount() const noexcept {
   return (m_type == JSValueType::Object) ? m_object.size() : 0;
 }
 
-size_t JSValue::ItemCount() const noexcept {
-  return (m_type == JSValueType::Array) ? m_array.size() : 0;
-}
-
-const JSValue &JSValue::GetObjectProperty(std::string_view propertyName) const noexcept {
+JSValue const &JSValue::GetObjectProperty(std::string_view propertyName) const noexcept {
   if (m_type == JSValueType::Object) {
     auto it = m_object.find(propertyName);
     if (it != m_object.end()) {
@@ -377,7 +545,11 @@ const JSValue &JSValue::GetObjectProperty(std::string_view propertyName) const n
   return Null;
 }
 
-const JSValue &JSValue::GetArrayItem(JSValueArray::size_type index) const noexcept {
+size_t JSValue::ItemCount() const noexcept {
+  return (m_type == JSValueType::Array) ? m_array.size() : 0;
+}
+
+JSValue const &JSValue::GetArrayItem(JSValueArray::size_type index) const noexcept {
   if (m_type == JSValueType::Array && index < m_array.size()) {
     return m_array[index];
   }
@@ -391,9 +563,9 @@ bool JSValue::Equals(const JSValue &other) const noexcept {
       case JSValueType::Null:
         return true;
       case JSValueType::Object:
-        return ObjectEquals(other.m_object);
+        return m_object.Equals(other.m_object);
       case JSValueType::Array:
-        return ArrayEquals(other.m_array);
+        return m_array.Equals(other.m_array);
       case JSValueType::String:
         return m_string == other.m_string;
       case JSValueType::Boolean:
@@ -410,14 +582,59 @@ bool JSValue::Equals(const JSValue &other) const noexcept {
   return false;
 }
 
+bool JSValue::EqualsAfterConversion(const JSValue &other) const noexcept {
+  if (m_type == other.m_type) {
+    return Equals(other);
+  } else {
+    switch (m_type) {
+      case JSValueType::Null:
+        return false;
+      case JSValueType::Object:
+        return other.m_type == JSValueType::Boolean && other.m_bool;
+      case JSValueType::Array:
+        return other.m_type == JSValueType::Boolean && other.m_bool;
+      case JSValueType::String:
+        switch (other.m_type) {
+          case JSValueType::Boolean:
+            return !m_string.empty() && other.m_bool;
+          case JSValueType::Int64:
+            return AsInt64() == other.m_int64;
+          case JSValueType::Double:
+            return AsDouble() == other.m_double;
+          default:
+            return other.EqualsAfterConversion(*this);
+        }
+      case JSValueType::Boolean:
+        switch (other.m_type) {
+          case JSValueType::Int64:
+            return (m_bool ? 1 : 0) == other.m_int64;
+          case JSValueType::Double:
+            return (m_bool ? 1 : 0) == other.m_double;
+          default:
+            return other.EqualsAfterConversion(*this);
+        }
+      case JSValueType::Int64:
+        if (other.m_type == JSValueType::Double) {
+          return m_int64 == other.m_double;
+        } else {
+          return other.EqualsAfterConversion(*this);
+        }
+      default:
+        return false;
+    }
+  }
+
+  return false;
+}
+
 /*static*/ JSValue JSValue::ReadFrom(IJSValueReader const &reader) noexcept {
   switch (reader.ValueType()) {
     case JSValueType::Null:
       return JSValue();
     case JSValueType::Object:
-      return JSValue(ReadObjectProperties(reader));
+      return JSValue(JSValueObject::ReadFrom(reader));
     case JSValueType::Array:
-      return JSValue(ReadArrayItems(reader));
+      return JSValue(JSValueArray::ReadFrom(reader));
     case JSValueType::String:
       return JSValue(to_string(reader.GetString()));
     case JSValueType::Boolean:
@@ -431,32 +648,16 @@ bool JSValue::Equals(const JSValue &other) const noexcept {
   }
 }
 
-/*static*/ JSValueObject JSValue::ReadObjectFrom(IJSValueReader const &reader) noexcept {
-  if (reader.ValueType() == JSValueType::Object) {
-    return ReadObjectProperties(reader);
-  }
-
-  return JSValueObject{};
-}
-
-/*static*/ JSValueArray JSValue::ReadArrayFrom(IJSValueReader const &reader) noexcept {
-  if (reader.ValueType() == JSValueType::Array) {
-    return ReadArrayItems(reader);
-  }
-
-  return JSValueArray{};
-}
-
 void JSValue::WriteTo(IJSValueWriter const &writer) const noexcept {
   switch (m_type) {
     case JSValueType::Null:
       writer.WriteNull();
       break;
     case JSValueType::Object:
-      WriteObjectTo(writer, m_object);
+      m_object.WriteTo(writer);
       break;
     case JSValueType::Array:
-      WriteArrayTo(writer, m_array);
+      m_array.WriteTo(writer);
       break;
     case JSValueType::String:
       writer.WriteString(to_hstring(m_string));
@@ -473,85 +674,4 @@ void JSValue::WriteTo(IJSValueWriter const &writer) const noexcept {
   }
 }
 
-/*static*/ void JSValue::WriteObjectTo(IJSValueWriter const &writer, JSValueObjectView object) noexcept {
-  writer.WriteObjectBegin();
-  for (const auto &property : object) {
-    writer.WritePropertyName(to_hstring(property.first));
-    property.second.WriteTo(writer);
-  }
-  writer.WriteObjectEnd();
-}
-
-/*static*/ void JSValue::WriteArrayTo(IJSValueWriter const &writer, JSValueArrayView value) noexcept {
-  writer.WriteArrayBegin();
-  for (const JSValue &item : value) {
-    item.WriteTo(writer);
-  }
-  writer.WriteArrayEnd();
-}
-
-bool JSValue::ObjectEquals(const JSValueObject &other) const noexcept {
-  if (m_object.size() != other.size()) {
-    return false;
-  }
-
-  for (const auto &entry : m_object) {
-    auto it = other.find(entry.first);
-    if (it == other.end()) {
-      return false;
-    }
-
-    if (!entry.second.Equals(it->second)) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-bool JSValue::ArrayEquals(const JSValueArray &other) const noexcept {
-  if (m_array.size() != other.size()) {
-    return false;
-  }
-
-  auto otherIt = other.begin();
-  for (const JSValue &item : m_array) {
-    if (!item.Equals(*(otherIt++))) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-// Read object properties without checking value type.
-/*static*/ JSValueObject JSValue::ReadObjectProperties(IJSValueReader const &reader) noexcept {
-  JSValueObject properties;
-  hstring propertyName;
-  while (reader.GetNextObjectProperty(/*ref*/ propertyName)) {
-    properties.emplace(to_string(propertyName), ReadFrom(reader));
-  }
-
-  return properties;
-}
-
-// Read array items without checking value type.
-/*static*/ JSValueArray JSValue::ReadArrayItems(IJSValueReader const &reader) noexcept {
-  JSValueArray items;
-  while (reader.GetNextArrayItem()) {
-    items.push_back(ReadFrom(reader));
-  }
-
-  return items;
-}
-
-//===========================================================================
-// Standalone functions implementation
-//===========================================================================
-
-void swap(JSValue &left, JSValue &right) noexcept {
-  JSValue temp{std::move(right)};
-  right = std::move(left);
-  left = std::move(temp);
-}
 } // namespace winrt::Microsoft::ReactNative
