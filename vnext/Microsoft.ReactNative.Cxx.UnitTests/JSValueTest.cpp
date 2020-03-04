@@ -100,6 +100,42 @@ TEST_CLASS (JSValueTest) {
     TestCheck(nestedArr[5] == 42);
     TestCheck(nestedArr[6] == 4.5);
   }
+
+  void CheckConversion(
+      JSValue const &value, char const *strVal, bool boolVal, int64_t intVal, double doubleVal) noexcept {
+    TestCheckEqual(strVal, value.AsString());
+    TestCheckEqual(boolVal, value.AsBoolean());
+    TestCheckEqual(intVal, value.AsInt64());
+    if (std::isnan(doubleVal)) {
+      TestCheck(std::isnan(value.AsDouble()));
+    } else {
+      TestCheckEqual(doubleVal, value.AsDouble());
+    }
+  }
+
+  TEST_METHOD(TestDefaultAsConverters) {
+    CheckConversion(false, "false", false, 0, 0);
+    CheckConversion(true, "true", true, 1, 1);
+    CheckConversion(0, "0", false, 0, 0);
+    CheckConversion(1, "1", true, 1, 1);
+    CheckConversion("0", "0", true, 0, 0);
+    CheckConversion("000", "000", true, 0, 0);
+    CheckConversion("1", "1", true, 1, 1);
+    CheckConversion(NAN, "NaN", false, 0, NAN);
+    CheckConversion(INFINITY, "Infinity", true, 0, INFINITY);
+    CheckConversion(-INFINITY, "-Infinity", true, 0, -INFINITY);
+    CheckConversion("", "", false, 0, 0);
+    CheckConversion("20", "20", true, 20, 20);
+    CheckConversion("twenty", "twenty", true, 0, NAN);
+    CheckConversion(JSValueArray{}, "", true, 0, 0);
+    CheckConversion(JSValueArray{20}, "20", true, 20, 20);
+    CheckConversion(JSValueArray{10, 20}, "10,20", true, 0, NAN);
+    CheckConversion(JSValueArray{"twenty"}, "twenty", true, 0, NAN);
+    CheckConversion(JSValueArray{"ten", "twenty"}, "ten,twenty", true, 0, NAN);
+    CheckConversion(JSValueArray{NAN}, "NaN", true, 0, NAN);
+    CheckConversion(JSValueObject{}, "[object Object]", true, 0, NAN);
+    CheckConversion(nullptr, "null", false, 0, 0);
+  }
 };
 
 } // namespace winrt::Microsoft::ReactNative

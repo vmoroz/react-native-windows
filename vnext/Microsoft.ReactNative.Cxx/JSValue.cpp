@@ -265,7 +265,15 @@ struct AsStringFormatter {
     } else if (auto i = jsValue.GetIfInt64()) {
       return stream << *i;
     } else if (auto d = jsValue.GetIfDouble()) {
-      return stream << *d;
+      if (std::isnan(*d)) {
+        return stream << "NaN";
+      } else if (*d == INFINITY) {
+        return stream << "Infinity";
+      } else if (*d == -INFINITY) {
+        return stream << "-Infinity";
+      } else {
+        return stream << *d;
+      }
     } else {
       return stream << "<Unexpected>";
     }
@@ -295,7 +303,15 @@ std::string JSValue::AsString() const noexcept {
     case JSValueType::Int64:
       return std::to_string(m_int64);
     case JSValueType::Double:
-      return std::to_string(m_double);
+      if (std::isnan(m_double)) {
+        return "NaN";
+      } else if (m_double == INFINITY) {
+        return "Infinity";
+      } else if (m_double == -INFINITY) {
+        return "-Infinity";
+      } else {
+        return std::to_string(m_double);
+      }
     default:
       return "<unexpected>";
   }
@@ -314,7 +330,7 @@ bool JSValue::AsBoolean() const noexcept {
     case JSValueType::Int64:
       return m_int64 != 0;
     case JSValueType::Double:
-      return m_double != 0;
+      return !std::isnan(m_double) && m_double != 0;
     default:
       return false;
   }
@@ -336,14 +352,32 @@ int64_t JSValue::AsInt64() const noexcept {
   switch (m_type) {
     case JSValueType::Object:
     case JSValueType::Array:
-    case JSValueType::String:
-      return static_cast<int64_t>(AsDouble());
+    case JSValueType::String: {
+      auto d = AsDouble();
+      if (std::isnan(d)) {
+        return 0;
+      } else if (d == INFINITY) {
+        return 0;
+      } else if (d == -INFINITY) {
+        return 0;
+      } else {
+        return static_cast<int64_t>(d);
+      }
+    }
     case JSValueType::Boolean:
       return m_bool ? 1 : 0;
     case JSValueType::Int64:
       return m_int64;
     case JSValueType::Double:
-      return static_cast<int64_t>(m_double);
+      if (std::isnan(m_double)) {
+        return 0;
+      } else if (m_double == INFINITY) {
+        return 0;
+      } else if (m_double == -INFINITY) {
+        return 0;
+      } else {
+        return static_cast<int64_t>(m_double);
+      }
     default:
       return 0;
   }
