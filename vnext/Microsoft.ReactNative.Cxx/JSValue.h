@@ -418,11 +418,22 @@ struct JSValue {
   [[deprecated("Use GetIfInt64 or AsInt64")]] int64_t Int64() const noexcept;
   [[deprecated("Use GetIfDouble or AsDouble")]] double Double() const noexcept;
 
-  // We have renamed the methods below.
+  // We have renamed or moved the methods below.
   template <class T>
   [[deprecated("Use As<T>")]] T To() const noexcept;
   [[deprecated("Use MoveObject")]] JSValueObject TakeObject() noexcept;
   [[deprecated("Use MoveArray")]] JSValueArray TakeArray() noexcept;
+  [[deprecated("Use JSValueObject::Copy")]] static JSValueObject CopyObject(const JSValueObject &other) noexcept;
+  [[deprecated("Use JSValueArray::Copy")]] static JSValueArray CopyArray(const JSValueArray &other) noexcept;
+  [[deprecated("Use JSValueObject::ReadFrom")]] static JSValueObject ReadObjectFrom(
+      IJSValueReader const &reader) noexcept;
+  [[deprecated("Use JSValueArray::ReadFrom")]] static JSValueArray ReadArrayFrom(IJSValueReader const &reader) noexcept;
+  [[deprecated("Use JSValueObject::WriteTo")]] static void WriteObjectTo(
+      IJSValueWriter const &writer,
+      JSValueObject const &value) noexcept;
+  [[deprecated("Use JSValueArray::WriteTo")]] static void WriteArrayTo(
+      IJSValueWriter const &writer,
+      JSValueArray const &value) noexcept;
 
 #pragma endregion
 
@@ -639,6 +650,10 @@ inline const JSValue &JSValue::operator[](JSValueArray::size_type index) const n
   return GetArrayItem(index);
 }
 
+//===========================================================================
+// JSValue deprecated methods.
+//===========================================================================
+
 inline const JSValueObject &JSValue::Object() const noexcept {
   return (m_type == JSValueType::Object) ? m_object : EmptyObject;
 }
@@ -674,6 +689,29 @@ inline JSValueObject JSValue::TakeObject() noexcept {
 
 inline JSValueArray JSValue::TakeArray() noexcept {
   return MoveArray();
+}
+
+inline /*static*/ JSValueObject JSValue::CopyObject(const JSValueObject &other) noexcept {
+  return other.Copy();
+}
+
+inline /*static*/ JSValueArray JSValue::CopyArray(const JSValueArray &other) noexcept {
+  return other.Copy();
+}
+
+inline /*static*/ JSValueObject JSValue::ReadObjectFrom(IJSValueReader const &reader) noexcept {
+  return JSValueObject::ReadFrom(reader);
+}
+
+inline /*static*/ JSValueArray JSValue::ReadArrayFrom(IJSValueReader const &reader) noexcept {
+  return JSValueArray::ReadFrom(reader);
+}
+
+inline /*static*/ void JSValue::WriteObjectTo(IJSValueWriter const &writer, JSValueObject const &value) noexcept {
+  value.WriteTo(writer);
+}
+inline /*static*/ void JSValue::WriteArrayTo(IJSValueWriter const &writer, JSValueArray const &value) noexcept {
+  value.WriteTo(writer);
 }
 
 //===========================================================================
