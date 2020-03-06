@@ -64,6 +64,10 @@ struct JSValueObject : std::map<std::string, JSValue, std::less<>> {
 
 #pragma region Inspect JSValueObject
 
+  //! Get a reference to object property value if the property is found,
+  //! or a reference to JSValue::Null otherwise.
+  JSValue const &operator[](std::string_view propertyName) const noexcept;
+
   //! Return true if this JSValueObject is strictly equal to other JSValueObject.
   //! Both objects must have the same set of equal properties.
   //! Property values must have the same type and value.
@@ -270,22 +274,22 @@ struct JSValue {
   bool IsNull() const noexcept;
 
   //! Return pointer to JSValueObject if JSValue type is Object, or nullptr otherwise.
-  JSValueObject const *GetIfObject() const noexcept;
+  JSValueObject const *TryGetObject() const noexcept;
 
   //! Return pointer to JSValueArray if JSValue type is Array, or nullptr otherwise.
-  JSValueArray const *GetIfArray() const noexcept;
+  JSValueArray const *TryGetArray() const noexcept;
 
   //! Return pointer to string if JSValue type is String, or nullptr otherwise.
-  std::string const *GetIfString() const noexcept;
+  std::string const *TryGetString() const noexcept;
 
   //! Return pointer to bool value if JSValue type is Boolean, or nullptr otherwise.
-  bool const *GetIfBoolean() const noexcept;
+  bool const *TryGetBoolean() const noexcept;
 
   //! Return pointer to int64_t value if JSValue type is Int64, or nullptr otherwise.
-  int64_t const *GetIfInt64() const noexcept;
+  int64_t const *TryGetInt64() const noexcept;
 
   //! Return pointer to double value if JSValue type is Double, or nullptr otherwise.
-  double const *GetIfDouble() const noexcept;
+  double const *TryGetDouble() const noexcept;
 
   //! Return true if this JSValue is strictly equal to JSValue.
   //! Compared values must have the same type and value.
@@ -324,11 +328,11 @@ struct JSValue {
 
   //! Get a reference to array item if JSValue type is Array and the index is in bounds,
   //! or a reference to JSValue::Null otherwise.
-  const JSValue &GetArrayItem(JSValueArray::size_type index) const noexcept;
+  JSValue const &GetArrayItem(JSValueArray::size_type index) const noexcept;
 
   //! Get a reference to array item if JSValue type is Array and the index is in bounds,
   //! or a reference to JSValue::Null otherwise.
-  const JSValue &operator[](JSValueArray::size_type index) const noexcept;
+  JSValue const &operator[](JSValueArray::size_type index) const noexcept;
 
 #pragma endregion
 
@@ -393,7 +397,7 @@ struct JSValue {
   template <class T>
   T As(T &&defaultValue) const noexcept;
 
-  //! Convert JSValue to JSON string.
+  //! Convert JSValue to a readable string that can be used for logging.
   std::string ToString() const noexcept;
 
 #pragma endregion
@@ -411,12 +415,12 @@ struct JSValue {
 #pragma region Deprecated methods
 
   // The methods below are deprecated in favor of other methods with clearer semantic
-  [[deprecated("Use GetIfObject or AsObject")]] JSValueObject const &Object() const noexcept;
-  [[deprecated("Use GetIfArray or As Array")]] JSValueArray const &Array() const noexcept;
-  [[deprecated("Use GetIfString or AsString")]] std::string const &String() const noexcept;
-  [[deprecated("Use GetIfBoolean or AsBoolean")]] bool Boolean() const noexcept;
-  [[deprecated("Use GetIfInt64 or AsInt64")]] int64_t Int64() const noexcept;
-  [[deprecated("Use GetIfDouble or AsDouble")]] double Double() const noexcept;
+  [[deprecated("Use TryGetObject or AsObject")]] JSValueObject const &Object() const noexcept;
+  [[deprecated("Use TryGetArray or As Array")]] JSValueArray const &Array() const noexcept;
+  [[deprecated("Use TryGetString or AsString")]] std::string const &String() const noexcept;
+  [[deprecated("Use TryGetBoolean or AsBoolean")]] bool Boolean() const noexcept;
+  [[deprecated("Use TryGetInt64 or AsInt64")]] int64_t Int64() const noexcept;
+  [[deprecated("Use TryGetDouble or AsDouble")]] double Double() const noexcept;
 
   // We have renamed or moved the methods below.
   template <class T>
@@ -564,27 +568,27 @@ inline bool JSValue::IsNull() const noexcept {
   return m_type == JSValueType::Null;
 }
 
-inline JSValueObject const *JSValue::GetIfObject() const noexcept {
+inline JSValueObject const *JSValue::TryGetObject() const noexcept {
   return (m_type == JSValueType::Object) ? &m_object : nullptr;
 }
 
-inline JSValueArray const *JSValue::GetIfArray() const noexcept {
+inline JSValueArray const *JSValue::TryGetArray() const noexcept {
   return (m_type == JSValueType::Array) ? &m_array : nullptr;
 }
 
-inline std::string const *JSValue::GetIfString() const noexcept {
+inline std::string const *JSValue::TryGetString() const noexcept {
   return (m_type == JSValueType::String) ? &m_string : nullptr;
 }
 
-inline bool const *JSValue::GetIfBoolean() const noexcept {
+inline bool const *JSValue::TryGetBoolean() const noexcept {
   return (m_type == JSValueType::Boolean) ? &m_bool : nullptr;
 }
 
-inline int64_t const *JSValue::GetIfInt64() const noexcept {
+inline int64_t const *JSValue::TryGetInt64() const noexcept {
   return (m_type == JSValueType::Int64) ? &m_int64 : nullptr;
 }
 
-inline double const *JSValue::GetIfDouble() const noexcept {
+inline double const *JSValue::TryGetDouble() const noexcept {
   return (m_type == JSValueType::Double) ? &m_double : nullptr;
 }
 

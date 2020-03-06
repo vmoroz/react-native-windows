@@ -27,7 +27,7 @@ JSValueType JSValueTreeReader::ValueType() noexcept {
 
 bool JSValueTreeReader::GetNextObjectProperty(hstring &propertyName) noexcept {
   if (!m_isInContainer) {
-    if (auto obj = m_current->GetIfObject()) {
+    if (auto obj = m_current->TryGetObject()) {
       const auto &properties = *obj;
       const auto &property = properties.begin();
       if (property != properties.end()) {
@@ -41,7 +41,7 @@ bool JSValueTreeReader::GetNextObjectProperty(hstring &propertyName) noexcept {
     }
   } else if (!m_stack.empty()) {
     auto &entry = m_stack.back();
-    if (auto obj = entry.Value.GetIfObject()) {
+    if (auto obj = entry.Value.TryGetObject()) {
       auto &property = entry.Property;
       if (++property != obj->end()) {
         SetCurrentValue(property->second);
@@ -61,7 +61,7 @@ bool JSValueTreeReader::GetNextObjectProperty(hstring &propertyName) noexcept {
 
 bool JSValueTreeReader::GetNextArrayItem() noexcept {
   if (!m_isInContainer) {
-    if (auto arr = m_current->GetIfArray()) {
+    if (auto arr = m_current->TryGetArray()) {
       const auto &item = arr->begin();
       if (item != arr->end()) {
         m_stack.emplace_back(*m_current, item);
@@ -73,7 +73,7 @@ bool JSValueTreeReader::GetNextArrayItem() noexcept {
     }
   } else if (!m_stack.empty()) {
     auto &entry = m_stack.back();
-    if (auto arr = entry.Value.GetIfArray()) {
+    if (auto arr = entry.Value.TryGetArray()) {
       if (++entry.Item != arr->end()) {
         SetCurrentValue(*entry.Item);
         return true;
@@ -102,22 +102,22 @@ void JSValueTreeReader::SetCurrentValue(const JSValue &value) noexcept {
 }
 
 hstring JSValueTreeReader::GetString() noexcept {
-  auto s = m_current->GetIfString();
+  auto s = m_current->TryGetString();
   return to_hstring(s ? *s : "");
 }
 
 bool JSValueTreeReader::GetBoolean() noexcept {
-  auto b = m_current->GetIfBoolean();
+  auto b = m_current->TryGetBoolean();
   return b ? *b : false;
 }
 
 int64_t JSValueTreeReader::GetInt64() noexcept {
-  auto i = m_current->GetIfInt64();
+  auto i = m_current->TryGetInt64();
   return i ? *i : 0;
 }
 
 double JSValueTreeReader::GetDouble() noexcept {
-  auto d = m_current->GetIfDouble();
+  auto d = m_current->TryGetDouble();
   return d ? *d : 0;
 }
 

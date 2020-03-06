@@ -24,9 +24,18 @@ TEST_CLASS (JSValueTest) {
 
     JSValue jsValue = JSValue::ReadFrom(reader);
     TestCheck(jsValue.Type() == JSValueType::Object);
+
+    TestCheck(jsValue["NullValue"].Type() == JSValueType::Null);
+    TestCheck(jsValue["ObjValue"].Type() == JSValueType::Object);
+    TestCheck(jsValue["ArrayValue"].Type() == JSValueType::Array);
+    TestCheck(jsValue["StringValue"].Type() == JSValueType::String);
+    TestCheck(jsValue["BoolValue"].Type() == JSValueType::Boolean);
+    TestCheck(jsValue["IntValue"].Type() == JSValueType::Int64);
+    TestCheck(jsValue["DoubleValue"].Type() == JSValueType::Double);
+
     TestCheck(jsValue["NullValue"].IsNull());
-    TestCheck(jsValue["ObjValue"].GetIfObject()->empty());
-    TestCheck(jsValue["ArrayValue"].GetIfArray()->empty());
+    TestCheck(jsValue["ObjValue"].TryGetObject()->empty());
+    TestCheck(jsValue["ArrayValue"].TryGetArray()->empty());
     TestCheck(jsValue["StringValue"] == "Hello");
     TestCheck(jsValue["BoolValue"] == true);
     TestCheck(jsValue["IntValue"] == 42);
@@ -51,14 +60,24 @@ TEST_CLASS (JSValueTest) {
 
     JSValue jsValue = JSValue::ReadFrom(reader);
     TestCheck(jsValue.Type() == JSValueType::Object);
-    auto const *nestedObj = jsValue["NestedObj"].GetIfObject();
-    TestCheck(nestedObj->at("NullValue").IsNull());
-    TestCheck(nestedObj->at("ObjValue").GetIfObject()->empty());
-    TestCheck(nestedObj->at("ArrayValue").GetIfArray()->empty());
-    TestCheck(nestedObj->at("StringValue") == "Hello");
-    TestCheck(nestedObj->at("BoolValue") == true);
-    TestCheck(nestedObj->at("IntValue") == 42);
-    TestCheck(nestedObj->at("DoubleValue") == 4.5);
+    TestCheck(jsValue["NestedObj"].Type() == JSValueType::Object);
+    auto const &nestedObj = *jsValue["NestedObj"].TryGetObject();
+
+    TestCheck(nestedObj["NullValue"].Type() == JSValueType::Null);
+    TestCheck(nestedObj["ObjValue"].Type() == JSValueType::Object);
+    TestCheck(nestedObj["ArrayValue"].Type() == JSValueType::Array);
+    TestCheck(nestedObj["StringValue"].Type() == JSValueType::String);
+    TestCheck(nestedObj["BoolValue"].Type() == JSValueType::Boolean);
+    TestCheck(nestedObj["IntValue"].Type() == JSValueType::Int64);
+    TestCheck(nestedObj["DoubleValue"].Type() == JSValueType::Double);
+
+    TestCheck(nestedObj["NullValue"].IsNull());
+    TestCheck(nestedObj["ObjValue"].TryGetObject()->empty());
+    TestCheck(nestedObj["ArrayValue"].TryGetArray()->empty());
+    TestCheck(nestedObj["StringValue"] == "Hello");
+    TestCheck(nestedObj["BoolValue"] == true);
+    TestCheck(nestedObj["IntValue"] == 42);
+    TestCheck(nestedObj["DoubleValue"] == 4.5);
   }
 
   TEST_METHOD(TestReadArray) {
@@ -67,9 +86,18 @@ TEST_CLASS (JSValueTest) {
 
     JSValue jsValue = JSValue::ReadFrom(reader);
     TestCheck(jsValue.Type() == JSValueType::Array);
+
+    TestCheck(jsValue[0].Type() == JSValueType::Null);
+    TestCheck(jsValue[1].Type() == JSValueType::Object);
+    TestCheck(jsValue[2].Type() == JSValueType::Array);
+    TestCheck(jsValue[3].Type() == JSValueType::String);
+    TestCheck(jsValue[4].Type() == JSValueType::Boolean);
+    TestCheck(jsValue[5].Type() == JSValueType::Int64);
+    TestCheck(jsValue[6].Type() == JSValueType::Double);
+
     TestCheck(jsValue[0].IsNull());
-    TestCheck(jsValue[1].GetIfObject()->empty());
-    TestCheck(jsValue[2].GetIfArray()->empty());
+    TestCheck(jsValue[1].TryGetObject()->empty());
+    TestCheck(jsValue[2].TryGetArray()->empty());
     TestCheck(jsValue[3] == "Hello");
     TestCheck(jsValue[4] == true);
     TestCheck(jsValue[5] == 42);
@@ -81,8 +109,8 @@ TEST_CLASS (JSValueTest) {
     IJSValueReader reader = make<JsonJSValueReader>(json);
 
     JSValue jsValue = JSValue::ReadFrom(reader);
-    TestCheck(jsValue[0].GetIfArray());
-    auto const &nestedArr = *jsValue[0].GetIfArray();
+    TestCheck(jsValue[0].TryGetArray());
+    auto const &nestedArr = *jsValue[0].TryGetArray();
 
     TestCheck(nestedArr[0].Type() == JSValueType::Null);
     TestCheck(nestedArr[1].Type() == JSValueType::Object);
@@ -93,8 +121,8 @@ TEST_CLASS (JSValueTest) {
     TestCheck(nestedArr[6].Type() == JSValueType::Double);
 
     TestCheck(nestedArr[0].IsNull());
-    TestCheck(nestedArr[1].GetIfObject()->empty());
-    TestCheck(nestedArr[2].GetIfArray()->empty());
+    TestCheck(nestedArr[1].TryGetObject()->empty());
+    TestCheck(nestedArr[2].TryGetArray()->empty());
     TestCheck(nestedArr[3] == "Hello");
     TestCheck(nestedArr[4] == true);
     TestCheck(nestedArr[5] == 42);
