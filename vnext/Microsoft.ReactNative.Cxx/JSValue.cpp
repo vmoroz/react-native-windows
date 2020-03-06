@@ -78,6 +78,14 @@ struct BooleanConverter {
   static bool FromString(std::string const &value) noexcept {
     return !value.empty();
   }
+
+  static double ToDouble(bool value) noexcept {
+    return value ? 1.0 : +0.0;
+  }
+
+  static int64_t ToInt64(bool value) noexcept {
+    return value ? 1 : 0;
+  }
 };
 
 struct Int64Converter {
@@ -760,8 +768,8 @@ bool JSValue::EqualsAfterConversion(const JSValue &other) const noexcept {
       switch (other.m_type) {
         case JSValueType::Object:
           return m_object.EqualsAfterConversion(other.m_object);
-        case JSValueType::Boolean:
-          return other.m_bool;
+        case JSValueType::String:
+          return ObjectConverter::JavaScriptString == other.m_string;
         default:
           return false;
       }
@@ -769,19 +777,31 @@ bool JSValue::EqualsAfterConversion(const JSValue &other) const noexcept {
       switch (other.m_type) {
         case JSValueType::Array:
           return m_array.EqualsAfterConversion(other.m_array);
+        case JSValueType::String:
+          return JSValueAsStringWriter::ToString(*this) == other.m_string;
         case JSValueType::Boolean:
-          return other.m_bool;
+          return DoubleConverter::FromString(JSValueAsStringWriter::ToString(*this)) ==
+              BooleanConverter::ToDouble(other.m_bool);
+        case JSValueType::Int64:
+          return DoubleConverter::FromString(JSValueAsStringWriter::ToString(*this)) ==
+              static_cast<double>(other.m_int64);
+        case JSValueType::Double:
+          return DoubleConverter::FromString(JSValueAsStringWriter::ToString(*this)) == other.m_double;
         default:
           return false;
       }
     case JSValueType::String:
       switch (other.m_type) {
+        case JSValueType::Object:
+          return m_string == ObjectConverter::JavaScriptString;
+        case JSValueType::Array:
+          return m_string == JSValueAsStringWriter::ToString(other);
         case JSValueType::String:
           return m_string == other.m_string;
         case JSValueType::Boolean:
-          return BooleanConverter::FromString(m_string) == other.m_bool;
+          return DoubleConverter::FromString(m_string) == BooleanConverter::ToDouble(other.m_bool);
         case JSValueType::Int64:
-          return DoubleConverter::FromString(m_string) == other.m_int64;
+          return DoubleConverter::FromString(m_string) == static_cast<double>(other.m_int64);
         case JSValueType::Double:
           return DoubleConverter::FromString(m_string) == other.m_double;
         default:
@@ -789,26 +809,28 @@ bool JSValue::EqualsAfterConversion(const JSValue &other) const noexcept {
       }
     case JSValueType::Boolean:
       switch (other.m_type) {
-        case JSValueType::Object:
         case JSValueType::Array:
-          return m_bool;
+          return BooleanConverter::ToDouble(m_bool) ==
+              DoubleConverter::FromString(JSValueAsStringWriter::ToString(other));
         case JSValueType::String:
-          return m_bool == BooleanConverter::FromString(other.m_string);
+          return BooleanConverter::ToDouble(m_bool) == DoubleConverter::FromString(other.m_string);
         case JSValueType::Boolean:
           return m_bool == other.m_bool;
         case JSValueType::Int64:
-          return (m_bool ? 1 : 0) == other.m_int64;
+          return BooleanConverter::ToInt64(m_bool) == other.m_int64;
         case JSValueType::Double:
-          return (m_bool ? 1.0 : +0.0) == other.m_double;
+          return BooleanConverter::ToDouble(m_bool) == other.m_double;
         default:
           return false;
       }
     case JSValueType::Int64:
       switch (other.m_type) {
+        case JSValueType::Array:
+          return static_cast<double>(m_int64) == DoubleConverter::FromString(JSValueAsStringWriter::ToString(other));
         case JSValueType::String:
-          return m_int64 == DoubleConverter::FromString(other.m_string);
+          return static_cast<double>(m_int64) == DoubleConverter::FromString(other.m_string);
         case JSValueType::Boolean:
-          return m_int64 == (other.m_bool ? 1 : 0);
+          return m_int64 == BooleanConverter::ToInt64(other.m_bool);
         case JSValueType::Int64:
           return m_int64 == other.m_int64;
         case JSValueType::Double:
@@ -818,10 +840,12 @@ bool JSValue::EqualsAfterConversion(const JSValue &other) const noexcept {
       }
     case JSValueType::Double:
       switch (other.m_type) {
+        case JSValueType::Array:
+          return m_double == DoubleConverter::FromString(JSValueAsStringWriter::ToString(other));
         case JSValueType::String:
           return m_double == DoubleConverter::FromString(other.m_string);
         case JSValueType::Boolean:
-          return m_double == (other.m_bool ? 1.0 : +0.0);
+          return m_double == BooleanConverter::ToDouble(other.m_bool);
         case JSValueType::Int64:
           return m_double == static_cast<double>(other.m_int64);
         case JSValueType::Double:
