@@ -37,7 +37,7 @@ struct StringConverter {
   }
 
   static std::ostream &WriteAsJsonString(std::ostream &stream, std::string const &value) noexcept {
-    auto writeChar = [](std::ostream &stream, char ch) noexcept -> std::ostream & {
+    auto writeChar = [](std::ostream & stream, char ch) noexcept->std::ostream & {
       switch (ch) {
         case '"':
           return stream << "\\\"";

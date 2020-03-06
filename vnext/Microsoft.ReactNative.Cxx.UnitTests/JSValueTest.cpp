@@ -142,27 +142,27 @@ TEST_CLASS (JSValueTest) {
   }
 
   TEST_METHOD(TestDefaultAsConverters) {
-     CheckConversion(false, "false", false, 0, 0);
-     CheckConversion(true, "true", true, 1, 1);
-     CheckConversion(0, "0", false, 0, 0);
-     CheckConversion(1, "1", true, 1, 1);
-     CheckConversion("0", "0", true, 0, 0);
-     CheckConversion("000", "000", true, 0, 0);
-     CheckConversion("1", "1", true, 1, 1);
-     CheckConversion(NAN, "NaN", false, 0, NAN);
-     CheckConversion(INFINITY, "Infinity", true, std::numeric_limits<int64_t>::max(), INFINITY);
-     CheckConversion(-INFINITY, "-Infinity", true, std::numeric_limits<int64_t>::min(), -INFINITY);
-     CheckConversion("", "", false, 0, 0);
-     CheckConversion("20", "20", true, 20, 20);
-     CheckConversion("twenty", "twenty", true, 0, NAN);
-     CheckConversion(JSValueArray{}, "", true, 0, 0);
-     CheckConversion(JSValueArray{20}, "20", true, 20, 20);
-     CheckConversion(JSValueArray{10, 20}, "10,20", true, 0, NAN);
-     CheckConversion(JSValueArray{"twenty"}, "twenty", true, 0, NAN);
-     CheckConversion(JSValueArray{"ten", "twenty"}, "ten,twenty", true, 0, NAN);
-     CheckConversion(JSValueArray{NAN}, "NaN", true, 0, NAN);
-     CheckConversion(JSValueObject{}, "[object Object]", true, 0, NAN);
-     CheckConversion(nullptr, "null", false, 0, 0);
+    CheckConversion(false, "false", false, 0, 0);
+    CheckConversion(true, "true", true, 1, 1);
+    CheckConversion(0, "0", false, 0, 0);
+    CheckConversion(1, "1", true, 1, 1);
+    CheckConversion("0", "0", true, 0, 0);
+    CheckConversion("000", "000", true, 0, 0);
+    CheckConversion("1", "1", true, 1, 1);
+    CheckConversion(NAN, "NaN", false, 0, NAN);
+    CheckConversion(INFINITY, "Infinity", true, std::numeric_limits<int64_t>::max(), INFINITY);
+    CheckConversion(-INFINITY, "-Infinity", true, std::numeric_limits<int64_t>::min(), -INFINITY);
+    CheckConversion("", "", false, 0, 0);
+    CheckConversion("20", "20", true, 20, 20);
+    CheckConversion("twenty", "twenty", true, 0, NAN);
+    CheckConversion(JSValueArray{}, "", true, 0, 0);
+    CheckConversion(JSValueArray{20}, "20", true, 20, 20);
+    CheckConversion(JSValueArray{10, 20}, "10,20", true, 0, NAN);
+    CheckConversion(JSValueArray{"twenty"}, "twenty", true, 0, NAN);
+    CheckConversion(JSValueArray{"ten", "twenty"}, "ten,twenty", true, 0, NAN);
+    CheckConversion(JSValueArray{NAN}, "NaN", true, 0, NAN);
+    CheckConversion(JSValueObject{}, "[object Object]", true, 0, NAN);
+    CheckConversion(nullptr, "null", false, 0, 0);
   }
 
   TEST_METHOD(TestEqualsWithConversion) {
@@ -204,8 +204,8 @@ TEST_CLASS (JSValueTest) {
         JSValue(JSValueObject{{"prop1", 2}, {"prop2", false}})
             .EqualsAfterConversion(JSValueObject{{"prop2", 0}, {"prop1", "2"}}) == true);
     TestCheck(
-        JSValue(JSValueObject{{"prop1", 2}, {"prop2", false}})
-            .EqualsAfterConversion(JSValueObject{{"prop2", 0}}) == false);
+        JSValue(JSValueObject{{"prop1", 2}, {"prop2", false}}).EqualsAfterConversion(JSValueObject{{"prop2", 0}}) ==
+        false);
     TestCheck(
         JSValue(JSValueObject{{"prop1", 2}, {"prop2", false}})
             .EqualsAfterConversion(JSValueObject{{"prop1", 2}, {"prop25", false}}) == false);
