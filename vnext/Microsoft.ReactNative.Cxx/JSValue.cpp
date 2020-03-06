@@ -201,18 +201,20 @@ struct JSValueAsStringWriter {
     return stream.str();
   }
 
+  static std::string ToString(JSValueArray const &value) noexcept {
+    std::stringstream stream;
+    JSValueAsStringWriter writer{stream};
+    writer.WriteArray(value);
+    return stream.str();
+  }
+
   std::ostream &WriteValue(JSValue const &value) noexcept {
     if (value.IsNull()) {
       return m_stream << NullConverter::NullString;
     } else if (value.TryGetObject()) {
       return m_stream << ObjectConverter::JavaScriptString;
     } else if (auto arrayPtr = value.TryGetArray()) {
-      bool start = true;
-      for (auto const &item : *arrayPtr) {
-        m_stream << (start ? (start = false, "") : ",");
-        WriteValue(item);
-      }
-      return m_stream;
+      return WriteArray(*arrayPtr);
     } else if (auto stringPtr = value.TryGetString()) {
       return m_stream << *stringPtr;
     } else if (auto boolPtr = value.TryGetBoolean()) {
@@ -224,6 +226,15 @@ struct JSValueAsStringWriter {
     } else {
       VerifyElseCrashSz(false, "Unexpected JSValue type");
     }
+  }
+
+  std::ostream &WriteArray(JSValueArray const &value) noexcept {
+    bool start = true;
+    for (auto const &item : value) {
+      m_stream << (start ? (start = false, "") : ",");
+      WriteValue(item);
+    }
+    return m_stream;
   }
 
  private:
@@ -578,7 +589,7 @@ std::string JSValue::AsString() const noexcept {
     case JSValueType::Object:
       return ObjectConverter::JavaScriptString;
     case JSValueType::Array:
-      return JSValueAsStringWriter::ToString(*this);
+      return JSValueAsStringWriter::ToString(m_array);
     case JSValueType::String:
       return m_string;
     case JSValueType::Boolean:
@@ -778,15 +789,15 @@ bool JSValue::EqualsAfterConversion(const JSValue &other) const noexcept {
         case JSValueType::Array:
           return m_array.EqualsAfterConversion(other.m_array);
         case JSValueType::String:
-          return JSValueAsStringWriter::ToString(*this) == other.m_string;
+          return JSValueAsStringWriter::ToString(m_array) == other.m_string;
         case JSValueType::Boolean:
-          return DoubleConverter::FromString(JSValueAsStringWriter::ToString(*this)) ==
+          return DoubleConverter::FromString(JSValueAsStringWriter::ToString(m_array)) ==
               BooleanConverter::ToDouble(other.m_bool);
         case JSValueType::Int64:
-          return DoubleConverter::FromString(JSValueAsStringWriter::ToString(*this)) ==
+          return DoubleConverter::FromString(JSValueAsStringWriter::ToString(m_array)) ==
               static_cast<double>(other.m_int64);
         case JSValueType::Double:
-          return DoubleConverter::FromString(JSValueAsStringWriter::ToString(*this)) == other.m_double;
+          return DoubleConverter::FromString(JSValueAsStringWriter::ToString(m_array)) == other.m_double;
         default:
           return false;
       }
@@ -795,7 +806,7 @@ bool JSValue::EqualsAfterConversion(const JSValue &other) const noexcept {
         case JSValueType::Object:
           return m_string == ObjectConverter::JavaScriptString;
         case JSValueType::Array:
-          return m_string == JSValueAsStringWriter::ToString(other);
+          return m_string == JSValueAsStringWriter::ToString(other.m_array);
         case JSValueType::String:
           return m_string == other.m_string;
         case JSValueType::Boolean:
@@ -811,7 +822,7 @@ bool JSValue::EqualsAfterConversion(const JSValue &other) const noexcept {
       switch (other.m_type) {
         case JSValueType::Array:
           return BooleanConverter::ToDouble(m_bool) ==
-              DoubleConverter::FromString(JSValueAsStringWriter::ToString(other));
+              DoubleConverter::FromString(JSValueAsStringWriter::ToString(other.m_array));
         case JSValueType::String:
           return BooleanConverter::ToDouble(m_bool) == DoubleConverter::FromString(other.m_string);
         case JSValueType::Boolean:
@@ -826,7 +837,8 @@ bool JSValue::EqualsAfterConversion(const JSValue &other) const noexcept {
     case JSValueType::Int64:
       switch (other.m_type) {
         case JSValueType::Array:
-          return static_cast<double>(m_int64) == DoubleConverter::FromString(JSValueAsStringWriter::ToString(other));
+          return static_cast<double>(m_int64) ==
+              DoubleConverter::FromString(JSValueAsStringWriter::ToString(other.m_array));
         case JSValueType::String:
           return static_cast<double>(m_int64) == DoubleConverter::FromString(other.m_string);
         case JSValueType::Boolean:
@@ -841,7 +853,7 @@ bool JSValue::EqualsAfterConversion(const JSValue &other) const noexcept {
     case JSValueType::Double:
       switch (other.m_type) {
         case JSValueType::Array:
-          return m_double == DoubleConverter::FromString(JSValueAsStringWriter::ToString(other));
+          return m_double == DoubleConverter::FromString(JSValueAsStringWriter::ToString(other.m_array));
         case JSValueType::String:
           return m_double == DoubleConverter::FromString(other.m_string);
         case JSValueType::Boolean:
