@@ -293,15 +293,24 @@ struct JSValue {
 
   //! Return true if this JSValue is strictly equal to JSValue.
   //! Compared values must have the same type and value.
+  //!
+  //! The behavior is similar to JavaScript === operator except for Object and Array for which
+  //! this functions does a deep structured comparison instead of pointer equality.
   bool Equals(const JSValue &other) const noexcept;
 
   //! Return true if this JSValue is strictly equal to JSValue after they are converted to the same type.
-  //! Null is not converted to other type before comparison.
-  //! Object and Array types are not converted to other types except for Boolean and they are always true.
-  //! String is converted to Double before comparing with a number.
-  //! String is converted to Boolean (true if string is not empty) before comparing with Boolean.
-  //! Boolean is converted to 1 and +0 when comparing with a number.
+  //!
+  //! Null is not converted to any other type before comparison.
+  //! Object and Array types are converted first to a String type using AsString() before comparing
+  //! with other types, and then we apply the same rules as for the String type.
+  //! String is converted to Double before comparing with Boolean, Int64, or Double.
+  //! Boolean is converted to 1.0 and +0.0 when comparing with String or Double.
+  //! Boolean is converted to 1 and 0 when comparing with Int64.
   //! Int64 is converted to Double when comparing with Double.
+  //!
+  //! The behavior is similar to JavaScript == operator except for Object and Array for which
+  //! this functions does a deep structured comparison using EqualsAfterConversion instead
+  //! of pointer equality.
   bool EqualsAfterConversion(const JSValue &other) const noexcept;
 
 #pragma endregion

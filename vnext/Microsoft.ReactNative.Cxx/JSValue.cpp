@@ -640,7 +640,7 @@ int64_t JSValue::AsInt64() const noexcept {
     case JSValueType::String:
       return Int64Converter::FromDouble(AsDouble());
     case JSValueType::Boolean:
-      return m_bool ? 1 : 0;
+      return BooleanConverter::ToInt64(m_bool);
     case JSValueType::Int64:
       return m_int64;
     case JSValueType::Double:
@@ -685,7 +685,7 @@ double JSValue::AsDouble() const noexcept {
     case JSValueType::String:
       return DoubleConverter::FromString(m_string);
     case JSValueType::Boolean:
-      return m_bool ? 1.0 : +0.0;
+      return BooleanConverter::ToDouble(m_bool);
     case JSValueType::Int64:
       return static_cast<double>(m_int64);
     case JSValueType::Double:
