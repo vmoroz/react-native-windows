@@ -5,6 +5,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -12,6 +13,34 @@ using Windows.UI.Notifications;
 
 namespace Microsoft.ReactNative.Managed
 {
+  // An alias to help build JSValue Object values
+  class JSValueObject : Dictionary<string, JSValue>
+  {
+    public JSValueObject() { }
+
+    public JSValueObject(IReadOnlyDictionary<string, JSValue> other)
+    {
+      foreach (var keyValue in other)
+      {
+        Add(keyValue.Key, keyValue.Value);
+      }
+    }
+  }
+
+  // An alias to help build JSValue Array values
+  class JSValueArray : List<JSValue>
+  {
+    public JSValueArray() { }
+
+    public JSValueArray(IReadOnlyList<JSValue> other)
+    {
+      foreach (var item in other)
+      {
+        Add(item);
+      }
+    }
+  }
+
   // JSValue represents an immutable JavaScript value passed as a parameter.
   // It is created to simplify working with IJSValueReader.
   //
@@ -23,8 +52,9 @@ namespace Microsoft.ReactNative.Managed
   struct JSValue : IEquatable<JSValue>
   {
     public static readonly JSValue Null = new JSValue();
-    public static readonly JSValue EmptyObject = new Dictionary<string, JSValue>();
-    public static readonly JSValue EmptyArray = new List<JSValue>();
+    public static readonly JSValue EmptyObject = new JSValueObject();
+    public static readonly JSValue EmptyArray = new JSValueArray();
+    public static readonly JSValue EmptyString = "";
 
     private static readonly HashSet<string> StringToBoolean =
       new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "true", "1", "yes", "y", "on" };
@@ -49,7 +79,7 @@ namespace Microsoft.ReactNative.Managed
       }
       else
       {
-        m_objValue = value;
+        m_objValue = value ?? EmptyObject.ObjectValue;
       }
     }
 
@@ -67,7 +97,7 @@ namespace Microsoft.ReactNative.Managed
       }
       else
       {
-        m_objValue = value;
+        m_objValue = value ?? EmptyArray.ArrayValue;
       }
     }
 
@@ -101,8 +131,10 @@ namespace Microsoft.ReactNative.Managed
 
     public static implicit operator JSValue(ReadOnlyDictionary<string, JSValue> value) => new JSValue(value);
     public static implicit operator JSValue(Dictionary<string, JSValue> value) => new JSValue(value);
+    public static implicit operator JSValue(JSValueObject value) => new JSValue(value);
     public static implicit operator JSValue(ReadOnlyCollection<JSValue> value) => new JSValue(value);
     public static implicit operator JSValue(List<JSValue> value) => new JSValue(value);
+    public static implicit operator JSValue(JSValueArray value) => new JSValue(value);
     public static implicit operator JSValue(string value) => new JSValue(value);
     public static implicit operator JSValue(bool value) => new JSValue(value);
     public static implicit operator JSValue(sbyte value) => new JSValue(value);
@@ -184,10 +216,11 @@ namespace Microsoft.ReactNative.Managed
     {
       switch (Type)
       {
+        case JSValueType.Null: return JSConverter.NullString;
         case JSValueType.String: return StringValue;
-        case JSValueType.Boolean: return BooleanValue ? "true" : "false";
+        case JSValueType.Boolean: return JSConverter.ToJSString(BooleanValue);
         case JSValueType.Int64: return Int64Value.ToString();
-        case JSValueType.Double: return DoubleValue.ToString();
+        case JSValueType.Double: return JSConverter.ToJSString(DoubleValue);
         default: return "";
       }
     }
@@ -213,7 +246,26 @@ namespace Microsoft.ReactNative.Managed
         case JSValueType.String: return long.TryParse(StringValue, out long result) ? result : 0;
         case JSValueType.Boolean: return BooleanValue ? 1 : 0;
         case JSValueType.Int64: return Int64Value;
-        case JSValueType.Double: return (long)DoubleValue;
+        case JSValueType.Double:
+          {
+            double value = DoubleValue;
+            if (double.IsNaN(value))
+            {
+              return 0;
+            }
+            else if (double.IsPositiveInfinity(value))
+            {
+              return long.MaxValue;
+            }
+            else if (double.IsNegativeInfinity(value))
+            {
+              return long.MinValue;
+            }
+            else
+            {
+              return (long)DoubleValue;
+            }
+          }
         default: return 0;
       }
     }
@@ -222,7 +274,7 @@ namespace Microsoft.ReactNative.Managed
     {
       switch (Type)
       {
-        case JSValueType.String: return double.TryParse(StringValue, out double result) ? result : 0;
+        case JSValueType.String: return JSConverter.ToJSNumber(StringValue);
         case JSValueType.Boolean: return BooleanValue ? 1.0 : 0.0;
         case JSValueType.Int64: return Int64Value;
         case JSValueType.Double: return DoubleValue;
@@ -254,22 +306,50 @@ namespace Microsoft.ReactNative.Managed
 
     public static explicit operator double(JSValue value) => value.AsDouble();
 
-    public T To<T>() => (new JSValueTreeReader(this)).ReadValue<T>();
-
-    public JSValue From<T>(T value)
-    {
-      var writer = new JSValueTreeWriter();
-      writer.WriteValue(value);
-      return writer.TakeValue();
-    }
-
     public string AsJSString()
     {
+      StringBuilder WriteValue(StringBuilder sb, JSValue node)
+      {
+        switch (node.Type)
+        {
+          case JSValueType.Null: return sb.Append(JSConverter.NullString);
+          case JSValueType.Object: return sb.Append(JSConverter.ObjectString);
+          case JSValueType.Array:
+            {
+              bool start = true;
+              foreach (var item in node.ArrayValue)
+              {
+                if (start)
+                {
+                  start = false;
+                }
+                else
+                {
+                  sb.Append(',');
+                }
+
+                WriteValue(sb, item);
+              }
+              return sb;
+            }
+          case JSValueType.String: return sb.Append(node.StringValue);
+          case JSValueType.Boolean: return sb.Append(JSConverter.ToJSString(node.BooleanValue));
+          case JSValueType.Int64: return sb.Append(node.Int64Value);
+          case JSValueType.Double: return sb.Append(JSConverter.ToJSString(node.DoubleValue));
+          default: return sb;
+        }
+      }
+
       switch (Type)
       {
         case JSValueType.Null: return JSConverter.NullString;
         case JSValueType.Object: return JSConverter.ObjectString;
-        case JSValueType.Array: return JSConverter.ToJSString(this);
+        case JSValueType.Array:
+          {
+            StringBuilder sb = new StringBuilder();
+            WriteValue(sb, this);
+            return sb.ToString();
+          }
         case JSValueType.String: return StringValue;
         case JSValueType.Boolean: return JSConverter.ToJSString(BooleanValue);
         case JSValueType.Int64: return Int64Value.ToString();
@@ -296,27 +376,9 @@ namespace Microsoft.ReactNative.Managed
     {
       switch (Type)
       {
-        case JSValueType.Object: return double.NaN;
+        case JSValueType.Object:
         case JSValueType.Array:
-          switch (ArrayValue.Count)
-          {
-            case 0:
-              return 0;
-            case 1:
-              return ArrayValue[0].AsJSNumber();
-            default:
-              return double.NaN;
-          }
-        case JSValueType.String:
-          {
-            var trimmed = StringValue.Trim();
-            if (trimmed.Length == 0)
-            {
-              return 0;
-            }
-
-            return double.TryParse(trimmed, out double doubleValue) ? doubleValue : double.NaN;
-          }
+        case JSValueType.String: return JSConverter.ToJSNumber(AsJSString());
         case JSValueType.Boolean: return BooleanValue ? 1 : 0;
         case JSValueType.Int64: return Int64Value;
         case JSValueType.Double: return DoubleValue;
@@ -333,14 +395,23 @@ namespace Microsoft.ReactNative.Managed
           {
             var sb = new StringBuilder();
             sb.Append("{");
+            bool start = true;
             foreach (var prop in ObjectValue)
             {
+              if (start)
+              {
+                start = false;
+              }
+              else
+              {
+                sb.Append(", ");
+              }
+
               sb.Append(prop.Key);
               sb.Append(": ");
               sb.Append(prop.Value.ToString());
-              sb.Append(", ");
             }
-            sb.Length -= 2;
+
             sb.Append("}");
             return sb.ToString();
           }
@@ -348,21 +419,40 @@ namespace Microsoft.ReactNative.Managed
           {
             var sb = new StringBuilder();
             sb.Append("[");
+            bool start = true;
             foreach (var item in ArrayValue)
             {
+              if (start)
+              {
+                start = false;
+              }
+              else
+              {
+                sb.Append(", ");
+              }
+
               sb.Append(item.ToString());
-              sb.Append(", ");
             }
+
             sb.Length -= 2;
             sb.Append("]");
             return sb.ToString();
           }
         case JSValueType.String: return "\"" + StringValue + "\"";
-        case JSValueType.Boolean: return BooleanValue ? "true" : "false";
+        case JSValueType.Boolean: return JSConverter.ToJSString(BooleanValue);
         case JSValueType.Int64: return Int64Value.ToString();
-        case JSValueType.Double: return DoubleValue.ToString();
+        case JSValueType.Double: return JSConverter.ToJSString(DoubleValue);
         default: return "<Unexpected>";
       }
+    }
+
+    public T To<T>() => (new JSValueTreeReader(this)).ReadValue<T>();
+
+    public JSValue From<T>(T value)
+    {
+      var writer = new JSValueTreeWriter();
+      writer.WriteValue(value);
+      return writer.TakeValue();
     }
 
     public int PropertyCount => Type == JSValueType.Object ? ObjectValue.Count : 0;
@@ -428,8 +518,8 @@ namespace Microsoft.ReactNative.Managed
       switch (Type)
       {
         case JSValueType.Null: return true;
-        case JSValueType.Object: return JSValueObject.Equals(ObjectValue, other.ObjectValue);
-        case JSValueType.Array: return JSValueArray.Equals(ArrayValue, other.ArrayValue);
+        case JSValueType.Object: return ObjectEquals(ObjectValue, other.ObjectValue);
+        case JSValueType.Array: return ArrayEquals(ArrayValue, other.ArrayValue);
         case JSValueType.String: return StringValue == other.StringValue;
         case JSValueType.Boolean: return BooleanValue == other.BooleanValue;
         case JSValueType.Int64: return Int64Value == other.Int64Value;
@@ -445,6 +535,11 @@ namespace Microsoft.ReactNative.Managed
 
     public bool JSEquals(JSValue other)
     {
+      if (Type == JSValueType.Null || other.Type == JSValueType.Null)
+      {
+        return Type == other.Type;
+      }
+
       // If one of the types Boolean, Int64, or Double, then compare as Numbers,
       // otherwise compare as strings.
       JSValueType greatestType = Type > other.Type ? Type : other.Type;
@@ -473,13 +568,126 @@ namespace Microsoft.ReactNative.Managed
       return InternalReadFrom(reader);
     }
 
-    public static JSValue InternalReadFrom(IJSValueReader reader)
+    public static JSValueObject ReadObjectFrom(IJSValueReader reader)
+    {
+      if (reader.ValueType == JSValueType.Object)
+      {
+        if (reader is IJSValueTreeReader treeReader)
+        {
+          return new JSValueObject(treeReader.Current.ObjectValue);
+        }
+
+        return InternalReadObjectFrom(reader);
+      }
+
+      return new JSValueObject();
+    }
+
+    public static JSValueArray ReadArrayFrom(IJSValueReader reader)
+    {
+      if (reader.ValueType == JSValueType.Array)
+      {
+        if (reader is IJSValueTreeReader treeReader)
+        {
+          return new JSValueArray(treeReader.Current.ArrayValue);
+        }
+
+        return InternalReadArrayFrom(reader);
+      }
+
+      return new JSValueArray();
+    }
+
+    public void WriteTo(IJSValueWriter writer)
+    {
+      switch (Type)
+      {
+        case JSValueType.Null: writer.WriteNull(); break;
+        case JSValueType.Object: WriteObject(writer, ObjectValue); break;
+        case JSValueType.Array: WriteArray(writer, ArrayValue); break;
+        case JSValueType.String: writer.WriteString(StringValue); break;
+        case JSValueType.Boolean: writer.WriteBoolean(BooleanValue); break;
+        case JSValueType.Int64: writer.WriteInt64(Int64Value); break;
+        case JSValueType.Double: writer.WriteDouble(DoubleValue); break;
+      }
+    }
+
+    public static void WriteObject(IJSValueWriter writer, IEnumerable<KeyValuePair<string, JSValue>> value)
+    {
+      writer.WriteObjectBegin();
+      foreach (var keyValue in value)
+      {
+        writer.WritePropertyName(keyValue.Key);
+        keyValue.Value.WriteTo(writer);
+      }
+
+      writer.WriteObjectEnd();
+    }
+
+    public static void WriteArray(IJSValueWriter writer, IEnumerable<JSValue> value)
+    {
+      writer.WriteArrayBegin();
+      foreach (var item in value)
+      {
+        item.WriteTo(writer);
+      }
+
+      writer.WriteArrayEnd();
+    }
+
+    private static bool ObjectEquals(IReadOnlyDictionary<string, JSValue> left, IReadOnlyDictionary<string, JSValue> right)
+    {
+      if (left == right)
+      {
+        return true;
+      }
+
+      if (left.Count != right.Count)
+      {
+        return false;
+      }
+
+      foreach (var entry in left)
+      {
+        if (!right.TryGetValue(entry.Key, out var value) || !value.Equals(entry.Value))
+        {
+          return false;
+        }
+      }
+
+      return true;
+    }
+
+    private static bool ArrayEquals(IReadOnlyList<JSValue> left, IReadOnlyList<JSValue> right)
+    {
+      if (left == right)
+      {
+        return true;
+      }
+
+      if (left.Count != right.Count)
+      {
+        return false;
+      }
+
+      for (int i = 0; i < left.Count; ++i)
+      {
+        if (!left[i].Equals(right[i]))
+        {
+          return false;
+        }
+      }
+
+      return true;
+    }
+
+    private static JSValue InternalReadFrom(IJSValueReader reader)
     {
       switch (reader.ValueType)
       {
         case JSValueType.Null: return Null;
-        case JSValueType.Object: return new JSValue(JSValueObject.InternalReadFrom(reader));
-        case JSValueType.Array: return new JSValue(JSValueArray.InternalReadFrom(reader));
+        case JSValueType.Object: return new JSValue(InternalReadObjectFrom(reader));
+        case JSValueType.Array: return new JSValue(InternalReadArrayFrom(reader));
         case JSValueType.String: return new JSValue(reader.GetString());
         case JSValueType.Boolean: return new JSValue(reader.GetBoolean());
         case JSValueType.Int64: return new JSValue(reader.GetInt64());
@@ -488,51 +696,47 @@ namespace Microsoft.ReactNative.Managed
       }
     }
 
-    public void WriteTo(IJSValueWriter writer)
+    private static JSValueObject InternalReadObjectFrom(IJSValueReader reader)
     {
-      switch (Type)
+      var jsObject = new JSValueObject();
+      while (reader.GetNextObjectProperty(out string propertyName))
       {
-        case JSValueType.Null: writer.WriteNull(); break;
-        case JSValueType.Object: JSValueObject.WriteTo(writer, ObjectValue); break;
-        case JSValueType.Array: JSValueArray.WriteTo(writer, ArrayValue); break;
-        case JSValueType.String: writer.WriteString(StringValue); break;
-        case JSValueType.Boolean: writer.WriteBoolean(BooleanValue); break;
-        case JSValueType.Int64: writer.WriteInt64(Int64Value); break;
-        case JSValueType.Double: writer.WriteDouble(DoubleValue); break;
+        jsObject.Add(propertyName, InternalReadFrom(reader));
       }
+
+      return jsObject;
+    }
+
+    private static JSValueArray InternalReadArrayFrom(IJSValueReader reader)
+    {
+      var jsArray = new JSValueArray();
+      while (reader.GetNextArrayItem())
+      {
+        jsArray.Add(InternalReadFrom(reader));
+      }
+
+      return jsArray;
     }
 
     #region Obsolete members
 
     [Obsolete("Use TryGetObject or AsObject")] public IReadOnlyDictionary<string, JSValue> Object => (IReadOnlyDictionary<string, JSValue>)m_objValue;
     [Obsolete("Use TryGetArray or AsArray")] public IReadOnlyList<JSValue> Array => (IReadOnlyList<JSValue>)m_objValue;
-    [Obsolete("Use TryGetString or AsString")] public string String => (string)m_objValue;
-    [Obsolete("Use TryGetBoolean or AsBoolean")] public bool Boolean => m_simpleValue.BooleanValue;
+    [Obsolete("Use TryGetString, AsString, or AsJSString")] public string String => (string)m_objValue;
+    [Obsolete("Use TryGetBoolean, AsBoolean, or AsJSBoolean")] public bool Boolean => m_simpleValue.BooleanValue;
     [Obsolete("Use TryGetInt64 or AsInt64")] public long Int64 => m_simpleValue.Int64Value;
-    [Obsolete("Use TryGetDouble or AsDouble")] public double Double => m_simpleValue.DoubleValue;
+    [Obsolete("Use TryGetDouble, AsDouble, or AsJSNumber")] public double Double => m_simpleValue.DoubleValue;
 
-    [Obsolete("Use JSValueObject.ReadFrom")]
+    [Obsolete("Use ReadObjectFrom")]
     public static Dictionary<string, JSValue> ReadObjectPropertiesFrom(IJSValueReader reader)
     {
-      return JSValueObject.ReadFrom(reader).ToDictionary(entry => entry.Key, entry => entry.Value);
+      return ReadObjectFrom(reader);
     }
 
-    [Obsolete("Use JSValueArray.ReadFrom")]
+    [Obsolete("Use ReadArrayFrom")]
     public static List<JSValue> ReadArrayItemsFrom(IJSValueReader reader)
     {
-      return JSValueArray.ReadFrom(reader).ToList();
-    }
-
-    [Obsolete("Use JSValueObject.WriteTo")]
-    public static void WriteObject(IJSValueWriter writer, IEnumerable<KeyValuePair<string, JSValue>> value)
-    {
-      JSValueObject.WriteTo(writer, value);
-    }
-
-    [Obsolete("Use JSValueArray.WriteTo")]
-    public static void WriteArray(IJSValueWriter writer, IEnumerable<JSValue> value)
-    {
-      JSValueArray.WriteTo(writer, value);
+      return ReadArrayFrom(reader);
     }
 
     #endregion
@@ -552,231 +756,48 @@ namespace Microsoft.ReactNative.Managed
       [FieldOffset(0)] public long Int64Value;
       [FieldOffset(0)] public double DoubleValue;
     }
-  }
 
-  class JSValueObject : Dictionary<string, JSValue>
-  {
-    public static implicit operator JSValue(JSValueObject properties) =>
-      new JSValue(new ReadOnlyDictionary<string, JSValue>(properties));
-
-    public static bool Equals(IReadOnlyDictionary<string, JSValue> left, IReadOnlyDictionary<string, JSValue> right)
+    private static class JSConverter
     {
-      if (left == right)
+      public static readonly string NullString = "null";
+      public static readonly string ObjectString = "[object Object]";
+
+      public static string ToJSString(bool value)
       {
-        return true;
+        return value ? "true" : "false";
       }
 
-      if (left == null || right == null || left.Count != right.Count)
+      public static string ToJSString(double value)
       {
-        return false;
-      }
-
-      foreach (var entry in left)
-      {
-        if (!right.TryGetValue(entry.Key, out var value) || !value.Equals(entry.Value))
+        if (double.IsNaN(value))
         {
-          return false;
+          return "NaN";
+        }
+        else if (double.IsPositiveInfinity(value))
+        {
+          return "Infinity";
+        }
+        else if (double.IsNegativeInfinity(value))
+        {
+          return "-Infinity";
+        }
+        else
+        {
+          return value.ToString();
         }
       }
 
-      return true;
-    }
-
-    public static IReadOnlyDictionary<string, JSValue> ReadFrom(IJSValueReader reader)
-    {
-      if (reader is IJSValueTreeReader treeReader && treeReader.Current.TryGetObject(out var result))
+      public static double ToJSNumber(string value)
       {
-        return result;
-      }
-
-      return InternalReadFrom(reader);
-    }
-
-    public static IReadOnlyDictionary<string, JSValue> InternalReadFrom(IJSValueReader reader)
-    {
-      if (reader.ValueType == JSValueType.Object)
-      {
-        var result = new JSValueObject();
-        while (reader.GetNextObjectProperty(out string propertyName))
+        var trimmed = value.Trim();
+        if (trimmed.Length == 0)
         {
-          result.Add(propertyName, JSValue.InternalReadFrom(reader));
+          return 0;
         }
 
-        return result;
-      }
-
-      return JSValue.EmptyObject.AsObject();
-    }
-
-    public void WriteTo(IJSValueWriter writer)
-    {
-      WriteTo(writer, this);
-    }
-
-    public static void WriteTo(IJSValueWriter writer, IEnumerable<KeyValuePair<string, JSValue>> value)
-    {
-      writer.WriteObjectBegin();
-      foreach (var keyValue in value)
-      {
-        writer.WritePropertyName(keyValue.Key);
-        keyValue.Value.WriteTo(writer);
-      }
-
-      writer.WriteObjectEnd();
-    }
-  }
-
-  class JSValueArray : List<JSValue>
-  {
-    public static implicit operator JSValue(JSValueArray items) =>
-      new JSValue(new ReadOnlyCollection<JSValue>(items));
-
-    public static bool Equals(IReadOnlyList<JSValue> left, IReadOnlyList<JSValue> right)
-    {
-      if (left == right)
-      {
-        return true;
-      }
-
-      if (left == null || right == null || left.Count != right.Count)
-      {
-        return false;
-      }
-
-      for (int i = 0; i < left.Count; ++i)
-      {
-        if (!left[i].Equals(right[i]))
-        {
-          return false;
-        }
-      }
-
-      return true;
-    }
-
-    public static IReadOnlyList<JSValue> ReadFrom(IJSValueReader reader)
-    {
-      if (reader is IJSValueTreeReader treeReader && treeReader.Current.TryGetArray(out var result))
-      {
-        return result;
-      }
-
-      return InternalReadFrom(reader);
-    }
-
-    public static IReadOnlyList<JSValue> InternalReadFrom(IJSValueReader reader)
-    {
-      if (reader.ValueType == JSValueType.Array)
-      {
-        var result = new JSValueArray();
-        while (reader.GetNextArrayItem())
-        {
-          result.Add(JSValue.InternalReadFrom(reader));
-        }
-
-        return result;
-      }
-
-      return JSValue.EmptyArray.AsArray();
-    }
-
-    public void WriteTo(IJSValueWriter writer)
-    {
-      WriteTo(writer, this);
-    }
-
-    public static void WriteTo(IJSValueWriter writer, IEnumerable<JSValue> value)
-    {
-      writer.WriteArrayBegin();
-      foreach (var item in value)
-      {
-        item.WriteTo(writer);
-      }
-
-      writer.WriteArrayEnd();
-    }
-  }
-
-  static class JSConverter
-  {
-    public static readonly string NullString = "null";
-    public static readonly string ObjectString = "[object Object]";
-
-    public static string ToJSString(JSValue value)
-    {
-      StringBuilder sb = new StringBuilder();
-
-      void WriteValue(JSValue node)
-      {
-        if (node.IsNull)
-        {
-          sb.Append(NullString);
-        }
-        else if (node.Type == JSValueType.Object)
-        {
-          sb.Append(ObjectString);
-        }
-        else if (node.TryGetArray(out var arrayValue))
-        {
-          bool start = true;
-          foreach (var item in arrayValue)
-          {
-            if (start)
-            {
-              start = false;
-            }
-            else
-            {
-              sb.Append(',');
-            }
-
-            WriteValue(item);
-          }
-        }
-        else if (node.TryGetString(out var stringValue))
-        {
-          sb.Append(stringValue);
-        }
-        else if (node.TryGetBoolean(out var boolValue))
-        {
-          sb.Append(ToJSString(boolValue));
-        }
-        else if (node.TryGetInt64(out var intValue))
-        {
-          sb.Append(intValue);
-        }
-        else if (node.TryGetDouble(out var doubleValue))
-        {
-          sb.Append(doubleValue);
-        }
-      }
-
-      WriteValue(value);
-      return sb.ToString();
-    }
-
-    public static string ToJSString(bool value)
-    {
-      return value ? "true" : "false";
-    }
-
-    public static string ToJSString(double value)
-    {
-      if (double.IsNaN(value))
-      {
-        return "NaN";
-      }
-      else if (double.IsPositiveInfinity(value))
-      {
-        return "Infinity";
-      }
-      else if (double.IsNegativeInfinity(value))
-      {
-        return "-Infinity";
-      }
-      else
-      {
-        return value.ToString();
+        // NumberStyles.Float does not allow numbers to have thousand's commas insider. 
+        return double.TryParse(trimmed, NumberStyles.Float, CultureInfo.InvariantCulture, out double doubleValue)
+          ? doubleValue : double.NaN;
       }
     }
   }
