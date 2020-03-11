@@ -2,14 +2,11 @@
 // Licensed under the MIT License.
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
-using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
-using Windows.UI.Notifications;
 
 namespace Microsoft.ReactNative.Managed
 {
@@ -18,12 +15,15 @@ namespace Microsoft.ReactNative.Managed
   {
     public JSValueObject() { }
 
-    public JSValueObject(IReadOnlyDictionary<string, JSValue> other)
+    public static JSValueObject CopyFrom(IReadOnlyDictionary<string, JSValue> other)
     {
+      JSValueObject obj = new JSValueObject();
       foreach (var keyValue in other)
       {
-        Add(keyValue.Key, keyValue.Value);
+        obj.Add(keyValue.Key, keyValue.Value);
       }
+
+      return obj;
     }
   }
 
@@ -32,12 +32,15 @@ namespace Microsoft.ReactNative.Managed
   {
     public JSValueArray() { }
 
-    public JSValueArray(IReadOnlyList<JSValue> other)
+    public static JSValueArray CopyFrom(IReadOnlyList<JSValue> other)
     {
+      JSValueArray arr = new JSValueArray();
       foreach (var item in other)
       {
-        Add(item);
+        arr.Add(item);
       }
+
+      return arr;
     }
   }
 
@@ -69,36 +72,14 @@ namespace Microsoft.ReactNative.Managed
     {
       Type = JSValueType.Object;
       m_simpleValue = new SimpleValue();
-      if (value is ReadOnlyDictionary<string, JSValue>)
-      {
-        m_objValue = value;
-      }
-      else if (value is IDictionary<string, JSValue> dictionary)
-      {
-        m_objValue = new ReadOnlyDictionary<string, JSValue>(dictionary);
-      }
-      else
-      {
-        m_objValue = value ?? EmptyObject.ObjectValue;
-      }
+      m_objValue = value ?? EmptyObject.ObjectValue;
     }
 
     public JSValue(IReadOnlyList<JSValue> value)
     {
       Type = JSValueType.Array;
       m_simpleValue = new SimpleValue();
-      if (value is ReadOnlyCollection<JSValue>)
-      {
-        m_objValue = value;
-      }
-      else if (value is IList<JSValue> list)
-      {
-        m_objValue = new ReadOnlyCollection<JSValue>(list);
-      }
-      else
-      {
-        m_objValue = value ?? EmptyArray.ArrayValue;
-      }
+      m_objValue = value ?? EmptyArray.ArrayValue;
     }
 
     public JSValue(string value)
@@ -246,26 +227,7 @@ namespace Microsoft.ReactNative.Managed
         case JSValueType.String: return long.TryParse(StringValue, out long result) ? result : 0;
         case JSValueType.Boolean: return BooleanValue ? 1 : 0;
         case JSValueType.Int64: return Int64Value;
-        case JSValueType.Double:
-          {
-            double value = DoubleValue;
-            if (double.IsNaN(value))
-            {
-              return 0;
-            }
-            else if (double.IsPositiveInfinity(value))
-            {
-              return long.MaxValue;
-            }
-            else if (double.IsNegativeInfinity(value))
-            {
-              return long.MinValue;
-            }
-            else
-            {
-              return (long)DoubleValue;
-            }
-          }
+        case JSValueType.Double: return unchecked((long)DoubleValue);
         default: return 0;
       }
     }
@@ -390,7 +352,7 @@ namespace Microsoft.ReactNative.Managed
     {
       switch (Type)
       {
-        case JSValueType.Null: return "null";
+        case JSValueType.Null: return JSConverter.NullString;
         case JSValueType.Object:
           {
             var sb = new StringBuilder();
@@ -574,7 +536,7 @@ namespace Microsoft.ReactNative.Managed
       {
         if (reader is IJSValueTreeReader treeReader)
         {
-          return new JSValueObject(treeReader.Current.ObjectValue);
+          return JSValueObject.CopyFrom(treeReader.Current.ObjectValue);
         }
 
         return InternalReadObjectFrom(reader);
@@ -589,7 +551,7 @@ namespace Microsoft.ReactNative.Managed
       {
         if (reader is IJSValueTreeReader treeReader)
         {
-          return new JSValueArray(treeReader.Current.ArrayValue);
+          return JSValueArray.CopyFrom(treeReader.Current.ArrayValue);
         }
 
         return InternalReadArrayFrom(reader);

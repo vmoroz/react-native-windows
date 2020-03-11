@@ -4,6 +4,8 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json.Linq;
 using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
 
 namespace Microsoft.ReactNative.Managed.UnitTests
 {
@@ -207,8 +209,111 @@ namespace Microsoft.ReactNative.Managed.UnitTests
       Assert.AreEqual(4.5, jsValue[8]);
     }
 
-    private void CheckConversion(
-    JSValue value, string stringValue, bool boolValue, double doubleValue)
+    [TestMethod]
+    public void TestJSValueConstructor()
+    {
+      var value01 = new JSValue();
+      var value02 = new JSValue(new JSValueObject { ["prop1"] = 3 });
+      var value03 = new JSValue(new JSValueObject { });
+      var value04 = new JSValue(new JSValueArray { 1, 2 });
+      var value05 = new JSValue(new JSValueArray { });
+      var value06 = new JSValue("Hello");
+      var value07 = new JSValue(true);
+      var value08 = new JSValue(false);
+      var value09 = new JSValue(0);
+      var value10 = new JSValue(42);
+      var value11 = new JSValue(4.2);
+
+      Assert.AreEqual(JSValueType.Null, value01.Type, "tag_a1001");
+      Assert.AreEqual(JSValueType.Object, value02.Type, "tag_a1002");
+      Assert.AreEqual(JSValueType.Object, value03.Type, "tag_a1003");
+      Assert.AreEqual(JSValueType.Array, value04.Type, "tag_a1004");
+      Assert.AreEqual(JSValueType.Array, value05.Type, "tag_a1005");
+      Assert.AreEqual(JSValueType.String, value06.Type, "tag_a1006");
+      Assert.AreEqual(JSValueType.Boolean, value07.Type, "tag_a1007");
+      Assert.AreEqual(JSValueType.Boolean, value08.Type, "tag_a1008");
+      Assert.AreEqual(JSValueType.Int64, value09.Type, "tag_a1009");
+      Assert.AreEqual(JSValueType.Int64, value10.Type, "tag_a1010");
+      Assert.AreEqual(JSValueType.Double, value11.Type, "tag_a1011");
+
+      Assert.IsTrue(value01.IsNull, "tag_a2001");
+      Assert.IsTrue(value02.TryGetObject(out var objValue02) && objValue02.Count == 1, "tag_a2002");
+      Assert.IsTrue(value03.TryGetObject(out var objValue03) && objValue03.Count == 0, "tag_a2003");
+      Assert.IsTrue(value04.TryGetArray(out var arrValue04) && arrValue04.Count == 2, "tag_a2004");
+      Assert.IsTrue(value05.TryGetArray(out var arrValue05) && arrValue05.Count == 0, "tag_a2005");
+      Assert.IsTrue(value06.TryGetString(out var strValue06) && strValue06 == "Hello", "tag_a2006");
+      Assert.IsTrue(value07.TryGetBoolean(out var boolValue07) && boolValue07 == true, "tag_a2007");
+      Assert.IsTrue(value08.TryGetBoolean(out var boolValue08) && boolValue08 == false, "tag_a2008");
+      Assert.IsTrue(value09.TryGetInt64(out var intValue09) && intValue09 == 0, "tag_a2009");
+      Assert.IsTrue(value10.TryGetInt64(out var intValue10) && intValue10 == 42, "tag_a2010");
+      Assert.IsTrue(value11.TryGetDouble(out var doubleValue11) && doubleValue11 == 4.2, "tag_a2011");
+    }
+
+    [TestMethod]
+    public void TestJSValueImplicitCast()
+    {
+      JSValue value01 = new ReadOnlyDictionary<string, JSValue>(new Dictionary<string, JSValue> { ["prop1"] = 3 });
+      JSValue value02 = new Dictionary<string, JSValue> { ["prop1"] = 3 };
+      JSValue value03 = new JSValueObject { ["prop1"] = 3 };
+      JSValue value04 = new ReadOnlyCollection<JSValue>(new List<JSValue> { 1, 2 });
+      JSValue value05 = new List<JSValue> { 1, 2 };
+      JSValue value06 = new JSValueArray { 1, 2 };
+      JSValue value07 = "Hello";
+      JSValue value08 = true;
+      JSValue value09 = false;
+      JSValue value10 = (sbyte)42;
+      JSValue value11 = (short)42;
+      JSValue value12 = 42;
+      JSValue value13 = (long)42;
+      JSValue value14 = (byte)42;
+      JSValue value15 = (ushort)42;
+      JSValue value16 = (uint)42;
+      JSValue value17 = (ulong)42;
+      JSValue value18 = (float)4.2;
+      JSValue value19 = 4.2;
+
+      Assert.AreEqual(JSValueType.Object, value01.Type, "tag_b1001");
+      Assert.AreEqual(JSValueType.Object, value02.Type, "tag_b1002");
+      Assert.AreEqual(JSValueType.Object, value03.Type, "tag_b1003");
+      Assert.AreEqual(JSValueType.Array, value04.Type, "tag_b1004");
+      Assert.AreEqual(JSValueType.Array, value05.Type, "tag_b1005");
+      Assert.AreEqual(JSValueType.Array, value06.Type, "tag_b1006");
+      Assert.AreEqual(JSValueType.String, value07.Type, "tag_b1007");
+      Assert.AreEqual(JSValueType.Boolean, value08.Type, "tag_b1008");
+      Assert.AreEqual(JSValueType.Boolean, value09.Type, "tag_b1009");
+      Assert.AreEqual(JSValueType.Int64, value10.Type, "tag_b1010");
+      Assert.AreEqual(JSValueType.Int64, value11.Type, "tag_b1011");
+      Assert.AreEqual(JSValueType.Int64, value12.Type, "tag_b1012");
+      Assert.AreEqual(JSValueType.Int64, value13.Type, "tag_b1013");
+      Assert.AreEqual(JSValueType.Int64, value14.Type, "tag_b1014");
+      Assert.AreEqual(JSValueType.Int64, value15.Type, "tag_b1015");
+      Assert.AreEqual(JSValueType.Int64, value16.Type, "tag_b1016");
+      Assert.AreEqual(JSValueType.Int64, value17.Type, "tag_b1017");
+      Assert.AreEqual(JSValueType.Double, value18.Type, "tag_b1018");
+      Assert.AreEqual(JSValueType.Double, value19.Type, "tag_b1019");
+
+      Assert.IsTrue(value01.TryGetObject(out var objValue01) && objValue01.Count == 1, "tag_b2001");
+      Assert.IsTrue(value02.TryGetObject(out var objValue02) && objValue02.Count == 1, "tag_b2002");
+      Assert.IsTrue(value03.TryGetObject(out var objValue03) && objValue03.Count == 1, "tag_b2003");
+      Assert.IsTrue(value04.TryGetArray(out var arrValue04) && arrValue04.Count == 2, "tag_b2004");
+      Assert.IsTrue(value05.TryGetArray(out var arrValue05) && arrValue05.Count == 2, "tag_b2005");
+      Assert.IsTrue(value06.TryGetArray(out var arrValue06) && arrValue06.Count == 2, "tag_b2006");
+      Assert.IsTrue(value07.TryGetString(out var strValue07) && strValue07 == "Hello", "tag_b2007");
+      Assert.IsTrue(value08.TryGetBoolean(out var boolValue08) && boolValue08 == true, "tag_b2008");
+      Assert.IsTrue(value09.TryGetBoolean(out var boolValue09) && boolValue09 == false, "tag_b2009");
+      Assert.IsTrue(value10.TryGetInt64(out var intValue10) && intValue10 == 42, "tag_b2010");
+      Assert.IsTrue(value11.TryGetInt64(out var intValue11) && intValue11 == 42, "tag_b2011");
+      Assert.IsTrue(value12.TryGetInt64(out var intValue12) && intValue12 == 42, "tag_b2012");
+      Assert.IsTrue(value13.TryGetInt64(out var intValue13) && intValue13 == 42, "tag_b2013");
+      Assert.IsTrue(value14.TryGetInt64(out var intValue14) && intValue14 == 42, "tag_b2014");
+      Assert.IsTrue(value15.TryGetInt64(out var intValue15) && intValue15 == 42, "tag_b2015");
+      Assert.IsTrue(value16.TryGetInt64(out var intValue16) && intValue16 == 42, "tag_b2016");
+      Assert.IsTrue(value17.TryGetInt64(out var intValue17) && intValue17 == 42, "tag_b2017");
+      Assert.IsTrue(value18.TryGetDouble(out var doubleValue18) && doubleValue18 == (float)4.2, "tag_b2018");
+      Assert.IsTrue(value19.TryGetDouble(out var doubleValue19) && doubleValue19 == 4.2, "tag_b2019");
+    }
+
+    private void CheckConversion(JSValue value, string stringValue, bool boolValue, double doubleValue)
     {
       Assert.AreEqual(stringValue, value.AsJSString());
       Assert.AreEqual(boolValue, value.AsJSBoolean());
