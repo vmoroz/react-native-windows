@@ -408,7 +408,7 @@ namespace Microsoft.ReactNative.Managed
       }
     }
 
-    public T To<T>() => (new JSValueTreeReader(this)).ReadValue<T>();
+    public T To<T>() => new JSValueTreeReader(this).ReadValue<T>();
 
     public JSValue From<T>(T value)
     {
