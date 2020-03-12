@@ -224,10 +224,10 @@ namespace Microsoft.ReactNative.Managed
     {
       switch (Type)
       {
-        case JSValueType.String: return long.TryParse(StringValue, out long result) ? result : 0;
+        case JSValueType.String: return JSConverter.ToInt64(JSConverter.ToJSNumber(StringValue));
         case JSValueType.Boolean: return BooleanValue ? 1 : 0;
         case JSValueType.Int64: return Int64Value;
-        case JSValueType.Double: return unchecked((long)DoubleValue);
+        case JSValueType.Double: return JSConverter.ToInt64(DoubleValue);
         default: return 0;
       }
     }
@@ -761,6 +761,9 @@ namespace Microsoft.ReactNative.Managed
         return double.TryParse(trimmed, NumberStyles.Float, CultureInfo.InvariantCulture, out double doubleValue)
           ? doubleValue : double.NaN;
       }
+
+      public static long ToInt64(double value) =>
+        (long.MinValue <= value && value <= long.MaxValue) ? unchecked((long)value) : 0;
     }
   }
 }

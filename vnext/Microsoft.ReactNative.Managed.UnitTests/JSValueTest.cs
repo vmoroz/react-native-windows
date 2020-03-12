@@ -313,6 +313,114 @@ namespace Microsoft.ReactNative.Managed.UnitTests
       Assert.IsTrue(value19.TryGetDouble(out var doubleValue19) && doubleValue19 == 4.2, "tag_b2019");
     }
 
+    [TestMethod]
+    public void TestAsObject()
+    {
+      // Any type except for Object is returned as EmptyObject.
+      bool AsObjectIsEmpty(JSValue value) => value.AsObject().Count == 0;
+
+      Assert.IsFalse(AsObjectIsEmpty(new JSValueObject { ["prop1"] = 42 }), "tag_c01");
+      Assert.IsTrue(AsObjectIsEmpty(JSValue.EmptyObject), "tag_c02");
+      Assert.IsTrue(AsObjectIsEmpty(new JSValueArray { 42, 78 }), "tag_c03");
+      Assert.IsTrue(AsObjectIsEmpty(JSValue.EmptyArray), "tag_c04");
+      Assert.IsTrue(AsObjectIsEmpty(""), "tag_c05");
+      Assert.IsTrue(AsObjectIsEmpty("Hello"), "tag_c06");
+      Assert.IsTrue(AsObjectIsEmpty(true), "tag_c07");
+      Assert.IsTrue(AsObjectIsEmpty(false), "tag_c08");
+      Assert.IsTrue(AsObjectIsEmpty(0), "tag_c09");
+      Assert.IsTrue(AsObjectIsEmpty(42), "tag_c10");
+      Assert.IsTrue(AsObjectIsEmpty(long.MaxValue), "tag_c11");
+      Assert.IsTrue(AsObjectIsEmpty(long.MinValue), "tag_c12");
+      Assert.IsTrue(AsObjectIsEmpty(0.0), "tag_c13");
+      Assert.IsTrue(AsObjectIsEmpty(4.2), "tag_c14");
+      Assert.IsTrue(AsObjectIsEmpty(double.NaN), "tag_c15");
+      Assert.IsTrue(AsObjectIsEmpty(double.PositiveInfinity), "tag_c16");
+      Assert.IsTrue(AsObjectIsEmpty(double.NegativeInfinity), "tag_c17");
+    }
+
+    [TestMethod]
+    public void TestAsArray()
+    {
+      // Any type except for Array is returned as EmptyObject.
+      bool AsArrayIsEmpty(JSValue value) => value.AsArray().Count == 0;
+
+      Assert.IsTrue(AsArrayIsEmpty(new JSValueObject { ["prop1"] = 42 }), "tag_d01");
+      Assert.IsTrue(AsArrayIsEmpty(JSValue.EmptyObject), "tag_d02");
+      Assert.IsFalse(AsArrayIsEmpty(new JSValueArray { 42, 78 }), "tag_d03");
+      Assert.IsTrue(AsArrayIsEmpty(JSValue.EmptyArray), "tag_d04");
+      Assert.IsTrue(AsArrayIsEmpty(""), "tag_d05");
+      Assert.IsTrue(AsArrayIsEmpty("Hello"), "tag_d06");
+      Assert.IsTrue(AsArrayIsEmpty(true), "tag_d07");
+      Assert.IsTrue(AsArrayIsEmpty(false), "tag_d08");
+      Assert.IsTrue(AsArrayIsEmpty(0), "tag_d09");
+      Assert.IsTrue(AsArrayIsEmpty(42), "tag_d10");
+      Assert.IsTrue(AsArrayIsEmpty(long.MaxValue), "tag_d11");
+      Assert.IsTrue(AsArrayIsEmpty(long.MinValue), "tag_d12");
+      Assert.IsTrue(AsArrayIsEmpty(0.0), "tag_d13");
+      Assert.IsTrue(AsArrayIsEmpty(4.2), "tag_d14");
+      Assert.IsTrue(AsArrayIsEmpty(double.NaN), "tag_d15");
+      Assert.IsTrue(AsArrayIsEmpty(double.PositiveInfinity), "tag_d16");
+      Assert.IsTrue(AsArrayIsEmpty(double.NegativeInfinity), "tag_d17");
+    }
+
+    [TestMethod]
+    public void TestAsConverters()
+    {
+      // Check AsString, AsBoolean, AsInt64, and AsDouble conversions.
+      void CheckAsConverter(JSValue value, string asString, bool asBoolean, long asInt64, double asDouble, string tag)
+      {
+        Assert.AreEqual(asString, value.AsString(), "AsString: {0}", tag);
+        Assert.AreEqual(asBoolean, value.AsBoolean(), "AsBoolean: {0}", tag);
+        Assert.AreEqual(asInt64, value.AsInt64(), "AsInt64: {0}", tag);
+        Assert.AreEqual(asDouble, value.AsDouble(), "AsDouble: {0}", tag);
+      }
+
+      CheckAsConverter(new JSValueObject { ["prop1"] = 42 }, "", true, 0, 0, "tag_e01");
+      CheckAsConverter(JSValue.EmptyObject, "", false, 0, 0, "tag_e02");
+      CheckAsConverter(new JSValueArray { 42, 78 }, "", true, 0, 0, "tag_e03");
+      CheckAsConverter(JSValue.EmptyArray, "", false, 0, 0, "tag_e04");
+      CheckAsConverter("", "", false, 0, 0, "tag_e05");
+      CheckAsConverter("  ", "  ", false, 0, 0, "tag_e06");
+      CheckAsConverter("42", "42", false, 42, 42, "tag_e07");
+      CheckAsConverter("  42  ", "  42  ", false, 42, 42, "tag_e08");
+      CheckAsConverter("4.2", "4.2", false, 4, 4.2, "tag_e09");
+      CheckAsConverter("Hello", "Hello", false, 0, double.NaN, "tag_e10");
+      CheckAsConverter("true", "true", true, 0, double.NaN, "tag_e11");
+      CheckAsConverter("false", "false", false, 0, double.NaN, "tag_e12");
+      CheckAsConverter("True", "True", true, 0, double.NaN, "tag_e13");
+      CheckAsConverter("False", "False", false, 0, double.NaN, "tag_e14");
+      CheckAsConverter("TRUE", "TRUE", true, 0, double.NaN, "tag_e15");
+      CheckAsConverter("FALSE", "FALSE", false, 0, double.NaN, "tag_e16");
+      CheckAsConverter("on", "on", true, 0, double.NaN, "tag_e17");
+      CheckAsConverter("off", "off", false, 0, double.NaN, "tag_e18");
+      CheckAsConverter("On", "On", true, 0, double.NaN, "tag_e19");
+      CheckAsConverter("Off", "Off", false, 0, double.NaN, "tag_e20");
+      CheckAsConverter("ON", "ON", true, 0, double.NaN, "tag_e21");
+      CheckAsConverter("OFF", "OFF", false, 0, double.NaN, "tag_e22");
+      CheckAsConverter("yes", "yes", true, 0, double.NaN, "tag_e23");
+      CheckAsConverter("no", "no", false, 0, double.NaN, "tag_e24");
+      CheckAsConverter("y", "y", true, 0, double.NaN, "tag_e25");
+      CheckAsConverter("n", "n", false, 0, double.NaN, "tag_e26");
+      CheckAsConverter("Y", "Y", true, 0, double.NaN, "tag_e27");
+      CheckAsConverter("N", "N", false, 0, double.NaN, "tag_e28");
+      CheckAsConverter("1", "1", true, 1, 1, "tag_e29");
+      CheckAsConverter("0", "0", false, 0, 0, "tag_e20");
+      CheckAsConverter(true, "true", true, 1, 1, "tag_e31");
+      CheckAsConverter(false, "false", false, 0, 0, "tag_e32");
+      CheckAsConverter(0, "0", false, 0, 0, "tag_e33");
+      CheckAsConverter(42, "42", true, 42, 42, "tag_e34");
+      CheckAsConverter(long.MaxValue, "9223372036854775807", true, long.MaxValue, long.MaxValue, "tag_e35");
+      CheckAsConverter(long.MinValue, "-9223372036854775808", true, long.MinValue, long.MinValue, "tag_e36");
+      CheckAsConverter(0.0, "0", false, 0, 0, "tag_e37");
+      CheckAsConverter(4.2, "4.2", true, 4, 4.2, "tag_e38");
+      CheckAsConverter(-4.2, "-4.2", true, -4, -4.2, "tag_e39");
+      CheckAsConverter(double.MaxValue, "1.79769313486232E+308", true, 0, double.MaxValue, "tag_e40");
+      CheckAsConverter(double.MinValue, "-1.79769313486232E+308", true, 0, double.MinValue, "tag_e41");
+      CheckAsConverter(double.NaN, "NaN", true, 0, double.NaN, "tag_e42");
+      CheckAsConverter(double.PositiveInfinity, "Infinity", true, 0, double.PositiveInfinity, "tag_e43");
+      CheckAsConverter(double.NegativeInfinity, "-Infinity", true, 0, double.NegativeInfinity, "tag_e44");
+    }
+
     private void CheckConversion(JSValue value, string stringValue, bool boolValue, double doubleValue)
     {
       Assert.AreEqual(stringValue, value.AsJSString());
