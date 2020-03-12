@@ -15,8 +15,6 @@
 
 #include "Unicode.h"
 
-#include "JSExceptionCallbackFactory.h"
-
 #include <ReactWindowsCore/ViewManager.h>
 #include <dispatchQueue/dispatchQueue.h>
 #include "Modules/AppStateData.h"
@@ -33,6 +31,8 @@
 #include "BaseScriptStoreImpl.h"
 #include "V8JSIRuntimeHolder.h"
 #endif // USE_V8
+
+#include "RedBox.h"
 
 #include <tuple>
 #include "ChakraRuntimeHolder.h"
@@ -164,7 +164,7 @@ void ReactInstanceWin::Initialize() noexcept {
           devSettings->liveReloadCallback = GetLiveReloadCallback();
           devSettings->errorCallback = GetErrorCallback();
           devSettings->loggingCallback = GetLoggingCallback();
-          devSettings->jsExceptionCallback = GetJSExceptionCallback();
+          devSettings->redboxHandler = std::move(GetRedBoxHandler());
           devSettings->useDirectDebugger = m_options.DeveloperSettings.UseDirectDebugger;
           devSettings->debuggerBreakOnNextLine = m_options.DeveloperSettings.DebuggerBreakOnNextLine;
           devSettings->debuggerPort = m_options.DeveloperSettings.DebuggerPort;
@@ -479,12 +479,15 @@ facebook::react::NativeLoggingHook ReactInstanceWin::GetLoggingCallback() noexce
   }
 }
 
-std::function<void(facebook::react::JSExceptionInfo &&)> ReactInstanceWin::GetJSExceptionCallback() noexcept {
-  if (m_options.OnJSException) {
-    return CreateExceptionCallback(Mso::Copy(m_options.OnJSException));
+std::shared_ptr<IRedBoxHandler> ReactInstanceWin::GetRedBoxHandler() noexcept {
+  if (m_options.RedBoxHandler) {
+    return m_options.RedBoxHandler;
+  } else if (m_options.DeveloperSettings.IsDevModeEnabled) {
+    auto localWkReactHost = m_weakReactHost;
+    return CreateRedBoxHandler(std::move(localWkReactHost), m_uiMessageThread.LoadWithLock());
+  } else {
+    return {};
   }
-
-  return {};
 }
 
 std::function<void()> ReactInstanceWin::GetLiveReloadCallback() noexcept {
