@@ -918,5 +918,105 @@ namespace Microsoft.ReactNative.Managed.UnitTests
       Assert.IsTrue(new JSValue(0.5).JSEquals(0.5), "tag_n21023");
       Assert.IsFalse(new JSValue(0.5).JSEquals(1.0), "tag_n21024");
     }
+
+    [TestMethod]
+    public void TestEquals()
+    {
+      void CheckEquals(JSValue left, JSValue right, string tag)
+      {
+        Assert.IsTrue(left.Equals(right), "Equals: {0}", tag);
+        Assert.IsTrue(left.Equals((object)right), "Equals(object): {0}", tag);
+        Assert.IsTrue(left == right, "operator ==: {0}", tag);
+      }
+
+      void CheckNotEquals(JSValue left, JSValue right, string tag)
+      {
+        Assert.IsFalse(left.Equals(right), "!Equals: {0}", tag);
+        Assert.IsFalse(left.Equals((object)right), "!Equals(object): {0}", tag);
+        Assert.IsTrue(left != right, "operator !=: {0}", tag);
+      }
+
+      CheckEquals(new JSValueObject { }, new JSValueObject { }, "tag_o101");
+      CheckEquals(new JSValueObject { ["prop1"] = 1 }, new JSValueObject { ["prop1"] = 1 }, "tag_o102");
+      CheckEquals(new JSValueObject { ["prop1"] = 1, ["prop2"] = "Hello" },
+                  new JSValueObject { ["prop1"] = 1, ["prop2"] = "Hello" }, "tag_o103");
+      CheckEquals(new JSValueObject { ["prop1"] = new JSValueObject { } },
+                  new JSValueObject { ["prop1"] = new JSValueObject { } }, "tag_o104");
+      CheckEquals(new JSValueObject { ["prop1"] = new JSValueObject { ["prop1"] = 1 } },
+                  new JSValueObject { ["prop1"] = new JSValueObject { ["prop1"] = 1 } }, "tag_o105");
+      CheckEquals(new JSValueObject { ["prop1"] = new JSValueArray { } },
+                  new JSValueObject { ["prop1"] = new JSValueArray { } }, "tag_o106");
+      CheckEquals(new JSValueObject { ["prop1"] = new JSValueArray { 1 } },
+                  new JSValueObject { ["prop1"] = new JSValueArray { 1 } }, "tag_o107");
+      CheckNotEquals(new JSValueObject { ["prop1"] = 1 }, new JSValueObject { }, "tag_o108");
+      CheckNotEquals(new JSValueObject { ["prop1"] = 1 }, new JSValueObject { ["prop1"] = 2 }, "tag_o109");
+      CheckNotEquals(new JSValueObject { }, new JSValueArray { }, "tag_o110");
+      CheckNotEquals(new JSValueObject { }, "", "tag_o111");
+      CheckNotEquals(new JSValueObject { }, false, "tag_o112");
+      CheckNotEquals(new JSValueObject { }, true, "tag_o113");
+      CheckNotEquals(new JSValueObject { }, 0, "tag_o114");
+      CheckNotEquals(new JSValueObject { }, 0.0, "tag_o115");
+
+
+      CheckEquals(new JSValueArray { }, new JSValueArray { }, "tag_o201");
+      CheckEquals(new JSValueArray { 1 }, new JSValueArray { 1 }, "tag_o202");
+      CheckEquals(new JSValueArray { 1, "Hello" },
+                  new JSValueArray { 1, "Hello" }, "tag_o203");
+      CheckEquals(new JSValueArray { new JSValueArray { } },
+                  new JSValueArray { new JSValueArray { } }, "tag_o204");
+      CheckEquals(new JSValueArray { new JSValueArray { 1 } },
+                  new JSValueArray { new JSValueArray { 1 } }, "tag_o205");
+      CheckEquals(new JSValueArray { new JSValueObject { } },
+                  new JSValueArray { new JSValueObject { } }, "tag_o206");
+      CheckEquals(new JSValueArray { new JSValueObject { ["prop1"] = 1 } },
+                  new JSValueArray { new JSValueObject { ["prop1"] = 1 } }, "tag_o207");
+      CheckNotEquals(new JSValueArray { 1 }, new JSValueArray { }, "tag_o208");
+      CheckNotEquals(new JSValueArray { 1 }, new JSValueArray { 2 }, "tag_o209");
+      CheckNotEquals(new JSValueArray { }, new JSValueObject { }, "tag_o210");
+      CheckNotEquals(new JSValueArray { }, "", "tag_o211");
+      CheckNotEquals(new JSValueArray { }, false, "tag_o212");
+      CheckNotEquals(new JSValueArray { }, true, "tag_o213");
+      CheckNotEquals(new JSValueArray { }, 0, "tag_o214");
+      CheckNotEquals(new JSValueArray { }, 0.0, "tag_o215");
+
+      CheckEquals("", "", "tag_o301");
+      CheckEquals("Hello", "Hello", "tag_o302");
+      CheckNotEquals("Hello1", "Hello2", "tag_o303");
+      CheckNotEquals("", new JSValueObject { }, "tag_o304");
+      CheckNotEquals("", new JSValueArray { }, "tag_o305");
+      CheckNotEquals("", false, "tag_o306");
+      CheckNotEquals("", 0, "tag_o307");
+      CheckNotEquals("", 0.0, "tag_o308");
+
+      CheckEquals(false, false, "tag_o401");
+      CheckEquals(true, true, "tag_o402");
+      CheckNotEquals(false, true, "tag_o403");
+      CheckNotEquals(true, false, "tag_o404");
+      CheckNotEquals(false, new JSValueObject { }, "tag_o405");
+      CheckNotEquals(false, new JSValueArray { }, "tag_o406");
+      CheckNotEquals(false, "", "tag_o407");
+      CheckNotEquals(false, 0, "tag_o408");
+      CheckNotEquals(false, 0.0, "tag_o409");
+
+      CheckEquals(0, 0, "tag_o501");
+      CheckEquals(42, 42, "tag_o502");
+      CheckNotEquals(2, 3, "tag_o503");
+      CheckNotEquals(-1, 1, "tag_o504");
+      CheckNotEquals(0, new JSValueObject { }, "tag_o505");
+      CheckNotEquals(0, new JSValueArray { }, "tag_o506");
+      CheckNotEquals(0, "", "tag_o507");
+      CheckNotEquals(0, false, "tag_o508");
+      CheckNotEquals(0, 0.0, "tag_o509");
+
+      CheckEquals(0.0, 0.0, "tag_o601");
+      CheckEquals(4.2, 4.2, "tag_o602");
+      CheckNotEquals(0.2, 0.3, "tag_o603");
+      CheckNotEquals(-0.1, 0.1, "tag_o604");
+      CheckNotEquals(0.0, new JSValueObject { }, "tag_o605");
+      CheckNotEquals(0.0, new JSValueArray { }, "tag_o606");
+      CheckNotEquals(0.0, "", "tag_o607");
+      CheckNotEquals(0.0, false, "tag_o608");
+      CheckNotEquals(0.0, 0, "tag_o609");
+    }
   }
 }
