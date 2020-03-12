@@ -80,14 +80,14 @@ namespace Microsoft.ReactNative.Managed.UnitTests
 
       JSValue jsValue = JSValue.ReadFrom(reader);
       Assert.AreEqual(JSValueType.Object, jsValue.Type);
-      var nestedObj = jsValue.Object["NestedObj"].Object;
+      var nestedObj = jsValue["NestedObj"];
       Assert.IsTrue(nestedObj["NullValue"].IsNull);
-      Assert.IsNotNull(nestedObj["ObjValue"].Object);
-      Assert.IsNotNull(nestedObj["ArrayValue"].Array);
-      Assert.AreEqual("Hello", nestedObj["StringValue"].String);
-      Assert.AreEqual(true, nestedObj["BoolValue"].Boolean);
-      Assert.AreEqual(42, nestedObj["IntValue"].Int64);
-      Assert.AreEqual(4.5, nestedObj["DoubleValue"].Double);
+      Assert.IsNotNull(nestedObj["ObjValue"].Type == JSValueType.Object);
+      Assert.IsNotNull(nestedObj["ArrayValue"].Type == JSValueType.Array);
+      Assert.AreEqual("Hello", nestedObj["StringValue"]);
+      Assert.AreEqual(true, nestedObj["BoolValue"]);
+      Assert.AreEqual(42, nestedObj["IntValue"]);
+      Assert.AreEqual(4.5, nestedObj["DoubleValue"]);
     }
 
     [TestMethod]
@@ -98,13 +98,13 @@ namespace Microsoft.ReactNative.Managed.UnitTests
 
       JSValue jsValue = JSValue.ReadFrom(reader);
       Assert.AreEqual(JSValueType.Array, jsValue.Type);
-      Assert.IsTrue(jsValue.Array[0].IsNull);
-      Assert.IsNotNull(jsValue.Array[1].Object);
-      Assert.IsNotNull(jsValue.Array[2].Array);
-      Assert.AreEqual("Hello", jsValue.Array[3].String);
-      Assert.AreEqual(true, jsValue.Array[4].Boolean);
-      Assert.AreEqual(42, jsValue.Array[5].Int64);
-      Assert.AreEqual(4.5, jsValue.Array[6].Double);
+      Assert.IsTrue(jsValue[0].IsNull);
+      Assert.IsNotNull(jsValue[1].Type == JSValueType.Object);
+      Assert.IsNotNull(jsValue[2].Type == JSValueType.Array);
+      Assert.AreEqual("Hello", jsValue[3]);
+      Assert.AreEqual(true, jsValue[4]);
+      Assert.AreEqual(42, jsValue[5]);
+      Assert.AreEqual(4.5, jsValue[6]);
     }
 
     [TestMethod]
@@ -115,14 +115,14 @@ namespace Microsoft.ReactNative.Managed.UnitTests
 
       JSValue jsValue = JSValue.ReadFrom(reader);
       Assert.AreEqual(JSValueType.Array, jsValue.Type);
-      var nestedArr = jsValue.Array[0].Array;
+      var nestedArr = jsValue[0];
       Assert.IsTrue(nestedArr[0].IsNull);
-      Assert.IsNotNull(nestedArr[1].Object);
-      Assert.IsNotNull(nestedArr[2].Array);
-      Assert.AreEqual("Hello", nestedArr[3].String);
-      Assert.AreEqual(true, nestedArr[4].Boolean);
-      Assert.AreEqual(42, nestedArr[5].Int64);
-      Assert.AreEqual(4.5, nestedArr[6].Double);
+      Assert.IsNotNull(nestedArr[1].Type == JSValueType.Object);
+      Assert.IsNotNull(nestedArr[2].Type == JSValueType.Array);
+      Assert.AreEqual("Hello", nestedArr[3]);
+      Assert.AreEqual(true, nestedArr[4]);
+      Assert.AreEqual(42, nestedArr[5]);
+      Assert.AreEqual(4.5, nestedArr[6]);
     }
 
     [TestMethod]
