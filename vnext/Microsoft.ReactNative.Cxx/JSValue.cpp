@@ -4,8 +4,12 @@
 #include "pch.h"
 #include "JSValue.h"
 #include <iomanip>
+#include <set>
 #include <sstream>
 #include <string_view>
+
+#undef min
+#undef max
 
 namespace winrt::Microsoft::ReactNative {
 
@@ -15,18 +19,19 @@ namespace winrt::Microsoft::ReactNative {
 
 namespace {
 
-struct NullConverter {
+struct JSConverter {
   static constexpr char const *NullString = "null";
-};
+  static constexpr char const *ObjectString = "[object Object]";
+  static constexpr char const *WhiteSpace = " \n\r\t\f\v";
+  static const std::set<std::string> StringToBoolean;
 
-struct ObjectConverter {
-  static constexpr char const *JavaScriptString = "[object Object]";
-};
+  static std::string LowerString(std::string const &value) noexcept {
+    std::string result{value};
+    std::transform(result.begin(), result.end(), result.begin(), ::tolower);
+    return result;
+  }
 
-struct StringConverter {
-  static std::string_view TrimString(std::string const &value) noexcept {
-    constexpr char const *WhiteSpace = " \n\r\t\f\v";
-
+  static std::string_view TrimString(std::string_view value) noexcept {
     size_t start = value.find_first_not_of(WhiteSpace);
     if (start == std::string::npos) {
       return "";
@@ -36,122 +41,11 @@ struct StringConverter {
     return {value.data() + start, end - start + 1};
   }
 
-  static std::ostream &WriteAsJsonString(std::ostream &stream, std::string const &value) noexcept {
-    auto writeChar = [](std::ostream & stream, char ch) noexcept->std::ostream & {
-      switch (ch) {
-        case '"':
-          return stream << "\\\"";
-        case '\\':
-          return stream << "\\\\";
-        case '\b':
-          return stream << "\\b";
-        case '\f':
-          return stream << "\\f";
-        case '\n':
-          return stream << "\\n";
-        case '\r':
-          return stream << "\\r";
-        case '\t':
-          return stream << "\\t";
-        default:
-          if ('\x00' <= ch && ch <= '\x1f') { // Non-printable ASCII characters.
-            return stream << "\\u" << std::hex << std::setw(4) << std::setfill('0') << (int)ch;
-          } else {
-            return stream << ch;
-          }
-      }
-    };
-
-    stream << '"';
-    for (auto ch : value) {
-      writeChar(stream, ch);
-    }
-
-    return stream << '"';
-  }
-};
-
-struct BooleanConverter {
-  static char const *ToString(bool value) noexcept {
+  static char const *ToCString(bool value) noexcept {
     return value ? "true" : "false";
   }
 
-  static bool FromString(std::string const &value) noexcept {
-    return !value.empty();
-  }
-
-  static double ToDouble(bool value) noexcept {
-    return value ? 1.0 : 0.0;
-  }
-
-  static int64_t ToInt64(bool value) noexcept {
-    return value ? 1 : 0;
-  }
-};
-
-struct Int64Converter {
-  static std::string ToString(int64_t value) noexcept {
-    return std::to_string(value);
-  }
-
-  static std::ostream &WriteAsString(std::ostream &stream, int64_t value) noexcept {
-    return stream << value;
-  }
-
-  static int64_t FromDouble(double value) noexcept {
-    if (std::isfinite(value)) {
-      if (value > std::numeric_limits<int64_t>::max()) {
-        return std::numeric_limits<int64_t>::max();
-      } else if (value < std::numeric_limits<int64_t>::min()) {
-        return std::numeric_limits<int64_t>::min();
-      } else {
-        return static_cast<int64_t>(value);
-      }
-    } else if (std::isnan(value)) {
-      return 0;
-    } else if (value == std::numeric_limits<double>::infinity()) {
-      return std::numeric_limits<int64_t>::max();
-    } else if (value == -std::numeric_limits<double>::infinity()) {
-      return std::numeric_limits<int64_t>::min();
-    } else {
-      return 0;
-    }
-  }
-
-  // Cast Int64 to a smaller signed type.
-  // In case if value is bigger or smaller than the target type allows, use the type max or min values.
-  template <
-      class T,
-      std::enable_if_t<std::is_same_v<T, int8_t> || std::is_same_v<T, int16_t> || std::is_same_v<T, int32_t>, int> = 1>
-  static T To(int64_t value) noexcept {
-    if (value > std::numeric_limits<T>::max()) {
-      return std::numeric_limits<T>::max();
-    } else if (value < std::numeric_limits<T>::min()) {
-      return std::numeric_limits<T>::min();
-    } else {
-      return static_cast<T>(value);
-    }
-  }
-};
-
-struct UInt64Converter {
-  // Cast UInt64 to a smaller unsigned type.
-  // In case if value is bigger than the target type allows, use the type max value.
-  template <
-      class T,
-      std::enable_if_t<std::is_same_v<T, uint8_t> || std::is_same_v<T, uint16_t> || std::is_same_v<T, uint32_t>, int> =
-          1>
-  static T To(uint64_t value) noexcept {
-    if (value > std::numeric_limits<T>::max()) {
-      return std::numeric_limits<T>::max();
-    } else {
-      return static_cast<T>(value);
-    }
-  }
-};
-
-struct DoubleConverter {
-  static char const *NaNToString(double value) noexcept {
+  static char const *NaNToCString(double value) noexcept {
     if (std::isnan(value)) {
       return "NaN";
     } else if (value == std::numeric_limits<double>::infinity()) {
@@ -163,168 +57,335 @@ struct DoubleConverter {
     }
   }
 
-  static std::string ToString(double value) noexcept {
+  static std::string ToJSString(double value) noexcept {
     if (std::isfinite(value)) {
       return std::to_string(value);
     } else {
-      return NaNToString(value);
+      return NaNToCString(value);
     }
   }
 
-  static std::ostream &WriteAsString(std::ostream &stream, double value) noexcept {
+  static std::ostream &WriteJSString(std::ostream &stream, double value) noexcept {
     if (std::isfinite(value)) {
       return stream << value;
     } else {
-      return stream << NaNToString(value);
+      return stream << NaNToCString(value);
     }
   }
 
-  static double FromString(std::string const &value) noexcept {
-    auto trimmedStr = StringConverter::TrimString(value);
-    if (trimmedStr.empty()) {
+  static double ToJSNumber(std::string_view value) noexcept {
+    auto trimmed = TrimString(value);
+    if (trimmed.empty()) {
       return 0;
     }
 
     char *end;
-    double result = strtod(trimmedStr.data(), &end);
-    return (end == trimmedStr.data() + trimmedStr.size()) ? result : std::numeric_limits<double>::quiet_NaN();
+    double result = strtod(trimmed.data(), &end);
+    return (end == trimmed.data() + trimmed.size()) ? result : std::numeric_limits<double>::quiet_NaN();
+  }
+
+  static int64_t ToInt64(double value) noexcept {
+    return (std::numeric_limits<int64_t>::min() <= value && value <= std::numeric_limits<int64_t>::max())
+        ? static_cast<int64_t>(value)
+        : 0;
   }
 };
 
-struct JSValueAsStringWriter {
-  static constexpr char const *IndentString = "  ";
+/*static*/ const std::set<std::string> JSConverter::StringToBoolean{"true", "1", "yes", "y", "on"};
 
-  JSValueAsStringWriter(std::ostream &stream) noexcept : m_stream{stream} {}
+// auto writeValue = [&](std::ostream &os, JSValue const &node) noexcept -> std::ostream & {
+//  switch (node.m_type) {
+//    case JSValueType::Null:
+//      return os << JSConverter::NullString;
+//    case JSValueType::Object:
+//      return os << JSConverter::ObjectString;
+//    case JSValueType::Array: {
+//      bool start = true;
+//      for (JSValue const &item : node.m_array) {
+//        os << start ? (start = false, "") : ",";
+//        writeValue(os, item);
+//      }
+//
+//      return os;
+//    }
+//    case JSValueType::String:
+//      return os << m_string;
+//    case JSValueType::Boolean:
+//      return os << JSConverter::ToJSString(m_bool);
+//    case JSValueType::Int64:
+//      return os << m_int64;
+//    case JSValueType::Double:
+//      if (std::isfinite(m_double)) {
+//        return os << m_double;
+//      } else {
+//        return os << JSConverter::ToJSString(m_double);
+//      }
+//    default:
+//      return os;
+//  }
+//};
 
-  static std::string ToString(JSValue const &value) noexcept {
-    std::stringstream stream;
-    JSValueAsStringWriter writer{stream};
-    writer.WriteValue(value);
-    return stream.str();
-  }
+// static std::ostream &WriteAsJsonString(std::ostream &stream, std::string const &value) noexcept {
+//  auto writeChar = [](std::ostream &stream, char ch) noexcept -> std::ostream & {
+//    switch (ch) {
+//      case '"':
+//        return stream << "\\\"";
+//      case '\\':
+//        return stream << "\\\\";
+//      case '\b':
+//        return stream << "\\b";
+//      case '\f':
+//        return stream << "\\f";
+//      case '\n':
+//        return stream << "\\n";
+//      case '\r':
+//        return stream << "\\r";
+//      case '\t':
+//        return stream << "\\t";
+//      default:
+//        if ('\x00' <= ch && ch <= '\x1f') { // Non-printable ASCII characters.
+//          return stream << "\\u" << std::hex << std::setw(4) << std::setfill('0') << (int)ch;
+//        } else {
+//          return stream << ch;
+//        }
+//    }
+//  };
+//
+//  stream << '"';
+//  for (auto ch : value) {
+//    writeChar(stream, ch);
+//  }
+//
+//  return stream << '"';
+//}
 
-  static std::string ToString(JSValueArray const &value) noexcept {
-    std::stringstream stream;
-    JSValueAsStringWriter writer{stream};
-    writer.WriteArray(value);
-    return stream.str();
-  }
-
-  std::ostream &WriteValue(JSValue const &value) noexcept {
-    if (value.IsNull()) {
-      return m_stream << NullConverter::NullString;
-    } else if (value.TryGetObject()) {
-      return m_stream << ObjectConverter::JavaScriptString;
-    } else if (auto arrayPtr = value.TryGetArray()) {
-      return WriteArray(*arrayPtr);
-    } else if (auto stringPtr = value.TryGetString()) {
-      return m_stream << *stringPtr;
-    } else if (auto boolPtr = value.TryGetBoolean()) {
-      return m_stream << BooleanConverter::ToString(*boolPtr);
-    } else if (auto int64Ptr = value.TryGetInt64()) {
-      return Int64Converter::WriteAsString(m_stream, *int64Ptr);
-    } else if (auto doublePtr = value.TryGetDouble()) {
-      return DoubleConverter::WriteAsString(m_stream, *doublePtr);
-    } else {
-      VerifyElseCrashSz(false, "Unexpected JSValue type");
-    }
-  }
-
-  std::ostream &WriteArray(JSValueArray const &value) noexcept {
-    bool start = true;
-    for (auto const &item : value) {
-      m_stream << (start ? (start = false, "") : ",");
-      WriteValue(item);
-    }
-
-    return m_stream;
-  }
-
- private:
-  std::ostream &m_stream;
-};
-
-struct JSValueLogWriter {
-  static constexpr char const *IndentString = "  ";
-
-  JSValueLogWriter(std::ostream &stream) noexcept : m_stream{stream} {}
-
-  static std::string ToString(JSValue const &value) noexcept {
-    std::stringstream stream;
-    JSValueLogWriter writer{stream};
-    writer.WriteValue(value);
-    return stream.str();
-  }
-
-  std::ostream &WriteIndent() noexcept {
-    for (size_t i = 0; i < m_indent; ++i) {
-      m_stream << IndentString;
-    }
-
-    return m_stream;
-  }
-
-  std::ostream &WriteValue(JSValue const &value) noexcept {
-    if (value.IsNull()) {
-      return m_stream << NullConverter::NullString;
-    } else if (auto objectPtr = value.TryGetObject()) {
-      return WriteObject(*objectPtr);
-    } else if (auto arrayPtr = value.TryGetArray()) {
-      return WriteArray(*arrayPtr);
-    } else if (auto stringPtr = value.TryGetString()) {
-      return StringConverter::WriteAsJsonString(m_stream, *stringPtr);
-    } else if (auto boolPtr = value.TryGetBoolean()) {
-      return m_stream << BooleanConverter::ToString(*boolPtr);
-    } else if (auto int64Ptr = value.TryGetInt64()) {
-      return Int64Converter::WriteAsString(m_stream, *int64Ptr);
-    } else if (auto doublePtr = value.TryGetDouble()) {
-      return DoubleConverter::WriteAsString(m_stream, *doublePtr);
-    } else {
-      VerifyElseCrashSz(false, "Unexpected JSValue type");
-    }
-  }
-
-  std::ostream &WriteObject(JSValueObject const &value) noexcept {
-    m_stream << "{";
-    ++m_indent;
-    bool start = true;
-    for (auto const &prop : value) {
-      m_stream << start ? (start = false, "") : ",\n";
-      WriteIndent() << prop.first << ": ";
-      WriteValue(prop.second);
-    }
-
-    --m_indent;
-    if (!start) {
-      m_stream << "\n";
-      WriteIndent();
-    }
-
-    return m_stream << "}";
-  }
-
-  std::ostream &WriteArray(JSValueArray const &value) noexcept {
-    m_stream << "[";
-    ++m_indent;
-    bool start = true;
-    for (auto const &item : value) {
-      m_stream << start ? (start = false, "") : ",\n";
-      WriteValue(item);
-    }
-
-    --m_indent;
-    if (!start) {
-      m_stream << "\n";
-      WriteIndent();
-    }
-
-    return m_stream << "]";
-  }
-
- private:
-  size_t m_indent{0};
-  std::ostream &m_stream;
-};
+// struct Int64Converter {
+//  static std::string ToString(int64_t value) noexcept {
+//    return std::to_string(value);
+//  }
+//
+//  static std::ostream &WriteAsString(std::ostream &stream, int64_t value) noexcept {
+//    return stream << value;
+//  }
+//
+//  static int64_t FromDouble(double value) noexcept {
+//    if (std::isfinite(value)) {
+//      if (value > std::numeric_limits<int64_t>::max()) {
+//        return std::numeric_limits<int64_t>::max();
+//      } else if (value < std::numeric_limits<int64_t>::min()) {
+//        return std::numeric_limits<int64_t>::min();
+//      } else {
+//        return static_cast<int64_t>(value);
+//      }
+//    } else if (std::isnan(value)) {
+//      return 0;
+//    } else if (value == std::numeric_limits<double>::infinity()) {
+//      return std::numeric_limits<int64_t>::max();
+//    } else if (value == -std::numeric_limits<double>::infinity()) {
+//      return std::numeric_limits<int64_t>::min();
+//    } else {
+//      return 0;
+//    }
+//  }
+//
+//  // Cast Int64 to a smaller signed type.
+//  // In case if value is bigger or smaller than the target type allows, use the type max or min values.
+//  template <
+//      class T,
+//      std::enable_if_t<std::is_same_v<T, int8_t> || std::is_same_v<T, int16_t> || std::is_same_v<T, int32_t>, int> =
+//      1>
+//  static T To(int64_t value) noexcept {
+//    if (value > std::numeric_limits<T>::max()) {
+//      return std::numeric_limits<T>::max();
+//    } else if (value < std::numeric_limits<T>::min()) {
+//      return std::numeric_limits<T>::min();
+//    } else {
+//      return static_cast<T>(value);
+//    }
+//  }
+//};
+//
+// struct JSValueAsStringWriter {
+//  static constexpr char const *IndentString = "  ";
+//
+//  JSValueAsStringWriter(std::ostream &stream) noexcept : m_stream{stream} {}
+//
+//  static std::string ToString(JSValue const &value) noexcept {
+//    std::stringstream stream;
+//    JSValueAsStringWriter writer{stream};
+//    writer.WriteValue(value);
+//    return stream.str();
+//  }
+//
+//  static std::string ToString(JSValueArray const &value) noexcept {
+//    std::stringstream stream;
+//    JSValueAsStringWriter writer{stream};
+//    writer.WriteArray(value);
+//    return stream.str();
+//  }
+//
+//  std::ostream &WriteValue(JSValue const &value) noexcept {
+//    if (value.IsNull()) {
+//      return m_stream << NullConverter::NullString;
+//    } else if (value.TryGetObject()) {
+//      return m_stream << ObjectConverter::JavaScriptString;
+//    } else if (auto arrayPtr = value.TryGetArray()) {
+//      return WriteArray(*arrayPtr);
+//    } else if (auto stringPtr = value.TryGetString()) {
+//      return m_stream << *stringPtr;
+//    } else if (auto boolPtr = value.TryGetBoolean()) {
+//      return m_stream << BooleanConverter::ToString(*boolPtr);
+//    } else if (auto int64Ptr = value.TryGetInt64()) {
+//      return Int64Converter::WriteAsString(m_stream, *int64Ptr);
+//    } else if (auto doublePtr = value.TryGetDouble()) {
+//      return DoubleConverter::WriteAsString(m_stream, *doublePtr);
+//    } else {
+//      VerifyElseCrashSz(false, "Unexpected JSValue type");
+//    }
+//  }
+//
+//  std::ostream &WriteArray(JSValueArray const &value) noexcept {
+//    bool start = true;
+//    for (auto const &item : value) {
+//      m_stream << (start ? (start = false, "") : ",");
+//      WriteValue(item);
+//    }
+//
+//    return m_stream;
+//  }
+//
+// private:
+//  std::ostream &m_stream;
+//};
+//
+// struct JSValueLogWriter {
+//  static constexpr char const *IndentString = "  ";
+//
+//  JSValueLogWriter(std::ostream &stream) noexcept : m_stream{stream} {}
+//
+//  static std::string ToString(JSValue const &value) noexcept {
+//    std::stringstream stream;
+//    JSValueLogWriter writer{stream};
+//    writer.WriteValue(value);
+//    return stream.str();
+//  }
+//
+//  JSValueLogWriter &WriteIndent() noexcept {
+//    for (size_t i = 0; i < m_indent; ++i) {
+//      m_stream << IndentString;
+//    }
+//
+//    return *this;
+//  }
+//
+//  JSValueLogWriter &WriteLine() noexcept {
+//    m_stream << '\n';
+//    return WriteIndent();
+//  }
+//
+//  JSValueLogWriter &WriteValue(JSValue const &value) noexcept {
+//    if (value.IsNull()) {
+//      return Write(JSConverter::NullString);
+//    } else if (auto objectPtr = value.TryGetObject()) {
+//      return WriteObject(*objectPtr);
+//    } else if (auto arrayPtr = value.TryGetArray()) {
+//      return WriteArray(*arrayPtr);
+//    } else if (auto stringPtr = value.TryGetString()) {
+//      return WriteQuotedString(*stringPtr);
+//    } else if (auto boolPtr = value.TryGetBoolean()) {
+//      return Write(JSConverter::ToString(*boolPtr));
+//    } else if (auto int64Ptr = value.TryGetInt64()) {
+//      return (m_stream << *int64Ptr, *this);
+//    } else if (auto doublePtr = value.TryGetDouble()) {
+//      return DoubleConverter::WriteAsString(m_stream, *doublePtr);
+//    } else {
+//      VerifyElseCrashSz(false, "Unexpected JSValue type");
+//    }
+//  }
+//
+//  JSValueLogWriter &Write(std::string_view value) noexcept {
+//    m_stream << value;
+//    return *this;
+//  }
+//
+//  JSValueLogWriter &WriteSeparator(bool &start) noexcept {
+//    m_stream << start ? (start = false, "") : ",";
+//    return *this;
+//  }
+//
+//  JSValueLogWriter &WriteQuotedString(std::string_view value) noexcept {
+//    auto writeChar = [](std::ostream &stream, char ch) noexcept -> std::ostream & {
+//      switch (ch) {
+//        case '"':
+//          return stream << "\\\"";
+//        case '\\':
+//          return stream << "\\\\";
+//        case '\b':
+//          return stream << "\\b";
+//        case '\f':
+//          return stream << "\\f";
+//        case '\n':
+//          return stream << "\\n";
+//        case '\r':
+//          return stream << "\\r";
+//        case '\t':
+//          return stream << "\\t";
+//        default:
+//          if ('\x00' <= ch && ch <= '\x1f') { // Non-printable ASCII characters.
+//            return stream << "\\u" << std::hex << std::setw(4) << std::setfill('0') << (int)ch;
+//          } else {
+//            return stream << ch;
+//          }
+//      }
+//    };
+//
+//    m_stream << '"';
+//    for (auto ch : value) {
+//      writeChar(m_stream, ch);
+//    }
+//
+//    m_stream << '"';
+//    return *this;
+//  }
+//
+//  JSValueLogWriter &WriteObject(JSValueObject const &value) noexcept {
+//    if (value.empty()) {
+//      return Write("{}");
+//    }
+//
+//    Write("{");
+//    ++m_indent;
+//    bool start = true;
+//    for (auto const &prop : value) {
+//      WriteSeparator(start).WriteLine();
+//      Write(prop.first).Write(": ").WriteValue(prop.second);
+//    }
+//
+//    --m_indent;
+//    return WriteLine().Write("}");
+//  }
+//
+//  JSValueLogWriter &WriteArray(JSValueArray const &value) noexcept {
+//    if (value.empty()) {
+//      return Write("[]");
+//    }
+//
+//    Write("[");
+//    ++m_indent;
+//    bool start = true;
+//    for (auto const &item : value) {
+//      WriteSeparator(start).WriteLine();
+//      WriteValue(item);
+//    }
+//
+//    --m_indent;
+//    return WriteLine().Write("]");
+//  }
+//
+// private:
+//  size_t m_indent{0};
+//  std::ostream &m_stream;
+//};
 
 } // namespace
 
@@ -386,7 +447,7 @@ bool JSValueObject::Equals(JSValueObject const &other) const noexcept {
   return true;
 }
 
-bool JSValueObject::EqualsAfterConversion(JSValueObject const &other) const noexcept {
+bool JSValueObject::JSEquals(JSValueObject const &other) const noexcept {
   if (size() != other.size()) {
     return false;
   }
@@ -396,7 +457,7 @@ bool JSValueObject::EqualsAfterConversion(JSValueObject const &other) const noex
   auto otherIt = other.begin();
   for (auto const &property : *this) {
     auto it = otherIt++;
-    if (property.first != it->first || !property.second.EqualsAfterConversion(it->second)) {
+    if (property.first != it->first || !property.second.JSEquals(it->second)) {
       return false;
     }
   }
@@ -477,14 +538,14 @@ bool JSValueArray::Equals(JSValueArray const &other) const noexcept {
   return true;
 }
 
-bool JSValueArray::EqualsAfterConversion(JSValueArray const &other) const noexcept {
+bool JSValueArray::JSEquals(JSValueArray const &other) const noexcept {
   if (size() != other.size()) {
     return false;
   }
 
   auto otherIt = other.begin();
   for (auto const &item : *this) {
-    if (!item.EqualsAfterConversion(*otherIt++)) {
+    if (!item.JSEquals(*otherIt++)) {
       return false;
     }
   }
@@ -516,46 +577,10 @@ void JSValueArray::WriteTo(IJSValueWriter const &writer) const noexcept {
 // JSValue implementation
 //===========================================================================
 
-/*static*/ const JSValue JSValue::Null;
-/*static*/ const JSValueObject JSValue::EmptyObject;
-/*static*/ const JSValueArray JSValue::EmptyArray;
-/*static*/ const std::string JSValue::EmptyString;
-
-JSValue::~JSValue() noexcept {
-  switch (m_type) {
-    case JSValueType::Object:
-      m_object.~JSValueObject();
-      break;
-    case JSValueType::Array:
-      m_array.~JSValueArray();
-      break;
-    case JSValueType::String:
-      m_string.~basic_string();
-      break;
-  }
-
-  m_type = JSValueType::Null;
-  m_int64 = 0;
-}
-
-JSValue JSValue::Copy() const noexcept {
-  switch (m_type) {
-    case JSValueType::Object:
-      return JSValue{m_object.Copy()};
-    case JSValueType::Array:
-      return JSValue{m_array.Copy()};
-    case JSValueType::String:
-      return JSValue{std::string(m_string)};
-    case JSValueType::Boolean:
-      return JSValue{m_bool};
-    case JSValueType::Int64:
-      return JSValue{m_int64};
-    case JSValueType::Double:
-      return JSValue{m_double};
-    default:
-      return JSValue{};
-  }
-}
+/*static*/ JSValue const JSValue::Null;
+/*static*/ JSValue const JSValue::EmptyObject{JSValueObject{}};
+/*static*/ JSValue const JSValue::EmptyArray{JSValueArray{}};
+/*static*/ JSValue const JSValue::EmptyString{std::string{}};
 
 #pragma warning(push)
 #pragma warning(disable : 26495) // False positive for union member not initialized
@@ -586,6 +611,23 @@ JSValue::JSValue(JSValue &&other) noexcept : m_type{other.m_type} {
 }
 #pragma warning(pop)
 
+JSValue::~JSValue() noexcept {
+  switch (m_type) {
+    case JSValueType::Object:
+      m_object.~JSValueObject();
+      break;
+    case JSValueType::Array:
+      m_array.~JSValueArray();
+      break;
+    case JSValueType::String:
+      m_string.~basic_string();
+      break;
+  }
+
+  m_type = JSValueType::Null;
+  m_int64 = 0;
+}
+
 JSValue &JSValue::operator=(JSValue &&other) noexcept {
   if (this != &other) {
     this->~JSValue();
@@ -593,6 +635,25 @@ JSValue &JSValue::operator=(JSValue &&other) noexcept {
   }
 
   return *this;
+}
+
+JSValue JSValue::Copy() const noexcept {
+  switch (m_type) {
+    case JSValueType::Object:
+      return JSValue{m_object.Copy()};
+    case JSValueType::Array:
+      return JSValue{m_array.Copy()};
+    case JSValueType::String:
+      return JSValue{std::string(m_string)};
+    case JSValueType::Boolean:
+      return JSValue{m_bool};
+    case JSValueType::Int64:
+      return JSValue{m_int64};
+    case JSValueType::Double:
+      return JSValue{m_double};
+    default:
+      return JSValue{};
+  }
 }
 
 JSValueObject JSValue::MoveObject() noexcept {
@@ -620,29 +681,26 @@ JSValueArray JSValue::MoveArray() noexcept {
 std::string JSValue::AsString() const noexcept {
   switch (m_type) {
     case JSValueType::Null:
-      return NullConverter::NullString;
-    case JSValueType::Object:
-      return ObjectConverter::JavaScriptString;
-    case JSValueType::Array:
-      return JSValueAsStringWriter::ToString(m_array);
+      return JSConverter::NullString;
     case JSValueType::String:
       return m_string;
     case JSValueType::Boolean:
-      return BooleanConverter::ToString(m_bool);
+      return JSConverter::ToCString(m_bool);
     case JSValueType::Int64:
-      return Int64Converter::ToString(m_int64);
+      return std::to_string(m_int64);
     case JSValueType::Double:
-      return DoubleConverter::ToString(m_double);
+      return JSConverter::ToJSString(m_double);
     default:
-      VerifyElseCrashSz(false, "Unexpected JSValue type");
+      return "";
   }
 }
 
 bool JSValue::AsBoolean() const noexcept {
   switch (m_type) {
     case JSValueType::Object:
+      return !m_object.empty();
     case JSValueType::Array:
-      return true;
+      return !m_array.empty();
     case JSValueType::String:
       return BooleanConverter::FromString(m_string);
     case JSValueType::Boolean:
@@ -654,18 +712,6 @@ bool JSValue::AsBoolean() const noexcept {
     default:
       return false;
   }
-}
-
-int8_t JSValue::AsInt8() const noexcept {
-  return Int64Converter::To<int8_t>(AsInt64());
-}
-
-int16_t JSValue::AsInt16() const noexcept {
-  return Int64Converter::To<int16_t>(AsInt64());
-}
-
-int32_t JSValue::AsInt32() const noexcept {
-  return Int64Converter::To<int32_t>(AsInt64());
 }
 
 int64_t JSValue::AsInt64() const noexcept {
@@ -683,24 +729,6 @@ int64_t JSValue::AsInt64() const noexcept {
     default:
       return 0;
   }
-}
-
-uint8_t JSValue::AsUInt8() const noexcept {
-  return UInt64Converter::To<uint8_t>(AsUInt64());
-}
-
-uint16_t JSValue::AsUInt16() const noexcept {
-  return UInt64Converter::To<uint16_t>(AsUInt64());
-}
-
-uint32_t JSValue::AsUInt32() const noexcept {
-  return UInt64Converter::To<uint32_t>(AsUInt64());
-}
-
-uint64_t JSValue::AsUInt64() const noexcept {
-  // Convert negative values to zero.
-  int64_t value = AsInt64();
-  return value >= 0 ? value : 0;
 }
 
 double JSValue::AsDouble() const noexcept {
@@ -730,8 +758,72 @@ double JSValue::AsDouble() const noexcept {
   }
 }
 
-float JSValue::AsFloat() const noexcept {
-  return static_cast<float>(AsDouble());
+std::string JSValue::AsJSString() const noexcept {
+  switch (m_type) {
+    case JSValueType::Null:
+      return JSConverter::NullString;
+    case JSValueType::Object:
+      return JSConverter::ObjectString;
+    case JSValueType::Array: {
+      std::stringstream stream;
+      JSConverter::WriteValue(stream, *this);
+      return stream.str();
+    }
+    case JSValueType::String:
+      return m_string;
+    case JSValueType::Boolean:
+      return JSConverter::ToJSString(m_bool);
+    case JSValueType::Int64:
+      return std::to_string(m_int64);
+    case JSValueType::Double:
+      return JSConverter::ToJSString(m_double);
+    default:
+      return "";
+  }
+}
+
+bool JSValue::AsJSBoolean() const noexcept {
+  switch (m_type) {
+    case JSValueType::Object:
+    case JSValueType::Array:
+      return true;
+    case JSValueType::String:
+      return !m_string.empty();
+    case JSValueType::Boolean:
+      return m_bool;
+    case JSValueType::Int64:
+      return m_int64 != 0;
+    case JSValueType::Double:
+      return m_double != 0;
+    default:
+      return false;
+  }
+}
+
+double JSValue::AsJSNumber() const noexcept {
+  switch (m_type) {
+    case JSValueType::Object:
+      return std::numeric_limits<double>::quiet_NaN();
+    case JSValueType::Array:
+      switch (m_array.size()) {
+        case 0:
+          return 0;
+        case 1:
+          return m_array[0].AsJSNumber();
+        default:
+          return std::numeric_limits<double>::quiet_NaN();
+      }
+    case JSValueType::String:
+      return JSConverter::ToJSNumber(m_string);
+    case JSValueType::Boolean:
+      return m_bool ? 1 : 0;
+    case JSValueType::Int64:
+      return m_int64;
+    case JSValueType::Double:
+      return m_double;
+    default:
+      return 0;
+  }
 }
 
 std::string JSValue::ToString() const noexcept {
@@ -758,30 +850,36 @@ size_t JSValue::PropertyCount() const noexcept {
   return (m_type == JSValueType::Object) ? m_object.size() : 0;
 }
 
-JSValue const &JSValue::GetObjectProperty(std::string_view propertyName) const noexcept {
+JSValue const *JSValue::TryGetObjectProperty(std::string_view propertyName) const noexcept {
   if (m_type == JSValueType::Object) {
     auto it = m_object.find(propertyName);
     if (it != m_object.end()) {
-      return it->second;
+      return &it->second;
     }
   }
 
-  return Null;
+  return nullptr;
+}
+
+JSValue const &JSValue::GetObjectProperty(std::string_view propertyName) const noexcept {
+  auto result = TryGetObjectProperty(propertyName);
+  return result ? *result : Null;
 }
 
 size_t JSValue::ItemCount() const noexcept {
   return (m_type == JSValueType::Array) ? m_array.size() : 0;
 }
 
-JSValue const &JSValue::GetArrayItem(JSValueArray::size_type index) const noexcept {
-  if (m_type == JSValueType::Array && index < m_array.size()) {
-    return m_array[index];
-  }
-
-  return Null;
+JSValue const *JSValue::TryGetArrayItem(JSValueArray::size_type index) const noexcept {
+  return (m_type == JSValueType::Array && index < m_array.size()) ? &m_array[index] : nullptr;
 }
 
-bool JSValue::Equals(const JSValue &other) const noexcept {
+JSValue const &JSValue::GetArrayItem(JSValueArray::size_type index) const noexcept {
+  auto result = TryGetArrayItem(index);
+  return result ? *result : Null;
+}
+
+bool JSValue::Equals(JSValue const &other) const noexcept {
   if (m_type != other.m_type) {
     return false;
   }
@@ -806,102 +904,25 @@ bool JSValue::Equals(const JSValue &other) const noexcept {
   }
 }
 
-bool JSValue::EqualsAfterConversion(const JSValue &other) const noexcept {
-  switch (m_type) {
-    case JSValueType::Null:
-      return other.m_type == JSValueType::Null;
-    case JSValueType::Object:
-      switch (other.m_type) {
-        case JSValueType::Object:
-          return m_object.EqualsAfterConversion(other.m_object);
-        case JSValueType::String:
-          return ObjectConverter::JavaScriptString == other.m_string;
-        default:
-          return false;
-      }
-    case JSValueType::Array:
-      switch (other.m_type) {
-        case JSValueType::Array:
-          return m_array.EqualsAfterConversion(other.m_array);
-        case JSValueType::String:
-          return JSValueAsStringWriter::ToString(m_array) == other.m_string;
-        case JSValueType::Boolean:
-          return DoubleConverter::FromString(JSValueAsStringWriter::ToString(m_array)) ==
-              BooleanConverter::ToDouble(other.m_bool);
-        case JSValueType::Int64:
-          return DoubleConverter::FromString(JSValueAsStringWriter::ToString(m_array)) ==
-              static_cast<double>(other.m_int64);
-        case JSValueType::Double:
-          return DoubleConverter::FromString(JSValueAsStringWriter::ToString(m_array)) == other.m_double;
-        default:
-          return false;
-      }
-    case JSValueType::String:
-      switch (other.m_type) {
-        case JSValueType::Object:
-          return m_string == ObjectConverter::JavaScriptString;
-        case JSValueType::Array:
-          return m_string == JSValueAsStringWriter::ToString(other.m_array);
-        case JSValueType::String:
-          return m_string == other.m_string;
-        case JSValueType::Boolean:
-          return DoubleConverter::FromString(m_string) == BooleanConverter::ToDouble(other.m_bool);
-        case JSValueType::Int64:
-          return DoubleConverter::FromString(m_string) == static_cast<double>(other.m_int64);
-        case JSValueType::Double:
-          return DoubleConverter::FromString(m_string) == other.m_double;
-        default:
-          return false;
-      }
-    case JSValueType::Boolean:
-      switch (other.m_type) {
-        case JSValueType::Array:
-          return BooleanConverter::ToDouble(m_bool) ==
-              DoubleConverter::FromString(JSValueAsStringWriter::ToString(other.m_array));
-        case JSValueType::String:
-          return BooleanConverter::ToDouble(m_bool) == DoubleConverter::FromString(other.m_string);
-        case JSValueType::Boolean:
-          return m_bool == other.m_bool;
-        case JSValueType::Int64:
-          return BooleanConverter::ToInt64(m_bool) == other.m_int64;
-        case JSValueType::Double:
-          return BooleanConverter::ToDouble(m_bool) == other.m_double;
-        default:
-          return false;
-      }
-    case JSValueType::Int64:
-      switch (other.m_type) {
-        case JSValueType::Array:
-          return static_cast<double>(m_int64) ==
-              DoubleConverter::FromString(JSValueAsStringWriter::ToString(other.m_array));
-        case JSValueType::String:
-          return static_cast<double>(m_int64) == DoubleConverter::FromString(other.m_string);
-        case JSValueType::Boolean:
-          return m_int64 == BooleanConverter::ToInt64(other.m_bool);
-        case JSValueType::Int64:
-          return m_int64 == other.m_int64;
-        case JSValueType::Double:
-          return static_cast<double>(m_int64) == other.m_double;
-        default:
-          return false;
-      }
-    case JSValueType::Double:
-      switch (other.m_type) {
-        case JSValueType::Array:
-          return m_double == DoubleConverter::FromString(JSValueAsStringWriter::ToString(other.m_array));
-        case JSValueType::String:
-          return m_double == DoubleConverter::FromString(other.m_string);
-        case JSValueType::Boolean:
-          return m_double == BooleanConverter::ToDouble(other.m_bool);
-        case JSValueType::Int64:
-          return m_double == static_cast<double>(other.m_int64);
-        case JSValueType::Double:
-          return m_double == other.m_double;
-        default:
-          return false;
-      }
-    default:
-      return false;
+bool JSValue::JSEquals(JSValue const &other) const noexcept {
+  if (m_type == other.m_type) {
+    switch (m_type) {
+      case JSValueType::Object:
+        return m_object.JSEquals(other.m_object);
+      case JSValueType::Array:
+        return m_array.JSEquals(other.m_array);
+      default:
+        return Equals(other);
+    }
+  }
+
+  // If one of the types Boolean, Int64, or Double, then compare as Numbers,
+  // otherwise compare as strings.
+  JSValueType const greatestType = Type > other.Type ? Type : other.Type;
+  if (greatestType >= JSValueType::Boolean) {
+    return AsJSNumber() == other.AsJSNumber();
+  } else {
+    return AsJSString() == other.AsJSString();
   }
 }
 
