@@ -226,15 +226,13 @@ std::shared_ptr<react::uwp::IReactInstance> HostingPane::getInstance() {
     settings.UseDirectDebugger = x_UseDirectDebuggerCheckBox->IsChecked->Value;
     settings.DebuggerBreakOnNextLine = x_BreakOnFirstLineCheckBox->IsChecked->Value;
     settings.EnableDeveloperMenu = true;
+    settings.jsiEngine = static_cast<react::uwp::JSIEngine>(x_JsEngine->SelectedIndex);
     if (params.find("debughost") != params.end()) {
       settings.DebugHost = params["debughost"];
     }
     settings.LoggingCallback = [](facebook::react::RCTLogLevel logLevel, const char *message) {
       OutputDebugStringA("In LoggingCallback");
       OutputDebugStringA(message);
-    };
-    settings.JsExceptionCallback = [](facebook::react::JSExceptionInfo &&exceptionInfo) {
-      OutputDebugStringA("in JsExceptionCallback");
     };
     m_instance->Start(m_instance, settings);
     m_instance->loadBundle(Microsoft::Common::Unicode::Utf16ToUtf8(m_loadedBundleFileName));
@@ -457,6 +455,16 @@ void HostingPane::InitComboBoxes() {
     x_ReactAppName->IsEditable = true;
     x_JavaScriptFilename->IsEditable = true;
   }
+
+#if !defined(USE_HERMES)
+  x_engineHermes->IsEnabled = false;
+#endif
+
+#if !defined(USE_V8)
+  x_engineV8->IsEnabled = false;
+#endif
+
+  x_JsEngine->SelectedIndex = 0;
 }
 
 void HostingPane::LoadKnownApps() {

@@ -72,7 +72,7 @@ struct ReactRootControl final : std::enable_shared_from_this<ReactRootControl>, 
   void ShowInstanceLoading(Mso::React::IReactInstance &reactInstance) noexcept;
   void ShowInstanceWaiting(Mso::React::IReactInstance &reactInstance) noexcept;
   void ShowInstanceLoaded(Mso::React::IReactInstance &reactInstance) noexcept;
-  void ShowInstanceError(Mso::React::IReactInstance &reactInstance) noexcept;
+  void ShowInstanceError() noexcept;
 
   void InitializeDeveloperMenu() noexcept;
   void ShowDeveloperMenu() noexcept;
@@ -99,6 +99,7 @@ struct ReactRootControl final : std::enable_shared_from_this<ReactRootControl>, 
   std::unique_ptr<Mso::React::ReactViewOptions> m_reactViewOptions;
   std::weak_ptr<facebook::react::InstanceWrapper> m_fbReactInstance;
 
+  bool m_isDevModeEnabled{false};
   bool m_useLiveReload{false};
   bool m_useWebDebugger{false};
   bool m_directDebugging{false};

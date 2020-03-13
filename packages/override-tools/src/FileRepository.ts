@@ -15,9 +15,16 @@ export interface OverrideFileRepository {
   listFiles(): Promise<Array<string>>;
 
   /**
-   * Read the contents of a patch file
+   * Read the contents of a patch file.
+   * @param filename is expected to be relative to the React Native source root.
    */
   getFileContents(filename: string): Promise<string | null>;
+
+  /**
+   * Sets the contents of an override file. Rejects the promise if the override
+   * doesn't exist.
+   */
+  setFileContents(filename: string, content: string): Promise<void>;
 }
 
 /**
@@ -25,16 +32,14 @@ export interface OverrideFileRepository {
  */
 export interface ReactFileRepository {
   getFileContents(filename: string): Promise<string | null>;
+  getVersion(): string;
 }
 
 /**
  * Provides access to React Native source files of arbitrary version
  */
 export interface VersionedReactFileRepository {
-  getFileContents(
-    filename: string,
-    reactNativeVersion: string,
-  ): Promise<string | null>;
+  getFileContents(filename: string, version: string): Promise<string | null>;
 }
 
 /**
@@ -47,5 +52,6 @@ export function bindVersion(
   return {
     getFileContents: (filename: string) =>
       repository.getFileContents(filename, version),
+    getVersion: () => version,
   };
 }

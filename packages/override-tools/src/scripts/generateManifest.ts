@@ -6,18 +6,20 @@
  */
 
 import * as FileRepository from '../FileRepository';
-import * as Manifest from '../Manifest';
+import * as ManifestData from '../ManifestData';
 
 import * as ora from 'ora';
 import * as path from 'path';
 
 import GitReactFileRepository from '../GitReactFileRepository';
+import Manifest from '../Manifest';
 import OverrideFileRepositoryImpl from '../OverrideFileRepositoryImpl';
 
 import {diff_match_patch} from 'diff-match-patch';
-import {getInstalledRNVersion} from '../PackageUtils';
+import {getInstalledRNVersion} from '../ReactVersion';
 
 const WIN_PLATFORM_EXT = /\.win32|\.windows|\.windesktop/;
+const WHITESPACE_PATTERN = /\s/g;
 
 (async () => {
   const ovrPath = process.argv[2];
@@ -30,7 +32,7 @@ const WIN_PLATFORM_EXT = /\.win32|\.windows|\.windesktop/;
 
   const version = await getInstalledRNVersion(ovrPath);
   const [overrides, reactSources] = await getFileRepos(ovrPath, version);
-  const manifest: Manifest.Manifest = {overrides: []};
+  const manifest: ManifestData.Manifest = {overrides: []};
   const overrideFiles = await overrides.listFiles();
 
   let i = 0;
@@ -38,23 +40,51 @@ const WIN_PLATFORM_EXT = /\.win32|\.windows|\.windesktop/;
     spinner.text = `Creating manifest (${++i}/${overrideFiles.length})`;
 
     const contents = await overrides.getFileContents(file);
-    (await tryAddPatch(file, version, contents, reactSources, manifest)) ||
+    (await tryAddCopy(file, version, contents, reactSources, manifest)) ||
+      (await tryAddPatch(file, version, contents, reactSources, manifest)) ||
       (await tryAddDerived(file, version, contents, reactSources, manifest)) ||
       addUnknown(file, version, manifest);
   }
 
   const ovrFile = path.join(ovrPath, 'overrides.json');
-  await Manifest.writeToFile(manifest as Manifest.Manifest, ovrFile);
+  await ManifestData.writeToFile(manifest, ovrFile);
 
   spinner.succeed();
 })();
+
+async function tryAddCopy(
+  filename: string,
+  rnVersion: string,
+  override: string,
+  reactSources: FileRepository.ReactFileRepository,
+  manifest: ManifestData.Manifest,
+): Promise<boolean> {
+  const baseContents = await reactSources.getFileContents(filename);
+
+  const baseSignificantChars = baseContents.replace(WHITESPACE_PATTERN, '');
+  const ovrSignificantChars = override.replace(WHITESPACE_PATTERN, '');
+  if (baseSignificantChars !== ovrSignificantChars) {
+    return false;
+  }
+
+  manifest.overrides.push({
+    type: 'copy',
+    file: filename,
+    baseFile: filename,
+    baseVersion: rnVersion,
+    baseHash: Manifest.hashContent(baseContents),
+    issue: 0,
+  });
+
+  return true;
+}
 
 async function tryAddPatch(
   filename: string,
   rnVersion: string,
   override: string,
   reactSources: FileRepository.ReactFileRepository,
-  manifest: Manifest.Manifest,
+  manifest: ManifestData.Manifest,
 ): Promise<boolean> {
   const baseFile = filename.replace(WIN_PLATFORM_EXT, '');
   const baseContents = await reactSources.getFileContents(baseFile);
@@ -85,7 +115,7 @@ async function tryAddDerived(
   rnVersion: string,
   override: string,
   reactSources: FileRepository.ReactFileRepository,
-  manifest: Manifest.Manifest,
+  manifest: ManifestData.Manifest,
 ): Promise<boolean> {
   const matches: Array<{file: string; contents: string; dist: number}> = [];
 
@@ -131,7 +161,7 @@ async function tryAddDerived(
 function addUnknown(
   filename: string,
   rnVersion: string,
-  manifest: Manifest.Manifest,
+  manifest: ManifestData.Manifest,
 ) {
   (manifest.overrides as Array<any>).push({
     type: '???',
@@ -149,8 +179,7 @@ async function getFileRepos(
 ): Promise<
   [FileRepository.OverrideFileRepository, FileRepository.ReactFileRepository]
 > {
-  const ovrPattern = /^.*\.(js|ts|jsx|tsx)$/;
-  const overrides = new OverrideFileRepositoryImpl(overrideovrPath, ovrPattern);
+  const overrides = new OverrideFileRepositoryImpl(overrideovrPath);
 
   const versionedReactSources = await GitReactFileRepository.createAndInit();
   const reactSources = FileRepository.bindVersion(

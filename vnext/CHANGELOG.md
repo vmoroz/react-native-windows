@@ -1,7 +1,185 @@
 # Change Log - react-native-windows
 
-This log was last generated on Wed, 26 Feb 2020 18:33:35 GMT and should not be manually modified.
+This log was last generated on Thu, 12 Mar 2020 19:18:01 GMT and should not be manually modified.
 
+## 0.61.0-beta.56
+Thu, 12 Mar 2020 19:18:01 GMT
+
+### Changes
+
+- Use redbox for native errors (acoates@microsoft.com)
+## 0.61.0-beta.55
+Thu, 12 Mar 2020 00:01:14 GMT
+
+### Changes
+
+- Fix JSValueObject operator[] (vmorozov@microsoft.com)
+## 0.61.0-beta.54
+Wed, 11 Mar 2020 19:32:20 GMT
+
+### Changes
+
+- Fully implement ExceptionsManagerModule (acoates@microsoft.com)
+## 0.61.0-beta.53
+Wed, 11 Mar 2020 18:14:12 GMT
+
+### Changes
+
+- Code review feedback (acoates@microsoft.com)
+## 0.61.0-beta.52
+Wed, 11 Mar 2020 16:18:00 GMT
+
+### Changes
+
+- Fix crash in timers during instance shutdown, and in systrace (acoates@microsoft.com)
+## 0.61.0-beta.51
+Tue, 10 Mar 2020 21:51:40 GMT
+
+### Changes
+
+- Bundle command clean-up (jthysell@microsoft.com)
+## 0.61.0-beta.50
+Tue, 10 Mar 2020 00:33:15 GMT
+
+### Changes
+
+- Strip out color markers from redbox error messages (acoates@microsoft.com)
+## 0.61.0-beta.49
+Mon, 09 Mar 2020 20:08:13 GMT
+
+### Changes
+
+- Fix Support For SysTraceSection (ngerlem@microsoft.com)
+## 0.61.0-beta.48
+Mon, 09 Mar 2020 18:53:03 GMT
+
+### Changes
+
+- Add initial redbox implementation (acoates@microsoft.com)
+## 0.61.0-beta.47
+Sat, 07 Mar 2020 19:35:40 GMT
+
+### Changes
+
+- Add XamlHelpers (kaigu@microsoft.com)
+## 0.61.0-beta.46
+Sat, 07 Mar 2020 02:35:07 GMT
+
+### Changes
+
+- Add Override Manifest for Native Code (ngerlem@microsoft.com)
+## 0.61.0-beta.45
+Sat, 07 Mar 2020 01:43:31 GMT
+
+### Changes
+
+- Remove Most cxxreact Patches and Executor Sandboxing Code (ngerlem@microsoft.com)
+- Deprecated JSValue typed value access functions (vmorozov@microsoft.com)
+## 0.61.0-beta.44
+Sat, 07 Mar 2020 01:08:09 GMT
+
+### Changes
+
+- Dont show loading/redbox in ship mode (acoates@microsoft.com)
+## 0.61.0-beta.43
+Sat, 07 Mar 2020 00:30:45 GMT
+
+### Changes
+
+- Bundle commands should work if you dont have react-native installed globally (acoates@microsoft.com)
+## 0.61.0-beta.42
+Fri, 06 Mar 2020 23:55:14 GMT
+
+### Changes
+
+- Add JS engine selection to Playground (tudorm@microsoft.com)
+## 0.61.0-beta.41
+Fri, 06 Mar 2020 22:46:28 GMT
+
+### Changes
+
+- Support dependency config for RNW (dida@ntdev.microsoft.com)
+## 0.61.0-beta.40
+Fri, 06 Mar 2020 19:29:08 GMT
+
+### Changes
+
+- Fix include filters (jthysell@microsoft.com)
+## 0.61.0-beta.39
+Thu, 05 Mar 2020 23:13:07 GMT
+
+### Changes
+
+- undefined (ngerlem@microsoft.com)
+- Configure vnext validate-overrides to check both override manifests (ngerlem@microsoft.com)
+## 0.61.0-beta.38
+Thu, 05 Mar 2020 18:30:29 GMT
+
+### Changes
+
+- Added TryAddAttributedModule in addition to AddAttributedModules (vmorozov@microsoft.com)
+## 0.61.0-beta.37
+Thu, 05 Mar 2020 05:33:57 GMT
+
+### Changes
+
+- Move ViewPanel import from PropertyUtils to FrameworkElementViewManager (jagorrin@microsoft.com)
+## 0.61.0-beta.36
+Thu, 05 Mar 2020 03:41:34 GMT
+
+### Changes
+
+- Enable V8 support for win32 (no defaults changed) (tudorm@microsoft.com)
+## 0.61.0-beta.35
+Thu, 05 Mar 2020 00:11:30 GMT
+
+### Changes
+
+- Support RNW project config (dida@ntdev.microsoft.com)
+## 0.61.0-beta.34
+Wed, 04 Mar 2020 08:47:08 GMT
+
+### Changes
+
+- CI Enforce that Overrides are Recorded Up to Date (ngerlem@microsoft.com)
+## 0.61.0-beta.33
+Wed, 04 Mar 2020 08:11:46 GMT
+
+### Changes
+
+- Moved header files from ReactUWP\Utils to include\ReactUWP\Utils. Updated project references. (lamdoan@microsoft.com)
+## 0.61.0-beta.32
+Tue, 03 Mar 2020 19:02:31 GMT
+
+### Changes
+
+- Remove CMakeLists (ngerlem@microsoft.com)
+## 0.61.0-beta.31
+Mon, 02 Mar 2020 22:47:03 GMT
+
+### Changes
+
+- More Override Manifest Functionality (Unit Tests Coming Next Iteration) (ngerlem@microsoft.com)
+## 0.61.0-beta.30
+Mon, 02 Mar 2020 21:53:02 GMT
+
+### Changes
+
+- Upgrade just-scripts and add root test script (ngerlem@microsoft.com)
+- Add descriptions to dev menu items (acoates@microsoft.com)
+## 0.61.0-beta.29
+Mon, 02 Mar 2020 20:59:31 GMT
+
+### Changes
+
+- Fix a couple of places in run-windows that has incorrect assumptions on install layout (acoates@microsoft.com)
+## 0.61.0-beta.28
+Thu, 27 Feb 2020 23:11:13 GMT
+
+### Changes
+
+- Set IsTabStop to false when tabIndex is negative (lamdoan@microsoft.com)
+- TextBox should have a default tabIndex of 0 (lamdoan@microsoft.com)
 ## 0.61.0-beta.27
 Wed, 26 Feb 2020 18:33:35 GMT
 

@@ -100,7 +100,7 @@ inline T ReadValue(IJSValueReader const &reader) noexcept {
 
 // This is a convenience method to call ReadValue for JSValue.
 template <class T>
-inline T ReadValue(const JSValue &jsValue) noexcept {
+inline T ReadValue(JSValue const &jsValue) noexcept {
   T result;
   ReadValue(jsValue, /*out*/ result);
   return result;
@@ -388,11 +388,11 @@ inline void ReadValue(IJSValueReader const &reader, /*out*/ JSValue &value) noex
 }
 
 inline void ReadValue(IJSValueReader const &reader, /*out*/ JSValueObject &value) noexcept {
-  value = JSValue::ReadObjectFrom(reader);
+  value = JSValueObject::ReadFrom(reader);
 }
 
 inline void ReadValue(IJSValueReader const &reader, /*out*/ JSValueArray &value) noexcept {
-  value = JSValue::ReadArrayFrom(reader);
+  value = JSValueArray::ReadFrom(reader);
 }
 
 template <class T, std::enable_if_t<!std::is_void_v<decltype(GetStructInfo(static_cast<T *>(nullptr)))>, int>>
