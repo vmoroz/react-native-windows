@@ -324,12 +324,12 @@ namespace Microsoft.ReactNative.Managed
     {
       switch (Type)
       {
-        case JSValueType.Object: return true;
+        case JSValueType.Object:
         case JSValueType.Array: return true;
         case JSValueType.String: return !string.IsNullOrEmpty(StringValue);
         case JSValueType.Boolean: return BooleanValue;
         case JSValueType.Int64: return Int64Value != 0;
-        case JSValueType.Double: return !double.IsNaN(DoubleValue) && DoubleValue != 0;
+        case JSValueType.Double: return DoubleValue != 0;
         default: return false;
       }
     }
