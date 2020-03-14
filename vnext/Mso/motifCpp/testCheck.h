@@ -18,6 +18,7 @@
 
 #include <csetjmp>
 #include <csignal>
+#include <string>
 #include "motifCpp/assert_motifApi.h"
 
 //=============================================================================
@@ -46,18 +47,32 @@
 // TestCheck checks if provided expression evaluates to true.
 // If check fails then it reports the line number and the failed expression.
 //=============================================================================
-#define TestCheckL(expr, line) TestAssert::IsTrue(expr, MSO_WIDE_STR("Line: " line " [ " MSO_TO_STR(expr) " ]"))
-#define TestCheck(expr) TestCheckL(expr, MSO_LINE_STR)
+#define TestCheckAt(file, line, expr, ...) \
+  TestAssert::IsTrueAt(                    \
+      file,                                \
+      line,                                \
+      expr,                                \
+      MSO_TO_STR(expr),                    \
+      TestAssert::FormatMsg(MSO_WIDE_STR("Line: " MSO_TO_STR(line) " [ " MSO_TO_STR(expr) " ] ") __VA_ARGS__).c_str())
+#define TestCheck(expr, ...) TestCheckAt(__FILE__, __LINE__, expr, __VA_ARGS__)
 
 //=============================================================================
 // TestCheckEqual checks if two provided values are equal.
 // If check fails then it reports the line number and the failed expression.
 // In addition the TestAssert::AreEqual reports expected and actual values.
 //=============================================================================
-#define TestCheckEqualL(expected, actual, line) \
-  TestAssert::AreEqual(                         \
-      expected, actual, MSO_WIDE_STR("Line: " line " [ " MSO_TO_STR(expected) " == " MSO_TO_STR(actual) " ]"))
-#define TestCheckEqual(expected, actual) TestCheckEqualL(expected, actual, MSO_LINE_STR)
+#define TestCheckEqualAt(file, line, expected, actual, ...)                                                      \
+  TestAssert::AreEqualAt(                                                                                        \
+      file,                                                                                                      \
+      line,                                                                                                      \
+      expected,                                                                                                  \
+      actual,                                                                                                    \
+      MSO_TO_STR(expected),                                                                                      \
+      MSO_TO_STR(actual),                                                                                        \
+      TestAssert::FormatMsg(MSO_WIDE_STR("Line: " MSO_TO_STR(line) " [ " MSO_TO_STR(expected) " == " MSO_TO_STR( \
+                                actual) " ] ") __VA_ARGS__)                                                       \
+          .c_str())
+#define TestCheckEqual(expected, actual, ...) TestCheckEqualAt(__FILE__, __LINE__, expected, actual, __VA_ARGS__)
 
 //=============================================================================
 // TestCheckIgnore ignores the provided expression.
@@ -164,6 +179,17 @@ inline void ExpectTerminate(const Fn &fn, const WCHAR *message = L"") {
   if (!ExpectTerminateCore(fn)) {
     Fail(message == nullptr || message[0] == L'\0' ? L"Test function did not terminate!" : message);
   }
+}
+
+inline std::wstring FormatMsg(wchar_t const *format, ...) noexcept {
+  std::wstring result;
+  va_list vlist;
+  va_start(vlist, format);
+  auto size = std::vswprintf(nullptr, 0, format, vlist);
+  result.append(size + 1, '\0');
+  std::vswprintf(&result[0], size, format, vlist);
+  va_end(vlist);
+  return result;
 }
 
 } // namespace TestAssert

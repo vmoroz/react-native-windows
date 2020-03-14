@@ -18,6 +18,137 @@ typedef wchar_t WCHAR;
 
 namespace TestAssert {
 
+#define GTEST_ASSERT_AT_(file, line, expression, on_failure)    \
+  GTEST_AMBIGUOUS_ELSE_BLOCKER_                                 \
+  if (const ::testing::AssertionResult gtest_ar = (expression)) \
+    ;                                                           \
+  else                                                          \
+    on_failure(file, line, gtest_ar.failure_message())
+
+#define GTEST_TEST_BOOLEAN_AT_(file, line, expression, text, actual, expected, fail)       \
+  GTEST_AMBIGUOUS_ELSE_BLOCKER_                                                            \
+  if (const ::testing::AssertionResult gtest_ar_ = ::testing::AssertionResult(expression)) \
+    ;                                                                                      \
+  else                                                                                     \
+    fail(file, line, ::testing::internal::GetBoolAssertionFailureMessage(gtest_ar_, text, #actual, #expected).c_str())
+
+#define GTEST_FATAL_FAILURE_AT_(file, line, message) \
+  return GTEST_MESSAGE_AT_(file, line, message, ::testing::TestPartResult::kFatalFailure)
+
+inline void IsTrueAt(char const *file, int line, bool condition, char const *expr, _In_z_ const WCHAR *message = L"") {
+  GTEST_TEST_BOOLEAN_AT_(file, line, condition, expr, false, true, GTEST_FATAL_FAILURE_AT_) << message;
+}
+
+template <typename T, typename TEnable = typename std::enable_if<!std::is_same<bool, T>::value>::type>
+inline void IsTrueAt(char const *file, int line, bool condition, char const *expr, _In_z_ const WCHAR *message = L"") {
+  return IsTrueAt(file, line, !!condition, expr, message);
+}
+
+template <typename ExpectedType, typename ActualType>
+inline void AreEqualAt(
+    char const *file,
+    int line,
+    _In_ const ExpectedType &expected,
+    _In_ const ActualType &actual,
+    char const *expectedExpr,
+    char const *actualExpr,
+    _In_z_ const WCHAR *message = L"") {
+  GTEST_ASSERT_AT_(
+      file,
+      line,
+      ::testing::internal::EqHelper<GTEST_IS_NULL_LITERAL_(expected)>::Compare(
+          expectedExpr, actualExpr, expected, actual),
+      GTEST_FATAL_FAILURE_AT_)
+      << message;
+}
+
+template <
+    typename ExpectedType,
+    typename ActualType,
+    typename TEnable = typename std::enable_if<
+        std::is_same<ExpectedType, ActualType>::value && !std::is_same<ExpectedType, wchar_t>::value &&
+        !std::is_same<ExpectedType, char>::value>::type>
+void AreEqualAt(
+    char const *file,
+    int line,
+    _In_ const ExpectedType *expected,
+    _In_ const ActualType *actual,
+    char const *expectedExpr,
+    char const *actualExpr,
+    _In_z_ const WCHAR *message = L"") {
+  GTEST_ASSERT_AT_(
+      file,
+      line,
+      ::testing::internal::EqHelper<GTEST_IS_NULL_LITERAL_(expected)>::Compare(
+          expectedExpr, actualExpr, expected, actual),
+      GTEST_FATAL_FAILURE_AT_)
+      << message;
+}
+
+inline void AreEqualAt(
+    char const *file,
+    int line,
+    _In_ const wchar_t *expected,
+    _In_ const wchar_t *actual,
+    char const *expectedExpr,
+    char const *actualExpr,
+    _In_z_ const WCHAR *message = L"") {
+  GTEST_ASSERT_AT_(
+      file,
+      line,
+      ::testing::internal::CmpHelperSTREQ(expectedExpr, actualExpr, expected, actual),
+      GTEST_FATAL_FAILURE_AT_)
+      << message;
+}
+
+inline void AreEqualAt(
+    char const *file,
+    int line,
+    _In_ const char *expected,
+    _In_ const char *actual,
+    char const *expectedExpr,
+    char const *actualExpr,
+    _In_z_ const WCHAR *message = L"") {
+  GTEST_ASSERT_AT_(
+      file,
+      line,
+      ::testing::internal::CmpHelperSTREQ(expectedExpr, actualExpr, expected, actual),
+      GTEST_FATAL_FAILURE_AT_)
+      << message;
+}
+
+inline void AreEqualAt(
+    char const *file,
+    int line,
+    _In_ wchar_t *expected,
+    _In_ const wchar_t *actual,
+    char const *expectedExpr,
+    char const *actualExpr,
+    _In_z_ const WCHAR *message = L"") {
+  GTEST_ASSERT_AT_(
+      file,
+      line,
+      ::testing::internal::CmpHelperSTREQ(expectedExpr, actualExpr, expected, actual),
+      GTEST_FATAL_FAILURE_AT_)
+      << message;
+}
+
+inline void AreEqualAt(
+    char const *file,
+    int line,
+    _In_ char *expected,
+    _In_ const char *actual,
+    char const *expectedExpr,
+    char const *actualExpr,
+    _In_z_ const WCHAR *message = L"") {
+  GTEST_ASSERT_AT_(
+      file,
+      line,
+      ::testing::internal::CmpHelperSTREQ(expectedExpr, actualExpr, expected, actual),
+      GTEST_FATAL_FAILURE_AT_)
+      << message;
+}
+
 // Asserts that the specified condition is true, if it is false the unit test will fail
 inline void IsTrue(bool condition, _In_z_ const WCHAR *message = L"") {
   ASSERT_TRUE(condition) << message;
