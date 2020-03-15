@@ -49,41 +49,6 @@
   } else                                                                                            \
     GTEST_CONCAT_TOKEN_(gtest_label_testthrow_, __LINE__) : fail(file, line, gtest_msg.value)
 
-#define GTEST_TEST_NO_THROW_AT_(file, line, statement, statementStr, fail) \
-  GTEST_AMBIGUOUS_ELSE_BLOCKER_                                            \
-  if (::testing::internal::AlwaysTrue()) {                                 \
-    try {                                                                  \
-      GTEST_SUPPRESS_UNREACHABLE_CODE_WARNING_BELOW_(statement);           \
-    } catch (...) {                                                        \
-      goto GTEST_CONCAT_TOKEN_(gtest_label_testnothrow_, __LINE__);        \
-    }                                                                      \
-  } else                                                                   \
-    GTEST_CONCAT_TOKEN_(gtest_label_testnothrow_, __LINE__)                \
-        : fail(                                                            \
-              file,                                                        \
-              line,                                                        \
-              TestAssert::FormatMsg(                                       \
-                  "Expected: %s doesn't throw an exception.\n"             \
-                  "  Actual: it throws.",                                  \
-                  statementStr)                                            \
-                  .c_str())
-
-//if (::testing::internal::AlwaysTrue()) {                                 \
-  //} else                                                                   \
-  //  GTEST_CONCAT_TOKEN_(gtest_label_testnothrow_, __LINE__)                \
-  //      : fail(                                                            \
-  //            file,                                                        \
-  //            line,                                                        \
-  //            "Expected: " statementStr                                    \
-  //            " doesn't throw an exception.\n"                             \
-  //            "  Actual: it throws.")
-
-/*   try {
- GTEST_SUPPRESS_UNREACHABLE_CODE_WARNING_BELOW_(statement);
-} catch (...) {
- goto GTEST_CONCAT_TOKEN_(gtest_label_testnothrow_, __LINE__);
-}*/
-
 #define GTEST_FATAL_FAILURE_AT_(file, line, message) \
   return GTEST_MESSAGE_AT_(file, line, message, ::testing::TestPartResult::kFatalFailure)
 
