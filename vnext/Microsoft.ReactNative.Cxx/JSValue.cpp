@@ -551,7 +551,7 @@ bool JSValue::AsBoolean() const noexcept {
     case JSValueType::Int64:
       return m_int64 != 0;
     case JSValueType::Double:
-      return m_double != 0;
+      return !std::isnan(m_double) && m_double != 0;
     default:
       return false;
   }
@@ -653,7 +653,7 @@ bool JSValue::AsJSBoolean() const noexcept {
     case JSValueType::Int64:
       return m_int64 != 0;
     case JSValueType::Double:
-      return m_double != 0;
+      return !std::isnan(m_double) && m_double != 0;
     default:
       return false;
   }
