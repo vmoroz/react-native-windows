@@ -16,57 +16,39 @@
 // use the macros we provide.
 //=============================================================================
 
-#include <csetjmp>
-#include <csignal>
-#include <string>
 #include "motifCpp/assert_motifApi.h"
-
-//=============================================================================
-// Helper macros for stringifying expressions.
-//=============================================================================
-#ifndef MSO_TO_STR
-#define MSO_INTERNAL_TO_STR(value) #value
-#define MSO_TO_STR(value) MSO_INTERNAL_TO_STR(value)
-#endif
 
 //=============================================================================
 // TestCheckFail fails the test unconditionally.
 //=============================================================================
-#define TestCheckFailAt(file, line, ...) \
-  TestAssert::FailAt(                    \
-      file, line, (TestAssert::FormatMsg("Line: %d", line) + TestAssert::FormatMsg("\n" __VA_ARGS__)).c_str())
+#define TestCheckFailAt(file, line, ...) TestAssert::FailAt(file, line, TestAssert::FormatMsg("" __VA_ARGS__).c_str())
 #define TestCheckFail(...) TestCheckFailAt(__FILE__, __LINE__, __VA_ARGS__)
 
 //=============================================================================
 // TestCheck checks if provided expression evaluates to true.
 // If check fails then it reports the line number and the failed expression.
+//
+// Note that we convert expression to string before we pass it to an
+// Internal macro. This is for better message in case if expression is a macro.
+// It will be shown as macro usage rather than macro being expanded.
 //=============================================================================
-#define TestCheckAt(file, line, expr, ...) \
-  TestAssert::IsTrueAt(                    \
-      file,                                \
-      line,                                \
-      expr,                                \
-      #expr,                               \
-      (TestAssert::FormatMsg("Line: %d", line) + TestAssert::FormatMsg(" [ " #expr " ]\n" __VA_ARGS__)).c_str())
-#define TestCheck(expr, ...) TestCheckAt(__FILE__, __LINE__, expr, __VA_ARGS__)
+#define TestCheckAtInternal(file, line, expr, exprStr, ...) \
+  TestAssert::IsTrueAt(file, line, expr, exprStr, TestAssert::FormatMsg("" __VA_ARGS__).c_str())
+#define TestCheckAt(file, line, expr, ...) TestCheckAtInternal(file, line, expr, #expr, __VA_ARGS__)
+#define TestCheck(expr, ...) TestCheckAtInternal(__FILE__, __LINE__, expr, #expr, __VA_ARGS__)
 
 //=============================================================================
 // TestCheckEqual checks if two provided values are equal.
 // If check fails then it reports the line number and the failed expression.
 // In addition the TestAssert::AreEqual reports expected and actual values.
 //=============================================================================
-#define TestCheckEqualAt(file, line, expected, actual, ...)                      \
-  TestAssert::AreEqualAt(                                                        \
-      file,                                                                      \
-      line,                                                                      \
-      expected,                                                                  \
-      actual,                                                                    \
-      #expected,                                                                 \
-      #actual,                                                                   \
-      (TestAssert::FormatMsg("Line: %d", line) +                                 \
-       TestAssert::FormatMsg(" [ " #expected " == " #actual " ]\n" __VA_ARGS__)) \
-          .c_str())
-#define TestCheckEqual(expected, actual, ...) TestCheckEqualAt(__FILE__, __LINE__, expected, actual, __VA_ARGS__)
+#define TestCheckEqualAtInternal(file, line, expected, actual, expectedStr, actualStr, ...) \
+  TestAssert::AreEqualAt(                                                                   \
+      file, line, expected, actual, expectedStr, actualStr, TestAssert::FormatMsg("" __VA_ARGS__).c_str())
+#define TestCheckEqualAt(file, line, expected, actual, ...) \
+  TestCheckEqualAtInternal(file, line, expected, actual, #expected, #actual, __VA_ARGS__)
+#define TestCheckEqual(expected, actual, ...) \
+  TestCheckEqualAtInternal(__FILE__, __LINE__, expected, actual, #expected, #actual, __VA_ARGS__)
 
 //=============================================================================
 // TestCheckIgnore ignores the provided expression.
@@ -78,17 +60,11 @@
 //=============================================================================
 // TestCheckCrash expects that the provided expression causes a crash.
 //=============================================================================
-#define TestCheckCrashAt(file, line, expr, ...)                                                                     \
-  TestAssert::ExpectCrashAt(                                                                                        \
-      file,                                                                                                         \
-      line,                                                                                                         \
-      [&]() {                                                                                                       \
-        OACR_POSSIBLE_THROW;                                                                                        \
-        expr;                                                                                                       \
-      },                                                                                                            \
-      (TestAssert::FormatMsg("Line: %d", line) + TestAssert::FormatMsg(" Must crash: [ " #expr " ]\n" __VA_ARGS__)) \
-          .c_str())
-#define TestCheckCrash(expr, ...) TestCheckCrashAt(__FILE__, __LINE__, expr, __VA_ARGS__)
+#define TestCheckCrashAtInternal(file, line, expr, exprStr, ...) \
+  TestAssert::ExpectCrashAt(                                     \
+      file, line, [&]() { expr; }, exprStr, TestAssert::FormatMsg("" __VA_ARGS__).c_str())
+#define TestCheckCrashAt(file, line, expr, ...) TestCheckCrashAtInternal(file, line, expr, #expr, __VA_ARGS__)
+#define TestCheckCrash(expr, ...) TestCheckCrashAtInternal(__FILE__, __LINE__, expr, #expr, __VA_ARGS__)
 
 //=============================================================================
 // TestCheckTerminate expects that the provided expression causes process termination
@@ -99,36 +75,39 @@
 // the call stack is not unwinded correctly.
 // You should disable memory leak detection in tests that use TestCheckTerminate.
 //=============================================================================
-#define TestCheckTerminateAt(file, line, expr, ...)                           \
-  TestAssert::ExpectTerminateAt(                                              \
-      file,                                                                   \
-      line,                                                                   \
-      [&]() { expr; },                                                        \
-      (TestAssert::FormatMsg("Line: %d", line) +                              \
-       TestAssert::FormatMsg(" Must terminate: [ " #expr " ]\n" __VA_ARGS__)) \
-          .c_str())
-#define TestCheckTerminate(expr, ...) TestCheckTerminateAt(__FILE__, __LINE__, expr, __VA_ARGS__)
+#define TestCheckTerminateAtInternal(file, line, expr, exprStr, ...) \
+  TestAssert::ExpectTerminateAt(                                     \
+      file, line, [&]() { expr; }, exprStr, TestAssert::FormatMsg("" __VA_ARGS__).c_str())
+#define TestCheckTerminateAt(file, line, expr, ...) TestCheckTerminateAtInternal(file, line, expr, #expr, __VA_ARGS__)
+#define TestCheckTerminate(expr, ...) TestCheckTerminateAtInternal(__FILE__, __LINE__, expr, #expr, __VA_ARGS__)
 
 //=============================================================================
 // TestCheckException expects that the provided expression throws an exception.
 //=============================================================================
+#define TestCheckExceptionAtInternal(file, line, ex, expr, exStr, exprStr, ...) \
+  TestAssert::ExpectExceptionAt<ex>(                                            \
+      file,                                                                     \
+      line,                                                                     \
+      [&]() {                                                                   \
+        OACR_POSSIBLE_THROW;                                                    \
+        expr;                                                                   \
+      },                                                                        \
+      exStr,                                                                    \
+      exprStr,                                                                  \
+      TestAssert::FormatMsg("" __VA_ARGS__).c_str())
 #define TestCheckExceptionAt(file, line, ex, expr, ...) \
-  TestAssert::ExpectExceptionAt<ex>(                    \
-      file, line, [&]() { expr; }, #expr, #ex, TestAssert::FormatMsg("" __VA_ARGS__).c_str())
-#define TestCheckException(ex, expr, ...) TestCheckExceptionAt(__FILE__, __LINE__, ex, expr, __VA_ARGS__)
+  TestCheckExceptionAtInternal(file, line, ex, expr, #ex, #expr, __VA_ARGS__)
+#define TestCheckException(ex, expr, ...) \
+  TestCheckExceptionAtInternal(__FILE__, __LINE__, ex, expr, #ex, #expr, __VA_ARGS__)
 
 //=============================================================================
 // TestCheckNoThrow expects that the provided expression does not throw an exception.
 //=============================================================================
-#define TestCheckNoThrowAt(file, line, expr, ...)                             \
-  TestAssert::ExpectNoThrowAt(                                                \
-      file,                                                                   \
-      line,                                                                   \
-      [&]() { expr; },                                                        \
-      (TestAssert::FormatMsg("Line: %d", line) +                              \
-       TestAssert::FormatMsg(" Must not throw: [ " #expr " ]\n" __VA_ARGS__)) \
-          .c_str())
-#define TestCheckNoThrow(expr, ...) TestCheckNoThrowAt(__FILE__, __LINE__, expr, __VA_ARGS__)
+#define TestCheckNoThrowAtInternal(file, line, expr, exprStr, ...) \
+  TestAssert::ExpectNoThrowAt(                                     \
+      file, line, [&]() { expr; }, exprStr, TestAssert::FormatMsg("" __VA_ARGS__).c_str())
+#define TestCheckNoThrowAt(file, line, expr, ...) TestCheckNoThrowAtInternal(file, line, expr, #expr, __VA_ARGS__)
+#define TestCheckNoThrow(expr, ...) TestCheckNoThrowAtInternal(__FILE__, __LINE__, expr, #expr, __VA_ARGS__)
 
 //=============================================================================
 // TestCheckAssert checks for the code to produce assert with specified tag.
@@ -149,46 +128,5 @@
 	//{ \
 	//	StartTrackingMemoryAllocations(); \
 	//});
-
-//=============================================================================
-// Helper functions to implement TestCheckTerminate.
-//=============================================================================
-namespace TestAssert {
-
-struct TerminateHandlerRestorer {
-  ~TerminateHandlerRestorer() noexcept {
-    std::set_terminate(Handler);
-  }
-
-  std::terminate_handler Handler;
-};
-
-#pragma warning(push)
-#pragma warning(disable : 4611) // interaction between '_setjmp' and C++ object destruction is non-portable
-template <class Fn>
-inline bool ExpectTerminateCore(const Fn &fn) {
-  static jmp_buf buf;
-
-  // Set a terminate handler and save the previous terminate handler to be restored in the end of function.
-  TerminateHandlerRestorer terminateRestore = {std::set_terminate([]() { longjmp(buf, 1); })};
-
-  // setjmp originally returns 0, and when longjmp is called it returns 1.
-  if (!setjmp(buf)) {
-    fn();
-    return false; // must not be executed if fn() caused termination and the longjmp is executed.
-  } else {
-    return true; // executed if longjmp is executed in the terminate handler.
-  }
-}
-#pragma warning(pop)
-
-template <class Fn>
-inline void ExpectTerminateAt(char const *file, int line, const Fn &fn, const char *message = "") {
-  if (!ExpectTerminateCore(fn)) {
-    FailAt(file, line, message == nullptr || message[0] == '\0' ? "Test function did not terminate!" : message);
-  }
-}
-
-} // namespace TestAssert
 
 #endif // MSO_MOTIFCPP_TESTCHECK_H

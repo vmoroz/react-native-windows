@@ -9,6 +9,7 @@
 #include <csignal>
 #include <cstdarg>
 #include <functional>
+#include <string>
 #include <type_traits>
 #include "comUtil/IUnknownShim.h"
 #include "motifCpp/gTestAdapter.h"
@@ -22,34 +23,6 @@ using WCHAR = wchar_t;
     ;                                                           \
   else                                                          \
     on_failure(file, line, gtest_ar.failure_message())
-
-#define GTEST_TEST_BOOLEAN_AT_(file, line, expression, text, actual, expected, fail)       \
-  GTEST_AMBIGUOUS_ELSE_BLOCKER_                                                            \
-  if (const ::testing::AssertionResult gtest_ar_ = ::testing::AssertionResult(expression)) \
-    ;                                                                                      \
-  else                                                                                     \
-    fail(file, line, ::testing::internal::GetBoolAssertionFailureMessage(gtest_ar_, text, #actual, #expected).c_str())
-
-#define GTEST_TEST_THROW_AT_(file, line, statement, expected_exception, fail)                       \
-  GTEST_AMBIGUOUS_ELSE_BLOCKER_                                                                     \
-  if (::testing::internal::ConstCharPtr gtest_msg = "") {                                           \
-    bool gtest_caught_expected = false;                                                             \
-    try {                                                                                           \
-      GTEST_SUPPRESS_UNREACHABLE_CODE_WARNING_BELOW_(statement);                                    \
-    } catch (expected_exception const &) {                                                          \
-      gtest_caught_expected = true;                                                                 \
-    } catch (...) {                                                                                 \
-      gtest_msg.value = "Expected: " #statement " throws an exception of type " #expected_exception \
-                        ".\n  Actual: it throws a different type.";                                 \
-      goto GTEST_CONCAT_TOKEN_(gtest_label_testthrow_, __LINE__);                                   \
-    }                                                                                               \
-    if (!gtest_caught_expected) {                                                                   \
-      gtest_msg.value = "Expected: " #statement " throws an exception of type " #expected_exception \
-                        ".\n  Actual: it throws nothing.";                                          \
-      goto GTEST_CONCAT_TOKEN_(gtest_label_testthrow_, __LINE__);                                   \
-    }                                                                                               \
-  } else                                                                                            \
-    GTEST_CONCAT_TOKEN_(gtest_label_testthrow_, __LINE__) : fail(file, line, gtest_msg.value)
 
 #define GTEST_FATAL_FAILURE_AT_(file, line, message) \
   return GTEST_MESSAGE_AT_(file, line, message, ::testing::TestPartResult::kFatalFailure)
@@ -68,138 +41,247 @@ inline std::string FormatMsg(char const *format, ...) noexcept {
   return result;
 }
 
-inline void IsTrueAt(char const *file, int line, bool condition, char const *expr, _In_z_ char const *message = "") {
-  GTEST_TEST_BOOLEAN_AT_(file, line, condition, expr, false, true, GTEST_FATAL_FAILURE_AT_) << message;
+inline std::string FormatCustomMsg(int line, char const *message = "") {
+  return FormatMsg(
+      "    Line: %d%s%s",
+      line,
+      (message == nullptr || message[0] == '\0') ? "" : "\n",
+      message == nullptr ? "" : message);
 }
 
-template <typename T, typename TEnable = typename std::enable_if<!std::is_same<bool, T>::value>::type>
-inline void IsTrueAt(char const *file, int line, T condition, char const *expr, _In_z_ char const *message = "") {
-  return IsTrueAt(file, line, !!condition, expr, message);
+inline void FailInternalAt(char const *file, int line, char const *message, std::string &&errorMessage) {
+  GTEST_FATAL_FAILURE_AT_(file, line, "") << errorMessage << FormatCustomMsg(line, message).c_str();
 }
 
-template <typename ExpectedType, typename ActualType>
+inline void FailAt(char const *file, int line, char const *message = "") {
+  FailInternalAt(file, line, message, "Failed\n");
+}
+
+inline void IsTrueAt(char const *file, int line, bool condition, char const *exprStr, char const *message = "") {
+  if (!condition) {
+    FailInternalAt(
+        file,
+        line,
+        message,
+        FormatMsg(
+            "Expected: [ %s ] is true\n"
+            "  Actual: it is false\n",
+            exprStr));
+  }
+}
+
+template <class T, std::enable_if_t<!std::is_same_v<bool, T>, int> = 1>
+inline void IsTrueAt(char const *file, int line, T condition, char const *exprStr, char const *message = "") {
+  return IsTrueAt(file, line, !!condition, exprStr, message);
+}
+
+template <class TExpected, class TActual>
 inline void AreEqualAt(
     char const *file,
     int line,
-    _In_ const ExpectedType &expected,
-    _In_ const ActualType &actual,
-    _In_z_ char const *expectedExpr,
-    _In_z_ char const *actualExpr,
-    _In_z_ const char *message = "") {
+    TExpected const &expected,
+    TActual const &actual,
+    char const *expectedExpr,
+    char const *actualExpr,
+    char const *message = "") {
   GTEST_ASSERT_AT_(
       file,
       line,
       ::testing::internal::EqHelper<GTEST_IS_NULL_LITERAL_(expected)>::Compare(
           expectedExpr, actualExpr, expected, actual),
       GTEST_FATAL_FAILURE_AT_)
-      << message;
+      << FormatCustomMsg(line, message);
 }
 
 template <
-    typename ExpectedType,
-    typename ActualType,
-    typename TEnable = typename std::enable_if<
-        std::is_same<ExpectedType, ActualType>::value && !std::is_same<ExpectedType, WCHAR>::value &&
-        !std::is_same<ExpectedType, char>::value>::type>
+    class TExpected,
+    class TActual,
+    std::enable_if_t<
+        std::is_same_v<TExpected, TActual> && !std::is_same_v<TExpected, WCHAR> && !std::is_same_v<TExpected, char>,
+        int> = 1>
 void AreEqualAt(
     char const *file,
     int line,
-    _In_ const ExpectedType *expected,
-    _In_ const ActualType *actual,
+    TExpected const *expected,
+    TActual const *actual,
     char const *expectedExpr,
     char const *actualExpr,
-    _In_z_ const char *message = "") {
+    char const *message = "") {
   GTEST_ASSERT_AT_(
       file,
       line,
       ::testing::internal::EqHelper<GTEST_IS_NULL_LITERAL_(expected)>::Compare(
           expectedExpr, actualExpr, expected, actual),
       GTEST_FATAL_FAILURE_AT_)
-      << message;
+      << FormatCustomMsg(line, message);
 }
 
 inline void AreEqualAt(
     char const *file,
     int line,
-    _In_ const WCHAR *expected,
-    _In_ const WCHAR *actual,
+    WCHAR const *expected,
+    WCHAR const *actual,
     char const *expectedExpr,
     char const *actualExpr,
-    _In_z_ const char *message = "") {
+    char const *message = "") {
   GTEST_ASSERT_AT_(
       file,
       line,
       ::testing::internal::CmpHelperSTREQ(expectedExpr, actualExpr, expected, actual),
       GTEST_FATAL_FAILURE_AT_)
-      << message;
+      << FormatCustomMsg(line, message);
 }
 
 inline void AreEqualAt(
     char const *file,
     int line,
-    _In_ const char *expected,
-    _In_ const char *actual,
+    char const *expected,
+    char const *actual,
     char const *expectedExpr,
     char const *actualExpr,
-    _In_z_ const char *message = "") {
+    char const *message = "") {
   GTEST_ASSERT_AT_(
       file,
       line,
       ::testing::internal::CmpHelperSTREQ(expectedExpr, actualExpr, expected, actual),
       GTEST_FATAL_FAILURE_AT_)
-      << message;
+      << FormatCustomMsg(line, message);
 }
 
 inline void AreEqualAt(
     char const *file,
     int line,
-    _In_ WCHAR *expected,
-    _In_ const WCHAR *actual,
+    WCHAR *expected,
+    WCHAR const *actual,
     char const *expectedExpr,
     char const *actualExpr,
-    _In_z_ const char *message = "") {
+    char const *message = "") {
   GTEST_ASSERT_AT_(
       file,
       line,
       ::testing::internal::CmpHelperSTREQ(expectedExpr, actualExpr, expected, actual),
       GTEST_FATAL_FAILURE_AT_)
-      << message;
+      << FormatCustomMsg(line, message);
 }
 
 inline void AreEqualAt(
     char const *file,
     int line,
-    _In_ char *expected,
-    _In_ const char *actual,
+    char *expected,
+    const char *actual,
     char const *expectedExpr,
     char const *actualExpr,
-    _In_z_ const char *message = "") {
+    const char *message = "") {
   GTEST_ASSERT_AT_(
       file,
       line,
       ::testing::internal::CmpHelperSTREQ(expectedExpr, actualExpr, expected, actual),
       GTEST_FATAL_FAILURE_AT_)
-      << message;
+      << FormatCustomMsg(line, message);
 }
 
-inline void FailAt(char const *file, int line, _In_z_ const char *message = "") {
-  GTEST_FATAL_FAILURE_AT_(file, line, message);
+// Code used for all the C++ exceptions
+constexpr uint32_t EXCEPTION_CPLUSPLUS = static_cast<uint32_t>(0xE06D7363);
+
+inline uint32_t FilterCrashExceptions(uint32_t exceptionCode) noexcept {
+  if ((exceptionCode == EXCEPTION_BREAKPOINT) // allow exceptions to get to the debugger
+      || (exceptionCode == EXCEPTION_SINGLE_STEP) // allow exceptions to get to the debugger
+      || (exceptionCode == EXCEPTION_GUARD_PAGE) // allow to crash on memory page access violation
+      || (exceptionCode == EXCEPTION_STACK_OVERFLOW)) // allow to crash on stack overflow
+  {
+    return EXCEPTION_CONTINUE_SEARCH;
+  }
+
+  if (exceptionCode == EXCEPTION_CPLUSPLUS) // log C++ exception and pass it through
+  {
+    FailAt(__FILE__, __LINE__, "Test function did not crash, but exception is thrown!");
+    return EXCEPTION_CONTINUE_SEARCH;
+  }
+
+  return EXCEPTION_EXECUTE_HANDLER;
+}
+
+template <class TLambda>
+inline bool ExpectCrashCore(TLambda const &lambda) {
+  __try {
+    lambda();
+    return false;
+  } __except (FilterCrashExceptions(GetExceptionCode())) {
+    return true;
+  }
+}
+
+template <class TLambda>
+inline void
+ExpectCrashAt(char const *file, int line, TLambda const &lambda, char const *exprStr, char const *message = "") {
+  if (!ExpectCrashCore(lambda)) {
+    FailInternalAt(
+        file,
+        line,
+        message,
+        FormatMsg(
+            "Expected: [ %s ] must crash\n"
+            "  Actual: it does not crash\n",
+            exprStr));
+  }
+}
+
+struct TerminateHandlerRestorer {
+  ~TerminateHandlerRestorer() noexcept {
+    std::set_terminate(Handler);
+  }
+
+  std::terminate_handler Handler;
+};
+
+#pragma warning(push)
+#pragma warning(disable : 4611) // interaction between '_setjmp' and C++ object destruction is non-portable
+template <class TLambda>
+inline bool ExpectTerminateCore(TLambda const &lambda) {
+  static jmp_buf buf;
+
+  // Set a terminate handler and save the previous terminate handler to be restored in the end of function.
+  TerminateHandlerRestorer terminateRestore = {std::set_terminate([]() { longjmp(buf, 1); })};
+
+  // setjmp originally returns 0, and when longjmp is called it returns 1.
+  if (!setjmp(buf)) {
+    lambda();
+    return false; // must not be executed if fn() caused termination and the longjmp is executed.
+  } else {
+    return true; // executed if longjmp is executed in the terminate handler.
+  }
+}
+#pragma warning(pop)
+
+template <class TLambda>
+inline void
+ExpectTerminateAt(char const *file, int line, TLambda const &lambda, char const *exprStr, char const *message = "") {
+  if (!ExpectTerminateCore(lambda)) {
+    FailInternalAt(
+        file,
+        line,
+        message,
+        FormatMsg(
+            "Expected: [ %s ] must terminate\n"
+            "  Actual: it does not terminate\n",
+            exprStr));
+  }
 }
 
 template <class TException, class TLambda>
 inline void ExpectExceptionAt(
     char const *file,
     int line,
-    TLambda const &statement,
-    char const *statementStr,
+    TLambda const &lambda,
     char const *exceptionStr,
+    char const *exprStr,
     char const *message = "") {
   char const *actualIssue = "";
   bool isFailed = false;
   bool isExpectedExceptionCaught = false;
 
   try {
-    statement();
+    lambda();
   } catch (TException const &) {
     isExpectedExceptionCaught = true;
   } catch (...) {
@@ -209,22 +291,37 @@ inline void ExpectExceptionAt(
 
   if (!isExpectedExceptionCaught && !isFailed) {
     isFailed = true;
-    actualIssue = "it throws nothing";
+    actualIssue = "it does not throw";
   }
 
   if (isFailed) {
-    auto errorMessage = FormatMsg(
-        "Expected: [ %s ] throws an exception of type %s.\n"
-        "  Actual: %s.\n"
-        "    Line: %d"
-        "%s%s",
-        statementStr,
-        exceptionStr,
-        actualIssue,
+    FailInternalAt(
+        file,
         line,
-        (message == nullptr || message[0] == '\0') ? "" : "\n",
-        message);
-    FailAt(file, line, errorMessage.c_str());
+        message,
+        FormatMsg(
+            "Expected: [ %s ] throws an exception of type %s\n"
+            "  Actual: %s\n",
+            exprStr,
+            exceptionStr,
+            actualIssue));
+  }
+}
+
+template <class TLambda>
+inline void
+ExpectNoThrowAt(char const *file, int line, TLambda const &lambda, char const *exprStr, char const *message = "") {
+  try {
+    lambda();
+  } catch (...) {
+    FailInternalAt(
+        file,
+        line,
+        message,
+        FormatMsg(
+            "Expected: [ %s ] does not throw an exception\n"
+            "  Actual: it throws an exception\n",
+            exprStr));
   }
 }
 
@@ -386,55 +483,10 @@ inline void HrFailed(HRESULT hr, _In_z_ const WCHAR *message = L"") {
   ASSERT_FALSE(SUCCEEDED(hr)) << message;
 }
 
-// Code used for all the C++ exceptions
-static const DWORD EXCEPTION_CPLUSPLUS = static_cast<DWORD>(0xE06D7363);
-
-inline DWORD FilterCrashExceptions(DWORD exceptionCode) noexcept {
-  if ((exceptionCode == EXCEPTION_BREAKPOINT) // allow exceptions to get to the debugger
-      || (exceptionCode == EXCEPTION_SINGLE_STEP) // allow exceptions to get to the debugger
-      || (exceptionCode == EXCEPTION_GUARD_PAGE) // allow to crash on memory page access violation
-      || (exceptionCode == EXCEPTION_STACK_OVERFLOW)) // allow to crash on stack overflow
-  {
-    return EXCEPTION_CONTINUE_SEARCH;
-  }
-  if (exceptionCode == EXCEPTION_CPLUSPLUS) // log C++ exception and pass it through
-  {
-    TestAssert::Fail(L"Test function did not crash, but exception is thrown!");
-    return EXCEPTION_CONTINUE_SEARCH;
-  }
-  return EXCEPTION_EXECUTE_HANDLER;
-}
-
-template <typename Fn>
-inline bool ExpectCrashCore(const Fn &fn) {
-  __try {
-    fn();
-  } __except (FilterCrashExceptions(GetExceptionCode())) {
-    return true;
-  }
-  return false;
-}
-
-template <typename Fn>
-inline void ExpectCrashAt(char const *file, int line, const Fn &fn, const char *message = "") {
-  if (!ExpectCrashCore(fn)) {
-    FailAt(file, line, message);
-  }
-}
-
 template <typename Fn>
 inline void ExpectVEC(const Fn &fn, const WCHAR *message = L"") {
   if (!ExpectCrashCore(fn)) {
     Fail(message);
-  }
-}
-
-template <typename Fn>
-inline void ExpectNoThrowAt(char const *file, int line, const Fn &fn, const char *message = "") {
-  try {
-    fn();
-  } catch (...) {
-    GTEST_FATAL_FAILURE_AT_(file, line, message);
   }
 }
 
