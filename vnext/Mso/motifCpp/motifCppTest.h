@@ -14,6 +14,8 @@
 #include "motifCpp/gTestAdapter.h"
 #include "oacr/oacr.h"
 
+using WCHAR = wchar_t;
+
 #define GTEST_ASSERT_AT_(file, line, expression, on_failure)    \
   GTEST_AMBIGUOUS_ELSE_BLOCKER_                                 \
   if (const ::testing::AssertionResult gtest_ar = (expression)) \
@@ -54,7 +56,17 @@
 
 namespace TestAssert {
 
-using WCHAR = wchar_t;
+inline std::string FormatMsg(char const *format, ...) noexcept {
+  std::string result;
+  va_list vlist;
+  va_start(vlist, format);
+  auto size = std::vsnprintf(nullptr, 0, format, vlist);
+  result.append(size + 1, '\0');
+  std::vsnprintf(&result[0], size + 1, format, vlist);
+  result.resize(size);
+  va_end(vlist);
+  return result;
+}
 
 inline void IsTrueAt(char const *file, int line, bool condition, char const *expr, _In_z_ char const *message = "") {
   GTEST_TEST_BOOLEAN_AT_(file, line, condition, expr, false, true, GTEST_FATAL_FAILURE_AT_) << message;
@@ -171,13 +183,49 @@ inline void AreEqualAt(
 }
 
 inline void FailAt(char const *file, int line, _In_z_ const char *message = "") {
-  GTEST_FATAL_FAILURE_AT_(file, line, "Failed") << message;
+  GTEST_FATAL_FAILURE_AT_(file, line, message);
 }
 
-template <typename ExceptionType>
-inline void
-ExpectExceptionAt(char const *file, int line, const std::function<void()> &statement, const char *message = "") {
-  GTEST_TEST_THROW_AT_(file, line, statement(), ExceptionType, GTEST_FATAL_FAILURE_AT_) << message;
+template <class TException, class TLambda>
+inline void ExpectExceptionAt(
+    char const *file,
+    int line,
+    TLambda const &statement,
+    char const *statementStr,
+    char const *exceptionStr,
+    char const *message = "") {
+  char const *actualIssue = "";
+  bool isFailed = false;
+  bool isExpectedExceptionCaught = false;
+
+  try {
+    statement();
+  } catch (TException const &) {
+    isExpectedExceptionCaught = true;
+  } catch (...) {
+    isFailed = true;
+    actualIssue = "it throws a different type";
+  }
+
+  if (!isExpectedExceptionCaught && !isFailed) {
+    isFailed = true;
+    actualIssue = "it throws nothing";
+  }
+
+  if (isFailed) {
+    auto errorMessage = FormatMsg(
+        "Expected: [ %s ] throws an exception of type %s.\n"
+        "  Actual: %s.\n"
+        "    Line: %d"
+        "%s%s",
+        statementStr,
+        exceptionStr,
+        actualIssue,
+        line,
+        (message == nullptr || message[0] == '\0') ? "" : "\n",
+        message);
+    FailAt(file, line, errorMessage.c_str());
+  }
 }
 
 // Asserts that the specified condition is true, if it is false the unit test will fail
