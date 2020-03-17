@@ -114,7 +114,7 @@ struct JSValueArray : std::vector<JSValue> {
   JSValueArray(size_type size, JSValue const &defaultValue) noexcept;
 
   //! Construct JSValueArray from the move iterator.
-  template <class TMoveInputIterator>
+  template <class TMoveInputIterator, std::enable_if_t<!std::is_integral_v<TMoveInputIterator>, int> = 1>
   JSValueArray(TMoveInputIterator first, TMoveInputIterator last) noexcept;
 
   //! Move-construct JSValueArray from the initializer list.
@@ -526,7 +526,6 @@ struct JSValueArrayItem {
 //===========================================================================
 // Inline JSValueObject implementation.
 //===========================================================================
-
 template <class TMoveInputIterator>
 JSValueObject::JSValueObject(TMoveInputIterator first, TMoveInputIterator last) noexcept {
   auto it = first;
@@ -556,7 +555,7 @@ inline bool operator!=(JSValueObject const &left, JSValueObject const &right) no
 // Inline JSValueArray implementation.
 //===========================================================================
 
-template <class TMoveInputIterator>
+template <class TMoveInputIterator, std::enable_if_t<!std::is_integral_v<TMoveInputIterator>, int>>
 JSValueArray::JSValueArray(TMoveInputIterator first, TMoveInputIterator last) noexcept {
   auto it = first;
   while (it != last) {

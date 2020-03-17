@@ -15,13 +15,13 @@ namespace Microsoft.ReactNative.Managed.UnitTests
     public void TestReadObject()
     {
       JObject jobj = JObject.Parse(@"{
-              NullValue: null,
-              ObjValue: {""prop1"": 2},
-              ArrayValue: [1, 2],
-              StringValue: ""Hello"",
-              BoolValue: true,
-              IntValue: 42,
-              DoubleValue: 4.5
+              ""NullValue"": null,
+              ""ObjValue"": {""prop1"": 2},
+              ""ArrayValue"": [1, 2],
+              ""StringValue"": ""Hello"",
+              ""BoolValue"": true,
+              ""IntValue"": 42,
+              ""DoubleValue"": 4.5
             }");
       IJSValueReader reader = new JTokenJSValueReader(jobj);
       JSValue jsValue = JSValue.ReadFrom(reader);
@@ -57,14 +57,14 @@ namespace Microsoft.ReactNative.Managed.UnitTests
     public void TestReadNestedObject()
     {
       JObject jobj = JObject.Parse(@"{
-              NestedObj: {
-                NullValue: null,
-                ObjValue: {},
-                ArrayValue: [],
-                StringValue: ""Hello"",
-                BoolValue: true,
-                IntValue: 42,
-                DoubleValue: 4.5
+              ""NestedObj"": {
+                ""NullValue"": null,
+                ""ObjValue"": {},
+                ""ArrayValue"": [],
+                ""StringValue"": ""Hello"",
+                ""BoolValue"": true,
+                ""IntValue"": 42,
+                ""DoubleValue"": 4.5
               }
             }");
       IJSValueReader reader = new JTokenJSValueReader(jobj);
@@ -123,15 +123,68 @@ namespace Microsoft.ReactNative.Managed.UnitTests
       IJSValueReader reader = new JTokenJSValueReader(jarr);
       JSValue jsValue = JSValue.ReadFrom(reader);
 
-      Assert.AreEqual(JSValueType.Array, jsValue.Type, "tag_d01");
-      var nestedArr = jsValue[0];
-      Assert.IsTrue(nestedArr[0].IsNull, "tag_d02");
-      Assert.AreEqual(JSValueType.Object, nestedArr[1].Type, "tag_d03");
-      Assert.AreEqual(JSValueType.Array, nestedArr[2].Type, "tag_d04");
-      Assert.AreEqual("Hello", nestedArr[3], "tag_d05");
-      Assert.AreEqual(true, nestedArr[4], "tag_d06");
-      Assert.AreEqual(42, nestedArr[5], "tag_d07");
-      Assert.AreEqual(4.5, nestedArr[6], "tag_d08");
+      Assert.AreEqual(JSValueType.Array, jsValue.Type, "tag_d101");
+      Assert.AreEqual(JSValueType.Array, jsValue[0].Type, "tag_d102");
+      jsValue[0].TryGetArray(out var nestedArr);
+
+      Assert.AreEqual(JSValueType.Null, nestedArr[0].Type, "tag_d201");
+      Assert.AreEqual(JSValueType.Object, nestedArr[1].Type, "tag_d202");
+      Assert.AreEqual(JSValueType.Array, nestedArr[2].Type, "tag_d203");
+      Assert.AreEqual(JSValueType.String, nestedArr[3].Type, "tag_d204");
+      Assert.AreEqual(JSValueType.Boolean, nestedArr[4].Type, "tag_d205");
+      Assert.AreEqual(JSValueType.Int64, nestedArr[5].Type, "tag_d206");
+      Assert.AreEqual(JSValueType.Double, nestedArr[6].Type, "tag_d207");
+
+      Assert.IsTrue(nestedArr[0].IsNull, "tag_d301");
+      Assert.IsTrue(nestedArr[1].TryGetObject(out var _), "tag_d302");
+      Assert.IsTrue(nestedArr[2].TryGetArray(out var _), "tag_d303");
+      Assert.AreEqual("Hello", nestedArr[3], "tag_d304");
+      Assert.AreEqual(true, nestedArr[4], "tag_d305");
+      Assert.AreEqual(42, nestedArr[5], "tag_d306");
+      Assert.AreEqual(4.5, nestedArr[6], "tag_d307");
+    }
+
+    [TestMethod]
+    public void TestJSSimpleLiterals()
+    {
+      JSValue jsValue01 = JSValue.Null;
+      JSValue jsValue02 = "Hello";
+      JSValue jsValue03 = "";
+      JSValue jsValue04 = true;
+      JSValue jsValue05 = false;
+      JSValue jsValue06 = 42;
+      JSValue jsValue07 = 0;
+      JSValue jsValue08 = 4.5;
+      JSValue jsValue09 = 0.0;
+      JSValue jsValue10 = double.NaN;
+      JSValue jsValue11 = double.PositiveInfinity;
+      JSValue jsValue12 = double.NegativeInfinity;
+
+      Assert.AreEqual(JSValueType.Null, jsValue01.Type, "tag_e101");
+      Assert.AreEqual(JSValueType.String, jsValue02.Type, "tag_e102");
+      Assert.AreEqual(JSValueType.String, jsValue03.Type, "tag_e103");
+      Assert.AreEqual(JSValueType.Boolean, jsValue04.Type, "tag_e104");
+      Assert.AreEqual(JSValueType.Boolean, jsValue05.Type, "tag_e105");
+      Assert.AreEqual(JSValueType.Int64, jsValue06.Type, "tag_e106");
+      Assert.AreEqual(JSValueType.Int64, jsValue07.Type, "tag_e107");
+      Assert.AreEqual(JSValueType.Double, jsValue08.Type, "tag_e108");
+      Assert.AreEqual(JSValueType.Double, jsValue09.Type, "tag_e109");
+      Assert.AreEqual(JSValueType.Double, jsValue10.Type, "tag_e110");
+      Assert.AreEqual(JSValueType.Double, jsValue11.Type, "tag_e111");
+      Assert.AreEqual(JSValueType.Double, jsValue12.Type, "tag_e112");
+
+      Assert.IsTrue(jsValue01.IsNull, "tag_e201");
+      Assert.IsTrue(jsValue02.TryGetString(out var str1) && str1 == "Hello", "tag_e202");
+      Assert.IsTrue(jsValue03.TryGetString(out var str2) && str2 == "", "tag_e203");
+      Assert.IsTrue(jsValue04.TryGetBoolean(out var bool1) && bool1 == true, "tag_e204");
+      Assert.IsTrue(jsValue05.TryGetBoolean(out var bool2) && bool2 == false, "tag_e205");
+      Assert.IsTrue(jsValue06.TryGetInt64(out var int1) && int1 == 42, "tag_e206");
+      Assert.IsTrue(jsValue07.TryGetInt64(out var int2) && int2 == 0, "tag_e207");
+      Assert.IsTrue(jsValue08.TryGetDouble(out var double1) && double1 == 4.5, "tag_e208");
+      Assert.IsTrue(jsValue09.TryGetDouble(out var double2) && double2 == 0, "tag_e209");
+      Assert.IsTrue(jsValue10.TryGetDouble(out var double3) && double.IsNaN(double3), "tag_e210");
+      Assert.IsTrue(jsValue11.TryGetDouble(out var double4) && double4 == double.PositiveInfinity, "tag_e211");
+      Assert.IsTrue(jsValue12.TryGetDouble(out var double5) && double5 == double.NegativeInfinity, "tag_e212");
     }
 
     [TestMethod]
@@ -150,30 +203,30 @@ namespace Microsoft.ReactNative.Managed.UnitTests
         ["DoubleValue"] = 4.5
       };
 
-      Assert.AreEqual(JSValueType.Object, jsValue.Type, "tag_e01");
-      Assert.AreEqual(JSValueType.Null, jsValue["NullValue"].Type, "tag_e02");
-      Assert.AreEqual(JSValueType.Object, jsValue["ObjValue"].Type, "tag_e03");
-      Assert.AreEqual(JSValueType.Object, jsValue["ObjValueEmpty"].Type, "tag_e04");
-      Assert.AreEqual(JSValueType.Array, jsValue["ArrayValue"].Type, "tag_e05");
-      Assert.AreEqual(JSValueType.Array, jsValue["ArrayValueEmpty"].Type, "tag_e06");
-      Assert.AreEqual(JSValueType.String, jsValue["StringValue"].Type, "tag_e07");
-      Assert.AreEqual(JSValueType.Boolean, jsValue["BoolValue"].Type, "tag_e08");
-      Assert.AreEqual(JSValueType.Int64, jsValue["IntValue"].Type, "tag_e09");
-      Assert.AreEqual(JSValueType.Double, jsValue["DoubleValue"].Type, "tag_e10");
+      Assert.AreEqual(JSValueType.Object, jsValue.Type, "tag_f101");
+      Assert.AreEqual(JSValueType.Null, jsValue["NullValue"].Type, "tag_f102");
+      Assert.AreEqual(JSValueType.Object, jsValue["ObjValue"].Type, "tag_f103");
+      Assert.AreEqual(JSValueType.Object, jsValue["ObjValueEmpty"].Type, "tag_f104");
+      Assert.AreEqual(JSValueType.Array, jsValue["ArrayValue"].Type, "tag_f105");
+      Assert.AreEqual(JSValueType.Array, jsValue["ArrayValueEmpty"].Type, "tag_f106");
+      Assert.AreEqual(JSValueType.String, jsValue["StringValue"].Type, "tag_f107");
+      Assert.AreEqual(JSValueType.Boolean, jsValue["BoolValue"].Type, "tag_f108");
+      Assert.AreEqual(JSValueType.Int64, jsValue["IntValue"].Type, "tag_f109");
+      Assert.AreEqual(JSValueType.Double, jsValue["DoubleValue"].Type, "tag_f110");
 
-      Assert.IsTrue(jsValue["NullValue"].IsNull, "tag_e11");
-      Assert.AreEqual(1, jsValue["ObjValue"].PropertyCount, "tag_e12");
-      Assert.AreEqual(2, jsValue["ObjValue"]["prop1"], "tag_e13");
-      Assert.AreEqual(0, jsValue["ObjValueEmpty"].PropertyCount, "tag_e14");
-      Assert.AreEqual(2, jsValue["ArrayValue"].ItemCount, "tag_e15");
-      Assert.AreEqual(1, jsValue["ArrayValue"][0], "tag_e16");
-      Assert.AreEqual(2, jsValue["ArrayValue"][1], "tag_e17");
-      Assert.AreEqual(0, jsValue["ArrayValueEmpty"].ItemCount, "tag_e18");
-      Assert.AreEqual("Hello", jsValue["StringValue"], "tag_e19");
-      Assert.AreEqual(true, jsValue["BoolValue"], "tag_e20");
-      Assert.AreEqual(42, jsValue["IntValue"], "tag_e21");
-      Assert.AreNotEqual(24, jsValue["IntValue"], "tag_e22");
-      Assert.AreEqual(4.5, jsValue["DoubleValue"], "tag_e23");
+      Assert.IsTrue(jsValue["NullValue"].IsNull, "tag_f201");
+      Assert.AreEqual(1, jsValue["ObjValue"].PropertyCount, "tag_f202");
+      Assert.AreEqual(2, jsValue["ObjValue"]["prop1"], "tag_f203");
+      Assert.AreEqual(0, jsValue["ObjValueEmpty"].PropertyCount, "tag_f204");
+      Assert.AreEqual(2, jsValue["ArrayValue"].ItemCount, "tag_f205");
+      Assert.AreEqual(1, jsValue["ArrayValue"][0], "tag_f206");
+      Assert.AreEqual(2, jsValue["ArrayValue"][1], "tag_f207");
+      Assert.AreEqual(0, jsValue["ArrayValueEmpty"].ItemCount, "tag_f208");
+      Assert.AreEqual("Hello", jsValue["StringValue"], "tag_f209");
+      Assert.AreEqual(true, jsValue["BoolValue"], "tag_f210");
+      Assert.AreEqual(42, jsValue["IntValue"], "tag_f211");
+      Assert.AreNotEqual(24, jsValue["IntValue"], "tag_f212");
+      Assert.AreEqual(4.5, jsValue["DoubleValue"], "tag_f213");
     }
 
     [TestMethod]
@@ -192,30 +245,30 @@ namespace Microsoft.ReactNative.Managed.UnitTests
         4.5
       };
 
-      Assert.AreEqual(JSValueType.Array, jsValue.Type, "tag_f01");
-      Assert.AreEqual(JSValueType.Null, jsValue[0].Type, "tag_f02");
-      Assert.AreEqual(JSValueType.Object, jsValue[1].Type, "tag_f03");
-      Assert.AreEqual(JSValueType.Object, jsValue[2].Type, "tag_f04");
-      Assert.AreEqual(JSValueType.Array, jsValue[3].Type, "tag_f05");
-      Assert.AreEqual(JSValueType.Array, jsValue[4].Type, "tag_f06");
-      Assert.AreEqual(JSValueType.String, jsValue[5].Type, "tag_f07");
-      Assert.AreEqual(JSValueType.Boolean, jsValue[6].Type, "tag_f08");
-      Assert.AreEqual(JSValueType.Int64, jsValue[7].Type, "tag_f09");
-      Assert.AreEqual(JSValueType.Double, jsValue[8].Type, "tag_f10");
+      Assert.AreEqual(JSValueType.Array, jsValue.Type, "tag_g101");
+      Assert.AreEqual(JSValueType.Null, jsValue[0].Type, "tag_g102");
+      Assert.AreEqual(JSValueType.Object, jsValue[1].Type, "tag_g103");
+      Assert.AreEqual(JSValueType.Object, jsValue[2].Type, "tag_g104");
+      Assert.AreEqual(JSValueType.Array, jsValue[3].Type, "tag_g105");
+      Assert.AreEqual(JSValueType.Array, jsValue[4].Type, "tag_g106");
+      Assert.AreEqual(JSValueType.String, jsValue[5].Type, "tag_g107");
+      Assert.AreEqual(JSValueType.Boolean, jsValue[6].Type, "tag_g108");
+      Assert.AreEqual(JSValueType.Int64, jsValue[7].Type, "tag_g109");
+      Assert.AreEqual(JSValueType.Double, jsValue[8].Type, "tag_g110");
 
-      Assert.IsTrue(jsValue["NullValue"].IsNull, "tag_f11");
-      Assert.AreEqual(1, jsValue[1].PropertyCount, "tag_f12");
-      Assert.AreEqual(2, jsValue[1]["prop1"], "tag_f13");
-      Assert.AreEqual(0, jsValue[2].PropertyCount, "tag_f14");
-      Assert.AreEqual(2, jsValue[3].ItemCount, "tag_f15");
-      Assert.AreEqual(1, jsValue[3][0], "tag_f16");
-      Assert.AreEqual(2, jsValue[3][1], "tag_f17");
-      Assert.AreEqual(0, jsValue[4].ItemCount, "tag_f18");
-      Assert.AreEqual("Hello", jsValue[5], "tag_f19");
-      Assert.AreEqual(true, jsValue[6], "tag_f20");
-      Assert.AreEqual(42, jsValue[7], "tag_f21");
-      Assert.AreNotEqual(24, jsValue[7], "tag_f22");
-      Assert.AreEqual(4.5, jsValue[8], "tag_f23");
+      Assert.IsTrue(jsValue["NullValue"].IsNull, "tag_g201");
+      Assert.AreEqual(1, jsValue[1].PropertyCount, "tag_g202");
+      Assert.AreEqual(2, jsValue[1]["prop1"], "tag_g203");
+      Assert.AreEqual(0, jsValue[2].PropertyCount, "tag_g204");
+      Assert.AreEqual(2, jsValue[3].ItemCount, "tag_g205");
+      Assert.AreEqual(1, jsValue[3][0], "tag_g206");
+      Assert.AreEqual(2, jsValue[3][1], "tag_g207");
+      Assert.AreEqual(0, jsValue[4].ItemCount, "tag_g208");
+      Assert.AreEqual("Hello", jsValue[5], "tag_g209");
+      Assert.AreEqual(true, jsValue[6], "tag_g210");
+      Assert.AreEqual(42, jsValue[7], "tag_g211");
+      Assert.AreNotEqual(24, jsValue[7], "tag_g212");
+      Assert.AreEqual(4.5, jsValue[8], "tag_g213");
     }
 
     [TestMethod]
@@ -233,29 +286,29 @@ namespace Microsoft.ReactNative.Managed.UnitTests
       var value10 = new JSValue(42);
       var value11 = new JSValue(4.2);
 
-      Assert.AreEqual(JSValueType.Null, value01.Type, "tag_g101");
-      Assert.AreEqual(JSValueType.Object, value02.Type, "tag_g102");
-      Assert.AreEqual(JSValueType.Object, value03.Type, "tag_g103");
-      Assert.AreEqual(JSValueType.Array, value04.Type, "tag_g104");
-      Assert.AreEqual(JSValueType.Array, value05.Type, "tag_g105");
-      Assert.AreEqual(JSValueType.String, value06.Type, "tag_g106");
-      Assert.AreEqual(JSValueType.Boolean, value07.Type, "tag_g107");
-      Assert.AreEqual(JSValueType.Boolean, value08.Type, "tag_g108");
-      Assert.AreEqual(JSValueType.Int64, value09.Type, "tag_g109");
-      Assert.AreEqual(JSValueType.Int64, value10.Type, "tag_g110");
-      Assert.AreEqual(JSValueType.Double, value11.Type, "tag_g111");
+      Assert.AreEqual(JSValueType.Null, value01.Type, "tag_h101");
+      Assert.AreEqual(JSValueType.Object, value02.Type, "tag_h102");
+      Assert.AreEqual(JSValueType.Object, value03.Type, "tag_h103");
+      Assert.AreEqual(JSValueType.Array, value04.Type, "tag_h104");
+      Assert.AreEqual(JSValueType.Array, value05.Type, "tag_h105");
+      Assert.AreEqual(JSValueType.String, value06.Type, "tag_h106");
+      Assert.AreEqual(JSValueType.Boolean, value07.Type, "tag_h107");
+      Assert.AreEqual(JSValueType.Boolean, value08.Type, "tag_h108");
+      Assert.AreEqual(JSValueType.Int64, value09.Type, "tag_h109");
+      Assert.AreEqual(JSValueType.Int64, value10.Type, "tag_h110");
+      Assert.AreEqual(JSValueType.Double, value11.Type, "tag_h111");
 
-      Assert.IsTrue(value01.IsNull, "tag_g2001");
-      Assert.IsTrue(value02.TryGetObject(out var objValue02) && objValue02.Count == 1, "tag_g202");
-      Assert.IsTrue(value03.TryGetObject(out var objValue03) && objValue03.Count == 0, "tag_g203");
-      Assert.IsTrue(value04.TryGetArray(out var arrValue04) && arrValue04.Count == 2, "tag_g204");
-      Assert.IsTrue(value05.TryGetArray(out var arrValue05) && arrValue05.Count == 0, "tag_g205");
-      Assert.IsTrue(value06.TryGetString(out var strValue06) && strValue06 == "Hello", "tag_g206");
-      Assert.IsTrue(value07.TryGetBoolean(out var boolValue07) && boolValue07 == true, "tag_g207");
-      Assert.IsTrue(value08.TryGetBoolean(out var boolValue08) && boolValue08 == false, "tag_g208");
-      Assert.IsTrue(value09.TryGetInt64(out var intValue09) && intValue09 == 0, "tag_g209");
-      Assert.IsTrue(value10.TryGetInt64(out var intValue10) && intValue10 == 42, "tag_g210");
-      Assert.IsTrue(value11.TryGetDouble(out var doubleValue11) && doubleValue11 == 4.2, "tag_g211");
+      Assert.IsTrue(value01.IsNull, "tag_h2001");
+      Assert.IsTrue(value02.TryGetObject(out var objValue02) && objValue02.Count == 1, "tag_h202");
+      Assert.IsTrue(value03.TryGetObject(out var objValue03) && objValue03.Count == 0, "tag_h203");
+      Assert.IsTrue(value04.TryGetArray(out var arrValue04) && arrValue04.Count == 2, "tag_h204");
+      Assert.IsTrue(value05.TryGetArray(out var arrValue05) && arrValue05.Count == 0, "tag_h205");
+      Assert.IsTrue(value06.TryGetString(out var strValue06) && strValue06 == "Hello", "tag_h206");
+      Assert.IsTrue(value07.TryGetBoolean(out var boolValue07) && boolValue07 == true, "tag_h207");
+      Assert.IsTrue(value08.TryGetBoolean(out var boolValue08) && boolValue08 == false, "tag_h208");
+      Assert.IsTrue(value09.TryGetInt64(out var intValue09) && intValue09 == 0, "tag_h209");
+      Assert.IsTrue(value10.TryGetInt64(out var intValue10) && intValue10 == 42, "tag_h210");
+      Assert.IsTrue(value11.TryGetDouble(out var doubleValue11) && doubleValue11 == 4.2, "tag_h211");
     }
 
     [TestMethod]
@@ -281,45 +334,45 @@ namespace Microsoft.ReactNative.Managed.UnitTests
       JSValue value18 = (float)4.2;
       JSValue value19 = 4.2;
 
-      Assert.AreEqual(JSValueType.Object, value01.Type, "tag_h101");
-      Assert.AreEqual(JSValueType.Object, value02.Type, "tag_h102");
-      Assert.AreEqual(JSValueType.Object, value03.Type, "tag_h103");
-      Assert.AreEqual(JSValueType.Array, value04.Type, "tag_h104");
-      Assert.AreEqual(JSValueType.Array, value05.Type, "tag_h105");
-      Assert.AreEqual(JSValueType.Array, value06.Type, "tag_h106");
-      Assert.AreEqual(JSValueType.String, value07.Type, "tag_h107");
-      Assert.AreEqual(JSValueType.Boolean, value08.Type, "tag_h108");
-      Assert.AreEqual(JSValueType.Boolean, value09.Type, "tag_h109");
-      Assert.AreEqual(JSValueType.Int64, value10.Type, "tag_h110");
-      Assert.AreEqual(JSValueType.Int64, value11.Type, "tag_h111");
-      Assert.AreEqual(JSValueType.Int64, value12.Type, "tag_h112");
-      Assert.AreEqual(JSValueType.Int64, value13.Type, "tag_h113");
-      Assert.AreEqual(JSValueType.Int64, value14.Type, "tag_h114");
-      Assert.AreEqual(JSValueType.Int64, value15.Type, "tag_h115");
-      Assert.AreEqual(JSValueType.Int64, value16.Type, "tag_h116");
-      Assert.AreEqual(JSValueType.Int64, value17.Type, "tag_h117");
-      Assert.AreEqual(JSValueType.Double, value18.Type, "tag_h118");
-      Assert.AreEqual(JSValueType.Double, value19.Type, "tag_h119");
+      Assert.AreEqual(JSValueType.Object, value01.Type, "tag_i101");
+      Assert.AreEqual(JSValueType.Object, value02.Type, "tag_i102");
+      Assert.AreEqual(JSValueType.Object, value03.Type, "tag_i103");
+      Assert.AreEqual(JSValueType.Array, value04.Type, "tag_i104");
+      Assert.AreEqual(JSValueType.Array, value05.Type, "tag_i105");
+      Assert.AreEqual(JSValueType.Array, value06.Type, "tag_i106");
+      Assert.AreEqual(JSValueType.String, value07.Type, "tag_i107");
+      Assert.AreEqual(JSValueType.Boolean, value08.Type, "tag_i108");
+      Assert.AreEqual(JSValueType.Boolean, value09.Type, "tag_i109");
+      Assert.AreEqual(JSValueType.Int64, value10.Type, "tag_i110");
+      Assert.AreEqual(JSValueType.Int64, value11.Type, "tag_i111");
+      Assert.AreEqual(JSValueType.Int64, value12.Type, "tag_i112");
+      Assert.AreEqual(JSValueType.Int64, value13.Type, "tag_i113");
+      Assert.AreEqual(JSValueType.Int64, value14.Type, "tag_i114");
+      Assert.AreEqual(JSValueType.Int64, value15.Type, "tag_i115");
+      Assert.AreEqual(JSValueType.Int64, value16.Type, "tag_i116");
+      Assert.AreEqual(JSValueType.Int64, value17.Type, "tag_i117");
+      Assert.AreEqual(JSValueType.Double, value18.Type, "tag_i118");
+      Assert.AreEqual(JSValueType.Double, value19.Type, "tag_i119");
 
-      Assert.IsTrue(value01.TryGetObject(out var objValue01) && objValue01.Count == 1, "tag_h201");
-      Assert.IsTrue(value02.TryGetObject(out var objValue02) && objValue02.Count == 1, "tag_h202");
-      Assert.IsTrue(value03.TryGetObject(out var objValue03) && objValue03.Count == 1, "tag_h203");
-      Assert.IsTrue(value04.TryGetArray(out var arrValue04) && arrValue04.Count == 2, "tag_h204");
-      Assert.IsTrue(value05.TryGetArray(out var arrValue05) && arrValue05.Count == 2, "tag_h205");
-      Assert.IsTrue(value06.TryGetArray(out var arrValue06) && arrValue06.Count == 2, "tag_h206");
-      Assert.IsTrue(value07.TryGetString(out var strValue07) && strValue07 == "Hello", "tag_h207");
-      Assert.IsTrue(value08.TryGetBoolean(out var boolValue08) && boolValue08 == true, "tag_h208");
-      Assert.IsTrue(value09.TryGetBoolean(out var boolValue09) && boolValue09 == false, "tag_h209");
-      Assert.IsTrue(value10.TryGetInt64(out var intValue10) && intValue10 == 42, "tag_h210");
-      Assert.IsTrue(value11.TryGetInt64(out var intValue11) && intValue11 == 42, "tag_h211");
-      Assert.IsTrue(value12.TryGetInt64(out var intValue12) && intValue12 == 42, "tag_h212");
-      Assert.IsTrue(value13.TryGetInt64(out var intValue13) && intValue13 == 42, "tag_h213");
-      Assert.IsTrue(value14.TryGetInt64(out var intValue14) && intValue14 == 42, "tag_h214");
-      Assert.IsTrue(value15.TryGetInt64(out var intValue15) && intValue15 == 42, "tag_h215");
-      Assert.IsTrue(value16.TryGetInt64(out var intValue16) && intValue16 == 42, "tag_h216");
-      Assert.IsTrue(value17.TryGetInt64(out var intValue17) && intValue17 == 42, "tag_h217");
-      Assert.IsTrue(value18.TryGetDouble(out var doubleValue18) && doubleValue18 == (float)4.2, "tag_h218");
-      Assert.IsTrue(value19.TryGetDouble(out var doubleValue19) && doubleValue19 == 4.2, "tag_h219");
+      Assert.IsTrue(value01.TryGetObject(out var objValue01) && objValue01.Count == 1, "tag_i201");
+      Assert.IsTrue(value02.TryGetObject(out var objValue02) && objValue02.Count == 1, "tag_i202");
+      Assert.IsTrue(value03.TryGetObject(out var objValue03) && objValue03.Count == 1, "tag_i203");
+      Assert.IsTrue(value04.TryGetArray(out var arrValue04) && arrValue04.Count == 2, "tag_i204");
+      Assert.IsTrue(value05.TryGetArray(out var arrValue05) && arrValue05.Count == 2, "tag_i205");
+      Assert.IsTrue(value06.TryGetArray(out var arrValue06) && arrValue06.Count == 2, "tag_i206");
+      Assert.IsTrue(value07.TryGetString(out var strValue07) && strValue07 == "Hello", "tag_i207");
+      Assert.IsTrue(value08.TryGetBoolean(out var boolValue08) && boolValue08 == true, "tag_i208");
+      Assert.IsTrue(value09.TryGetBoolean(out var boolValue09) && boolValue09 == false, "tag_i209");
+      Assert.IsTrue(value10.TryGetInt64(out var intValue10) && intValue10 == 42, "tag_i210");
+      Assert.IsTrue(value11.TryGetInt64(out var intValue11) && intValue11 == 42, "tag_i211");
+      Assert.IsTrue(value12.TryGetInt64(out var intValue12) && intValue12 == 42, "tag_i212");
+      Assert.IsTrue(value13.TryGetInt64(out var intValue13) && intValue13 == 42, "tag_i213");
+      Assert.IsTrue(value14.TryGetInt64(out var intValue14) && intValue14 == 42, "tag_i214");
+      Assert.IsTrue(value15.TryGetInt64(out var intValue15) && intValue15 == 42, "tag_i215");
+      Assert.IsTrue(value16.TryGetInt64(out var intValue16) && intValue16 == 42, "tag_i216");
+      Assert.IsTrue(value17.TryGetInt64(out var intValue17) && intValue17 == 42, "tag_i217");
+      Assert.IsTrue(value18.TryGetDouble(out var doubleValue18) && doubleValue18 == (float)4.2, "tag_i218");
+      Assert.IsTrue(value19.TryGetDouble(out var doubleValue19) && doubleValue19 == 4.2, "tag_i219");
     }
 
     [TestMethod]
