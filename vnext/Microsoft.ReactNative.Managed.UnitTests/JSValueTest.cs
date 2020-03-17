@@ -16,7 +16,7 @@ namespace Microsoft.ReactNative.Managed.UnitTests
     {
       JObject jobj = JObject.Parse(@"{
               NullValue: null,
-              ObjValue: {prop1: 2},
+              ObjValue: {""prop1"": 2},
               ArrayValue: [1, 2],
               StringValue: ""Hello"",
               BoolValue: true,
@@ -26,30 +26,31 @@ namespace Microsoft.ReactNative.Managed.UnitTests
       IJSValueReader reader = new JTokenJSValueReader(jobj);
       JSValue jsValue = JSValue.ReadFrom(reader);
 
-      Assert.AreEqual(JSValueType.Object, jsValue.Type, "tag_a01");
-      Assert.AreEqual(JSValueType.Null, jsValue["NullValue"].Type, "tag_a02");
-      Assert.AreEqual(JSValueType.Object, jsValue["ObjValue"].Type, "tag_a03");
-      Assert.AreEqual(JSValueType.Array, jsValue["ArrayValue"].Type, "tag_a04");
-      Assert.AreEqual(JSValueType.String, jsValue["StringValue"].Type, "tag_a05");
-      Assert.AreEqual(JSValueType.Boolean, jsValue["BoolValue"].Type, "tag_a06");
-      Assert.AreEqual(JSValueType.Int64, jsValue["IntValue"].Type, "tag_a07");
-      Assert.AreEqual(JSValueType.Double, jsValue["DoubleValue"].Type, "tag_a08");
+      Assert.AreEqual(JSValueType.Object, jsValue.Type, "tag_a101");
+      Assert.AreEqual(JSValueType.Null, jsValue["NullValue"].Type, "tag_1a02");
+      Assert.AreEqual(JSValueType.Object, jsValue["ObjValue"].Type, "tag_a103");
+      Assert.AreEqual(JSValueType.Array, jsValue["ArrayValue"].Type, "tag_a104");
+      Assert.AreEqual(JSValueType.String, jsValue["StringValue"].Type, "tag_a105");
+      Assert.AreEqual(JSValueType.Boolean, jsValue["BoolValue"].Type, "tag_a106");
+      Assert.AreEqual(JSValueType.Int64, jsValue["IntValue"].Type, "tag_a107");
+      Assert.AreEqual(JSValueType.Double, jsValue["DoubleValue"].Type, "tag_a108");
 
-      Assert.IsTrue(jsValue["NullValue"].IsNull, "tag_a09");
-      Assert.IsTrue(jsValue["ObjValue"].TryGetObject(out var objValue), "tag_a10");
-      Assert.AreEqual(1, objValue.Count, "tag_a11");
-      Assert.AreEqual(1, jsValue["ObjValue"].PropertyCount, "tag_a12");
-      Assert.IsTrue(jsValue["ArrayValue"].TryGetArray(out var arrayValue), "tag_a13");
-      Assert.AreEqual(2, arrayValue.Count, "tag_a14");
-      Assert.AreEqual(2, jsValue["ArrayValue"].ItemCount, "tag_a15");
-      Assert.IsTrue(jsValue["StringValue"].TryGetString(out var stringValue), "tag_a16");
-      Assert.AreEqual("Hello", stringValue, "tag_a17");
-      Assert.IsTrue(jsValue["BoolValue"].TryGetBoolean(out var boolValue), "tag_a18");
-      Assert.AreEqual(true, boolValue, "tag_a19");
-      Assert.IsTrue(jsValue["IntValue"].TryGetInt64(out var intValue), "tag_a20");
-      Assert.AreEqual(42, intValue, "tag_a21");
-      Assert.IsTrue(jsValue["DoubleValue"].TryGetDouble(out var doubleValue), "tag_a22");
-      Assert.AreEqual(4.5, doubleValue, "tag_a23");
+      Assert.IsTrue(jsValue["NullValue"].IsNull, "tag_a201");
+      Assert.IsTrue(jsValue["ObjValue"].TryGetObject(out var objValue), "tag_a202");
+      Assert.IsTrue(jsValue["ArrayValue"].TryGetArray(out var arrayValue), "tag_a203");
+      Assert.IsTrue(jsValue["StringValue"].TryGetString(out var stringValue), "tag_a204");
+      Assert.IsTrue(jsValue["BoolValue"].TryGetBoolean(out var boolValue), "tag_a205");
+      Assert.IsTrue(jsValue["IntValue"].TryGetInt64(out var intValue), "tag_a206");
+      Assert.IsTrue(jsValue["DoubleValue"].TryGetDouble(out var doubleValue), "tag_a207");
+
+      Assert.AreEqual(1, objValue.Count, "tag_a301");
+      Assert.AreEqual(1, jsValue["ObjValue"].PropertyCount, "tag_a302");
+      Assert.AreEqual(2, arrayValue.Count, "tag_a303");
+      Assert.AreEqual(2, jsValue["ArrayValue"].ItemCount, "tag_a304");
+      Assert.AreEqual("Hello", stringValue, "tag_a305");
+      Assert.AreEqual(true, boolValue, "tag_a306");
+      Assert.AreEqual(42, intValue, "tag_a307");
+      Assert.AreEqual(4.5, doubleValue, "tag_a308");
     }
 
     [TestMethod]
@@ -69,15 +70,25 @@ namespace Microsoft.ReactNative.Managed.UnitTests
       IJSValueReader reader = new JTokenJSValueReader(jobj);
       JSValue jsValue = JSValue.ReadFrom(reader);
 
-      Assert.AreEqual(JSValueType.Object, jsValue.Type, "tag_b01");
-      var nestedObj = jsValue["NestedObj"];
-      Assert.IsTrue(nestedObj["NullValue"].IsNull, "tag_b02");
-      Assert.AreEqual(JSValueType.Object, nestedObj["ObjValue"].Type, "tag_b03");
-      Assert.AreEqual(JSValueType.Array, nestedObj["ArrayValue"].Type, "tag_b04");
-      Assert.AreEqual("Hello", nestedObj["StringValue"], "tag_b05");
-      Assert.AreEqual(true, nestedObj["BoolValue"], "tag_b06");
-      Assert.AreEqual(42, nestedObj["IntValue"], "tag_b07");
-      Assert.AreEqual(4.5, nestedObj["DoubleValue"], "tag_b08");
+      Assert.AreEqual(JSValueType.Object, jsValue.Type, "tag_b101");
+      Assert.AreEqual(JSValueType.Object, jsValue["NestedObj"], "tag_b102");
+      jsValue["NestedObj"].TryGetObject(out var nestedObj);
+
+      Assert.AreEqual(JSValueType.Null, nestedObj["NullValue"].Type, "tag_b201");
+      Assert.AreEqual(JSValueType.Object, nestedObj["ObjValue"].Type, "tag_b202");
+      Assert.AreEqual(JSValueType.Array, nestedObj["ArrayValue"].Type, "tag_b203");
+      Assert.AreEqual(JSValueType.String, nestedObj["StringValue"].Type, "tag_b204");
+      Assert.AreEqual(JSValueType.Boolean, nestedObj["BoolValue"].Type, "tag_b205");
+      Assert.AreEqual(JSValueType.Int64, nestedObj["IntValue"].Type, "tag_b206");
+      Assert.AreEqual(JSValueType.Double, nestedObj["DoubleValue"].Type, "tag_b207");
+
+      Assert.IsTrue(nestedObj["NullValue"].IsNull, "tag_b301");
+      Assert.IsTrue(nestedObj["ObjValue"].TryGetObject(out var _), "tag_b302");
+      Assert.IsTrue(nestedObj["ArrayValue"].TryGetArray(out var _), "tag_b303");
+      Assert.AreEqual("Hello", nestedObj["StringValue"], "tag_b304");
+      Assert.AreEqual(true, nestedObj["BoolValue"], "tag_b305");
+      Assert.AreEqual(42, nestedObj["IntValue"], "tag_b306");
+      Assert.AreEqual(4.5, nestedObj["DoubleValue"], "tag_b307");
     }
 
     [TestMethod]
@@ -87,14 +98,22 @@ namespace Microsoft.ReactNative.Managed.UnitTests
       IJSValueReader reader = new JTokenJSValueReader(jarr);
       JSValue jsValue = JSValue.ReadFrom(reader);
 
-      Assert.AreEqual(JSValueType.Array, jsValue.Type, "tag_c01");
-      Assert.IsTrue(jsValue[0].IsNull, "tag_c02");
-      Assert.AreEqual(JSValueType.Object, jsValue[1].Type, "tag_c03");
-      Assert.AreEqual(JSValueType.Array, jsValue[2].Type, "tag_c04");
-      Assert.AreEqual("Hello", jsValue[3], "tag_c05");
-      Assert.AreEqual(true, jsValue[4], "tag_c06");
-      Assert.AreEqual(42, jsValue[5], "tag_c07");
-      Assert.AreEqual(4.5, jsValue[6], "tag_c08");
+      Assert.AreEqual(JSValueType.Array, jsValue.Type, "tag_c101");
+      Assert.AreEqual(JSValueType.Null, jsValue[0].Type, "tag_c102");
+      Assert.AreEqual(JSValueType.Object, jsValue[1].Type, "tag_c103");
+      Assert.AreEqual(JSValueType.Array, jsValue[2].Type, "tag_c104");
+      Assert.AreEqual(JSValueType.String, jsValue[3].Type, "tag_c105");
+      Assert.AreEqual(JSValueType.Boolean, jsValue[4].Type, "tag_c106");
+      Assert.AreEqual(JSValueType.Int64, jsValue[5].Type, "tag_c107");
+      Assert.AreEqual(JSValueType.Double, jsValue[6].Type, "tag_c108");
+
+      Assert.IsTrue(jsValue[0].IsNull, "tag_c201");
+      Assert.IsTrue(jsValue[1].TryGetObject(out var _), "tag_c202");
+      Assert.IsTrue(jsValue[2].TryGetArray(out var _), "tag_c203");
+      Assert.AreEqual("Hello", jsValue[3], "tag_c204");
+      Assert.AreEqual(true, jsValue[4], "tag_c205");
+      Assert.AreEqual(42, jsValue[5], "tag_c206");
+      Assert.AreEqual(4.5, jsValue[6], "tag_c207");
     }
 
     [TestMethod]
