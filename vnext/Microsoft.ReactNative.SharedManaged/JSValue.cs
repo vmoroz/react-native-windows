@@ -396,7 +396,6 @@ namespace Microsoft.ReactNative.Managed
               sb.Append(item.ToString());
             }
 
-            sb.Length -= 2;
             sb.Append("]");
             return sb.ToString();
           }

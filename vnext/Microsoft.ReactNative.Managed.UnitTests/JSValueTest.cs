@@ -71,7 +71,7 @@ namespace Microsoft.ReactNative.Managed.UnitTests
       JSValue jsValue = JSValue.ReadFrom(reader);
 
       Assert.AreEqual(JSValueType.Object, jsValue.Type, "tag_b101");
-      Assert.AreEqual(JSValueType.Object, jsValue["NestedObj"], "tag_b102");
+      Assert.AreEqual(JSValueType.Object, jsValue["NestedObj"].Type, "tag_b102");
       jsValue["NestedObj"].TryGetObject(out var nestedObj);
 
       Assert.AreEqual(JSValueType.Null, nestedObj["NullValue"].Type, "tag_b201");
