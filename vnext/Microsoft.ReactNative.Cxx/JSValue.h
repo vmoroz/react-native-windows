@@ -27,7 +27,7 @@ JSValue TakeJSValue(IJSValueWriter const &writer) noexcept;
 //==============================================================================
 
 //! JSValueObject is based on std::map and has a custom constructor with std::intializer_list.
-//! It is possible to write: JSValueObject{{"X", 4}, {"Y", 5}} and pass it as JSValue.
+//! It is possible to write: JSValueObject{{"X", 4}, {"Y", 5}} and assign it to JSValue.
 //! It uses the std::less<> comparison algorithm that allows an efficient
 //! key lookup using std::string_view that does not allocate memory for the std::string key.
 struct JSValueObject : std::map<std::string, JSValue, std::less<>> {
@@ -69,7 +69,7 @@ struct JSValueObject : std::map<std::string, JSValue, std::less<>> {
 
   //! Return true if this JSValueObject is strictly equal to other JSValueObject.
   //! Both objects must have the same set of equal properties.
-  //! Property values must have the same type and value.
+  //! Property values must be equal.
   bool Equals(JSValueObject const &other) const noexcept;
 
   //! Return true if this JSValueObject is strictly equal to other JSValueObject
@@ -101,7 +101,7 @@ bool operator!=(JSValueObject const &left, JSValueObject const &right) noexcept;
 //==============================================================================
 
 //! JSValueArray is based on std::vector<JSValue> and has a custom constructor with std::intializer_list.
-//! It is possible to write: JSValueArray{"X", 4, true} and pass it as JSValue.
+//! It is possible to write: JSValueArray{"X", 42, nullptr, true} and assign it to JSValue.
 struct JSValueArray : std::vector<JSValue> {
   //! Default constructor.
   JSValueArray() = default;
@@ -316,11 +316,12 @@ struct JSValue {
   //! Return an uint64_t representation of JSValue. It is the same as (uint64_t)AsInt64().
   uint64_t AsUInt64() const noexcept;
 
-  //! Return an float representation of JSValue. It is the same as (float)AsDouble().
-  float AsFloat() const noexcept;
+  //! Return a float representation of JSValue. It is the same as (float)AsDouble().
+  float AsSingle() const noexcept;
 
   //! Return a double representation of JSValue.
   //! Boolean is converted to 0.0 or 1.0.
+  //! Null, Object, and Array are 0.
   double AsDouble() const noexcept;
 
   //! Cast JSValue to std::string using AsString() call.
@@ -425,7 +426,7 @@ struct JSValue {
   //! Return true if this JSValue is strictly equal to JSValue.
   //! Compared values must have the same type and value.
   //!
-  //! The behavior is similar to JavaScript === operator except for Object and Array for which
+  //! The behavior is similar to JavaScript === operator except for Object and Array where
   //! this functions does a deep structured comparison instead of pointer equality.
   bool Equals(JSValue const &other) const noexcept;
 
@@ -445,6 +446,12 @@ struct JSValue {
 
   //! Create JSValue from IJSValueReader.
   static JSValue ReadFrom(IJSValueReader const &reader) noexcept;
+
+  //! Create JSValueObject from IJSValueReader.
+  static JSValueObject ReadObjectFrom(IJSValueReader const &reader) noexcept;
+
+  //! Create JSValueArray from IJSValueReader.
+  static JSValueArray ReadArrayFrom(IJSValueReader const &reader) noexcept;
 
   //! Write this JSValue to IJSValueWriter.
   void WriteTo(IJSValueWriter const &writer) const noexcept;
@@ -468,9 +475,6 @@ struct JSValue {
   [[deprecated("Use MoveArray")]] JSValueArray TakeArray() noexcept;
   [[deprecated("Use JSValueObject::Copy")]] static JSValueObject CopyObject(JSValueObject const &other) noexcept;
   [[deprecated("Use JSValueArray::Copy")]] static JSValueArray CopyArray(JSValueArray const &other) noexcept;
-  [[deprecated("Use JSValueObject::ReadFrom")]] static JSValueObject ReadObjectFrom(
-      IJSValueReader const &reader) noexcept;
-  [[deprecated("Use JSValueArray::ReadFrom")]] static JSValueArray ReadArrayFrom(IJSValueReader const &reader) noexcept;
   [[deprecated("Use JSValueObject::WriteTo")]] static void WriteObjectTo(
       IJSValueWriter const &writer,
       JSValueObject const &value) noexcept;
@@ -478,6 +482,7 @@ struct JSValue {
       IJSValueWriter const &writer,
       JSValueArray const &value) noexcept;
   [[deprecated("Use JSEquals")]] bool EqualsAfterConversion(JSValue const &other) const noexcept;
+  [[deprecated("Use AsSingle")]] float AsFloat() const noexcept;
 
 #pragma endregion
 
@@ -535,6 +540,7 @@ JSValueObject::JSValueObject(TMoveInputIterator first, TMoveInputIterator last) 
   }
 }
 
+// Deprecated
 inline bool JSValueObject::EqualsAfterConversion(JSValueObject const &other) const noexcept {
   return JSEquals(other);
 }
@@ -563,6 +569,7 @@ JSValueArray::JSValueArray(TMoveInputIterator first, TMoveInputIterator last) no
   }
 }
 
+// Deprecated
 inline bool JSValueArray::EqualsAfterConversion(JSValueArray const &other) const noexcept {
   return JSEquals(other);
 }
@@ -667,7 +674,7 @@ inline uint64_t JSValue::AsUInt64() const noexcept {
   return (uint64_t)AsInt64();
 }
 
-inline float JSValue::AsFloat() const noexcept {
+inline float JSValue::AsSingle() const noexcept {
   return (float)AsDouble();
 }
 
@@ -712,7 +719,7 @@ inline JSValue::operator uint64_t() const noexcept {
 }
 
 inline JSValue::operator float() const noexcept {
-  return AsFloat();
+  return AsSingle();
 }
 
 inline JSValue::operator double() const noexcept {
@@ -779,7 +786,7 @@ inline uint64_t JSValue::To() const noexcept {
 
 template <>
 inline float JSValue::To() const noexcept {
-  return AsFloat();
+  return AsSingle();
 }
 
 template <>
@@ -815,6 +822,14 @@ static JSValue JSValue::From(T const &value) noexcept {
   auto writer = MakeJSValueTreeWriter();
   WriteValue(writer, value);
   return TakeJSValue(writer);
+}
+
+inline /*static*/ JSValueObject JSValue::ReadObjectFrom(IJSValueReader const &reader) noexcept {
+  return JSValueObject::ReadFrom(reader);
+}
+
+inline /*static*/ JSValueArray JSValue::ReadArrayFrom(IJSValueReader const &reader) noexcept {
+  return JSValueArray::ReadFrom(reader);
 }
 
 //===========================================================================
@@ -871,14 +886,6 @@ inline /*static*/ JSValueArray JSValue::CopyArray(JSValueArray const &other) noe
   return other.Copy();
 }
 
-inline /*static*/ JSValueObject JSValue::ReadObjectFrom(IJSValueReader const &reader) noexcept {
-  return JSValueObject::ReadFrom(reader);
-}
-
-inline /*static*/ JSValueArray JSValue::ReadArrayFrom(IJSValueReader const &reader) noexcept {
-  return JSValueArray::ReadFrom(reader);
-}
-
 inline /*static*/ void JSValue::WriteObjectTo(IJSValueWriter const &writer, JSValueObject const &value) noexcept {
   value.WriteTo(writer);
 }
@@ -889,6 +896,10 @@ inline /*static*/ void JSValue::WriteArrayTo(IJSValueWriter const &writer, JSVal
 
 inline bool JSValue::EqualsAfterConversion(JSValue const &other) const noexcept {
   return JSEquals(other);
+}
+
+inline float JSValue::AsFloat() const noexcept {
+  return (float)AsDouble();
 }
 
 //===========================================================================
