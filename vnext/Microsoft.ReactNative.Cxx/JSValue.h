@@ -668,7 +668,7 @@ inline uint64_t JSValue::AsUInt64() const noexcept {
 }
 
 inline float JSValue::AsFloat() const noexcept {
-  return (int8_t)AsDouble();
+  return (float)AsDouble();
 }
 
 inline JSValue::operator std::string() const noexcept {

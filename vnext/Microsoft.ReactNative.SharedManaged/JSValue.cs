@@ -215,7 +215,7 @@ namespace Microsoft.ReactNative.Managed
         case JSValueType.String: return StringToBoolean.Contains(StringValue);
         case JSValueType.Boolean: return BooleanValue;
         case JSValueType.Int64: return Int64Value != 0;
-        case JSValueType.Double: return DoubleValue != 0;
+        case JSValueType.Double: return !double.IsNaN(DoubleValue) && DoubleValue != 0;
         default: return false;
       }
     }
@@ -329,7 +329,7 @@ namespace Microsoft.ReactNative.Managed
         case JSValueType.String: return !string.IsNullOrEmpty(StringValue);
         case JSValueType.Boolean: return BooleanValue;
         case JSValueType.Int64: return Int64Value != 0;
-        case JSValueType.Double: return DoubleValue != 0;
+        case JSValueType.Double: return !double.IsNaN(DoubleValue) && DoubleValue != 0;
         default: return false;
       }
     }

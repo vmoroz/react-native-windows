@@ -417,6 +417,159 @@ TEST_CLASS (JSValueTest) {
     TestCheckEqual(4.2, value21);
   }
 
+  TEST_METHOD(TestAsObject) {
+    // Any type except for Object is returned as EmptyObject.
+    auto AsObjectIsEmpty = [](JSValue const &value) { return value.AsObject().empty(); };
+
+    TestCheck(!AsObjectIsEmpty(JSValueObject{{"prop1", 42}}));
+    TestCheck(AsObjectIsEmpty(JSValue::EmptyObject));
+    TestCheck(AsObjectIsEmpty(JSValueArray{42, 78}));
+    TestCheck(AsObjectIsEmpty(JSValue::EmptyArray));
+    TestCheck(AsObjectIsEmpty(""));
+    TestCheck(AsObjectIsEmpty("Hello"));
+    TestCheck(AsObjectIsEmpty(true));
+    TestCheck(AsObjectIsEmpty(false));
+    TestCheck(AsObjectIsEmpty(0));
+    TestCheck(AsObjectIsEmpty(42));
+    TestCheck(AsObjectIsEmpty(std::numeric_limits<int64_t>::max()));
+    TestCheck(AsObjectIsEmpty(std::numeric_limits<int64_t>::min()));
+    TestCheck(AsObjectIsEmpty(0.0));
+    TestCheck(AsObjectIsEmpty(4.2));
+    TestCheck(AsObjectIsEmpty(std::numeric_limits<double>::quiet_NaN()));
+    TestCheck(AsObjectIsEmpty(std::numeric_limits<double>::infinity()));
+    TestCheck(AsObjectIsEmpty(-std::numeric_limits<double>::infinity()));
+    TestCheck(AsObjectIsEmpty(JSValue::Null));
+  }
+
+  TEST_METHOD(TestAsArray) {
+    // Any type except for Array is returned as EmptyArray.
+    auto AsArrayIsEmpty = [](JSValue const &value) { return value.AsArray().empty(); };
+
+    TestCheck(AsArrayIsEmpty(JSValueObject{{"prop1", 42}}));
+    TestCheck(AsArrayIsEmpty(JSValue::EmptyObject));
+    TestCheck(!AsArrayIsEmpty(JSValueArray{42, 78}));
+    TestCheck(AsArrayIsEmpty(JSValue::EmptyArray));
+    TestCheck(AsArrayIsEmpty(""));
+    TestCheck(AsArrayIsEmpty("Hello"));
+    TestCheck(AsArrayIsEmpty(true));
+    TestCheck(AsArrayIsEmpty(false));
+    TestCheck(AsArrayIsEmpty(0));
+    TestCheck(AsArrayIsEmpty(42));
+    TestCheck(AsArrayIsEmpty(std::numeric_limits<int64_t>::max()));
+    TestCheck(AsArrayIsEmpty(std::numeric_limits<int64_t>::min()));
+    TestCheck(AsArrayIsEmpty(0.0));
+    TestCheck(AsArrayIsEmpty(4.2));
+    TestCheck(AsArrayIsEmpty(std::numeric_limits<double>::quiet_NaN()));
+    TestCheck(AsArrayIsEmpty(std::numeric_limits<double>::infinity()));
+    TestCheck(AsArrayIsEmpty(-std::numeric_limits<double>::infinity()));
+    TestCheck(AsArrayIsEmpty(JSValue::Null));
+  }
+
+  // Check AsString, AsBoolean, AsInt64, and AsDouble conversions.
+  void CheckAsConverterImpl(
+      char const *file,
+      int line,
+      JSValue const &value,
+      char const *asString,
+      bool asBoolean,
+      int64_t asInt64,
+      double asDouble) {
+    TestCheckEqualAt(file, line, asString, value.AsString());
+    TestCheckEqualAt(file, line, asBoolean, value.AsBoolean());
+    TestCheckEqualAt(file, line, asInt64, value.AsInt64());
+    if (std::isnan(asDouble)) {
+      TestCheckAt(file, line, std::isnan(value.AsDouble()));
+    } else {
+      TestCheckEqualAt(file, line, asDouble, value.AsDouble());
+    }
+
+    // Explicit cast is an alternative to the As conversion.
+    TestCheckEqualAt(file, line, asString, static_cast<std::string>(value));
+    TestCheckEqualAt(file, line, asBoolean, static_cast<bool>(value));
+    TestCheckEqualAt(file, line, asInt64, static_cast<int64_t>(value));
+    if (std::isnan(asDouble)) {
+      TestCheckAt(file, line, std::isnan(static_cast<double>(value)));
+    } else {
+      TestCheckEqualAt(file, line, asDouble, static_cast<double>(value));
+    }
+  }
+
+#define CheckAsConverter(value, asString, asBoolean, asInt64, asDouble) \
+  CheckAsConverterImpl(__FILE__, __LINE__, value, asString, asBoolean, asInt64, asDouble)
+
+  TEST_METHOD(TestAsConverters) {
+    CheckAsConverter((JSValueObject{{"prop1", 42}}), "", true, 0, 0);
+    CheckAsConverter(JSValue::EmptyObject, "", false, 0, 0);
+    CheckAsConverter((JSValueArray{42, 78}), "", true, 0, 0);
+    CheckAsConverter(JSValue::EmptyArray, "", false, 0, 0);
+    CheckAsConverter("", "", false, 0, 0);
+    CheckAsConverter("  ", "  ", false, 0, 0);
+    CheckAsConverter("42", "42", false, 42, 42);
+    CheckAsConverter("  42  ", "  42  ", false, 42, 42);
+    CheckAsConverter("4.2", "4.2", false, 4, 4.2);
+    CheckAsConverter("Hello", "Hello", false, 0, NAN);
+    CheckAsConverter("true", "true", true, 0, NAN);
+    CheckAsConverter("false", "false", false, 0, NAN);
+    CheckAsConverter("True", "True", true, 0, NAN);
+    CheckAsConverter("False", "False", false, 0, NAN);
+    CheckAsConverter("TRUE", "TRUE", true, 0, NAN);
+    CheckAsConverter("FALSE", "FALSE", false, 0, NAN);
+    CheckAsConverter("on", "on", true, 0, NAN);
+    CheckAsConverter("off", "off", false, 0, NAN);
+    CheckAsConverter("On", "On", true, 0, NAN);
+    CheckAsConverter("Off", "Off", false, 0, NAN);
+    CheckAsConverter("ON", "ON", true, 0, NAN);
+    CheckAsConverter("OFF", "OFF", false, 0, NAN);
+    CheckAsConverter("yes", "yes", true, 0, NAN);
+    CheckAsConverter("no", "no", false, 0, NAN);
+    CheckAsConverter("y", "y", true, 0, NAN);
+    CheckAsConverter("n", "n", false, 0, NAN);
+    CheckAsConverter("Y", "Y", true, 0, NAN);
+    CheckAsConverter("N", "N", false, 0, NAN);
+    CheckAsConverter("1", "1", true, 1, 1);
+    CheckAsConverter("0", "0", false, 0, 0);
+    CheckAsConverter(true, "true", true, 1, 1);
+    CheckAsConverter(false, "false", false, 0, 0);
+    CheckAsConverter(0, "0", false, 0, 0);
+    CheckAsConverter(42, "42", true, 42, 42);
+    CheckAsConverter(
+        std::numeric_limits<int64_t>::max(),
+        "9223372036854775807",
+        true,
+        std::numeric_limits<int64_t>::max(),
+        (double)std::numeric_limits<int64_t>::max());
+    CheckAsConverter(
+        std::numeric_limits<int64_t>::min(),
+        "-9223372036854775808",
+        true,
+        std::numeric_limits<int64_t>::min(),
+        (double)std::numeric_limits<int64_t>::min());
+    CheckAsConverter(0.0, "0", false, 0, 0);
+    CheckAsConverter(4.2, "4.2", true, 4, 4.2);
+    CheckAsConverter(-4.2, "-4.2", true, -4, -4.2);
+    CheckAsConverter(std::numeric_limits<double>::max(), "1.79769e+308", true, 0, std::numeric_limits<double>::max());
+    CheckAsConverter(
+        -std::numeric_limits<double>::max(), "-1.79769e+308", true, 0, -std::numeric_limits<double>::max());
+    CheckAsConverter(NAN, "NaN", false, 0, NAN);
+    CheckAsConverter(INFINITY, "Infinity", true, 0, INFINITY);
+    CheckAsConverter(-INFINITY, "-Infinity", true, 0, -INFINITY);
+    CheckAsConverter(JSValue::Null, "null", false, 0, 0);
+  }
+
+  TEST_METHOD(TestExplicitNumberConversion) {
+    // Check that explicit number conversions are defined
+    TestCheckEqual(42, static_cast<int8_t>(JSValue{42}));
+    TestCheckEqual(42, static_cast<int16_t>(JSValue{42}));
+    TestCheckEqual(42, static_cast<int32_t>(JSValue{42}));
+    TestCheckEqual(42, static_cast<int64_t>(JSValue{42}));
+    TestCheckEqual(42u, static_cast<uint8_t>(JSValue{42}));
+    TestCheckEqual(42u, static_cast<uint16_t>(JSValue{42}));
+    TestCheckEqual(42u, static_cast<uint32_t>(JSValue{42}));
+    TestCheckEqual(42u, static_cast<uint64_t>(JSValue{42}));
+    TestCheckEqual((float)4.2, static_cast<float>(JSValue{4.2}));
+    TestCheckEqual(4.2, static_cast<double>(JSValue{4.2}));
+  }
+
 #if 0
   TEST_METHOD(TestJSValueObject1) {
     JSValue value = JSValueObject{{"prop1", 1}, {"prop2", "Two"}};

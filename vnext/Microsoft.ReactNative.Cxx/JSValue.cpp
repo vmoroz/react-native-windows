@@ -61,7 +61,9 @@ struct JSConverter {
 
   static std::string ToJSString(double value) noexcept {
     if (std::isfinite(value)) {
-      return std::to_string(value);
+      std::stringstream ss;
+      ss << value;
+      return ss.str();
     } else {
       return NaNToCString(value);
     }
