@@ -600,7 +600,12 @@ std::string JSValue::AsJSString() const noexcept {
         case JSValueType::Array: {
           bool start = true;
           for (auto const &item : node.m_array) {
-            os << (start) ? (start = false, "") : ",";
+            if (start) {
+              start = false;
+            } else {
+              os << ",";
+            }
+
             JSStringWriter::Write(os, item);
           }
 
@@ -670,7 +675,7 @@ double JSValue::AsJSNumber() const noexcept {
         case 0:
           return 0;
         case 1:
-          return m_array[0].AsJSNumber();
+          return JSConverter::ToJSNumber(m_array[0].AsJSString());
         default:
           return std::numeric_limits<double>::quiet_NaN();
       }
@@ -774,6 +779,8 @@ bool JSValue::JSEquals(JSValue const &other) const noexcept {
       default:
         return Equals(other);
     }
+  } else if (m_type == JSValueType::Null || other.m_type == JSValueType::Null) {
+    return false;
   }
 
   // If one of the types Boolean, Int64, or Double, then compare as Numbers,

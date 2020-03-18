@@ -570,7 +570,6 @@ TEST_CLASS (JSValueTest) {
     TestCheckEqual(4.2, static_cast<double>(JSValue{4.2}));
   }
 
-#if 0
   TEST_METHOD(TestJSValueObject1) {
     JSValue value = JSValueObject{{"prop1", 1}, {"prop2", "Two"}};
     TestCheck(value.Type() == JSValueType::Object);
@@ -656,6 +655,7 @@ TEST_CLASS (JSValueTest) {
   }
 
   void CheckJSConversionImpl(
+      char const *file,
       int line,
       JSValue const &jsValue,
       char const *stringValue,
@@ -663,17 +663,18 @@ TEST_CLASS (JSValueTest) {
       double numberValue,
       char const *message) noexcept {
     // We must have "%s" parameter for messages because the first format parameter must be a constant.
-    TestCheckEqualAt(__FILE__, line, stringValue, jsValue.AsJSString(), "%s", message);
-    TestCheckEqualAt(__FILE__, line, boolValue, jsValue.AsJSBoolean(), "%s", message);
+    TestCheckEqualAt(file, line, stringValue, jsValue.AsJSString(), "%s", message);
+    TestCheckEqualAt(file, line, boolValue, jsValue.AsJSBoolean(), "%s", message);
     if (std::isnan(numberValue)) {
-      TestCheckAt(__FILE__, line, std::isnan(jsValue.AsJSNumber()), "%s", message);
+      TestCheckAt(file, line, std::isnan(jsValue.AsJSNumber()), "%s", message);
     } else {
-      TestCheckEqualAt(__FILE__, line, numberValue, jsValue.AsJSNumber(), "%s", message);
+      TestCheckEqualAt(file, line, numberValue, jsValue.AsJSNumber(), "%s", message);
     }
   }
 
 #define CheckJSConversion(jsValue, stringValue, boolValue, numberValue) \
   CheckJSConversionImpl(                                                \
+      __FILE__,                                                         \
       __LINE__,                                                         \
       jsValue,                                                          \
       stringValue,                                                      \
@@ -683,29 +684,29 @@ TEST_CLASS (JSValueTest) {
 
   TEST_METHOD(TestDefaultAsConverters) {
     CheckJSConversion(false, "false", false, 0);
-     CheckJSConversion(true, "true", true, 1);
-     CheckJSConversion(0, "0", false, 0);
-     CheckJSConversion(1, "1", true, 1);
-     CheckJSConversion("0", "0", true, 0);
-     CheckJSConversion("000", "000", true, 0);
-     CheckJSConversion("1", "1", true, 1);
-     CheckJSConversion(NAN, "NaN", false, NAN);
-     CheckJSConversion(INFINITY, "Infinity", true, INFINITY);
-     CheckJSConversion(-INFINITY, "-Infinity", true, -INFINITY);
-     CheckJSConversion("", "", false, 0);
-     CheckJSConversion("20", "20", true, 20);
-     CheckJSConversion("twenty", "twenty", true, NAN);
-     CheckJSConversion(JSValueArray{}, "", true, 0);
-     CheckJSConversion(JSValueArray{20}, "20", true, 20);
-     CheckJSConversion((JSValueArray{10, 20}), "10,20", true, NAN);
-     CheckJSConversion(JSValueArray{"twenty"}, "twenty", true, NAN);
-     CheckJSConversion((JSValueArray{"ten", "twenty"}), "ten,twenty", true, NAN);
-     CheckJSConversion(JSValueArray{NAN}, "NaN", true, NAN);
-     CheckJSConversion(JSValueObject{}, "[object Object]", true, NAN);
-     CheckJSConversion(nullptr, "null", false, 0);
+    CheckJSConversion(true, "true", true, 1);
+    CheckJSConversion(0, "0", false, 0);
+    CheckJSConversion(1, "1", true, 1);
+    CheckJSConversion("0", "0", true, 0);
+    CheckJSConversion("000", "000", true, 0);
+    CheckJSConversion("1", "1", true, 1);
+    CheckJSConversion(NAN, "NaN", false, NAN);
+    CheckJSConversion(INFINITY, "Infinity", true, INFINITY);
+    CheckJSConversion(-INFINITY, "-Infinity", true, -INFINITY);
+    CheckJSConversion("", "", false, 0);
+    CheckJSConversion("20", "20", true, 20);
+    CheckJSConversion("twenty", "twenty", true, NAN);
+    CheckJSConversion(JSValueArray{}, "", true, 0);
+    CheckJSConversion(JSValueArray{20}, "20", true, 20);
+    CheckJSConversion((JSValueArray{10, 20}), "10,20", true, NAN);
+    CheckJSConversion(JSValueArray{"twenty"}, "twenty", true, NAN);
+    CheckJSConversion((JSValueArray{"ten", "twenty"}), "ten,twenty", true, NAN);
+    CheckJSConversion(JSValueArray{NAN}, "NaN", true, NAN);
+    CheckJSConversion(JSValueObject{}, "[object Object]", true, NAN);
+    CheckJSConversion(nullptr, "null", false, 0);
   }
 
-  TEST_METHOD(TestEqualsWithConversion) {
+  TEST_METHOD(TestJSEquals) {
     TestCheck(JSValue{nullptr}.JSEquals(nullptr) == true);
     TestCheck(JSValue{nullptr}.JSEquals(JSValueObject{}) == false);
     TestCheck(JSValue{nullptr}.JSEquals(JSValueArray{}) == false);
@@ -1152,7 +1153,93 @@ TEST_CLASS (JSValueTest) {
     TestCheck(JSValue{0.5}.JSEquals(0.5) == true);
     TestCheck(JSValue{0.5}.JSEquals(1.0) == false);
   }
-#endif
+
+  void CheckEqualsImpl(char const *file, int line, JSValue const &left, JSValue const &right) noexcept {
+    TestCheckAt(file, line, left.Equals(right));
+    TestCheckAt(file, line, left == right);
+  }
+
+  void CheckNotEqualsImpl(char const *file, int line, JSValue const &left, JSValue const &right) noexcept {
+    TestCheckAt(file, line, !left.Equals(right));
+    TestCheckAt(file, line, left != right);
+  }
+
+#define CheckEquals(left, right) CheckEqualsImpl(__FILE__, __LINE__, left, right)
+#define CheckNotEquals(left, right) CheckNotEqualsImpl(__FILE__, __LINE__, left, right);
+
+  TEST_METHOD(TestEquals) {
+    CheckEquals(JSValueObject{}, JSValueObject{});
+    CheckEquals((JSValueObject{{"prop1", 1}}), (JSValueObject{{"prop1", 1}}));
+    CheckEquals((JSValueObject{{"prop1", 1}, {"prop2", "Hello"}}), (JSValueObject{{"prop1", 1}, {"prop2", "Hello"}}));
+    CheckEquals((JSValueObject{{"prop1", JSValueObject{}}}), (JSValueObject{{"prop1", JSValueObject{}}}));
+    CheckEquals(
+        (JSValueObject{{"prop1", JSValueObject{{"prop1", 1}}}}), (JSValueObject{{"prop1", JSValueObject{{"prop1", 1}}}}));
+    CheckEquals((JSValueObject{{"prop1", JSValueArray{}}}), (JSValueObject{{"prop1", JSValueArray{}}}));
+    CheckEquals((JSValueObject{{"prop1", JSValueArray{1}}}), (JSValueObject{{"prop1", JSValueArray{1}}}));
+    CheckNotEquals((JSValueObject{{"prop1", 1}}), JSValueObject{});
+    CheckNotEquals((JSValueObject{{"prop1", 1}}), (JSValueObject{{"prop1", 2}}));
+    CheckNotEquals(JSValueObject{}, JSValueArray{});
+    CheckNotEquals(JSValueObject{}, "");
+    CheckNotEquals(JSValueObject{}, false);
+    CheckNotEquals(JSValueObject{}, true);
+    CheckNotEquals(JSValueObject{}, 0);
+    CheckNotEquals(JSValueObject{}, 0.0);
+
+    CheckEquals(JSValueArray{}, JSValueArray{});
+    CheckEquals(JSValueArray{1}, JSValueArray{1});
+    CheckEquals((JSValueArray{1, "Hello"}), (JSValueArray{1, "Hello"}));
+    CheckEquals(JSValueArray{JSValueArray{}}, JSValueArray{JSValueArray{}});
+    CheckEquals(JSValueArray{JSValueArray{1}}, JSValueArray{JSValueArray{1}});
+    CheckEquals(JSValueArray{JSValueObject{}}, JSValueArray{JSValueObject{}});
+    CheckEquals((JSValueArray{JSValueObject{{"prop1", 1}}}), (JSValueArray{JSValueObject{{"prop1", 1}}}));
+    CheckNotEquals(JSValueArray{1}, JSValueArray{});
+    CheckNotEquals(JSValueArray{1}, JSValueArray{2});
+    CheckNotEquals(JSValueArray{}, JSValueObject{});
+    CheckNotEquals(JSValueArray{}, "");
+    CheckNotEquals(JSValueArray{}, false);
+    CheckNotEquals(JSValueArray{}, true);
+    CheckNotEquals(JSValueArray{}, 0);
+    CheckNotEquals(JSValueArray{}, 0.0);
+
+    CheckEquals("", "");
+    CheckEquals("Hello", "Hello");
+    CheckNotEquals("Hello1", "Hello2");
+    CheckNotEquals("", JSValueObject{});
+    CheckNotEquals("", JSValueArray{});
+    CheckNotEquals("", false);
+    CheckNotEquals("", 0);
+    CheckNotEquals("", 0.0);
+
+    CheckEquals(false, false);
+    CheckEquals(true, true);
+    CheckNotEquals(false, true);
+    CheckNotEquals(true, false);
+    CheckNotEquals(false, JSValueObject{});
+    CheckNotEquals(false, JSValueArray{});
+    CheckNotEquals(false, "");
+    CheckNotEquals(false, 0);
+    CheckNotEquals(false, 0.0);
+
+    CheckEquals(0, 0);
+    CheckEquals(42, 42);
+    CheckNotEquals(2, 3);
+    CheckNotEquals(-1, 1);
+    CheckNotEquals(0, JSValueObject{});
+    CheckNotEquals(0, JSValueArray{});
+    CheckNotEquals(0, "");
+    CheckNotEquals(0, false);
+    CheckNotEquals(0, 0.0);
+
+    CheckEquals(0.0, 0.0);
+    CheckEquals(4.2, 4.2);
+    CheckNotEquals(0.2, 0.3);
+    CheckNotEquals(-0.1, 0.1);
+    CheckNotEquals(0.0, JSValueObject{});
+    CheckNotEquals(0.0, JSValueArray{});
+    CheckNotEquals(0.0, "");
+    CheckNotEquals(0.0, false);
+    CheckNotEquals(0.0, 0);
+  }
 };
 
 } // namespace winrt::Microsoft::ReactNative

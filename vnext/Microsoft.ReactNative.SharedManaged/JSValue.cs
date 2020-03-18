@@ -25,6 +25,24 @@ namespace Microsoft.ReactNative.Managed
 
       return obj;
     }
+
+    public static bool JSEquals(IReadOnlyDictionary<string, JSValue> left, IReadOnlyDictionary<string, JSValue> right)
+    {
+      if (left == right) { return true; }
+      else if (left == null) { return false; }
+      else if (right == null) { return false; }
+      else if (left.Count != right.Count) { return false; }
+
+      foreach (var keyValue in left)
+      {
+        if (!right.TryGetValue(keyValue.Key, out var rightValue) || !keyValue.Value.JSEquals(rightValue))
+        {
+          return false;
+        }
+      }
+
+      return true;
+    }
   }
 
   // An alias to help build JSValue Array values
@@ -41,6 +59,24 @@ namespace Microsoft.ReactNative.Managed
       }
 
       return arr;
+    }
+
+    public static bool JSEquals(IReadOnlyList<JSValue> left, IReadOnlyList<JSValue> right)
+    {
+      if (left == right) { return true; }
+      else if (left == null) { return false; }
+      else if (right == null) { return false; }
+      else if (left.Count != right.Count) { return false; }
+
+      for (int i = 0; i < left.Count; ++i)
+      {
+        if (!left[i].JSEquals(right[i]))
+        {
+          return false;
+        }
+      }
+
+      return true;
     }
   }
 
@@ -496,9 +532,21 @@ namespace Microsoft.ReactNative.Managed
 
     public bool JSEquals(JSValue other)
     {
-      if (Type == JSValueType.Null || other.Type == JSValueType.Null)
+      if (Type == other.Type)
       {
-        return Type == other.Type;
+        switch (Type)
+        {
+          case JSValueType.Object:
+            return JSValueObject.JSEquals(ObjectValue, other.ObjectValue);
+          case JSValueType.Array:
+            return JSValueArray.JSEquals(ArrayValue, other.ArrayValue);
+          default:
+            return Equals(other);
+        }
+      }
+      else if (Type == JSValueType.Null || other.Type == JSValueType.Null)
+      {
+        return false;
       }
 
       // If one of the types Boolean, Int64, or Double, then compare as Numbers,
