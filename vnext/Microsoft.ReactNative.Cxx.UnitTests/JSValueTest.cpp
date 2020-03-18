@@ -1173,7 +1173,8 @@ TEST_CLASS (JSValueTest) {
     CheckEquals((JSValueObject{{"prop1", 1}, {"prop2", "Hello"}}), (JSValueObject{{"prop1", 1}, {"prop2", "Hello"}}));
     CheckEquals((JSValueObject{{"prop1", JSValueObject{}}}), (JSValueObject{{"prop1", JSValueObject{}}}));
     CheckEquals(
-        (JSValueObject{{"prop1", JSValueObject{{"prop1", 1}}}}), (JSValueObject{{"prop1", JSValueObject{{"prop1", 1}}}}));
+        (JSValueObject{{"prop1", JSValueObject{{"prop1", 1}}}}),
+        (JSValueObject{{"prop1", JSValueObject{{"prop1", 1}}}}));
     CheckEquals((JSValueObject{{"prop1", JSValueArray{}}}), (JSValueObject{{"prop1", JSValueArray{}}}));
     CheckEquals((JSValueObject{{"prop1", JSValueArray{1}}}), (JSValueObject{{"prop1", JSValueArray{1}}}));
     CheckNotEquals((JSValueObject{{"prop1", 1}}), JSValueObject{});
