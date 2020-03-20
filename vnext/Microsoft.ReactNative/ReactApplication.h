@@ -9,6 +9,8 @@
 namespace winrt::Microsoft::ReactNative::implementation {
 
 struct ReactApplication : ReactApplicationT<ReactApplication> {
+  using Super = ReactApplicationT<ReactApplication>;
+
  public: // ReactApplication ABI API
   ReactApplication() noexcept;
 
@@ -33,6 +35,7 @@ struct ReactApplication : ReactApplicationT<ReactApplication> {
   void JavaScriptBundleFile(hstring const &value) noexcept;
 
  public:
+  void OnActivated(Windows::ApplicationModel::Activation::IActivatedEventArgs const &args);
   virtual void OnLaunched(Windows::ApplicationModel::Activation::LaunchActivatedEventArgs const &);
   virtual void OnSuspending(IInspectable const &, Windows::ApplicationModel::SuspendingEventArgs const &);
   virtual void OnNavigationFailed(

@@ -5,6 +5,7 @@
 #include "ReactApplication.h"
 #include "ReactApplication.g.cpp"
 #include "ReactNativeHost.h"
+#include "Modules/LinkingManagerModule.h"
 
 #include <winrt/Windows.ApplicationModel.Activation.h>
 #include <winrt/Windows.UI.Core.h>
@@ -102,8 +103,15 @@ void ReactApplication::JavaScriptBundleFile(hstring const &value) noexcept {
   InstanceSettings().JavaScriptBundleFile(value);
 }
 
+void ReactApplication::OnActivated(IActivatedEventArgs const &args) {
+  if (args.Kind() == ActivationKind::Protocol) {
+    auto protocolActivatedEventArgs{args.as<ProtocolActivatedEventArgs>()};
+    react::uwp::LinkingManagerModule::OpenUri(protocolActivatedEventArgs.Uri());
+  }
+}
+
 void ReactApplication::OnLaunched(LaunchActivatedEventArgs const &e) {
-  __super::OnLaunched(e);
+  Super::OnLaunched(e);
   // auto args = std::wstring(e.Arguments().c_str());
   this->OnCreate(e);
 }

@@ -13,6 +13,7 @@ import {
   Text,
   UIManager,
   View,
+  Linking,
 } from 'react-native';
 
 import { NativeModules, NativeEventEmitter } from 'react-native';
@@ -58,11 +59,17 @@ class SampleApp extends Component {
   componentDidMount() {
     this._TimedEventCSSub = SampleModuleCSEmitter.addListener('TimedEventCS', getCallback('SampleModuleCS.TimedEventCS() => '));
     this._TimedEventCppSub = SampleModuleCppEmitter.addListener('TimedEventCpp', getCallback('SampleModuleCpp.TimedEventCpp() => '));
+    Linking.addEventListener('url', this.handleOpenURL);
   }
 
   componentWillUnmount() {
     this._TimedEventCSSub.remove();
     this._TimedEventCppSub.remove();
+    Linking.removeEventListener('url', this.handleOpenURL);
+  }
+
+  handleOpenURL(event) {
+    log('OpenURL => ' + event.url);
   }
 
   onPressSampleModuleCS() {
