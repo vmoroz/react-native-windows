@@ -192,6 +192,7 @@
     <ClInclude Include="Modules\AlertModuleUwp.h" />
     <ClInclude Include="Modules\ClipboardModule.h" />
     <ClInclude Include="Modules\DeviceInfoModule.h" />
+    <ClInclude Include="Modules\DevSettingsModule.h" />
     <ClInclude Include="Modules\DevSupportManagerUwp.h" />
     <ClInclude Include="Modules\I18nModule.h" />
     <ClInclude Include="Modules\ImageViewManagerModule.h" />
@@ -243,7 +244,6 @@
     <ClInclude Include="Views\DynamicAutomationProperties.h" />
     <ClInclude Include="Views\ViewViewManager.h" />
     <ClInclude Include="Views\VirtualTextViewManager.h" />
-    <ClInclude Include="Views\WebViewManager.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ABI\ABIModuleLoader.cpp" />
@@ -292,6 +292,7 @@
     <ClCompile Include="Modules\AlertModuleUwp.cpp" />
     <ClCompile Include="Modules\ClipboardModule.cpp" />
     <ClCompile Include="Modules\DeviceInfoModule.cpp" />
+    <ClCompile Include="Modules\DevSettingsModule.cpp" />
     <ClCompile Include="Modules\DevSupportManagerUwp.cpp" />
     <ClCompile Include="Modules\I18nModule.cpp" />
     <ClCompile Include="Modules\ImageViewManagerModule.cpp" />
@@ -352,7 +353,6 @@
     <ClCompile Include="Views\DynamicAutomationPeer.cpp" />
     <ClCompile Include="Views\ViewViewManager.cpp" />
     <ClCompile Include="Views\VirtualTextViewManager.cpp" />
-    <ClCompile Include="Views\WebViewManager.cpp" />
     <ClCompile Include="Views\module.g.cpp" />
     <ClCompile Include="Views\KeyboardEventHandler.cpp" />
     <ClCompile Include="Views\XamlFeatures.cpp" />

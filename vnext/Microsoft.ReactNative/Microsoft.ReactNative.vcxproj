@@ -253,7 +253,6 @@
     <ClInclude Include="..\ReactUWP\Views\ViewPanel.h" />
     <ClInclude Include="..\ReactUWP\Views\ViewViewManager.h" />
     <ClInclude Include="..\ReactUWP\Views\VirtualTextViewManager.h" />
-    <ClInclude Include="..\ReactUWP\Views\WebViewManager.h" />
     <ClInclude Include="..\ReactUWP\Views\XamlFeatures.h" />
     <ClInclude Include="ABICxxModule.h" />
     <ClInclude Include="ABIViewManager.h" />
@@ -271,6 +270,7 @@
     </ClInclude>
     <ClInclude Include="LifecycleState.h" />
     <ClInclude Include="Modules\AppStateData.h" />
+    <ClInclude Include="Modules\DevSettingsModule.h" />
     <ClInclude Include="NativeModulesProvider.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="ReactApplication.h">
@@ -417,7 +417,6 @@
     <ClCompile Include="..\ReactUWP\Views\ViewPanel.cpp" />
     <ClCompile Include="..\ReactUWP\Views\ViewViewManager.cpp" />
     <ClCompile Include="..\ReactUWP\Views\VirtualTextViewManager.cpp" />
-    <ClCompile Include="..\ReactUWP\Views\WebViewManager.cpp" />
     <ClCompile Include="..\ReactUWP\Views\XamlFeatures.cpp" />
     <ClCompile Include="ABICxxModule.cpp" />
     <ClCompile Include="ABIViewManager.cpp" />
@@ -431,6 +430,7 @@
       <DependentUpon>IReactModuleBuilder.idl</DependentUpon>
     </ClCompile>
     <ClCompile Include="Modules\AppStateData.cpp" />
+    <ClCompile Include="Modules\DevSettingsModule.cpp" />
     <ClCompile Include="NativeModulesProvider.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>

@@ -15,69 +15,80 @@ namespace Microsoft.ReactNative.Managed.UnitTests
     public void TestReadObject()
     {
       JObject jobj = JObject.Parse(@"{
-              NullValue: null,
-              ObjValue: {prop1: 2},
-              ArrayValue: [1, 2],
-              StringValue: ""Hello"",
-              BoolValue: true,
-              IntValue: 42,
-              DoubleValue: 4.5
+              ""NullValue"": null,
+              ""ObjValue"": {""prop1"": 2},
+              ""ArrayValue"": [1, 2],
+              ""StringValue"": ""Hello"",
+              ""BoolValue"": true,
+              ""IntValue"": 42,
+              ""DoubleValue"": 4.5
             }");
       IJSValueReader reader = new JTokenJSValueReader(jobj);
       JSValue jsValue = JSValue.ReadFrom(reader);
 
-      Assert.AreEqual(JSValueType.Object, jsValue.Type, "tag_a01");
-      Assert.AreEqual(JSValueType.Null, jsValue["NullValue"].Type, "tag_a02");
-      Assert.AreEqual(JSValueType.Object, jsValue["ObjValue"].Type, "tag_a03");
-      Assert.AreEqual(JSValueType.Array, jsValue["ArrayValue"].Type, "tag_a04");
-      Assert.AreEqual(JSValueType.String, jsValue["StringValue"].Type, "tag_a05");
-      Assert.AreEqual(JSValueType.Boolean, jsValue["BoolValue"].Type, "tag_a06");
-      Assert.AreEqual(JSValueType.Int64, jsValue["IntValue"].Type, "tag_a07");
-      Assert.AreEqual(JSValueType.Double, jsValue["DoubleValue"].Type, "tag_a08");
+      Assert.AreEqual(JSValueType.Object, jsValue.Type, "tag_a101");
+      Assert.AreEqual(JSValueType.Null, jsValue["NullValue"].Type, "tag_1a02");
+      Assert.AreEqual(JSValueType.Object, jsValue["ObjValue"].Type, "tag_a103");
+      Assert.AreEqual(JSValueType.Array, jsValue["ArrayValue"].Type, "tag_a104");
+      Assert.AreEqual(JSValueType.String, jsValue["StringValue"].Type, "tag_a105");
+      Assert.AreEqual(JSValueType.Boolean, jsValue["BoolValue"].Type, "tag_a106");
+      Assert.AreEqual(JSValueType.Int64, jsValue["IntValue"].Type, "tag_a107");
+      Assert.AreEqual(JSValueType.Double, jsValue["DoubleValue"].Type, "tag_a108");
 
-      Assert.IsTrue(jsValue["NullValue"].IsNull, "tag_a09");
-      Assert.IsTrue(jsValue["ObjValue"].TryGetObject(out var objValue), "tag_a10");
-      Assert.AreEqual(1, objValue.Count, "tag_a11");
-      Assert.AreEqual(1, jsValue["ObjValue"].PropertyCount, "tag_a12");
-      Assert.IsTrue(jsValue["ArrayValue"].TryGetArray(out var arrayValue), "tag_a13");
-      Assert.AreEqual(2, arrayValue.Count, "tag_a14");
-      Assert.AreEqual(2, jsValue["ArrayValue"].ItemCount, "tag_a15");
-      Assert.IsTrue(jsValue["StringValue"].TryGetString(out var stringValue), "tag_a16");
-      Assert.AreEqual("Hello", stringValue, "tag_a17");
-      Assert.IsTrue(jsValue["BoolValue"].TryGetBoolean(out var boolValue), "tag_a18");
-      Assert.AreEqual(true, boolValue, "tag_a19");
-      Assert.IsTrue(jsValue["IntValue"].TryGetInt64(out var intValue), "tag_a20");
-      Assert.AreEqual(42, intValue, "tag_a21");
-      Assert.IsTrue(jsValue["DoubleValue"].TryGetDouble(out var doubleValue), "tag_a22");
-      Assert.AreEqual(4.5, doubleValue, "tag_a23");
+      Assert.IsTrue(jsValue["NullValue"].IsNull, "tag_a201");
+      Assert.IsTrue(jsValue["ObjValue"].TryGetObject(out var objValue), "tag_a202");
+      Assert.IsTrue(jsValue["ArrayValue"].TryGetArray(out var arrayValue), "tag_a203");
+      Assert.IsTrue(jsValue["StringValue"].TryGetString(out var stringValue), "tag_a204");
+      Assert.IsTrue(jsValue["BoolValue"].TryGetBoolean(out var boolValue), "tag_a205");
+      Assert.IsTrue(jsValue["IntValue"].TryGetInt64(out var intValue), "tag_a206");
+      Assert.IsTrue(jsValue["DoubleValue"].TryGetDouble(out var doubleValue), "tag_a207");
+
+      Assert.AreEqual(1, objValue.Count, "tag_a301");
+      Assert.AreEqual(1, jsValue["ObjValue"].PropertyCount, "tag_a302");
+      Assert.AreEqual(2, arrayValue.Count, "tag_a303");
+      Assert.AreEqual(2, jsValue["ArrayValue"].ItemCount, "tag_a304");
+      Assert.AreEqual("Hello", stringValue, "tag_a305");
+      Assert.AreEqual(true, boolValue, "tag_a306");
+      Assert.AreEqual(42, intValue, "tag_a307");
+      Assert.AreEqual(4.5, doubleValue, "tag_a308");
     }
 
     [TestMethod]
     public void TestReadNestedObject()
     {
       JObject jobj = JObject.Parse(@"{
-              NestedObj: {
-                NullValue: null,
-                ObjValue: {},
-                ArrayValue: [],
-                StringValue: ""Hello"",
-                BoolValue: true,
-                IntValue: 42,
-                DoubleValue: 4.5
+              ""NestedObj"": {
+                ""NullValue"": null,
+                ""ObjValue"": {},
+                ""ArrayValue"": [],
+                ""StringValue"": ""Hello"",
+                ""BoolValue"": true,
+                ""IntValue"": 42,
+                ""DoubleValue"": 4.5
               }
             }");
       IJSValueReader reader = new JTokenJSValueReader(jobj);
       JSValue jsValue = JSValue.ReadFrom(reader);
 
-      Assert.AreEqual(JSValueType.Object, jsValue.Type, "tag_b01");
-      var nestedObj = jsValue["NestedObj"];
-      Assert.IsTrue(nestedObj["NullValue"].IsNull, "tag_b02");
-      Assert.AreEqual(JSValueType.Object, nestedObj["ObjValue"].Type, "tag_b03");
-      Assert.AreEqual(JSValueType.Array, nestedObj["ArrayValue"].Type, "tag_b04");
-      Assert.AreEqual("Hello", nestedObj["StringValue"], "tag_b05");
-      Assert.AreEqual(true, nestedObj["BoolValue"], "tag_b06");
-      Assert.AreEqual(42, nestedObj["IntValue"], "tag_b07");
-      Assert.AreEqual(4.5, nestedObj["DoubleValue"], "tag_b08");
+      Assert.AreEqual(JSValueType.Object, jsValue.Type, "tag_b101");
+      Assert.AreEqual(JSValueType.Object, jsValue["NestedObj"].Type, "tag_b102");
+      jsValue["NestedObj"].TryGetObject(out var nestedObj);
+
+      Assert.AreEqual(JSValueType.Null, nestedObj["NullValue"].Type, "tag_b201");
+      Assert.AreEqual(JSValueType.Object, nestedObj["ObjValue"].Type, "tag_b202");
+      Assert.AreEqual(JSValueType.Array, nestedObj["ArrayValue"].Type, "tag_b203");
+      Assert.AreEqual(JSValueType.String, nestedObj["StringValue"].Type, "tag_b204");
+      Assert.AreEqual(JSValueType.Boolean, nestedObj["BoolValue"].Type, "tag_b205");
+      Assert.AreEqual(JSValueType.Int64, nestedObj["IntValue"].Type, "tag_b206");
+      Assert.AreEqual(JSValueType.Double, nestedObj["DoubleValue"].Type, "tag_b207");
+
+      Assert.IsTrue(nestedObj["NullValue"].IsNull, "tag_b301");
+      Assert.IsTrue(nestedObj["ObjValue"].TryGetObject(out var _), "tag_b302");
+      Assert.IsTrue(nestedObj["ArrayValue"].TryGetArray(out var _), "tag_b303");
+      Assert.AreEqual("Hello", nestedObj["StringValue"], "tag_b304");
+      Assert.AreEqual(true, nestedObj["BoolValue"], "tag_b305");
+      Assert.AreEqual(42, nestedObj["IntValue"], "tag_b306");
+      Assert.AreEqual(4.5, nestedObj["DoubleValue"], "tag_b307");
     }
 
     [TestMethod]
@@ -87,14 +98,22 @@ namespace Microsoft.ReactNative.Managed.UnitTests
       IJSValueReader reader = new JTokenJSValueReader(jarr);
       JSValue jsValue = JSValue.ReadFrom(reader);
 
-      Assert.AreEqual(JSValueType.Array, jsValue.Type, "tag_c01");
-      Assert.IsTrue(jsValue[0].IsNull, "tag_c02");
-      Assert.AreEqual(JSValueType.Object, jsValue[1].Type, "tag_c03");
-      Assert.AreEqual(JSValueType.Array, jsValue[2].Type, "tag_c04");
-      Assert.AreEqual("Hello", jsValue[3], "tag_c05");
-      Assert.AreEqual(true, jsValue[4], "tag_c06");
-      Assert.AreEqual(42, jsValue[5], "tag_c07");
-      Assert.AreEqual(4.5, jsValue[6], "tag_c08");
+      Assert.AreEqual(JSValueType.Array, jsValue.Type, "tag_c101");
+      Assert.AreEqual(JSValueType.Null, jsValue[0].Type, "tag_c102");
+      Assert.AreEqual(JSValueType.Object, jsValue[1].Type, "tag_c103");
+      Assert.AreEqual(JSValueType.Array, jsValue[2].Type, "tag_c104");
+      Assert.AreEqual(JSValueType.String, jsValue[3].Type, "tag_c105");
+      Assert.AreEqual(JSValueType.Boolean, jsValue[4].Type, "tag_c106");
+      Assert.AreEqual(JSValueType.Int64, jsValue[5].Type, "tag_c107");
+      Assert.AreEqual(JSValueType.Double, jsValue[6].Type, "tag_c108");
+
+      Assert.IsTrue(jsValue[0].IsNull, "tag_c201");
+      Assert.IsTrue(jsValue[1].TryGetObject(out var _), "tag_c202");
+      Assert.IsTrue(jsValue[2].TryGetArray(out var _), "tag_c203");
+      Assert.AreEqual("Hello", jsValue[3], "tag_c204");
+      Assert.AreEqual(true, jsValue[4], "tag_c205");
+      Assert.AreEqual(42, jsValue[5], "tag_c206");
+      Assert.AreEqual(4.5, jsValue[6], "tag_c207");
     }
 
     [TestMethod]
@@ -104,15 +123,68 @@ namespace Microsoft.ReactNative.Managed.UnitTests
       IJSValueReader reader = new JTokenJSValueReader(jarr);
       JSValue jsValue = JSValue.ReadFrom(reader);
 
-      Assert.AreEqual(JSValueType.Array, jsValue.Type, "tag_d01");
-      var nestedArr = jsValue[0];
-      Assert.IsTrue(nestedArr[0].IsNull, "tag_d02");
-      Assert.AreEqual(JSValueType.Object, nestedArr[1].Type, "tag_d03");
-      Assert.AreEqual(JSValueType.Array, nestedArr[2].Type, "tag_d04");
-      Assert.AreEqual("Hello", nestedArr[3], "tag_d05");
-      Assert.AreEqual(true, nestedArr[4], "tag_d06");
-      Assert.AreEqual(42, nestedArr[5], "tag_d07");
-      Assert.AreEqual(4.5, nestedArr[6], "tag_d08");
+      Assert.AreEqual(JSValueType.Array, jsValue.Type, "tag_d101");
+      Assert.AreEqual(JSValueType.Array, jsValue[0].Type, "tag_d102");
+      jsValue[0].TryGetArray(out var nestedArr);
+
+      Assert.AreEqual(JSValueType.Null, nestedArr[0].Type, "tag_d201");
+      Assert.AreEqual(JSValueType.Object, nestedArr[1].Type, "tag_d202");
+      Assert.AreEqual(JSValueType.Array, nestedArr[2].Type, "tag_d203");
+      Assert.AreEqual(JSValueType.String, nestedArr[3].Type, "tag_d204");
+      Assert.AreEqual(JSValueType.Boolean, nestedArr[4].Type, "tag_d205");
+      Assert.AreEqual(JSValueType.Int64, nestedArr[5].Type, "tag_d206");
+      Assert.AreEqual(JSValueType.Double, nestedArr[6].Type, "tag_d207");
+
+      Assert.IsTrue(nestedArr[0].IsNull, "tag_d301");
+      Assert.IsTrue(nestedArr[1].TryGetObject(out var _), "tag_d302");
+      Assert.IsTrue(nestedArr[2].TryGetArray(out var _), "tag_d303");
+      Assert.AreEqual("Hello", nestedArr[3], "tag_d304");
+      Assert.AreEqual(true, nestedArr[4], "tag_d305");
+      Assert.AreEqual(42, nestedArr[5], "tag_d306");
+      Assert.AreEqual(4.5, nestedArr[6], "tag_d307");
+    }
+
+    [TestMethod]
+    public void TestJSSimpleLiterals()
+    {
+      JSValue jsValue01 = JSValue.Null;
+      JSValue jsValue02 = "Hello";
+      JSValue jsValue03 = "";
+      JSValue jsValue04 = true;
+      JSValue jsValue05 = false;
+      JSValue jsValue06 = 42;
+      JSValue jsValue07 = 0;
+      JSValue jsValue08 = 4.5;
+      JSValue jsValue09 = 0.0;
+      JSValue jsValue10 = double.NaN;
+      JSValue jsValue11 = double.PositiveInfinity;
+      JSValue jsValue12 = double.NegativeInfinity;
+
+      Assert.AreEqual(JSValueType.Null, jsValue01.Type, "tag_e101");
+      Assert.AreEqual(JSValueType.String, jsValue02.Type, "tag_e102");
+      Assert.AreEqual(JSValueType.String, jsValue03.Type, "tag_e103");
+      Assert.AreEqual(JSValueType.Boolean, jsValue04.Type, "tag_e104");
+      Assert.AreEqual(JSValueType.Boolean, jsValue05.Type, "tag_e105");
+      Assert.AreEqual(JSValueType.Int64, jsValue06.Type, "tag_e106");
+      Assert.AreEqual(JSValueType.Int64, jsValue07.Type, "tag_e107");
+      Assert.AreEqual(JSValueType.Double, jsValue08.Type, "tag_e108");
+      Assert.AreEqual(JSValueType.Double, jsValue09.Type, "tag_e109");
+      Assert.AreEqual(JSValueType.Double, jsValue10.Type, "tag_e110");
+      Assert.AreEqual(JSValueType.Double, jsValue11.Type, "tag_e111");
+      Assert.AreEqual(JSValueType.Double, jsValue12.Type, "tag_e112");
+
+      Assert.IsTrue(jsValue01.IsNull, "tag_e201");
+      Assert.IsTrue(jsValue02.TryGetString(out var str1) && str1 == "Hello", "tag_e202");
+      Assert.IsTrue(jsValue03.TryGetString(out var str2) && str2 == "", "tag_e203");
+      Assert.IsTrue(jsValue04.TryGetBoolean(out var bool1) && bool1 == true, "tag_e204");
+      Assert.IsTrue(jsValue05.TryGetBoolean(out var bool2) && bool2 == false, "tag_e205");
+      Assert.IsTrue(jsValue06.TryGetInt64(out var int1) && int1 == 42, "tag_e206");
+      Assert.IsTrue(jsValue07.TryGetInt64(out var int2) && int2 == 0, "tag_e207");
+      Assert.IsTrue(jsValue08.TryGetDouble(out var double1) && double1 == 4.5, "tag_e208");
+      Assert.IsTrue(jsValue09.TryGetDouble(out var double2) && double2 == 0, "tag_e209");
+      Assert.IsTrue(jsValue10.TryGetDouble(out var double3) && double.IsNaN(double3), "tag_e210");
+      Assert.IsTrue(jsValue11.TryGetDouble(out var double4) && double4 == double.PositiveInfinity, "tag_e211");
+      Assert.IsTrue(jsValue12.TryGetDouble(out var double5) && double5 == double.NegativeInfinity, "tag_e212");
     }
 
     [TestMethod]
@@ -131,30 +203,30 @@ namespace Microsoft.ReactNative.Managed.UnitTests
         ["DoubleValue"] = 4.5
       };
 
-      Assert.AreEqual(JSValueType.Object, jsValue.Type, "tag_e01");
-      Assert.AreEqual(JSValueType.Null, jsValue["NullValue"].Type, "tag_e02");
-      Assert.AreEqual(JSValueType.Object, jsValue["ObjValue"].Type, "tag_e03");
-      Assert.AreEqual(JSValueType.Object, jsValue["ObjValueEmpty"].Type, "tag_e04");
-      Assert.AreEqual(JSValueType.Array, jsValue["ArrayValue"].Type, "tag_e05");
-      Assert.AreEqual(JSValueType.Array, jsValue["ArrayValueEmpty"].Type, "tag_e06");
-      Assert.AreEqual(JSValueType.String, jsValue["StringValue"].Type, "tag_e07");
-      Assert.AreEqual(JSValueType.Boolean, jsValue["BoolValue"].Type, "tag_e08");
-      Assert.AreEqual(JSValueType.Int64, jsValue["IntValue"].Type, "tag_e09");
-      Assert.AreEqual(JSValueType.Double, jsValue["DoubleValue"].Type, "tag_e10");
+      Assert.AreEqual(JSValueType.Object, jsValue.Type, "tag_f101");
+      Assert.AreEqual(JSValueType.Null, jsValue["NullValue"].Type, "tag_f102");
+      Assert.AreEqual(JSValueType.Object, jsValue["ObjValue"].Type, "tag_f103");
+      Assert.AreEqual(JSValueType.Object, jsValue["ObjValueEmpty"].Type, "tag_f104");
+      Assert.AreEqual(JSValueType.Array, jsValue["ArrayValue"].Type, "tag_f105");
+      Assert.AreEqual(JSValueType.Array, jsValue["ArrayValueEmpty"].Type, "tag_f106");
+      Assert.AreEqual(JSValueType.String, jsValue["StringValue"].Type, "tag_f107");
+      Assert.AreEqual(JSValueType.Boolean, jsValue["BoolValue"].Type, "tag_f108");
+      Assert.AreEqual(JSValueType.Int64, jsValue["IntValue"].Type, "tag_f109");
+      Assert.AreEqual(JSValueType.Double, jsValue["DoubleValue"].Type, "tag_f110");
 
-      Assert.IsTrue(jsValue["NullValue"].IsNull, "tag_e11");
-      Assert.AreEqual(1, jsValue["ObjValue"].PropertyCount, "tag_e12");
-      Assert.AreEqual(2, jsValue["ObjValue"]["prop1"], "tag_e13");
-      Assert.AreEqual(0, jsValue["ObjValueEmpty"].PropertyCount, "tag_e14");
-      Assert.AreEqual(2, jsValue["ArrayValue"].ItemCount, "tag_e15");
-      Assert.AreEqual(1, jsValue["ArrayValue"][0], "tag_e16");
-      Assert.AreEqual(2, jsValue["ArrayValue"][1], "tag_e17");
-      Assert.AreEqual(0, jsValue["ArrayValueEmpty"].ItemCount, "tag_e18");
-      Assert.AreEqual("Hello", jsValue["StringValue"], "tag_e19");
-      Assert.AreEqual(true, jsValue["BoolValue"], "tag_e20");
-      Assert.AreEqual(42, jsValue["IntValue"], "tag_e21");
-      Assert.AreNotEqual(24, jsValue["IntValue"], "tag_e22");
-      Assert.AreEqual(4.5, jsValue["DoubleValue"], "tag_e23");
+      Assert.IsTrue(jsValue["NullValue"].IsNull, "tag_f201");
+      Assert.AreEqual(1, jsValue["ObjValue"].PropertyCount, "tag_f202");
+      Assert.AreEqual(2, jsValue["ObjValue"]["prop1"], "tag_f203");
+      Assert.AreEqual(0, jsValue["ObjValueEmpty"].PropertyCount, "tag_f204");
+      Assert.AreEqual(2, jsValue["ArrayValue"].ItemCount, "tag_f205");
+      Assert.AreEqual(1, jsValue["ArrayValue"][0], "tag_f206");
+      Assert.AreEqual(2, jsValue["ArrayValue"][1], "tag_f207");
+      Assert.AreEqual(0, jsValue["ArrayValueEmpty"].ItemCount, "tag_f208");
+      Assert.AreEqual("Hello", jsValue["StringValue"], "tag_f209");
+      Assert.AreEqual(true, jsValue["BoolValue"], "tag_f210");
+      Assert.AreEqual(42, jsValue["IntValue"], "tag_f211");
+      Assert.AreNotEqual(24, jsValue["IntValue"], "tag_f212");
+      Assert.AreEqual(4.5, jsValue["DoubleValue"], "tag_f213");
     }
 
     [TestMethod]
@@ -173,30 +245,30 @@ namespace Microsoft.ReactNative.Managed.UnitTests
         4.5
       };
 
-      Assert.AreEqual(JSValueType.Array, jsValue.Type, "tag_f01");
-      Assert.AreEqual(JSValueType.Null, jsValue[0].Type, "tag_f02");
-      Assert.AreEqual(JSValueType.Object, jsValue[1].Type, "tag_f03");
-      Assert.AreEqual(JSValueType.Object, jsValue[2].Type, "tag_f04");
-      Assert.AreEqual(JSValueType.Array, jsValue[3].Type, "tag_f05");
-      Assert.AreEqual(JSValueType.Array, jsValue[4].Type, "tag_f06");
-      Assert.AreEqual(JSValueType.String, jsValue[5].Type, "tag_f07");
-      Assert.AreEqual(JSValueType.Boolean, jsValue[6].Type, "tag_f08");
-      Assert.AreEqual(JSValueType.Int64, jsValue[7].Type, "tag_f09");
-      Assert.AreEqual(JSValueType.Double, jsValue[8].Type, "tag_f10");
+      Assert.AreEqual(JSValueType.Array, jsValue.Type, "tag_g101");
+      Assert.AreEqual(JSValueType.Null, jsValue[0].Type, "tag_g102");
+      Assert.AreEqual(JSValueType.Object, jsValue[1].Type, "tag_g103");
+      Assert.AreEqual(JSValueType.Object, jsValue[2].Type, "tag_g104");
+      Assert.AreEqual(JSValueType.Array, jsValue[3].Type, "tag_g105");
+      Assert.AreEqual(JSValueType.Array, jsValue[4].Type, "tag_g106");
+      Assert.AreEqual(JSValueType.String, jsValue[5].Type, "tag_g107");
+      Assert.AreEqual(JSValueType.Boolean, jsValue[6].Type, "tag_g108");
+      Assert.AreEqual(JSValueType.Int64, jsValue[7].Type, "tag_g109");
+      Assert.AreEqual(JSValueType.Double, jsValue[8].Type, "tag_g110");
 
-      Assert.IsTrue(jsValue["NullValue"].IsNull, "tag_f11");
-      Assert.AreEqual(1, jsValue[1].PropertyCount, "tag_f12");
-      Assert.AreEqual(2, jsValue[1]["prop1"], "tag_f13");
-      Assert.AreEqual(0, jsValue[2].PropertyCount, "tag_f14");
-      Assert.AreEqual(2, jsValue[3].ItemCount, "tag_f15");
-      Assert.AreEqual(1, jsValue[3][0], "tag_f16");
-      Assert.AreEqual(2, jsValue[3][1], "tag_f17");
-      Assert.AreEqual(0, jsValue[4].ItemCount, "tag_f18");
-      Assert.AreEqual("Hello", jsValue[5], "tag_f19");
-      Assert.AreEqual(true, jsValue[6], "tag_f20");
-      Assert.AreEqual(42, jsValue[7], "tag_f21");
-      Assert.AreNotEqual(24, jsValue[7], "tag_f22");
-      Assert.AreEqual(4.5, jsValue[8], "tag_f23");
+      Assert.IsTrue(jsValue["NullValue"].IsNull, "tag_g201");
+      Assert.AreEqual(1, jsValue[1].PropertyCount, "tag_g202");
+      Assert.AreEqual(2, jsValue[1]["prop1"], "tag_g203");
+      Assert.AreEqual(0, jsValue[2].PropertyCount, "tag_g204");
+      Assert.AreEqual(2, jsValue[3].ItemCount, "tag_g205");
+      Assert.AreEqual(1, jsValue[3][0], "tag_g206");
+      Assert.AreEqual(2, jsValue[3][1], "tag_g207");
+      Assert.AreEqual(0, jsValue[4].ItemCount, "tag_g208");
+      Assert.AreEqual("Hello", jsValue[5], "tag_g209");
+      Assert.AreEqual(true, jsValue[6], "tag_g210");
+      Assert.AreEqual(42, jsValue[7], "tag_g211");
+      Assert.AreNotEqual(24, jsValue[7], "tag_g212");
+      Assert.AreEqual(4.5, jsValue[8], "tag_g213");
     }
 
     [TestMethod]
@@ -214,29 +286,29 @@ namespace Microsoft.ReactNative.Managed.UnitTests
       var value10 = new JSValue(42);
       var value11 = new JSValue(4.2);
 
-      Assert.AreEqual(JSValueType.Null, value01.Type, "tag_g101");
-      Assert.AreEqual(JSValueType.Object, value02.Type, "tag_g102");
-      Assert.AreEqual(JSValueType.Object, value03.Type, "tag_g103");
-      Assert.AreEqual(JSValueType.Array, value04.Type, "tag_g104");
-      Assert.AreEqual(JSValueType.Array, value05.Type, "tag_g105");
-      Assert.AreEqual(JSValueType.String, value06.Type, "tag_g106");
-      Assert.AreEqual(JSValueType.Boolean, value07.Type, "tag_g107");
-      Assert.AreEqual(JSValueType.Boolean, value08.Type, "tag_g108");
-      Assert.AreEqual(JSValueType.Int64, value09.Type, "tag_g109");
-      Assert.AreEqual(JSValueType.Int64, value10.Type, "tag_g110");
-      Assert.AreEqual(JSValueType.Double, value11.Type, "tag_g111");
+      Assert.AreEqual(JSValueType.Null, value01.Type, "tag_h101");
+      Assert.AreEqual(JSValueType.Object, value02.Type, "tag_h102");
+      Assert.AreEqual(JSValueType.Object, value03.Type, "tag_h103");
+      Assert.AreEqual(JSValueType.Array, value04.Type, "tag_h104");
+      Assert.AreEqual(JSValueType.Array, value05.Type, "tag_h105");
+      Assert.AreEqual(JSValueType.String, value06.Type, "tag_h106");
+      Assert.AreEqual(JSValueType.Boolean, value07.Type, "tag_h107");
+      Assert.AreEqual(JSValueType.Boolean, value08.Type, "tag_h108");
+      Assert.AreEqual(JSValueType.Int64, value09.Type, "tag_h109");
+      Assert.AreEqual(JSValueType.Int64, value10.Type, "tag_h110");
+      Assert.AreEqual(JSValueType.Double, value11.Type, "tag_h111");
 
-      Assert.IsTrue(value01.IsNull, "tag_g2001");
-      Assert.IsTrue(value02.TryGetObject(out var objValue02) && objValue02.Count == 1, "tag_g202");
-      Assert.IsTrue(value03.TryGetObject(out var objValue03) && objValue03.Count == 0, "tag_g203");
-      Assert.IsTrue(value04.TryGetArray(out var arrValue04) && arrValue04.Count == 2, "tag_g204");
-      Assert.IsTrue(value05.TryGetArray(out var arrValue05) && arrValue05.Count == 0, "tag_g205");
-      Assert.IsTrue(value06.TryGetString(out var strValue06) && strValue06 == "Hello", "tag_g206");
-      Assert.IsTrue(value07.TryGetBoolean(out var boolValue07) && boolValue07 == true, "tag_g207");
-      Assert.IsTrue(value08.TryGetBoolean(out var boolValue08) && boolValue08 == false, "tag_g208");
-      Assert.IsTrue(value09.TryGetInt64(out var intValue09) && intValue09 == 0, "tag_g209");
-      Assert.IsTrue(value10.TryGetInt64(out var intValue10) && intValue10 == 42, "tag_g210");
-      Assert.IsTrue(value11.TryGetDouble(out var doubleValue11) && doubleValue11 == 4.2, "tag_g211");
+      Assert.IsTrue(value01.IsNull, "tag_h2001");
+      Assert.IsTrue(value02.TryGetObject(out var objValue02) && objValue02.Count == 1, "tag_h202");
+      Assert.IsTrue(value03.TryGetObject(out var objValue03) && objValue03.Count == 0, "tag_h203");
+      Assert.IsTrue(value04.TryGetArray(out var arrValue04) && arrValue04.Count == 2, "tag_h204");
+      Assert.IsTrue(value05.TryGetArray(out var arrValue05) && arrValue05.Count == 0, "tag_h205");
+      Assert.IsTrue(value06.TryGetString(out var strValue06) && strValue06 == "Hello", "tag_h206");
+      Assert.IsTrue(value07.TryGetBoolean(out var boolValue07) && boolValue07 == true, "tag_h207");
+      Assert.IsTrue(value08.TryGetBoolean(out var boolValue08) && boolValue08 == false, "tag_h208");
+      Assert.IsTrue(value09.TryGetInt64(out var intValue09) && intValue09 == 0, "tag_h209");
+      Assert.IsTrue(value10.TryGetInt64(out var intValue10) && intValue10 == 42, "tag_h210");
+      Assert.IsTrue(value11.TryGetDouble(out var doubleValue11) && doubleValue11 == 4.2, "tag_h211");
     }
 
     [TestMethod]
@@ -262,45 +334,45 @@ namespace Microsoft.ReactNative.Managed.UnitTests
       JSValue value18 = (float)4.2;
       JSValue value19 = 4.2;
 
-      Assert.AreEqual(JSValueType.Object, value01.Type, "tag_h101");
-      Assert.AreEqual(JSValueType.Object, value02.Type, "tag_h102");
-      Assert.AreEqual(JSValueType.Object, value03.Type, "tag_h103");
-      Assert.AreEqual(JSValueType.Array, value04.Type, "tag_h104");
-      Assert.AreEqual(JSValueType.Array, value05.Type, "tag_h105");
-      Assert.AreEqual(JSValueType.Array, value06.Type, "tag_h106");
-      Assert.AreEqual(JSValueType.String, value07.Type, "tag_h107");
-      Assert.AreEqual(JSValueType.Boolean, value08.Type, "tag_h108");
-      Assert.AreEqual(JSValueType.Boolean, value09.Type, "tag_h109");
-      Assert.AreEqual(JSValueType.Int64, value10.Type, "tag_h110");
-      Assert.AreEqual(JSValueType.Int64, value11.Type, "tag_h111");
-      Assert.AreEqual(JSValueType.Int64, value12.Type, "tag_h112");
-      Assert.AreEqual(JSValueType.Int64, value13.Type, "tag_h113");
-      Assert.AreEqual(JSValueType.Int64, value14.Type, "tag_h114");
-      Assert.AreEqual(JSValueType.Int64, value15.Type, "tag_h115");
-      Assert.AreEqual(JSValueType.Int64, value16.Type, "tag_h116");
-      Assert.AreEqual(JSValueType.Int64, value17.Type, "tag_h117");
-      Assert.AreEqual(JSValueType.Double, value18.Type, "tag_h118");
-      Assert.AreEqual(JSValueType.Double, value19.Type, "tag_h119");
+      Assert.AreEqual(JSValueType.Object, value01.Type, "tag_i101");
+      Assert.AreEqual(JSValueType.Object, value02.Type, "tag_i102");
+      Assert.AreEqual(JSValueType.Object, value03.Type, "tag_i103");
+      Assert.AreEqual(JSValueType.Array, value04.Type, "tag_i104");
+      Assert.AreEqual(JSValueType.Array, value05.Type, "tag_i105");
+      Assert.AreEqual(JSValueType.Array, value06.Type, "tag_i106");
+      Assert.AreEqual(JSValueType.String, value07.Type, "tag_i107");
+      Assert.AreEqual(JSValueType.Boolean, value08.Type, "tag_i108");
+      Assert.AreEqual(JSValueType.Boolean, value09.Type, "tag_i109");
+      Assert.AreEqual(JSValueType.Int64, value10.Type, "tag_i110");
+      Assert.AreEqual(JSValueType.Int64, value11.Type, "tag_i111");
+      Assert.AreEqual(JSValueType.Int64, value12.Type, "tag_i112");
+      Assert.AreEqual(JSValueType.Int64, value13.Type, "tag_i113");
+      Assert.AreEqual(JSValueType.Int64, value14.Type, "tag_i114");
+      Assert.AreEqual(JSValueType.Int64, value15.Type, "tag_i115");
+      Assert.AreEqual(JSValueType.Int64, value16.Type, "tag_i116");
+      Assert.AreEqual(JSValueType.Int64, value17.Type, "tag_i117");
+      Assert.AreEqual(JSValueType.Double, value18.Type, "tag_i118");
+      Assert.AreEqual(JSValueType.Double, value19.Type, "tag_i119");
 
-      Assert.IsTrue(value01.TryGetObject(out var objValue01) && objValue01.Count == 1, "tag_h201");
-      Assert.IsTrue(value02.TryGetObject(out var objValue02) && objValue02.Count == 1, "tag_h202");
-      Assert.IsTrue(value03.TryGetObject(out var objValue03) && objValue03.Count == 1, "tag_h203");
-      Assert.IsTrue(value04.TryGetArray(out var arrValue04) && arrValue04.Count == 2, "tag_h204");
-      Assert.IsTrue(value05.TryGetArray(out var arrValue05) && arrValue05.Count == 2, "tag_h205");
-      Assert.IsTrue(value06.TryGetArray(out var arrValue06) && arrValue06.Count == 2, "tag_h206");
-      Assert.IsTrue(value07.TryGetString(out var strValue07) && strValue07 == "Hello", "tag_h207");
-      Assert.IsTrue(value08.TryGetBoolean(out var boolValue08) && boolValue08 == true, "tag_h208");
-      Assert.IsTrue(value09.TryGetBoolean(out var boolValue09) && boolValue09 == false, "tag_h209");
-      Assert.IsTrue(value10.TryGetInt64(out var intValue10) && intValue10 == 42, "tag_h210");
-      Assert.IsTrue(value11.TryGetInt64(out var intValue11) && intValue11 == 42, "tag_h211");
-      Assert.IsTrue(value12.TryGetInt64(out var intValue12) && intValue12 == 42, "tag_h212");
-      Assert.IsTrue(value13.TryGetInt64(out var intValue13) && intValue13 == 42, "tag_h213");
-      Assert.IsTrue(value14.TryGetInt64(out var intValue14) && intValue14 == 42, "tag_h214");
-      Assert.IsTrue(value15.TryGetInt64(out var intValue15) && intValue15 == 42, "tag_h215");
-      Assert.IsTrue(value16.TryGetInt64(out var intValue16) && intValue16 == 42, "tag_h216");
-      Assert.IsTrue(value17.TryGetInt64(out var intValue17) && intValue17 == 42, "tag_h217");
-      Assert.IsTrue(value18.TryGetDouble(out var doubleValue18) && doubleValue18 == (float)4.2, "tag_h218");
-      Assert.IsTrue(value19.TryGetDouble(out var doubleValue19) && doubleValue19 == 4.2, "tag_h219");
+      Assert.IsTrue(value01.TryGetObject(out var objValue01) && objValue01.Count == 1, "tag_i201");
+      Assert.IsTrue(value02.TryGetObject(out var objValue02) && objValue02.Count == 1, "tag_i202");
+      Assert.IsTrue(value03.TryGetObject(out var objValue03) && objValue03.Count == 1, "tag_i203");
+      Assert.IsTrue(value04.TryGetArray(out var arrValue04) && arrValue04.Count == 2, "tag_i204");
+      Assert.IsTrue(value05.TryGetArray(out var arrValue05) && arrValue05.Count == 2, "tag_i205");
+      Assert.IsTrue(value06.TryGetArray(out var arrValue06) && arrValue06.Count == 2, "tag_i206");
+      Assert.IsTrue(value07.TryGetString(out var strValue07) && strValue07 == "Hello", "tag_i207");
+      Assert.IsTrue(value08.TryGetBoolean(out var boolValue08) && boolValue08 == true, "tag_i208");
+      Assert.IsTrue(value09.TryGetBoolean(out var boolValue09) && boolValue09 == false, "tag_i209");
+      Assert.IsTrue(value10.TryGetInt64(out var intValue10) && intValue10 == 42, "tag_i210");
+      Assert.IsTrue(value11.TryGetInt64(out var intValue11) && intValue11 == 42, "tag_i211");
+      Assert.IsTrue(value12.TryGetInt64(out var intValue12) && intValue12 == 42, "tag_i212");
+      Assert.IsTrue(value13.TryGetInt64(out var intValue13) && intValue13 == 42, "tag_i213");
+      Assert.IsTrue(value14.TryGetInt64(out var intValue14) && intValue14 == 42, "tag_i214");
+      Assert.IsTrue(value15.TryGetInt64(out var intValue15) && intValue15 == 42, "tag_i215");
+      Assert.IsTrue(value16.TryGetInt64(out var intValue16) && intValue16 == 42, "tag_i216");
+      Assert.IsTrue(value17.TryGetInt64(out var intValue17) && intValue17 == 42, "tag_i217");
+      Assert.IsTrue(value18.TryGetDouble(out var doubleValue18) && doubleValue18 == (float)4.2, "tag_i218");
+      Assert.IsTrue(value19.TryGetDouble(out var doubleValue19) && doubleValue19 == 4.2, "tag_i219");
     }
 
     [TestMethod]
@@ -309,24 +381,24 @@ namespace Microsoft.ReactNative.Managed.UnitTests
       // Any type except for Object is returned as EmptyObject.
       bool AsObjectIsEmpty(JSValue value) => value.AsObject().Count == 0;
 
-      Assert.IsFalse(AsObjectIsEmpty(new JSValueObject { ["prop1"] = 42 }), "tag_i01");
-      Assert.IsTrue(AsObjectIsEmpty(JSValue.EmptyObject), "tag_i02");
-      Assert.IsTrue(AsObjectIsEmpty(new JSValueArray { 42, 78 }), "tag_i03");
-      Assert.IsTrue(AsObjectIsEmpty(JSValue.EmptyArray), "tag_i04");
-      Assert.IsTrue(AsObjectIsEmpty(""), "tag_i05");
-      Assert.IsTrue(AsObjectIsEmpty("Hello"), "tag_i06");
-      Assert.IsTrue(AsObjectIsEmpty(true), "tag_i07");
-      Assert.IsTrue(AsObjectIsEmpty(false), "tag_i08");
-      Assert.IsTrue(AsObjectIsEmpty(0), "tag_i09");
-      Assert.IsTrue(AsObjectIsEmpty(42), "tag_i10");
-      Assert.IsTrue(AsObjectIsEmpty(long.MaxValue), "tag_i11");
-      Assert.IsTrue(AsObjectIsEmpty(long.MinValue), "tag_i12");
-      Assert.IsTrue(AsObjectIsEmpty(0.0), "tag_i13");
-      Assert.IsTrue(AsObjectIsEmpty(4.2), "tag_i14");
-      Assert.IsTrue(AsObjectIsEmpty(double.NaN), "tag_i15");
-      Assert.IsTrue(AsObjectIsEmpty(double.PositiveInfinity), "tag_i16");
-      Assert.IsTrue(AsObjectIsEmpty(double.NegativeInfinity), "tag_i17");
-      Assert.IsTrue(AsObjectIsEmpty(JSValue.Null), "tag_i18");
+      Assert.IsFalse(AsObjectIsEmpty(new JSValueObject { ["prop1"] = 42 }), "tag_j01");
+      Assert.IsTrue(AsObjectIsEmpty(JSValue.EmptyObject), "tag_j02");
+      Assert.IsTrue(AsObjectIsEmpty(new JSValueArray { 42, 78 }), "tag_j03");
+      Assert.IsTrue(AsObjectIsEmpty(JSValue.EmptyArray), "tag_j04");
+      Assert.IsTrue(AsObjectIsEmpty(""), "tag_j05");
+      Assert.IsTrue(AsObjectIsEmpty("Hello"), "tag_j06");
+      Assert.IsTrue(AsObjectIsEmpty(true), "tag_j07");
+      Assert.IsTrue(AsObjectIsEmpty(false), "tag_j08");
+      Assert.IsTrue(AsObjectIsEmpty(0), "tag_j09");
+      Assert.IsTrue(AsObjectIsEmpty(42), "tag_j10");
+      Assert.IsTrue(AsObjectIsEmpty(long.MaxValue), "tag_j11");
+      Assert.IsTrue(AsObjectIsEmpty(long.MinValue), "tag_j12");
+      Assert.IsTrue(AsObjectIsEmpty(0.0), "tag_j13");
+      Assert.IsTrue(AsObjectIsEmpty(4.2), "tag_j14");
+      Assert.IsTrue(AsObjectIsEmpty(double.NaN), "tag_j15");
+      Assert.IsTrue(AsObjectIsEmpty(double.PositiveInfinity), "tag_j16");
+      Assert.IsTrue(AsObjectIsEmpty(double.NegativeInfinity), "tag_j17");
+      Assert.IsTrue(AsObjectIsEmpty(JSValue.Null), "tag_j18");
     }
 
     [TestMethod]
@@ -335,24 +407,24 @@ namespace Microsoft.ReactNative.Managed.UnitTests
       // Any type except for Array is returned as EmptyObject.
       bool AsArrayIsEmpty(JSValue value) => value.AsArray().Count == 0;
 
-      Assert.IsTrue(AsArrayIsEmpty(new JSValueObject { ["prop1"] = 42 }), "tag_j01");
-      Assert.IsTrue(AsArrayIsEmpty(JSValue.EmptyObject), "tag_j02");
-      Assert.IsFalse(AsArrayIsEmpty(new JSValueArray { 42, 78 }), "tag_j03");
-      Assert.IsTrue(AsArrayIsEmpty(JSValue.EmptyArray), "tag_j04");
-      Assert.IsTrue(AsArrayIsEmpty(""), "tag_j05");
-      Assert.IsTrue(AsArrayIsEmpty("Hello"), "tag_j06");
-      Assert.IsTrue(AsArrayIsEmpty(true), "tag_j07");
-      Assert.IsTrue(AsArrayIsEmpty(false), "tag_j08");
-      Assert.IsTrue(AsArrayIsEmpty(0), "tag_j09");
-      Assert.IsTrue(AsArrayIsEmpty(42), "tag_j10");
-      Assert.IsTrue(AsArrayIsEmpty(long.MaxValue), "tag_j11");
-      Assert.IsTrue(AsArrayIsEmpty(long.MinValue), "tag_j12");
-      Assert.IsTrue(AsArrayIsEmpty(0.0), "tag_j13");
-      Assert.IsTrue(AsArrayIsEmpty(4.2), "tag_j14");
-      Assert.IsTrue(AsArrayIsEmpty(double.NaN), "tag_j15");
-      Assert.IsTrue(AsArrayIsEmpty(double.PositiveInfinity), "tag_j16");
-      Assert.IsTrue(AsArrayIsEmpty(double.NegativeInfinity), "tag_j17");
-      Assert.IsTrue(AsArrayIsEmpty(JSValue.Null), "tag_j18");
+      Assert.IsTrue(AsArrayIsEmpty(new JSValueObject { ["prop1"] = 42 }), "tag_k01");
+      Assert.IsTrue(AsArrayIsEmpty(JSValue.EmptyObject), "tag_k02");
+      Assert.IsFalse(AsArrayIsEmpty(new JSValueArray { 42, 78 }), "tag_k03");
+      Assert.IsTrue(AsArrayIsEmpty(JSValue.EmptyArray), "tag_k04");
+      Assert.IsTrue(AsArrayIsEmpty(""), "tag_k05");
+      Assert.IsTrue(AsArrayIsEmpty("Hello"), "tag_k06");
+      Assert.IsTrue(AsArrayIsEmpty(true), "tag_k07");
+      Assert.IsTrue(AsArrayIsEmpty(false), "tag_k08");
+      Assert.IsTrue(AsArrayIsEmpty(0), "tag_k09");
+      Assert.IsTrue(AsArrayIsEmpty(42), "tag_k10");
+      Assert.IsTrue(AsArrayIsEmpty(long.MaxValue), "tag_k11");
+      Assert.IsTrue(AsArrayIsEmpty(long.MinValue), "tag_k12");
+      Assert.IsTrue(AsArrayIsEmpty(0.0), "tag_k13");
+      Assert.IsTrue(AsArrayIsEmpty(4.2), "tag_k14");
+      Assert.IsTrue(AsArrayIsEmpty(double.NaN), "tag_k15");
+      Assert.IsTrue(AsArrayIsEmpty(double.PositiveInfinity), "tag_k16");
+      Assert.IsTrue(AsArrayIsEmpty(double.NegativeInfinity), "tag_k17");
+      Assert.IsTrue(AsArrayIsEmpty(JSValue.Null), "tag_k18");
     }
 
     [TestMethod]
@@ -373,67 +445,67 @@ namespace Microsoft.ReactNative.Managed.UnitTests
         Assert.AreEqual(asDouble, (double)value, "(double): {0}", tag);
       }
 
-      CheckAsConverter(new JSValueObject { ["prop1"] = 42 }, "", true, 0, 0, "tag_k01");
-      CheckAsConverter(JSValue.EmptyObject, "", false, 0, 0, "tag_k02");
-      CheckAsConverter(new JSValueArray { 42, 78 }, "", true, 0, 0, "tag_k03");
-      CheckAsConverter(JSValue.EmptyArray, "", false, 0, 0, "tag_k04");
-      CheckAsConverter("", "", false, 0, 0, "tag_k05");
-      CheckAsConverter("  ", "  ", false, 0, 0, "tag_k06");
-      CheckAsConverter("42", "42", false, 42, 42, "tag_k07");
-      CheckAsConverter("  42  ", "  42  ", false, 42, 42, "tag_k08");
-      CheckAsConverter("4.2", "4.2", false, 4, 4.2, "tag_k09");
-      CheckAsConverter("Hello", "Hello", false, 0, double.NaN, "tag_k10");
-      CheckAsConverter("true", "true", true, 0, double.NaN, "tag_k11");
-      CheckAsConverter("false", "false", false, 0, double.NaN, "tag_k12");
-      CheckAsConverter("True", "True", true, 0, double.NaN, "tag_k13");
-      CheckAsConverter("False", "False", false, 0, double.NaN, "tag_k14");
-      CheckAsConverter("TRUE", "TRUE", true, 0, double.NaN, "tag_k15");
-      CheckAsConverter("FALSE", "FALSE", false, 0, double.NaN, "tag_k16");
-      CheckAsConverter("on", "on", true, 0, double.NaN, "tag_k17");
-      CheckAsConverter("off", "off", false, 0, double.NaN, "tag_k18");
-      CheckAsConverter("On", "On", true, 0, double.NaN, "tag_k19");
-      CheckAsConverter("Off", "Off", false, 0, double.NaN, "tag_k20");
-      CheckAsConverter("ON", "ON", true, 0, double.NaN, "tag_k21");
-      CheckAsConverter("OFF", "OFF", false, 0, double.NaN, "tag_k22");
-      CheckAsConverter("yes", "yes", true, 0, double.NaN, "tag_k23");
-      CheckAsConverter("no", "no", false, 0, double.NaN, "tag_k24");
-      CheckAsConverter("y", "y", true, 0, double.NaN, "tag_k25");
-      CheckAsConverter("n", "n", false, 0, double.NaN, "tag_k26");
-      CheckAsConverter("Y", "Y", true, 0, double.NaN, "tag_k27");
-      CheckAsConverter("N", "N", false, 0, double.NaN, "tag_k28");
-      CheckAsConverter("1", "1", true, 1, 1, "tag_k29");
-      CheckAsConverter("0", "0", false, 0, 0, "tag_k20");
-      CheckAsConverter(true, "true", true, 1, 1, "tag_k31");
-      CheckAsConverter(false, "false", false, 0, 0, "tag_k32");
-      CheckAsConverter(0, "0", false, 0, 0, "tag_k33");
-      CheckAsConverter(42, "42", true, 42, 42, "tag_k34");
-      CheckAsConverter(long.MaxValue, "9223372036854775807", true, long.MaxValue, long.MaxValue, "tag_k35");
-      CheckAsConverter(long.MinValue, "-9223372036854775808", true, long.MinValue, long.MinValue, "tag_k36");
-      CheckAsConverter(0.0, "0", false, 0, 0, "tag_k37");
-      CheckAsConverter(4.2, "4.2", true, 4, 4.2, "tag_k38");
-      CheckAsConverter(-4.2, "-4.2", true, -4, -4.2, "tag_k39");
-      CheckAsConverter(double.MaxValue, "1.79769313486232E+308", true, 0, double.MaxValue, "tag_k40");
-      CheckAsConverter(double.MinValue, "-1.79769313486232E+308", true, 0, double.MinValue, "tag_k41");
-      CheckAsConverter(double.NaN, "NaN", true, 0, double.NaN, "tag_k42");
-      CheckAsConverter(double.PositiveInfinity, "Infinity", true, 0, double.PositiveInfinity, "tag_k43");
-      CheckAsConverter(double.NegativeInfinity, "-Infinity", true, 0, double.NegativeInfinity, "tag_k44");
-      CheckAsConverter(JSValue.Null, "null", false, 0, 0, "tag_k45");
+      CheckAsConverter(new JSValueObject { ["prop1"] = 42 }, "", true, 0, 0, "tag_l01");
+      CheckAsConverter(JSValue.EmptyObject, "", false, 0, 0, "tag_l02");
+      CheckAsConverter(new JSValueArray { 42, 78 }, "", true, 0, 0, "tag_l03");
+      CheckAsConverter(JSValue.EmptyArray, "", false, 0, 0, "tag_l04");
+      CheckAsConverter("", "", false, 0, 0, "tag_l05");
+      CheckAsConverter("  ", "  ", false, 0, 0, "tag_l06");
+      CheckAsConverter("42", "42", false, 42, 42, "tag_l07");
+      CheckAsConverter("  42  ", "  42  ", false, 42, 42, "tag_l08");
+      CheckAsConverter("4.2", "4.2", false, 4, 4.2, "tag_l09");
+      CheckAsConverter("Hello", "Hello", false, 0, double.NaN, "tag_l10");
+      CheckAsConverter("true", "true", true, 0, double.NaN, "tag_l11");
+      CheckAsConverter("false", "false", false, 0, double.NaN, "tag_l12");
+      CheckAsConverter("True", "True", true, 0, double.NaN, "tag_l13");
+      CheckAsConverter("False", "False", false, 0, double.NaN, "tag_l14");
+      CheckAsConverter("TRUE", "TRUE", true, 0, double.NaN, "tag_l15");
+      CheckAsConverter("FALSE", "FALSE", false, 0, double.NaN, "tag_l16");
+      CheckAsConverter("on", "on", true, 0, double.NaN, "tag_l17");
+      CheckAsConverter("off", "off", false, 0, double.NaN, "tag_l18");
+      CheckAsConverter("On", "On", true, 0, double.NaN, "tag_l19");
+      CheckAsConverter("Off", "Off", false, 0, double.NaN, "tag_l20");
+      CheckAsConverter("ON", "ON", true, 0, double.NaN, "tag_l21");
+      CheckAsConverter("OFF", "OFF", false, 0, double.NaN, "tag_l22");
+      CheckAsConverter("yes", "yes", true, 0, double.NaN, "tag_l23");
+      CheckAsConverter("no", "no", false, 0, double.NaN, "tag_l24");
+      CheckAsConverter("y", "y", true, 0, double.NaN, "tag_l25");
+      CheckAsConverter("n", "n", false, 0, double.NaN, "tag_l26");
+      CheckAsConverter("Y", "Y", true, 0, double.NaN, "tag_l27");
+      CheckAsConverter("N", "N", false, 0, double.NaN, "tag_l28");
+      CheckAsConverter("1", "1", true, 1, 1, "tag_l29");
+      CheckAsConverter("0", "0", false, 0, 0, "tag_l20");
+      CheckAsConverter(true, "true", true, 1, 1, "tag_l31");
+      CheckAsConverter(false, "false", false, 0, 0, "tag_l32");
+      CheckAsConverter(0, "0", false, 0, 0, "tag_l33");
+      CheckAsConverter(42, "42", true, 42, 42, "tag_l34");
+      CheckAsConverter(long.MaxValue, "9223372036854775807", true, long.MaxValue, long.MaxValue, "tag_l35");
+      CheckAsConverter(long.MinValue, "-9223372036854775808", true, long.MinValue, long.MinValue, "tag_l36");
+      CheckAsConverter(0.0, "0", false, 0, 0, "tag_l37");
+      CheckAsConverter(4.2, "4.2", true, 4, 4.2, "tag_l38");
+      CheckAsConverter(-4.2, "-4.2", true, -4, -4.2, "tag_l39");
+      CheckAsConverter(double.MaxValue, "1.79769313486232E+308", true, 0, double.MaxValue, "tag_l40");
+      CheckAsConverter(double.MinValue, "-1.79769313486232E+308", true, 0, double.MinValue, "tag_l41");
+      CheckAsConverter(double.NaN, "NaN", false, 0, double.NaN, "tag_l42");
+      CheckAsConverter(double.PositiveInfinity, "Infinity", true, 0, double.PositiveInfinity, "tag_l43");
+      CheckAsConverter(double.NegativeInfinity, "-Infinity", true, 0, double.NegativeInfinity, "tag_l44");
+      CheckAsConverter(JSValue.Null, "null", false, 0, 0, "tag_l45");
     }
 
     [TestMethod]
     public void TestExplicitNumberConversion()
     {
       // Check that explicit number conversions are defined
-      Assert.AreEqual(42, (sbyte)new JSValue(42), "tag_l01");
-      Assert.AreEqual(42, (short)new JSValue(42), "tag_l02");
-      Assert.AreEqual(42, (int)new JSValue(42), "tag_l03");
-      Assert.AreEqual(42, (long)new JSValue(42), "tag_l04");
-      Assert.AreEqual(42, (byte)new JSValue(42), "tag_l05");
-      Assert.AreEqual(42, (ushort)new JSValue(42), "tag_l06");
-      Assert.AreEqual(42u, (uint)new JSValue(42), "tag_l07");
-      Assert.AreEqual(42u, (ulong)new JSValue(42), "tag_l08");
-      Assert.AreEqual((float)4.2, (float)new JSValue(4.2), "tag_l09");
-      Assert.AreEqual(4.2, (double)new JSValue(4.2), "tag_l10");
+      Assert.AreEqual(42, (sbyte)new JSValue(42), "tag_m01");
+      Assert.AreEqual(42, (short)new JSValue(42), "tag_m02");
+      Assert.AreEqual(42, (int)new JSValue(42), "tag_m03");
+      Assert.AreEqual(42, (long)new JSValue(42), "tag_m04");
+      Assert.AreEqual(42, (byte)new JSValue(42), "tag_m05");
+      Assert.AreEqual(42, (ushort)new JSValue(42), "tag_m06");
+      Assert.AreEqual(42u, (uint)new JSValue(42), "tag_m07");
+      Assert.AreEqual(42u, (ulong)new JSValue(42), "tag_m08");
+      Assert.AreEqual((float)4.2, (float)new JSValue(4.2), "tag_m09");
+      Assert.AreEqual(4.2, (double)new JSValue(4.2), "tag_m10");
     }
 
     [TestMethod]
@@ -448,475 +520,475 @@ namespace Microsoft.ReactNative.Managed.UnitTests
         Assert.AreEqual(asJSNumber, value.AsJSNumber(), "AsJSNumber: {0}", tag);
       }
 
-      CheckAsJSConverter(false, "false", false, 0, "tag_m01");
-      CheckAsJSConverter(true, "true", true, 1, "tag_m02");
-      CheckAsJSConverter(0, "0", false, 0, "tag_m03");
-      CheckAsJSConverter(1, "1", true, 1, "tag_m04");
-      CheckAsJSConverter("0", "0", true, 0, "tag_m05");
-      CheckAsJSConverter("000", "000", true, 0, "tag_m06");
-      CheckAsJSConverter("1", "1", true, 1, "tag_m07");
-      CheckAsJSConverter(double.NaN, "NaN", false, double.NaN, "tag_m08");
-      CheckAsJSConverter(double.PositiveInfinity, "Infinity", true, double.PositiveInfinity, "tag_m09");
-      CheckAsJSConverter(double.NegativeInfinity, "-Infinity", true, double.NegativeInfinity, "tag_m10");
-      CheckAsJSConverter("", "", false, 0, "tag_m11");
-      CheckAsJSConverter("20", "20", true, 20, "tag_m12");
-      CheckAsJSConverter("twenty", "twenty", true, double.NaN, "tag_m13");
-      CheckAsJSConverter(new JSValueArray { }, "", true, 0, "tag_m14");
-      CheckAsJSConverter(new JSValueArray { 20 }, "20", true, 20, "tag_m15");
-      CheckAsJSConverter(new JSValueArray { 10, 20 }, "10,20", true, double.NaN, "tag_m16");
-      CheckAsJSConverter(new JSValueArray { "twenty" }, "twenty", true, double.NaN, "tag_m17");
-      CheckAsJSConverter(new JSValueArray { "ten", "twenty" }, "ten,twenty", true, double.NaN, "tag_m18");
-      CheckAsJSConverter(new JSValueArray { double.NaN }, "NaN", true, double.NaN, "tag_m19");
-      CheckAsJSConverter(new JSValueObject { }, "[object Object]", true, double.NaN, "tag_m20");
-      CheckAsJSConverter(JSValue.Null, "null", false, 0, "tag_m21");
+      CheckAsJSConverter(false, "false", false, 0, "tag_n01");
+      CheckAsJSConverter(true, "true", true, 1, "tag_n02");
+      CheckAsJSConverter(0, "0", false, 0, "tag_n03");
+      CheckAsJSConverter(1, "1", true, 1, "tag_n04");
+      CheckAsJSConverter("0", "0", true, 0, "tag_n05");
+      CheckAsJSConverter("000", "000", true, 0, "tag_n06");
+      CheckAsJSConverter("1", "1", true, 1, "tag_n07");
+      CheckAsJSConverter(double.NaN, "NaN", false, double.NaN, "tag_n08");
+      CheckAsJSConverter(double.PositiveInfinity, "Infinity", true, double.PositiveInfinity, "tag_n09");
+      CheckAsJSConverter(double.NegativeInfinity, "-Infinity", true, double.NegativeInfinity, "tag_n10");
+      CheckAsJSConverter("", "", false, 0, "tag_n11");
+      CheckAsJSConverter("20", "20", true, 20, "tag_n12");
+      CheckAsJSConverter("twenty", "twenty", true, double.NaN, "tag_n13");
+      CheckAsJSConverter(new JSValueArray { }, "", true, 0, "tag_n14");
+      CheckAsJSConverter(new JSValueArray { 20 }, "20", true, 20, "tag_n15");
+      CheckAsJSConverter(new JSValueArray { 10, 20 }, "10,20", true, double.NaN, "tag_n16");
+      CheckAsJSConverter(new JSValueArray { "twenty" }, "twenty", true, double.NaN, "tag_n17");
+      CheckAsJSConverter(new JSValueArray { "ten", "twenty" }, "ten,twenty", true, double.NaN, "tag_n18");
+      CheckAsJSConverter(new JSValueArray { double.NaN }, "NaN", true, double.NaN, "tag_n19");
+      CheckAsJSConverter(new JSValueObject { }, "[object Object]", true, double.NaN, "tag_n20");
+      CheckAsJSConverter(JSValue.Null, "null", false, 0, "tag_n21");
     }
 
     [TestMethod]
     public void TestJSEquals()
     {
-      Assert.IsTrue(new JSValue().JSEquals(JSValue.Null), "tag_n1001");
-      Assert.IsFalse(new JSValue().JSEquals(new JSValueObject { }), "tag_n1002");
-      Assert.IsFalse(new JSValue().JSEquals(new JSValueArray { }), "tag_n1003");
-      Assert.IsFalse(new JSValue().JSEquals(""), "tag_n1004");
-      Assert.IsFalse(new JSValue().JSEquals(false), "tag_n1005");
-      Assert.IsFalse(new JSValue().JSEquals(0), "tag_n1006");
-      Assert.IsFalse(new JSValue().JSEquals(0.0), "tag_n1007");
+      Assert.IsTrue(new JSValue().JSEquals(JSValue.Null), "tag_o1001");
+      Assert.IsFalse(new JSValue().JSEquals(new JSValueObject { }), "tag_o1002");
+      Assert.IsFalse(new JSValue().JSEquals(new JSValueArray { }), "tag_o1003");
+      Assert.IsFalse(new JSValue().JSEquals(""), "tag_o1004");
+      Assert.IsFalse(new JSValue().JSEquals(false), "tag_o1005");
+      Assert.IsFalse(new JSValue().JSEquals(0), "tag_o1006");
+      Assert.IsFalse(new JSValue().JSEquals(0.0), "tag_o1007");
 
-      Assert.IsFalse(new JSValue(new JSValueObject()).JSEquals(JSValue.Null), "tag_n2001");
-      Assert.IsTrue(new JSValue(new JSValueObject { }).JSEquals(new JSValueObject { }), "tag_n2002");
-      Assert.IsFalse(new JSValue(new JSValueObject { }).JSEquals(new JSValueArray { }), "tag_n2003");
-      Assert.IsFalse(new JSValue(new JSValueObject { }).JSEquals(new JSValueArray { "Hello" }), "tag_n2004");
-      Assert.IsFalse(new JSValue(new JSValueObject { }).JSEquals(new JSValueArray { 0 }), "tag_n2005");
-      Assert.IsFalse(new JSValue(new JSValueObject { }).JSEquals(new JSValueArray { "0" }), "tag_n2006");
-      Assert.IsFalse(new JSValue(new JSValueObject { }).JSEquals(new JSValueArray { 1 }), "tag_n2007");
-      Assert.IsFalse(new JSValue(new JSValueObject { }).JSEquals(new JSValueArray { "1" }), "tag_n2008");
-      Assert.IsFalse(new JSValue(new JSValueObject { }).JSEquals(new JSValueArray { true }), "tag_n2009");
-      Assert.IsFalse(new JSValue(new JSValueObject { }).JSEquals(new JSValueArray { "true" }), "tag_n2010");
-      Assert.IsFalse(new JSValue(new JSValueObject { }).JSEquals(""), "tag_n2011");
-      Assert.IsFalse(new JSValue(new JSValueObject { }).JSEquals("0"), "tag_n2012");
-      Assert.IsFalse(new JSValue(new JSValueObject { }).JSEquals("1"), "tag_n2013");
-      Assert.IsFalse(new JSValue(new JSValueObject { }).JSEquals("true"), "tag_n2014");
-      Assert.IsFalse(new JSValue(new JSValueObject { }).JSEquals("false"), "tag_n2015");
-      Assert.IsFalse(new JSValue(new JSValueObject { }).JSEquals("Hello"), "tag_n2016");
-      Assert.IsTrue(new JSValue(new JSValueObject { }).JSEquals("[object Object]"), "tag_n2017");
-      Assert.IsFalse(new JSValue(new JSValueObject { }).JSEquals(false), "tag_n2018");
-      Assert.IsFalse(new JSValue(new JSValueObject { }).JSEquals(true), "tag_n2019");
-      Assert.IsFalse(new JSValue(new JSValueObject { }).JSEquals(0), "tag_n2020");
-      Assert.IsFalse(new JSValue(new JSValueObject { }).JSEquals(5), "tag_n2021");
-      Assert.IsFalse(new JSValue(new JSValueObject { }).JSEquals(1), "tag_n2022");
-      Assert.IsFalse(new JSValue(new JSValueObject { }).JSEquals(0.0), "tag_n2023");
-      Assert.IsFalse(new JSValue(new JSValueObject { }).JSEquals(0.5), "tag_n2024");
-      Assert.IsFalse(new JSValue(new JSValueObject { }).JSEquals(1.0), "tag_n2025");
+      Assert.IsFalse(new JSValue(new JSValueObject()).JSEquals(JSValue.Null), "tag_o2001");
+      Assert.IsTrue(new JSValue(new JSValueObject { }).JSEquals(new JSValueObject { }), "tag_o2002");
+      Assert.IsFalse(new JSValue(new JSValueObject { }).JSEquals(new JSValueArray { }), "tag_o2003");
+      Assert.IsFalse(new JSValue(new JSValueObject { }).JSEquals(new JSValueArray { "Hello" }), "tag_o2004");
+      Assert.IsFalse(new JSValue(new JSValueObject { }).JSEquals(new JSValueArray { 0 }), "tag_o2005");
+      Assert.IsFalse(new JSValue(new JSValueObject { }).JSEquals(new JSValueArray { "0" }), "tag_o2006");
+      Assert.IsFalse(new JSValue(new JSValueObject { }).JSEquals(new JSValueArray { 1 }), "tag_o2007");
+      Assert.IsFalse(new JSValue(new JSValueObject { }).JSEquals(new JSValueArray { "1" }), "tag_o2008");
+      Assert.IsFalse(new JSValue(new JSValueObject { }).JSEquals(new JSValueArray { true }), "tag_o2009");
+      Assert.IsFalse(new JSValue(new JSValueObject { }).JSEquals(new JSValueArray { "true" }), "tag_o2010");
+      Assert.IsFalse(new JSValue(new JSValueObject { }).JSEquals(""), "tag_o2011");
+      Assert.IsFalse(new JSValue(new JSValueObject { }).JSEquals("0"), "tag_o2012");
+      Assert.IsFalse(new JSValue(new JSValueObject { }).JSEquals("1"), "tag_o2013");
+      Assert.IsFalse(new JSValue(new JSValueObject { }).JSEquals("true"), "tag_o2014");
+      Assert.IsFalse(new JSValue(new JSValueObject { }).JSEquals("false"), "tag_o2015");
+      Assert.IsFalse(new JSValue(new JSValueObject { }).JSEquals("Hello"), "tag_o2016");
+      Assert.IsTrue(new JSValue(new JSValueObject { }).JSEquals("[object Object]"), "tag_o2017");
+      Assert.IsFalse(new JSValue(new JSValueObject { }).JSEquals(false), "tag_o2018");
+      Assert.IsFalse(new JSValue(new JSValueObject { }).JSEquals(true), "tag_o2019");
+      Assert.IsFalse(new JSValue(new JSValueObject { }).JSEquals(0), "tag_o2020");
+      Assert.IsFalse(new JSValue(new JSValueObject { }).JSEquals(5), "tag_o2021");
+      Assert.IsFalse(new JSValue(new JSValueObject { }).JSEquals(1), "tag_o2022");
+      Assert.IsFalse(new JSValue(new JSValueObject { }).JSEquals(0.0), "tag_o2023");
+      Assert.IsFalse(new JSValue(new JSValueObject { }).JSEquals(0.5), "tag_o2024");
+      Assert.IsFalse(new JSValue(new JSValueObject { }).JSEquals(1.0), "tag_o2025");
 
       Assert.IsTrue(new JSValue(new JSValueObject { { "prop1", 2 }, { "prop2", false } })
-                      .JSEquals(new JSValueObject { { "prop2", 0 }, { "prop1", "2" } }), "tag_n3001");
-      Assert.IsTrue(new JSValue(new JSValueObject { { "prop1", 2 }, { "prop2", false } })
-                      .JSEquals(new JSValueObject { { "prop2", 0 } }), "tag_n3002");
-      Assert.IsTrue(new JSValue(new JSValueObject { { "prop1", 2 }, { "prop2", false } })
-                      .JSEquals(new JSValueObject { { "prop1", 2 }, { "prop25", false } }), "tag_n3003");
-      Assert.IsTrue(new JSValue(new JSValueObject { { "prop1", 2 }, { "prop2", false } })
-                      .JSEquals(new JSValueObject { { "prop1", 2 }, { "prop2", true } }), "tag_n3004");
+                      .JSEquals(new JSValueObject { { "prop2", 0 }, { "prop1", "2" } }), "tag_o3001");
+      Assert.IsFalse(new JSValue(new JSValueObject { { "prop1", 2 }, { "prop2", false } })
+                       .JSEquals(new JSValueObject { { "prop2", 0 } }), "tag_o3002");
+      Assert.IsFalse(new JSValue(new JSValueObject { { "prop1", 2 }, { "prop2", false } })
+                       .JSEquals(new JSValueObject { { "prop1", 2 }, { "prop25", false } }), "tag_o3003");
+      Assert.IsFalse(new JSValue(new JSValueObject { { "prop1", 2 }, { "prop2", false } })
+                       .JSEquals(new JSValueObject { { "prop1", 2 }, { "prop2", true } }), "tag_o3004");
 
-      Assert.IsFalse(new JSValue(new JSValueArray { }).JSEquals(JSValue.Null), "tag_n4001");
-      Assert.IsFalse(new JSValue(new JSValueArray { }).JSEquals(new JSValueObject { }), "tag_n4002");
-      Assert.IsTrue(new JSValue(new JSValueArray { }).JSEquals(new JSValueArray { }), "tag_n4003");
-      Assert.IsFalse(new JSValue(new JSValueArray { }).JSEquals(new JSValueArray { "Hello" }), "tag_n4004");
-      Assert.IsFalse(new JSValue(new JSValueArray { }).JSEquals(new JSValueArray { 0 }), "tag_n4005");
-      Assert.IsFalse(new JSValue(new JSValueArray { }).JSEquals(new JSValueArray { "0" }), "tag_n4006");
-      Assert.IsFalse(new JSValue(new JSValueArray { }).JSEquals(new JSValueArray { 1 }), "tag_n4007");
-      Assert.IsFalse(new JSValue(new JSValueArray { }).JSEquals(new JSValueArray { "1" }), "tag_n4008");
-      Assert.IsFalse(new JSValue(new JSValueArray { }).JSEquals(new JSValueArray { true }), "tag_n4009");
-      Assert.IsFalse(new JSValue(new JSValueArray { }).JSEquals(new JSValueArray { "true" }), "tag_n4010");
-      Assert.IsTrue(new JSValue(new JSValueArray { }).JSEquals(""), "tag_n4011");
-      Assert.IsFalse(new JSValue(new JSValueArray { }).JSEquals("0"), "tag_n4012");
-      Assert.IsFalse(new JSValue(new JSValueArray { }).JSEquals("1"), "tag_n4013");
-      Assert.IsFalse(new JSValue(new JSValueArray { }).JSEquals("true"), "tag_n4014");
-      Assert.IsFalse(new JSValue(new JSValueArray { }).JSEquals("false"), "tag_n4015");
-      Assert.IsFalse(new JSValue(new JSValueArray { }).JSEquals("Hello"), "tag_n4016");
-      Assert.IsTrue(new JSValue(new JSValueArray { }).JSEquals(false), "tag_n4017");
-      Assert.IsFalse(new JSValue(new JSValueArray { }).JSEquals(true), "tag_n4018");
-      Assert.IsTrue(new JSValue(new JSValueArray { }).JSEquals(0), "tag_n4019");
-      Assert.IsFalse(new JSValue(new JSValueArray { }).JSEquals(5), "tag_n4020");
-      Assert.IsFalse(new JSValue(new JSValueArray { }).JSEquals(1), "tag_n4021");
-      Assert.IsTrue(new JSValue(new JSValueArray { }).JSEquals(0.0), "tag_n4022");
-      Assert.IsFalse(new JSValue(new JSValueArray { }).JSEquals(0.5), "tag_n4023");
-      Assert.IsFalse(new JSValue(new JSValueArray { }).JSEquals(1.0), "tag_n4024");
+      Assert.IsFalse(new JSValue(new JSValueArray { }).JSEquals(JSValue.Null), "tag_o4001");
+      Assert.IsFalse(new JSValue(new JSValueArray { }).JSEquals(new JSValueObject { }), "tag_o4002");
+      Assert.IsTrue(new JSValue(new JSValueArray { }).JSEquals(new JSValueArray { }), "tag_o4003");
+      Assert.IsFalse(new JSValue(new JSValueArray { }).JSEquals(new JSValueArray { "Hello" }), "tag_o4004");
+      Assert.IsFalse(new JSValue(new JSValueArray { }).JSEquals(new JSValueArray { 0 }), "tag_o4005");
+      Assert.IsFalse(new JSValue(new JSValueArray { }).JSEquals(new JSValueArray { "0" }), "tag_o4006");
+      Assert.IsFalse(new JSValue(new JSValueArray { }).JSEquals(new JSValueArray { 1 }), "tag_o4007");
+      Assert.IsFalse(new JSValue(new JSValueArray { }).JSEquals(new JSValueArray { "1" }), "tag_o4008");
+      Assert.IsFalse(new JSValue(new JSValueArray { }).JSEquals(new JSValueArray { true }), "tag_o4009");
+      Assert.IsFalse(new JSValue(new JSValueArray { }).JSEquals(new JSValueArray { "true" }), "tag_o4010");
+      Assert.IsTrue(new JSValue(new JSValueArray { }).JSEquals(""), "tag_o4011");
+      Assert.IsFalse(new JSValue(new JSValueArray { }).JSEquals("0"), "tag_o4012");
+      Assert.IsFalse(new JSValue(new JSValueArray { }).JSEquals("1"), "tag_o4013");
+      Assert.IsFalse(new JSValue(new JSValueArray { }).JSEquals("true"), "tag_o4014");
+      Assert.IsFalse(new JSValue(new JSValueArray { }).JSEquals("false"), "tag_o4015");
+      Assert.IsFalse(new JSValue(new JSValueArray { }).JSEquals("Hello"), "tag_o4016");
+      Assert.IsTrue(new JSValue(new JSValueArray { }).JSEquals(false), "tag_o4017");
+      Assert.IsFalse(new JSValue(new JSValueArray { }).JSEquals(true), "tag_o4018");
+      Assert.IsTrue(new JSValue(new JSValueArray { }).JSEquals(0), "tag_o4019");
+      Assert.IsFalse(new JSValue(new JSValueArray { }).JSEquals(5), "tag_o4020");
+      Assert.IsFalse(new JSValue(new JSValueArray { }).JSEquals(1), "tag_o4021");
+      Assert.IsTrue(new JSValue(new JSValueArray { }).JSEquals(0.0), "tag_o4022");
+      Assert.IsFalse(new JSValue(new JSValueArray { }).JSEquals(0.5), "tag_o4023");
+      Assert.IsFalse(new JSValue(new JSValueArray { }).JSEquals(1.0), "tag_o4024");
 
-      Assert.IsFalse(new JSValue(new JSValueArray { 1 }).JSEquals(JSValue.Null), "tag_n5001");
-      Assert.IsFalse(new JSValue(new JSValueArray { 1 }).JSEquals(new JSValueObject { }), "tag_n5002");
-      Assert.IsFalse(new JSValue(new JSValueArray { 1 }).JSEquals(new JSValueArray { }), "tag_n5003");
-      Assert.IsFalse(new JSValue(new JSValueArray { 1 }).JSEquals(new JSValueArray { "Hello" }), "tag_n5004");
-      Assert.IsFalse(new JSValue(new JSValueArray { 1 }).JSEquals(new JSValueArray { 0 }), "tag_n5005");
-      Assert.IsFalse(new JSValue(new JSValueArray { 1 }).JSEquals(new JSValueArray { "0" }), "tag_n5006");
-      Assert.IsTrue(new JSValue(new JSValueArray { 1 }).JSEquals(new JSValueArray { 1 }), "tag_n5007");
-      Assert.IsTrue(new JSValue(new JSValueArray { 1 }).JSEquals(new JSValueArray { "1" }), "tag_n5008");
-      Assert.IsFalse(new JSValue(new JSValueArray { 1 }).JSEquals(new JSValueArray { true }), "tag_n5009");
-      Assert.IsFalse(new JSValue(new JSValueArray { 1 }).JSEquals(new JSValueArray { "true" }), "tag_n5010");
-      Assert.IsFalse(new JSValue(new JSValueArray { 1 }).JSEquals(""), "tag_n5011");
-      Assert.IsFalse(new JSValue(new JSValueArray { 1 }).JSEquals("0"), "tag_n5012");
-      Assert.IsTrue(new JSValue(new JSValueArray { 1 }).JSEquals("1"), "tag_n5013");
-      Assert.IsFalse(new JSValue(new JSValueArray { 1 }).JSEquals("true"), "tag_n5014");
-      Assert.IsFalse(new JSValue(new JSValueArray { 1 }).JSEquals("false"), "tag_n5015");
-      Assert.IsFalse(new JSValue(new JSValueArray { 1 }).JSEquals("Hello"), "tag_n5016");
-      Assert.IsFalse(new JSValue(new JSValueArray { 1 }).JSEquals(false), "tag_n5017");
-      Assert.IsTrue(new JSValue(new JSValueArray { 1 }).JSEquals(true), "tag_n5018");
-      Assert.IsFalse(new JSValue(new JSValueArray { 1 }).JSEquals(0), "tag_n5019");
-      Assert.IsFalse(new JSValue(new JSValueArray { 1 }).JSEquals(5), "tag_n5020");
-      Assert.IsTrue(new JSValue(new JSValueArray { 1 }).JSEquals(1), "tag_n5021");
-      Assert.IsFalse(new JSValue(new JSValueArray { 1 }).JSEquals(0.0), "tag_n5022");
-      Assert.IsFalse(new JSValue(new JSValueArray { 1 }).JSEquals(0.5), "tag_n5023");
-      Assert.IsTrue(new JSValue(new JSValueArray { 1 }).JSEquals(1.0), "tag_n5024");
+      Assert.IsFalse(new JSValue(new JSValueArray { 1 }).JSEquals(JSValue.Null), "tag_o5001");
+      Assert.IsFalse(new JSValue(new JSValueArray { 1 }).JSEquals(new JSValueObject { }), "tag_o5002");
+      Assert.IsFalse(new JSValue(new JSValueArray { 1 }).JSEquals(new JSValueArray { }), "tag_o5003");
+      Assert.IsFalse(new JSValue(new JSValueArray { 1 }).JSEquals(new JSValueArray { "Hello" }), "tag_o5004");
+      Assert.IsFalse(new JSValue(new JSValueArray { 1 }).JSEquals(new JSValueArray { 0 }), "tag_o5005");
+      Assert.IsFalse(new JSValue(new JSValueArray { 1 }).JSEquals(new JSValueArray { "0" }), "tag_o5006");
+      Assert.IsTrue(new JSValue(new JSValueArray { 1 }).JSEquals(new JSValueArray { 1 }), "tag_o5007");
+      Assert.IsTrue(new JSValue(new JSValueArray { 1 }).JSEquals(new JSValueArray { "1" }), "tag_o5008");
+      Assert.IsTrue(new JSValue(new JSValueArray { 1 }).JSEquals(new JSValueArray { true }), "tag_o5009");
+      Assert.IsFalse(new JSValue(new JSValueArray { 1 }).JSEquals(new JSValueArray { "true" }), "tag_o5010");
+      Assert.IsFalse(new JSValue(new JSValueArray { 1 }).JSEquals(""), "tag_o5011");
+      Assert.IsFalse(new JSValue(new JSValueArray { 1 }).JSEquals("0"), "tag_o5012");
+      Assert.IsTrue(new JSValue(new JSValueArray { 1 }).JSEquals("1"), "tag_o5013");
+      Assert.IsFalse(new JSValue(new JSValueArray { 1 }).JSEquals("true"), "tag_o5014");
+      Assert.IsFalse(new JSValue(new JSValueArray { 1 }).JSEquals("false"), "tag_o5015");
+      Assert.IsFalse(new JSValue(new JSValueArray { 1 }).JSEquals("Hello"), "tag_o5016");
+      Assert.IsFalse(new JSValue(new JSValueArray { 1 }).JSEquals(false), "tag_o5017");
+      Assert.IsTrue(new JSValue(new JSValueArray { 1 }).JSEquals(true), "tag_o5018");
+      Assert.IsFalse(new JSValue(new JSValueArray { 1 }).JSEquals(0), "tag_o5019");
+      Assert.IsFalse(new JSValue(new JSValueArray { 1 }).JSEquals(5), "tag_o5020");
+      Assert.IsTrue(new JSValue(new JSValueArray { 1 }).JSEquals(1), "tag_o5021");
+      Assert.IsFalse(new JSValue(new JSValueArray { 1 }).JSEquals(0.0), "tag_o5022");
+      Assert.IsFalse(new JSValue(new JSValueArray { 1 }).JSEquals(0.5), "tag_o5023");
+      Assert.IsTrue(new JSValue(new JSValueArray { 1 }).JSEquals(1.0), "tag_o5024");
 
-      Assert.IsFalse(new JSValue(new JSValueArray { "Hello" }).JSEquals(JSValue.Null), "tag_n6001");
-      Assert.IsFalse(new JSValue(new JSValueArray { "Hello" }).JSEquals(new JSValueObject { }), "tag_n6002");
-      Assert.IsFalse(new JSValue(new JSValueArray { "Hello" }).JSEquals(new JSValueArray { }), "tag_n6003");
-      Assert.IsTrue(new JSValue(new JSValueArray { "Hello" }).JSEquals(new JSValueArray { "Hello" }), "tag_n6004");
-      Assert.IsFalse(new JSValue(new JSValueArray { "Hello" }).JSEquals(new JSValueArray { 0 }), "tag_n6005");
-      Assert.IsFalse(new JSValue(new JSValueArray { "Hello" }).JSEquals(new JSValueArray { "0" }), "tag_n6006");
-      Assert.IsFalse(new JSValue(new JSValueArray { "Hello" }).JSEquals(new JSValueArray { 1 }), "tag_n6007");
-      Assert.IsFalse(new JSValue(new JSValueArray { "Hello" }).JSEquals(new JSValueArray { "1" }), "tag_n6008");
-      Assert.IsFalse(new JSValue(new JSValueArray { "Hello" }).JSEquals(new JSValueArray { true }), "tag_n6009");
-      Assert.IsFalse(new JSValue(new JSValueArray { "Hello" }).JSEquals(new JSValueArray { "true" }), "tag_n6010");
-      Assert.IsFalse(new JSValue(new JSValueArray { "Hello" }).JSEquals(""), "tag_n6011");
-      Assert.IsFalse(new JSValue(new JSValueArray { "Hello" }).JSEquals("0"), "tag_n6012");
-      Assert.IsFalse(new JSValue(new JSValueArray { "Hello" }).JSEquals("1"), "tag_n6013");
-      Assert.IsFalse(new JSValue(new JSValueArray { "Hello" }).JSEquals("true"), "tag_n6014");
-      Assert.IsFalse(new JSValue(new JSValueArray { "Hello" }).JSEquals("false"), "tag_n6015");
-      Assert.IsTrue(new JSValue(new JSValueArray { "Hello" }).JSEquals("Hello"), "tag_n6016");
-      Assert.IsFalse(new JSValue(new JSValueArray { "Hello" }).JSEquals(false), "tag_n6017");
-      Assert.IsFalse(new JSValue(new JSValueArray { "Hello" }).JSEquals(true), "tag_n6018");
-      Assert.IsFalse(new JSValue(new JSValueArray { "Hello" }).JSEquals(0), "tag_n6019");
-      Assert.IsFalse(new JSValue(new JSValueArray { "Hello" }).JSEquals(5), "tag_n6020");
-      Assert.IsFalse(new JSValue(new JSValueArray { "Hello" }).JSEquals(1), "tag_n6021");
-      Assert.IsFalse(new JSValue(new JSValueArray { "Hello" }).JSEquals(0.0), "tag_n6022");
-      Assert.IsFalse(new JSValue(new JSValueArray { "Hello" }).JSEquals(0.5), "tag_n6023");
-      Assert.IsFalse(new JSValue(new JSValueArray { "Hello" }).JSEquals(1.0), "tag_n6024");
+      Assert.IsFalse(new JSValue(new JSValueArray { "Hello" }).JSEquals(JSValue.Null), "tag_o6001");
+      Assert.IsFalse(new JSValue(new JSValueArray { "Hello" }).JSEquals(new JSValueObject { }), "tag_o6002");
+      Assert.IsFalse(new JSValue(new JSValueArray { "Hello" }).JSEquals(new JSValueArray { }), "tag_o6003");
+      Assert.IsTrue(new JSValue(new JSValueArray { "Hello" }).JSEquals(new JSValueArray { "Hello" }), "tag_o6004");
+      Assert.IsFalse(new JSValue(new JSValueArray { "Hello" }).JSEquals(new JSValueArray { 0 }), "tag_o6005");
+      Assert.IsFalse(new JSValue(new JSValueArray { "Hello" }).JSEquals(new JSValueArray { "0" }), "tag_o6006");
+      Assert.IsFalse(new JSValue(new JSValueArray { "Hello" }).JSEquals(new JSValueArray { 1 }), "tag_o6007");
+      Assert.IsFalse(new JSValue(new JSValueArray { "Hello" }).JSEquals(new JSValueArray { "1" }), "tag_o6008");
+      Assert.IsFalse(new JSValue(new JSValueArray { "Hello" }).JSEquals(new JSValueArray { true }), "tag_o6009");
+      Assert.IsFalse(new JSValue(new JSValueArray { "Hello" }).JSEquals(new JSValueArray { "true" }), "tag_o6010");
+      Assert.IsFalse(new JSValue(new JSValueArray { "Hello" }).JSEquals(""), "tag_o6011");
+      Assert.IsFalse(new JSValue(new JSValueArray { "Hello" }).JSEquals("0"), "tag_o6012");
+      Assert.IsFalse(new JSValue(new JSValueArray { "Hello" }).JSEquals("1"), "tag_o6013");
+      Assert.IsFalse(new JSValue(new JSValueArray { "Hello" }).JSEquals("true"), "tag_o6014");
+      Assert.IsFalse(new JSValue(new JSValueArray { "Hello" }).JSEquals("false"), "tag_o6015");
+      Assert.IsTrue(new JSValue(new JSValueArray { "Hello" }).JSEquals("Hello"), "tag_o6016");
+      Assert.IsFalse(new JSValue(new JSValueArray { "Hello" }).JSEquals(false), "tag_o6017");
+      Assert.IsFalse(new JSValue(new JSValueArray { "Hello" }).JSEquals(true), "tag_o6018");
+      Assert.IsFalse(new JSValue(new JSValueArray { "Hello" }).JSEquals(0), "tag_o6019");
+      Assert.IsFalse(new JSValue(new JSValueArray { "Hello" }).JSEquals(5), "tag_o6020");
+      Assert.IsFalse(new JSValue(new JSValueArray { "Hello" }).JSEquals(1), "tag_o6021");
+      Assert.IsFalse(new JSValue(new JSValueArray { "Hello" }).JSEquals(0.0), "tag_o6022");
+      Assert.IsFalse(new JSValue(new JSValueArray { "Hello" }).JSEquals(0.5), "tag_o6023");
+      Assert.IsFalse(new JSValue(new JSValueArray { "Hello" }).JSEquals(1.0), "tag_o6024");
 
-      Assert.IsFalse(new JSValue(new JSValueArray { 0, 1 }).JSEquals(JSValue.Null), "tag_n7001");
-      Assert.IsFalse(new JSValue(new JSValueArray { 0, 1 }).JSEquals(new JSValueObject { }), "tag_n7002");
-      Assert.IsFalse(new JSValue(new JSValueArray { 0, 1 }).JSEquals(new JSValueArray { }), "tag_n7003");
-      Assert.IsFalse(new JSValue(new JSValueArray { 0, 1 }).JSEquals(new JSValueArray { "Hello" }), "tag_n7004");
-      Assert.IsFalse(new JSValue(new JSValueArray { 0, 1 }).JSEquals(new JSValueArray { 0 }), "tag_n7005");
-      Assert.IsFalse(new JSValue(new JSValueArray { 0, 1 }).JSEquals(new JSValueArray { "0" }), "tag_n7006");
-      Assert.IsFalse(new JSValue(new JSValueArray { 0, 1 }).JSEquals(new JSValueArray { 1 }), "tag_n7007");
-      Assert.IsFalse(new JSValue(new JSValueArray { 0, 1 }).JSEquals(new JSValueArray { "1" }), "tag_n7008");
-      Assert.IsFalse(new JSValue(new JSValueArray { 0, 1 }).JSEquals(new JSValueArray { true }), "tag_n7009");
-      Assert.IsFalse(new JSValue(new JSValueArray { 0, 1 }).JSEquals(new JSValueArray { "true" }), "tag_n7010");
-      Assert.IsTrue(new JSValue(new JSValueArray { 0, 1 }).JSEquals(new JSValueArray { 0, 1 }), "tag_n7011");
-      Assert.IsFalse(new JSValue(new JSValueArray { 0, 1 }).JSEquals(new JSValueArray { false, true }), "tag_n7012");
-      Assert.IsTrue(new JSValue(new JSValueArray { 0, 1 }).JSEquals(new JSValueArray { "0", "1" }), "tag_n7013");
-      Assert.IsFalse(new JSValue(new JSValueArray { 0, 1 }).JSEquals(new JSValueArray { "0", true }), "tag_n7014");
-      Assert.IsFalse(new JSValue(new JSValueArray { 0, 1 }).JSEquals(""), "tag_n7015");
-      Assert.IsFalse(new JSValue(new JSValueArray { 0, 1 }).JSEquals("0"), "tag_n7016");
-      Assert.IsFalse(new JSValue(new JSValueArray { 0, 1 }).JSEquals("1"), "tag_n7017");
-      Assert.IsTrue(new JSValue(new JSValueArray { 0, 1 }).JSEquals("0,1"), "tag_n7018");
-      Assert.IsFalse(new JSValue(new JSValueArray { 0, 1 }).JSEquals("true"), "tag_n7019");
-      Assert.IsFalse(new JSValue(new JSValueArray { 0, 1 }).JSEquals("false"), "tag_n7020");
-      Assert.IsFalse(new JSValue(new JSValueArray { 0, 1 }).JSEquals("Hello"), "tag_n7021");
-      Assert.IsFalse(new JSValue(new JSValueArray { 0, 1 }).JSEquals(false), "tag_n7022");
-      Assert.IsFalse(new JSValue(new JSValueArray { 0, 1 }).JSEquals(true), "tag_n7023");
-      Assert.IsFalse(new JSValue(new JSValueArray { 0, 1 }).JSEquals(0), "tag_n7024");
-      Assert.IsFalse(new JSValue(new JSValueArray { 0, 1 }).JSEquals(5), "tag_n7025");
-      Assert.IsFalse(new JSValue(new JSValueArray { 0, 1 }).JSEquals(1), "tag_n7026");
-      Assert.IsFalse(new JSValue(new JSValueArray { 0, 1 }).JSEquals(0.0), "tag_n7027");
-      Assert.IsFalse(new JSValue(new JSValueArray { 0, 1 }).JSEquals(0.5), "tag_n7028");
-      Assert.IsFalse(new JSValue(new JSValueArray { 0, 1 }).JSEquals(1.0), "tag_n7029");
+      Assert.IsFalse(new JSValue(new JSValueArray { 0, 1 }).JSEquals(JSValue.Null), "tag_o7001");
+      Assert.IsFalse(new JSValue(new JSValueArray { 0, 1 }).JSEquals(new JSValueObject { }), "tag_o7002");
+      Assert.IsFalse(new JSValue(new JSValueArray { 0, 1 }).JSEquals(new JSValueArray { }), "tag_o7003");
+      Assert.IsFalse(new JSValue(new JSValueArray { 0, 1 }).JSEquals(new JSValueArray { "Hello" }), "tag_o7004");
+      Assert.IsFalse(new JSValue(new JSValueArray { 0, 1 }).JSEquals(new JSValueArray { 0 }), "tag_o7005");
+      Assert.IsFalse(new JSValue(new JSValueArray { 0, 1 }).JSEquals(new JSValueArray { "0" }), "tag_o7006");
+      Assert.IsFalse(new JSValue(new JSValueArray { 0, 1 }).JSEquals(new JSValueArray { 1 }), "tag_o7007");
+      Assert.IsFalse(new JSValue(new JSValueArray { 0, 1 }).JSEquals(new JSValueArray { "1" }), "tag_o7008");
+      Assert.IsFalse(new JSValue(new JSValueArray { 0, 1 }).JSEquals(new JSValueArray { true }), "tag_o7009");
+      Assert.IsFalse(new JSValue(new JSValueArray { 0, 1 }).JSEquals(new JSValueArray { "true" }), "tag_o7010");
+      Assert.IsTrue(new JSValue(new JSValueArray { 0, 1 }).JSEquals(new JSValueArray { 0, 1 }), "tag_o7011");
+      Assert.IsTrue(new JSValue(new JSValueArray { 0, 1 }).JSEquals(new JSValueArray { false, true }), "tag_o7012");
+      Assert.IsTrue(new JSValue(new JSValueArray { 0, 1 }).JSEquals(new JSValueArray { "0", "1" }), "tag_o7013");
+      Assert.IsTrue(new JSValue(new JSValueArray { 0, 1 }).JSEquals(new JSValueArray { "0", true }), "tag_o7014");
+      Assert.IsFalse(new JSValue(new JSValueArray { 0, 1 }).JSEquals(""), "tag_o7015");
+      Assert.IsFalse(new JSValue(new JSValueArray { 0, 1 }).JSEquals("0"), "tag_o7016");
+      Assert.IsFalse(new JSValue(new JSValueArray { 0, 1 }).JSEquals("1"), "tag_o7017");
+      Assert.IsTrue(new JSValue(new JSValueArray { 0, 1 }).JSEquals("0,1"), "tag_o7018");
+      Assert.IsFalse(new JSValue(new JSValueArray { 0, 1 }).JSEquals("true"), "tag_o7019");
+      Assert.IsFalse(new JSValue(new JSValueArray { 0, 1 }).JSEquals("false"), "tag_o7020");
+      Assert.IsFalse(new JSValue(new JSValueArray { 0, 1 }).JSEquals("Hello"), "tag_o7021");
+      Assert.IsFalse(new JSValue(new JSValueArray { 0, 1 }).JSEquals(false), "tag_o7022");
+      Assert.IsFalse(new JSValue(new JSValueArray { 0, 1 }).JSEquals(true), "tag_o7023");
+      Assert.IsFalse(new JSValue(new JSValueArray { 0, 1 }).JSEquals(0), "tag_o7024");
+      Assert.IsFalse(new JSValue(new JSValueArray { 0, 1 }).JSEquals(5), "tag_o7025");
+      Assert.IsFalse(new JSValue(new JSValueArray { 0, 1 }).JSEquals(1), "tag_o7026");
+      Assert.IsFalse(new JSValue(new JSValueArray { 0, 1 }).JSEquals(0.0), "tag_o7027");
+      Assert.IsFalse(new JSValue(new JSValueArray { 0, 1 }).JSEquals(0.5), "tag_o7028");
+      Assert.IsFalse(new JSValue(new JSValueArray { 0, 1 }).JSEquals(1.0), "tag_o7029");
 
-      Assert.IsFalse(new JSValue("").JSEquals(JSValue.Null), "tag_n8001");
-      Assert.IsFalse(new JSValue("").JSEquals(new JSValueObject { }), "tag_n8002");
-      Assert.IsTrue(new JSValue("").JSEquals(new JSValueArray { }), "tag_n8003");
-      Assert.IsFalse(new JSValue("").JSEquals(new JSValueArray { 0 }), "tag_n8004");
-      Assert.IsFalse(new JSValue("").JSEquals(new JSValueArray { 1 }), "tag_n8005");
-      Assert.IsFalse(new JSValue("").JSEquals(new JSValueArray { true }), "tag_n8006");
-      Assert.IsTrue(new JSValue("").JSEquals(new JSValueArray { "" }), "tag_n8007");
-      Assert.IsTrue(new JSValue("").JSEquals(""), "tag_n8008");
-      Assert.IsFalse(new JSValue("").JSEquals("1"), "tag_n8009");
-      Assert.IsFalse(new JSValue("").JSEquals("Hello"), "tag_n8010");
-      Assert.IsTrue(new JSValue("").JSEquals(false), "tag_n8011");
-      Assert.IsFalse(new JSValue("").JSEquals(true), "tag_n8012");
-      Assert.IsTrue(new JSValue("").JSEquals(0), "tag_n8013");
-      Assert.IsFalse(new JSValue("").JSEquals(5), "tag_n8014");
-      Assert.IsFalse(new JSValue("").JSEquals(1), "tag_n8015");
-      Assert.IsTrue(new JSValue("").JSEquals(0.0), "tag_n8016");
-      Assert.IsFalse(new JSValue("").JSEquals(0.5), "tag_n8017");
-      Assert.IsFalse(new JSValue("").JSEquals(1.0), "tag_n8018");
+      Assert.IsFalse(new JSValue("").JSEquals(JSValue.Null), "tag_o8001");
+      Assert.IsFalse(new JSValue("").JSEquals(new JSValueObject { }), "tag_o8002");
+      Assert.IsTrue(new JSValue("").JSEquals(new JSValueArray { }), "tag_o8003");
+      Assert.IsFalse(new JSValue("").JSEquals(new JSValueArray { 0 }), "tag_o8004");
+      Assert.IsFalse(new JSValue("").JSEquals(new JSValueArray { 1 }), "tag_o8005");
+      Assert.IsFalse(new JSValue("").JSEquals(new JSValueArray { true }), "tag_o8006");
+      Assert.IsTrue(new JSValue("").JSEquals(new JSValueArray { "" }), "tag_o8007");
+      Assert.IsTrue(new JSValue("").JSEquals(""), "tag_o8008");
+      Assert.IsFalse(new JSValue("").JSEquals("1"), "tag_o8009");
+      Assert.IsFalse(new JSValue("").JSEquals("Hello"), "tag_o8010");
+      Assert.IsTrue(new JSValue("").JSEquals(false), "tag_o8011");
+      Assert.IsFalse(new JSValue("").JSEquals(true), "tag_o8012");
+      Assert.IsTrue(new JSValue("").JSEquals(0), "tag_o8013");
+      Assert.IsFalse(new JSValue("").JSEquals(5), "tag_o8014");
+      Assert.IsFalse(new JSValue("").JSEquals(1), "tag_o8015");
+      Assert.IsTrue(new JSValue("").JSEquals(0.0), "tag_o8016");
+      Assert.IsFalse(new JSValue("").JSEquals(0.5), "tag_o8017");
+      Assert.IsFalse(new JSValue("").JSEquals(1.0), "tag_o8018");
 
-      Assert.IsFalse(new JSValue("Hello").JSEquals(JSValue.Null), "tag_n9001");
-      Assert.IsFalse(new JSValue("Hello").JSEquals(new JSValueObject { }), "tag_n9002");
-      Assert.IsFalse(new JSValue("Hello").JSEquals(new JSValueArray { }), "tag_n9003");
-      Assert.IsFalse(new JSValue("Hello").JSEquals(new JSValueArray { 0 }), "tag_n9004");
-      Assert.IsFalse(new JSValue("Hello").JSEquals(new JSValueArray { 1 }), "tag_n9005");
-      Assert.IsFalse(new JSValue("Hello").JSEquals(new JSValueArray { true }), "tag_n9006");
-      Assert.IsTrue(new JSValue("Hello").JSEquals(new JSValueArray { "Hello" }), "tag_n9007");
-      Assert.IsFalse(new JSValue("Hello").JSEquals(""), "tag_n9008");
-      Assert.IsFalse(new JSValue("Hello").JSEquals("1"), "tag_n9009");
-      Assert.IsTrue(new JSValue("Hello").JSEquals("Hello"), "tag_n9010");
-      Assert.IsFalse(new JSValue("Hello").JSEquals(false), "tag_n9011");
-      Assert.IsFalse(new JSValue("Hello").JSEquals(true), "tag_n9012");
-      Assert.IsFalse(new JSValue("Hello").JSEquals(0), "tag_n9013");
-      Assert.IsFalse(new JSValue("Hello").JSEquals(5), "tag_n9014");
-      Assert.IsFalse(new JSValue("Hello").JSEquals(1), "tag_n9015");
-      Assert.IsFalse(new JSValue("Hello").JSEquals(0.0), "tag_n9016");
-      Assert.IsFalse(new JSValue("Hello").JSEquals(0.5), "tag_n9017");
-      Assert.IsFalse(new JSValue("Hello").JSEquals(1.0), "tag_n9018");
+      Assert.IsFalse(new JSValue("Hello").JSEquals(JSValue.Null), "tag_o9001");
+      Assert.IsFalse(new JSValue("Hello").JSEquals(new JSValueObject { }), "tag_o9002");
+      Assert.IsFalse(new JSValue("Hello").JSEquals(new JSValueArray { }), "tag_o9003");
+      Assert.IsFalse(new JSValue("Hello").JSEquals(new JSValueArray { 0 }), "tag_o9004");
+      Assert.IsFalse(new JSValue("Hello").JSEquals(new JSValueArray { 1 }), "tag_o9005");
+      Assert.IsFalse(new JSValue("Hello").JSEquals(new JSValueArray { true }), "tag_o9006");
+      Assert.IsTrue(new JSValue("Hello").JSEquals(new JSValueArray { "Hello" }), "tag_o9007");
+      Assert.IsFalse(new JSValue("Hello").JSEquals(""), "tag_o9008");
+      Assert.IsFalse(new JSValue("Hello").JSEquals("1"), "tag_o9009");
+      Assert.IsTrue(new JSValue("Hello").JSEquals("Hello"), "tag_o9010");
+      Assert.IsFalse(new JSValue("Hello").JSEquals(false), "tag_o9011");
+      Assert.IsFalse(new JSValue("Hello").JSEquals(true), "tag_o9012");
+      Assert.IsFalse(new JSValue("Hello").JSEquals(0), "tag_o9013");
+      Assert.IsFalse(new JSValue("Hello").JSEquals(5), "tag_o9014");
+      Assert.IsFalse(new JSValue("Hello").JSEquals(1), "tag_o9015");
+      Assert.IsFalse(new JSValue("Hello").JSEquals(0.0), "tag_o9016");
+      Assert.IsFalse(new JSValue("Hello").JSEquals(0.5), "tag_o9017");
+      Assert.IsFalse(new JSValue("Hello").JSEquals(1.0), "tag_o9018");
 
-      Assert.IsFalse(new JSValue("0").JSEquals(JSValue.Null), "tag_n10001");
-      Assert.IsFalse(new JSValue("0").JSEquals(new JSValueObject { }), "tag_n10002");
-      Assert.IsFalse(new JSValue("0").JSEquals(new JSValueArray { }), "tag_n10003");
-      Assert.IsFalse(new JSValue("0").JSEquals(new JSValueArray { "Hello" }), "tag_n10004");
-      Assert.IsTrue(new JSValue("0").JSEquals(new JSValueArray { "0" }), "tag_n10005");
-      Assert.IsTrue(new JSValue("0").JSEquals(new JSValueArray { 0 }), "tag_n10006");
-      Assert.IsFalse(new JSValue("0").JSEquals(""), "tag_n10007");
-      Assert.IsTrue(new JSValue("0").JSEquals("0"), "tag_n10008");
-      Assert.IsFalse(new JSValue("0").JSEquals("Hello"), "tag_n10009");
-      Assert.IsTrue(new JSValue("0").JSEquals(false), "tag_n10010");
-      Assert.IsFalse(new JSValue("0").JSEquals(true), "tag_n10011");
-      Assert.IsTrue(new JSValue("0").JSEquals(0), "tag_n10012");
-      Assert.IsFalse(new JSValue("0").JSEquals(5), "tag_n10013");
-      Assert.IsFalse(new JSValue("0").JSEquals(1), "tag_n10014");
-      Assert.IsTrue(new JSValue("0").JSEquals(0.0), "tag_n10015");
-      Assert.IsFalse(new JSValue("0").JSEquals(0.5), "tag_n10016");
-      Assert.IsFalse(new JSValue("0").JSEquals(1.0), "tag_n10017");
+      Assert.IsFalse(new JSValue("0").JSEquals(JSValue.Null), "tag_o10001");
+      Assert.IsFalse(new JSValue("0").JSEquals(new JSValueObject { }), "tag_o10002");
+      Assert.IsFalse(new JSValue("0").JSEquals(new JSValueArray { }), "tag_o10003");
+      Assert.IsFalse(new JSValue("0").JSEquals(new JSValueArray { "Hello" }), "tag_o10004");
+      Assert.IsTrue(new JSValue("0").JSEquals(new JSValueArray { "0" }), "tag_o10005");
+      Assert.IsTrue(new JSValue("0").JSEquals(new JSValueArray { 0 }), "tag_o10006");
+      Assert.IsFalse(new JSValue("0").JSEquals(""), "tag_o10007");
+      Assert.IsTrue(new JSValue("0").JSEquals("0"), "tag_o10008");
+      Assert.IsFalse(new JSValue("0").JSEquals("Hello"), "tag_o10009");
+      Assert.IsTrue(new JSValue("0").JSEquals(false), "tag_o10010");
+      Assert.IsFalse(new JSValue("0").JSEquals(true), "tag_o10011");
+      Assert.IsTrue(new JSValue("0").JSEquals(0), "tag_o10012");
+      Assert.IsFalse(new JSValue("0").JSEquals(5), "tag_o10013");
+      Assert.IsFalse(new JSValue("0").JSEquals(1), "tag_o10014");
+      Assert.IsTrue(new JSValue("0").JSEquals(0.0), "tag_o10015");
+      Assert.IsFalse(new JSValue("0").JSEquals(0.5), "tag_o10016");
+      Assert.IsFalse(new JSValue("0").JSEquals(1.0), "tag_o10017");
 
-      Assert.IsFalse(new JSValue("1").JSEquals(JSValue.Null), "tag_n11001");
-      Assert.IsFalse(new JSValue("1").JSEquals(new JSValueObject { }), "tag_n11002");
-      Assert.IsFalse(new JSValue("1").JSEquals(new JSValueArray { }), "tag_n11003");
-      Assert.IsFalse(new JSValue("1").JSEquals(new JSValueArray { "Hello" }), "tag_n11004");
-      Assert.IsTrue(new JSValue("1").JSEquals(new JSValueArray { "1" }), "tag_n11005");
-      Assert.IsTrue(new JSValue("1").JSEquals(new JSValueArray { 1 }), "tag_n11006");
-      Assert.IsFalse(new JSValue("1").JSEquals(""), "tag_n11007");
-      Assert.IsTrue(new JSValue("1").JSEquals("1"), "tag_n11008");
-      Assert.IsFalse(new JSValue("1").JSEquals("Hello"), "tag_n11009");
-      Assert.IsFalse(new JSValue("1").JSEquals(false), "tag_n11010");
-      Assert.IsTrue(new JSValue("1").JSEquals(true), "tag_n11011");
-      Assert.IsFalse(new JSValue("1").JSEquals(0), "tag_n11012");
-      Assert.IsFalse(new JSValue("1").JSEquals(5), "tag_n11013");
-      Assert.IsTrue(new JSValue("1").JSEquals(1), "tag_n11014");
-      Assert.IsFalse(new JSValue("1").JSEquals(0.0), "tag_n11015");
-      Assert.IsFalse(new JSValue("1").JSEquals(0.5), "tag_n11016");
-      Assert.IsTrue(new JSValue("1").JSEquals(1.0), "tag_n11017");
+      Assert.IsFalse(new JSValue("1").JSEquals(JSValue.Null), "tag_o11001");
+      Assert.IsFalse(new JSValue("1").JSEquals(new JSValueObject { }), "tag_o11002");
+      Assert.IsFalse(new JSValue("1").JSEquals(new JSValueArray { }), "tag_o11003");
+      Assert.IsFalse(new JSValue("1").JSEquals(new JSValueArray { "Hello" }), "tag_o11004");
+      Assert.IsTrue(new JSValue("1").JSEquals(new JSValueArray { "1" }), "tag_o11005");
+      Assert.IsTrue(new JSValue("1").JSEquals(new JSValueArray { 1 }), "tag_o11006");
+      Assert.IsFalse(new JSValue("1").JSEquals(""), "tag_o11007");
+      Assert.IsTrue(new JSValue("1").JSEquals("1"), "tag_o11008");
+      Assert.IsFalse(new JSValue("1").JSEquals("Hello"), "tag_o11009");
+      Assert.IsFalse(new JSValue("1").JSEquals(false), "tag_o11010");
+      Assert.IsTrue(new JSValue("1").JSEquals(true), "tag_o11011");
+      Assert.IsFalse(new JSValue("1").JSEquals(0), "tag_o11012");
+      Assert.IsFalse(new JSValue("1").JSEquals(5), "tag_o11013");
+      Assert.IsTrue(new JSValue("1").JSEquals(1), "tag_o11014");
+      Assert.IsFalse(new JSValue("1").JSEquals(0.0), "tag_o11015");
+      Assert.IsFalse(new JSValue("1").JSEquals(0.5), "tag_o11016");
+      Assert.IsTrue(new JSValue("1").JSEquals(1.0), "tag_o11017");
 
-      Assert.IsFalse(new JSValue("true").JSEquals(JSValue.Null), "tag_n12001");
-      Assert.IsFalse(new JSValue("true").JSEquals(new JSValueObject { }), "tag_n12002");
-      Assert.IsFalse(new JSValue("true").JSEquals(new JSValueArray { }), "tag_n12003");
-      Assert.IsFalse(new JSValue("true").JSEquals(new JSValueArray { 0 }), "tag_n12004");
-      Assert.IsFalse(new JSValue("true").JSEquals(new JSValueArray { 1 }), "tag_n12005");
-      Assert.IsTrue(new JSValue("true").JSEquals(new JSValueArray { true }), "tag_n12006");
-      Assert.IsTrue(new JSValue("true").JSEquals(new JSValueArray { "true" }), "tag_n12007");
-      Assert.IsFalse(new JSValue("true").JSEquals(""), "tag_n12008");
-      Assert.IsFalse(new JSValue("true").JSEquals("1"), "tag_n12009");
-      Assert.IsFalse(new JSValue("true").JSEquals("Hello"), "tag_n12010");
-      Assert.IsTrue(new JSValue("true").JSEquals("true"), "tag_n12011");
-      Assert.IsFalse(new JSValue("true").JSEquals(false), "tag_n12012");
-      Assert.IsFalse(new JSValue("true").JSEquals(true), "tag_n12013");
-      Assert.IsFalse(new JSValue("true").JSEquals(0), "tag_n12014");
-      Assert.IsFalse(new JSValue("true").JSEquals(5), "tag_n12015");
-      Assert.IsFalse(new JSValue("true").JSEquals(1), "tag_n12016");
-      Assert.IsFalse(new JSValue("true").JSEquals(0.0), "tag_n12017");
-      Assert.IsFalse(new JSValue("true").JSEquals(0.5), "tag_n12018");
-      Assert.IsFalse(new JSValue("true").JSEquals(1.0), "tag_n12019");
+      Assert.IsFalse(new JSValue("true").JSEquals(JSValue.Null), "tag_o12001");
+      Assert.IsFalse(new JSValue("true").JSEquals(new JSValueObject { }), "tag_o12002");
+      Assert.IsFalse(new JSValue("true").JSEquals(new JSValueArray { }), "tag_o12003");
+      Assert.IsFalse(new JSValue("true").JSEquals(new JSValueArray { 0 }), "tag_o12004");
+      Assert.IsFalse(new JSValue("true").JSEquals(new JSValueArray { 1 }), "tag_o12005");
+      Assert.IsTrue(new JSValue("true").JSEquals(new JSValueArray { true }), "tag_o12006");
+      Assert.IsTrue(new JSValue("true").JSEquals(new JSValueArray { "true" }), "tag_o12007");
+      Assert.IsFalse(new JSValue("true").JSEquals(""), "tag_o12008");
+      Assert.IsFalse(new JSValue("true").JSEquals("1"), "tag_o12009");
+      Assert.IsFalse(new JSValue("true").JSEquals("Hello"), "tag_o12010");
+      Assert.IsTrue(new JSValue("true").JSEquals("true"), "tag_o12011");
+      Assert.IsFalse(new JSValue("true").JSEquals(false), "tag_o12012");
+      Assert.IsFalse(new JSValue("true").JSEquals(true), "tag_o12013");
+      Assert.IsFalse(new JSValue("true").JSEquals(0), "tag_o12014");
+      Assert.IsFalse(new JSValue("true").JSEquals(5), "tag_o12015");
+      Assert.IsFalse(new JSValue("true").JSEquals(1), "tag_o12016");
+      Assert.IsFalse(new JSValue("true").JSEquals(0.0), "tag_o12017");
+      Assert.IsFalse(new JSValue("true").JSEquals(0.5), "tag_o12018");
+      Assert.IsFalse(new JSValue("true").JSEquals(1.0), "tag_o12019");
 
-      Assert.IsTrue(new JSValue("[object Object]").JSEquals(new JSValueObject { }), "tag_n13001");
+      Assert.IsTrue(new JSValue("[object Object]").JSEquals(new JSValueObject { }), "tag_o13001");
 
-      Assert.IsFalse(new JSValue(true).JSEquals(JSValue.Null), "tag_n14001");
-      Assert.IsFalse(new JSValue(true).JSEquals(new JSValueObject { }), "tag_n14002");
-      Assert.IsFalse(new JSValue(true).JSEquals(new JSValueArray { }), "tag_n14003");
-      Assert.IsFalse(new JSValue(true).JSEquals(new JSValueArray { "Hello" }), "tag_n14004");
-      Assert.IsFalse(new JSValue(true).JSEquals(new JSValueArray { 0 }), "tag_n14005");
-      Assert.IsFalse(new JSValue(true).JSEquals(new JSValueArray { "0" }), "tag_n14006");
-      Assert.IsTrue(new JSValue(true).JSEquals(new JSValueArray { 1 }), "tag_n14007");
-      Assert.IsTrue(new JSValue(true).JSEquals(new JSValueArray { "1" }), "tag_n14008");
-      Assert.IsFalse(new JSValue(true).JSEquals(new JSValueArray { true }), "tag_n14009");
-      Assert.IsFalse(new JSValue(true).JSEquals(new JSValueArray { "true" }), "tag_n14010");
-      Assert.IsFalse(new JSValue(true).JSEquals(""), "tag_n14011");
-      Assert.IsFalse(new JSValue(true).JSEquals("0"), "tag_n14012");
-      Assert.IsTrue(new JSValue(true).JSEquals("1"), "tag_n14013");
-      Assert.IsFalse(new JSValue(true).JSEquals("true"), "tag_n14014");
-      Assert.IsFalse(new JSValue(true).JSEquals("false"), "tag_n14015");
-      Assert.IsFalse(new JSValue(true).JSEquals("Hello"), "tag_n14016");
-      Assert.IsFalse(new JSValue(true).JSEquals(false), "tag_n14017");
-      Assert.IsTrue(new JSValue(true).JSEquals(true), "tag_n14018");
-      Assert.IsFalse(new JSValue(true).JSEquals(0), "tag_n14019");
-      Assert.IsFalse(new JSValue(true).JSEquals(5), "tag_n14020");
-      Assert.IsTrue(new JSValue(true).JSEquals(1), "tag_n14021");
-      Assert.IsFalse(new JSValue(true).JSEquals(0.0), "tag_n14022");
-      Assert.IsFalse(new JSValue(true).JSEquals(0.5), "tag_n14023");
-      Assert.IsTrue(new JSValue(true).JSEquals(1.0), "tag_n14024");
+      Assert.IsFalse(new JSValue(true).JSEquals(JSValue.Null), "tag_o14001");
+      Assert.IsFalse(new JSValue(true).JSEquals(new JSValueObject { }), "tag_o14002");
+      Assert.IsFalse(new JSValue(true).JSEquals(new JSValueArray { }), "tag_o14003");
+      Assert.IsFalse(new JSValue(true).JSEquals(new JSValueArray { "Hello" }), "tag_o14004");
+      Assert.IsFalse(new JSValue(true).JSEquals(new JSValueArray { 0 }), "tag_o14005");
+      Assert.IsFalse(new JSValue(true).JSEquals(new JSValueArray { "0" }), "tag_o14006");
+      Assert.IsTrue(new JSValue(true).JSEquals(new JSValueArray { 1 }), "tag_o14007");
+      Assert.IsTrue(new JSValue(true).JSEquals(new JSValueArray { "1" }), "tag_o14008");
+      Assert.IsFalse(new JSValue(true).JSEquals(new JSValueArray { true }), "tag_o14009");
+      Assert.IsFalse(new JSValue(true).JSEquals(new JSValueArray { "true" }), "tag_o14010");
+      Assert.IsFalse(new JSValue(true).JSEquals(""), "tag_o14011");
+      Assert.IsFalse(new JSValue(true).JSEquals("0"), "tag_o14012");
+      Assert.IsTrue(new JSValue(true).JSEquals("1"), "tag_o14013");
+      Assert.IsFalse(new JSValue(true).JSEquals("true"), "tag_o14014");
+      Assert.IsFalse(new JSValue(true).JSEquals("false"), "tag_o14015");
+      Assert.IsFalse(new JSValue(true).JSEquals("Hello"), "tag_o14016");
+      Assert.IsFalse(new JSValue(true).JSEquals(false), "tag_o14017");
+      Assert.IsTrue(new JSValue(true).JSEquals(true), "tag_o14018");
+      Assert.IsFalse(new JSValue(true).JSEquals(0), "tag_o14019");
+      Assert.IsFalse(new JSValue(true).JSEquals(5), "tag_o14020");
+      Assert.IsTrue(new JSValue(true).JSEquals(1), "tag_o14021");
+      Assert.IsFalse(new JSValue(true).JSEquals(0.0), "tag_o14022");
+      Assert.IsFalse(new JSValue(true).JSEquals(0.5), "tag_o14023");
+      Assert.IsTrue(new JSValue(true).JSEquals(1.0), "tag_o14024");
 
-      Assert.IsFalse(new JSValue(false).JSEquals(JSValue.Null), "tag_n15001");
-      Assert.IsFalse(new JSValue(false).JSEquals(new JSValueObject { }), "tag_n15002");
-      Assert.IsTrue(new JSValue(false).JSEquals(new JSValueArray { }), "tag_n15003");
-      Assert.IsFalse(new JSValue(false).JSEquals(new JSValueArray { "Hello" }), "tag_n15004");
-      Assert.IsTrue(new JSValue(false).JSEquals(new JSValueArray { 0 }), "tag_n15005");
-      Assert.IsTrue(new JSValue(false).JSEquals(new JSValueArray { "0" }), "tag_n15006");
-      Assert.IsFalse(new JSValue(false).JSEquals(new JSValueArray { 1 }), "tag_n15007");
-      Assert.IsFalse(new JSValue(false).JSEquals(new JSValueArray { "1" }), "tag_n15008");
-      Assert.IsFalse(new JSValue(false).JSEquals(new JSValueArray { true }), "tag_n15009");
-      Assert.IsFalse(new JSValue(false).JSEquals(new JSValueArray { "true" }), "tag_n15010");
-      Assert.IsTrue(new JSValue(false).JSEquals(""), "tag_n15011");
-      Assert.IsTrue(new JSValue(false).JSEquals("0"), "tag_n15012");
-      Assert.IsFalse(new JSValue(false).JSEquals("1"), "tag_n15013");
-      Assert.IsFalse(new JSValue(false).JSEquals("true"), "tag_n15014");
-      Assert.IsFalse(new JSValue(false).JSEquals("false"), "tag_n15015");
-      Assert.IsFalse(new JSValue(false).JSEquals("Hello"), "tag_n15016");
-      Assert.IsTrue(new JSValue(false).JSEquals(false), "tag_n15017");
-      Assert.IsFalse(new JSValue(false).JSEquals(true), "tag_n15018");
-      Assert.IsTrue(new JSValue(false).JSEquals(0), "tag_n15019");
-      Assert.IsFalse(new JSValue(false).JSEquals(5), "tag_n15020");
-      Assert.IsFalse(new JSValue(false).JSEquals(1), "tag_n15021");
-      Assert.IsTrue(new JSValue(false).JSEquals(0.0), "tag_n15022");
-      Assert.IsFalse(new JSValue(false).JSEquals(0.5), "tag_n15023");
-      Assert.IsFalse(new JSValue(false).JSEquals(1.0), "tag_n15024");
+      Assert.IsFalse(new JSValue(false).JSEquals(JSValue.Null), "tag_o15001");
+      Assert.IsFalse(new JSValue(false).JSEquals(new JSValueObject { }), "tag_o15002");
+      Assert.IsTrue(new JSValue(false).JSEquals(new JSValueArray { }), "tag_o15003");
+      Assert.IsFalse(new JSValue(false).JSEquals(new JSValueArray { "Hello" }), "tag_o15004");
+      Assert.IsTrue(new JSValue(false).JSEquals(new JSValueArray { 0 }), "tag_o15005");
+      Assert.IsTrue(new JSValue(false).JSEquals(new JSValueArray { "0" }), "tag_o15006");
+      Assert.IsFalse(new JSValue(false).JSEquals(new JSValueArray { 1 }), "tag_o15007");
+      Assert.IsFalse(new JSValue(false).JSEquals(new JSValueArray { "1" }), "tag_o15008");
+      Assert.IsFalse(new JSValue(false).JSEquals(new JSValueArray { true }), "tag_o15009");
+      Assert.IsFalse(new JSValue(false).JSEquals(new JSValueArray { "true" }), "tag_o15010");
+      Assert.IsTrue(new JSValue(false).JSEquals(""), "tag_o15011");
+      Assert.IsTrue(new JSValue(false).JSEquals("0"), "tag_o15012");
+      Assert.IsFalse(new JSValue(false).JSEquals("1"), "tag_o15013");
+      Assert.IsFalse(new JSValue(false).JSEquals("true"), "tag_o15014");
+      Assert.IsFalse(new JSValue(false).JSEquals("false"), "tag_o15015");
+      Assert.IsFalse(new JSValue(false).JSEquals("Hello"), "tag_o15016");
+      Assert.IsTrue(new JSValue(false).JSEquals(false), "tag_o15017");
+      Assert.IsFalse(new JSValue(false).JSEquals(true), "tag_o15018");
+      Assert.IsTrue(new JSValue(false).JSEquals(0), "tag_o15019");
+      Assert.IsFalse(new JSValue(false).JSEquals(5), "tag_o15020");
+      Assert.IsFalse(new JSValue(false).JSEquals(1), "tag_o15021");
+      Assert.IsTrue(new JSValue(false).JSEquals(0.0), "tag_o15022");
+      Assert.IsFalse(new JSValue(false).JSEquals(0.5), "tag_o15023");
+      Assert.IsFalse(new JSValue(false).JSEquals(1.0), "tag_o15024");
 
-      Assert.IsFalse(new JSValue(0).JSEquals(JSValue.Null), "tag_n16001");
-      Assert.IsFalse(new JSValue(0).JSEquals(new JSValueObject { }), "tag_n16002");
-      Assert.IsTrue(new JSValue(0).JSEquals(new JSValueArray { }), "tag_n16003");
-      Assert.IsFalse(new JSValue(0).JSEquals(new JSValueArray { "Hello" }), "tag_n16004");
-      Assert.IsTrue(new JSValue(0).JSEquals(new JSValueArray { 0 }), "tag_n16005");
-      Assert.IsTrue(new JSValue(0).JSEquals(new JSValueArray { "0" }), "tag_n16006");
-      Assert.IsFalse(new JSValue(0).JSEquals(new JSValueArray { 1 }), "tag_n16007");
-      Assert.IsFalse(new JSValue(0).JSEquals(new JSValueArray { "1" }), "tag_n16008");
-      Assert.IsFalse(new JSValue(0).JSEquals(new JSValueArray { true }), "tag_n16009");
-      Assert.IsFalse(new JSValue(0).JSEquals(new JSValueArray { "true" }), "tag_n16010");
-      Assert.IsTrue(new JSValue(0).JSEquals(""), "tag_n16011");
-      Assert.IsTrue(new JSValue(0).JSEquals("0"), "tag_n16012");
-      Assert.IsFalse(new JSValue(0).JSEquals("1"), "tag_n16013");
-      Assert.IsFalse(new JSValue(0).JSEquals("true"), "tag_n16014");
-      Assert.IsFalse(new JSValue(0).JSEquals("false"), "tag_n16015");
-      Assert.IsFalse(new JSValue(0).JSEquals("Hello"), "tag_n16016");
-      Assert.IsTrue(new JSValue(0).JSEquals(false), "tag_n16017");
-      Assert.IsFalse(new JSValue(0).JSEquals(true), "tag_n16018");
-      Assert.IsTrue(new JSValue(0).JSEquals(0), "tag_n16019");
-      Assert.IsFalse(new JSValue(0).JSEquals(5), "tag_n16020");
-      Assert.IsFalse(new JSValue(0).JSEquals(1), "tag_n16021");
-      Assert.IsTrue(new JSValue(0).JSEquals(0.0), "tag_n16022");
-      Assert.IsFalse(new JSValue(0).JSEquals(0.5), "tag_n16023");
-      Assert.IsFalse(new JSValue(0).JSEquals(1.0), "tag_n16024");
+      Assert.IsFalse(new JSValue(0).JSEquals(JSValue.Null), "tag_o16001");
+      Assert.IsFalse(new JSValue(0).JSEquals(new JSValueObject { }), "tag_o16002");
+      Assert.IsTrue(new JSValue(0).JSEquals(new JSValueArray { }), "tag_o16003");
+      Assert.IsFalse(new JSValue(0).JSEquals(new JSValueArray { "Hello" }), "tag_o16004");
+      Assert.IsTrue(new JSValue(0).JSEquals(new JSValueArray { 0 }), "tag_o16005");
+      Assert.IsTrue(new JSValue(0).JSEquals(new JSValueArray { "0" }), "tag_o16006");
+      Assert.IsFalse(new JSValue(0).JSEquals(new JSValueArray { 1 }), "tag_o16007");
+      Assert.IsFalse(new JSValue(0).JSEquals(new JSValueArray { "1" }), "tag_o16008");
+      Assert.IsFalse(new JSValue(0).JSEquals(new JSValueArray { true }), "tag_o16009");
+      Assert.IsFalse(new JSValue(0).JSEquals(new JSValueArray { "true" }), "tag_o16010");
+      Assert.IsTrue(new JSValue(0).JSEquals(""), "tag_o16011");
+      Assert.IsTrue(new JSValue(0).JSEquals("0"), "tag_o16012");
+      Assert.IsFalse(new JSValue(0).JSEquals("1"), "tag_o16013");
+      Assert.IsFalse(new JSValue(0).JSEquals("true"), "tag_o16014");
+      Assert.IsFalse(new JSValue(0).JSEquals("false"), "tag_o16015");
+      Assert.IsFalse(new JSValue(0).JSEquals("Hello"), "tag_o16016");
+      Assert.IsTrue(new JSValue(0).JSEquals(false), "tag_o16017");
+      Assert.IsFalse(new JSValue(0).JSEquals(true), "tag_o16018");
+      Assert.IsTrue(new JSValue(0).JSEquals(0), "tag_o16019");
+      Assert.IsFalse(new JSValue(0).JSEquals(5), "tag_o16020");
+      Assert.IsFalse(new JSValue(0).JSEquals(1), "tag_o16021");
+      Assert.IsTrue(new JSValue(0).JSEquals(0.0), "tag_o16022");
+      Assert.IsFalse(new JSValue(0).JSEquals(0.5), "tag_o16023");
+      Assert.IsFalse(new JSValue(0).JSEquals(1.0), "tag_o16024");
 
-      Assert.IsFalse(new JSValue(1).JSEquals(JSValue.Null), "tag_n17001");
-      Assert.IsFalse(new JSValue(1).JSEquals(new JSValueObject { }), "tag_n17002");
-      Assert.IsFalse(new JSValue(1).JSEquals(new JSValueArray { }), "tag_n17003");
-      Assert.IsFalse(new JSValue(1).JSEquals(new JSValueArray { "Hello" }), "tag_n17004");
-      Assert.IsFalse(new JSValue(1).JSEquals(new JSValueArray { 0 }), "tag_n17005");
-      Assert.IsFalse(new JSValue(1).JSEquals(new JSValueArray { "0" }), "tag_n17006");
-      Assert.IsTrue(new JSValue(1).JSEquals(new JSValueArray { 1 }), "tag_n17007");
-      Assert.IsTrue(new JSValue(1).JSEquals(new JSValueArray { "1" }), "tag_n17008");
-      Assert.IsFalse(new JSValue(1).JSEquals(new JSValueArray { true }), "tag_n17009");
-      Assert.IsFalse(new JSValue(1).JSEquals(new JSValueArray { "true" }), "tag_n17010");
-      Assert.IsFalse(new JSValue(1).JSEquals(""), "tag_n17011");
-      Assert.IsFalse(new JSValue(1).JSEquals("0"), "tag_n17012");
-      Assert.IsTrue(new JSValue(1).JSEquals("1"), "tag_n17013");
-      Assert.IsFalse(new JSValue(1).JSEquals("true"), "tag_n17014");
-      Assert.IsFalse(new JSValue(1).JSEquals("false"), "tag_n17015");
-      Assert.IsFalse(new JSValue(1).JSEquals("Hello"), "tag_n17016");
-      Assert.IsFalse(new JSValue(1).JSEquals(false), "tag_n17017");
-      Assert.IsTrue(new JSValue(1).JSEquals(true), "tag_n17018");
-      Assert.IsFalse(new JSValue(1).JSEquals(0), "tag_n17019");
-      Assert.IsFalse(new JSValue(1).JSEquals(5), "tag_n17020");
-      Assert.IsTrue(new JSValue(1).JSEquals(1), "tag_n17021");
-      Assert.IsFalse(new JSValue(1).JSEquals(0.0), "tag_n17022");
-      Assert.IsFalse(new JSValue(1).JSEquals(0.5), "tag_n17023");
-      Assert.IsTrue(new JSValue(1).JSEquals(1.0), "tag_n17024");
+      Assert.IsFalse(new JSValue(1).JSEquals(JSValue.Null), "tag_o17001");
+      Assert.IsFalse(new JSValue(1).JSEquals(new JSValueObject { }), "tag_o17002");
+      Assert.IsFalse(new JSValue(1).JSEquals(new JSValueArray { }), "tag_o17003");
+      Assert.IsFalse(new JSValue(1).JSEquals(new JSValueArray { "Hello" }), "tag_o17004");
+      Assert.IsFalse(new JSValue(1).JSEquals(new JSValueArray { 0 }), "tag_o17005");
+      Assert.IsFalse(new JSValue(1).JSEquals(new JSValueArray { "0" }), "tag_o17006");
+      Assert.IsTrue(new JSValue(1).JSEquals(new JSValueArray { 1 }), "tag_o17007");
+      Assert.IsTrue(new JSValue(1).JSEquals(new JSValueArray { "1" }), "tag_o17008");
+      Assert.IsFalse(new JSValue(1).JSEquals(new JSValueArray { true }), "tag_o17009");
+      Assert.IsFalse(new JSValue(1).JSEquals(new JSValueArray { "true" }), "tag_o17010");
+      Assert.IsFalse(new JSValue(1).JSEquals(""), "tag_o17011");
+      Assert.IsFalse(new JSValue(1).JSEquals("0"), "tag_o17012");
+      Assert.IsTrue(new JSValue(1).JSEquals("1"), "tag_o17013");
+      Assert.IsFalse(new JSValue(1).JSEquals("true"), "tag_o17014");
+      Assert.IsFalse(new JSValue(1).JSEquals("false"), "tag_o17015");
+      Assert.IsFalse(new JSValue(1).JSEquals("Hello"), "tag_o17016");
+      Assert.IsFalse(new JSValue(1).JSEquals(false), "tag_o17017");
+      Assert.IsTrue(new JSValue(1).JSEquals(true), "tag_o17018");
+      Assert.IsFalse(new JSValue(1).JSEquals(0), "tag_o17019");
+      Assert.IsFalse(new JSValue(1).JSEquals(5), "tag_o17020");
+      Assert.IsTrue(new JSValue(1).JSEquals(1), "tag_o17021");
+      Assert.IsFalse(new JSValue(1).JSEquals(0.0), "tag_o17022");
+      Assert.IsFalse(new JSValue(1).JSEquals(0.5), "tag_o17023");
+      Assert.IsTrue(new JSValue(1).JSEquals(1.0), "tag_o17024");
 
-      Assert.IsFalse(new JSValue(5).JSEquals(JSValue.Null), "tag_n18001");
-      Assert.IsFalse(new JSValue(5).JSEquals(new JSValueObject { }), "tag_n18002");
-      Assert.IsFalse(new JSValue(5).JSEquals(new JSValueArray { }), "tag_n18003");
-      Assert.IsFalse(new JSValue(5).JSEquals(new JSValueArray { "Hello" }), "tag_n18004");
-      Assert.IsFalse(new JSValue(5).JSEquals(new JSValueArray { 0 }), "tag_n18005");
-      Assert.IsFalse(new JSValue(5).JSEquals(new JSValueArray { "0" }), "tag_n18006");
-      Assert.IsFalse(new JSValue(5).JSEquals(new JSValueArray { 1 }), "tag_n18007");
-      Assert.IsFalse(new JSValue(5).JSEquals(new JSValueArray { "1" }), "tag_n18008");
-      Assert.IsFalse(new JSValue(5).JSEquals(new JSValueArray { true }), "tag_n18009");
-      Assert.IsFalse(new JSValue(5).JSEquals(new JSValueArray { "true" }), "tag_n18010");
-      Assert.IsFalse(new JSValue(5).JSEquals(""), "tag_n18011");
-      Assert.IsFalse(new JSValue(5).JSEquals("0"), "tag_n18012");
-      Assert.IsFalse(new JSValue(5).JSEquals("1"), "tag_n18013");
-      Assert.IsFalse(new JSValue(5).JSEquals("true"), "tag_n18014");
-      Assert.IsFalse(new JSValue(5).JSEquals("false"), "tag_n18015");
-      Assert.IsFalse(new JSValue(5).JSEquals("Hello"), "tag_n18016");
-      Assert.IsFalse(new JSValue(5).JSEquals(false), "tag_n18017");
-      Assert.IsFalse(new JSValue(5).JSEquals(true), "tag_n18018");
-      Assert.IsFalse(new JSValue(5).JSEquals(0), "tag_n18019");
-      Assert.IsTrue(new JSValue(5).JSEquals(5), "tag_n18020");
-      Assert.IsFalse(new JSValue(5).JSEquals(1), "tag_n18021");
-      Assert.IsFalse(new JSValue(5).JSEquals(0.0), "tag_n18022");
-      Assert.IsFalse(new JSValue(5).JSEquals(0.5), "tag_n18023");
-      Assert.IsFalse(new JSValue(5).JSEquals(1.0), "tag_n18024");
+      Assert.IsFalse(new JSValue(5).JSEquals(JSValue.Null), "tag_o18001");
+      Assert.IsFalse(new JSValue(5).JSEquals(new JSValueObject { }), "tag_o18002");
+      Assert.IsFalse(new JSValue(5).JSEquals(new JSValueArray { }), "tag_o18003");
+      Assert.IsFalse(new JSValue(5).JSEquals(new JSValueArray { "Hello" }), "tag_o18004");
+      Assert.IsFalse(new JSValue(5).JSEquals(new JSValueArray { 0 }), "tag_o18005");
+      Assert.IsFalse(new JSValue(5).JSEquals(new JSValueArray { "0" }), "tag_o18006");
+      Assert.IsFalse(new JSValue(5).JSEquals(new JSValueArray { 1 }), "tag_o18007");
+      Assert.IsFalse(new JSValue(5).JSEquals(new JSValueArray { "1" }), "tag_o18008");
+      Assert.IsFalse(new JSValue(5).JSEquals(new JSValueArray { true }), "tag_o18009");
+      Assert.IsFalse(new JSValue(5).JSEquals(new JSValueArray { "true" }), "tag_o18010");
+      Assert.IsFalse(new JSValue(5).JSEquals(""), "tag_o18011");
+      Assert.IsFalse(new JSValue(5).JSEquals("0"), "tag_o18012");
+      Assert.IsFalse(new JSValue(5).JSEquals("1"), "tag_o18013");
+      Assert.IsFalse(new JSValue(5).JSEquals("true"), "tag_o18014");
+      Assert.IsFalse(new JSValue(5).JSEquals("false"), "tag_o18015");
+      Assert.IsFalse(new JSValue(5).JSEquals("Hello"), "tag_o18016");
+      Assert.IsFalse(new JSValue(5).JSEquals(false), "tag_o18017");
+      Assert.IsFalse(new JSValue(5).JSEquals(true), "tag_o18018");
+      Assert.IsFalse(new JSValue(5).JSEquals(0), "tag_o18019");
+      Assert.IsTrue(new JSValue(5).JSEquals(5), "tag_o18020");
+      Assert.IsFalse(new JSValue(5).JSEquals(1), "tag_o18021");
+      Assert.IsFalse(new JSValue(5).JSEquals(0.0), "tag_o18022");
+      Assert.IsFalse(new JSValue(5).JSEquals(0.5), "tag_o18023");
+      Assert.IsFalse(new JSValue(5).JSEquals(1.0), "tag_o18024");
 
-      Assert.IsFalse(new JSValue(0.0).JSEquals(JSValue.Null), "tag_n19001");
-      Assert.IsFalse(new JSValue(0.0).JSEquals(new JSValueObject { }), "tag_n19002");
-      Assert.IsTrue(new JSValue(0.0).JSEquals(new JSValueArray { }), "tag_n19003");
-      Assert.IsFalse(new JSValue(0.0).JSEquals(new JSValueArray { "Hello" }), "tag_n19004");
-      Assert.IsTrue(new JSValue(0.0).JSEquals(new JSValueArray { 0 }), "tag_n19005");
-      Assert.IsTrue(new JSValue(0.0).JSEquals(new JSValueArray { "0" }), "tag_n19006");
-      Assert.IsFalse(new JSValue(0.0).JSEquals(new JSValueArray { 1 }), "tag_n19007");
-      Assert.IsFalse(new JSValue(0.0).JSEquals(new JSValueArray { "1" }), "tag_n19008");
-      Assert.IsFalse(new JSValue(0.0).JSEquals(new JSValueArray { true }), "tag_n19009");
-      Assert.IsFalse(new JSValue(0.0).JSEquals(new JSValueArray { "true" }), "tag_n19010");
-      Assert.IsTrue(new JSValue(0.0).JSEquals(""), "tag_n19011");
-      Assert.IsTrue(new JSValue(0.0).JSEquals("0"), "tag_n19012");
-      Assert.IsFalse(new JSValue(0.0).JSEquals("1"), "tag_n19013");
-      Assert.IsFalse(new JSValue(0.0).JSEquals("true"), "tag_n19014");
-      Assert.IsFalse(new JSValue(0.0).JSEquals("false"), "tag_n19015");
-      Assert.IsFalse(new JSValue(0.0).JSEquals("Hello"), "tag_n19016");
-      Assert.IsTrue(new JSValue(0.0).JSEquals(false), "tag_n19017");
-      Assert.IsFalse(new JSValue(0.0).JSEquals(true), "tag_n19018");
-      Assert.IsTrue(new JSValue(0.0).JSEquals(0), "tag_n19019");
-      Assert.IsFalse(new JSValue(0.0).JSEquals(5), "tag_n19020");
-      Assert.IsFalse(new JSValue(0.0).JSEquals(1), "tag_n19021");
-      Assert.IsTrue(new JSValue(0.0).JSEquals(0.0), "tag_n19022");
-      Assert.IsFalse(new JSValue(0.0).JSEquals(0.5), "tag_n19023");
-      Assert.IsFalse(new JSValue(0.0).JSEquals(1.0), "tag_n19024");
+      Assert.IsFalse(new JSValue(0.0).JSEquals(JSValue.Null), "tag_o19001");
+      Assert.IsFalse(new JSValue(0.0).JSEquals(new JSValueObject { }), "tag_o19002");
+      Assert.IsTrue(new JSValue(0.0).JSEquals(new JSValueArray { }), "tag_o19003");
+      Assert.IsFalse(new JSValue(0.0).JSEquals(new JSValueArray { "Hello" }), "tag_o19004");
+      Assert.IsTrue(new JSValue(0.0).JSEquals(new JSValueArray { 0 }), "tag_o19005");
+      Assert.IsTrue(new JSValue(0.0).JSEquals(new JSValueArray { "0" }), "tag_o19006");
+      Assert.IsFalse(new JSValue(0.0).JSEquals(new JSValueArray { 1 }), "tag_o19007");
+      Assert.IsFalse(new JSValue(0.0).JSEquals(new JSValueArray { "1" }), "tag_o19008");
+      Assert.IsFalse(new JSValue(0.0).JSEquals(new JSValueArray { true }), "tag_o19009");
+      Assert.IsFalse(new JSValue(0.0).JSEquals(new JSValueArray { "true" }), "tag_o19010");
+      Assert.IsTrue(new JSValue(0.0).JSEquals(""), "tag_o19011");
+      Assert.IsTrue(new JSValue(0.0).JSEquals("0"), "tag_o19012");
+      Assert.IsFalse(new JSValue(0.0).JSEquals("1"), "tag_o19013");
+      Assert.IsFalse(new JSValue(0.0).JSEquals("true"), "tag_o19014");
+      Assert.IsFalse(new JSValue(0.0).JSEquals("false"), "tag_o19015");
+      Assert.IsFalse(new JSValue(0.0).JSEquals("Hello"), "tag_o19016");
+      Assert.IsTrue(new JSValue(0.0).JSEquals(false), "tag_o19017");
+      Assert.IsFalse(new JSValue(0.0).JSEquals(true), "tag_o19018");
+      Assert.IsTrue(new JSValue(0.0).JSEquals(0), "tag_o19019");
+      Assert.IsFalse(new JSValue(0.0).JSEquals(5), "tag_o19020");
+      Assert.IsFalse(new JSValue(0.0).JSEquals(1), "tag_o19021");
+      Assert.IsTrue(new JSValue(0.0).JSEquals(0.0), "tag_o19022");
+      Assert.IsFalse(new JSValue(0.0).JSEquals(0.5), "tag_o19023");
+      Assert.IsFalse(new JSValue(0.0).JSEquals(1.0), "tag_o19024");
 
-      Assert.IsFalse(new JSValue(1.0).JSEquals(JSValue.Null), "tag_n20001");
-      Assert.IsFalse(new JSValue(1.0).JSEquals(new JSValueObject { }), "tag_n20002");
-      Assert.IsFalse(new JSValue(1.0).JSEquals(new JSValueArray { }), "tag_n20003");
-      Assert.IsFalse(new JSValue(1.0).JSEquals(new JSValueArray { "Hello" }), "tag_n20004");
-      Assert.IsFalse(new JSValue(1.0).JSEquals(new JSValueArray { 0 }), "tag_n20005");
-      Assert.IsFalse(new JSValue(1.0).JSEquals(new JSValueArray { "0" }), "tag_n20006");
-      Assert.IsTrue(new JSValue(1.0).JSEquals(new JSValueArray { 1 }), "tag_n20007");
-      Assert.IsTrue(new JSValue(1.0).JSEquals(new JSValueArray { "1" }), "tag_n20008");
-      Assert.IsFalse(new JSValue(1.0).JSEquals(new JSValueArray { true }), "tag_n20009");
-      Assert.IsFalse(new JSValue(1.0).JSEquals(new JSValueArray { "true" }), "tag_n20010");
-      Assert.IsFalse(new JSValue(1.0).JSEquals(""), "tag_n20011");
-      Assert.IsFalse(new JSValue(1.0).JSEquals("0"), "tag_n20012");
-      Assert.IsTrue(new JSValue(1.0).JSEquals("1"), "tag_n20013");
-      Assert.IsFalse(new JSValue(1.0).JSEquals("true"), "tag_n20014");
-      Assert.IsFalse(new JSValue(1.0).JSEquals("false"), "tag_n20015");
-      Assert.IsFalse(new JSValue(1.0).JSEquals("Hello"), "tag_n20016");
-      Assert.IsFalse(new JSValue(1.0).JSEquals(false), "tag_n20017");
-      Assert.IsTrue(new JSValue(1.0).JSEquals(true), "tag_n20018");
-      Assert.IsFalse(new JSValue(1.0).JSEquals(0), "tag_n20019");
-      Assert.IsFalse(new JSValue(1.0).JSEquals(5), "tag_n20020");
-      Assert.IsTrue(new JSValue(1.0).JSEquals(1), "tag_n20021");
-      Assert.IsFalse(new JSValue(1.0).JSEquals(0.0), "tag_n20022");
-      Assert.IsFalse(new JSValue(1.0).JSEquals(0.5), "tag_n20023");
-      Assert.IsTrue(new JSValue(1.0).JSEquals(1.0), "tag_n20024");
+      Assert.IsFalse(new JSValue(1.0).JSEquals(JSValue.Null), "tag_o20001");
+      Assert.IsFalse(new JSValue(1.0).JSEquals(new JSValueObject { }), "tag_o20002");
+      Assert.IsFalse(new JSValue(1.0).JSEquals(new JSValueArray { }), "tag_o20003");
+      Assert.IsFalse(new JSValue(1.0).JSEquals(new JSValueArray { "Hello" }), "tag_o20004");
+      Assert.IsFalse(new JSValue(1.0).JSEquals(new JSValueArray { 0 }), "tag_o20005");
+      Assert.IsFalse(new JSValue(1.0).JSEquals(new JSValueArray { "0" }), "tag_o20006");
+      Assert.IsTrue(new JSValue(1.0).JSEquals(new JSValueArray { 1 }), "tag_o20007");
+      Assert.IsTrue(new JSValue(1.0).JSEquals(new JSValueArray { "1" }), "tag_o20008");
+      Assert.IsFalse(new JSValue(1.0).JSEquals(new JSValueArray { true }), "tag_o20009");
+      Assert.IsFalse(new JSValue(1.0).JSEquals(new JSValueArray { "true" }), "tag_o20010");
+      Assert.IsFalse(new JSValue(1.0).JSEquals(""), "tag_o20011");
+      Assert.IsFalse(new JSValue(1.0).JSEquals("0"), "tag_o20012");
+      Assert.IsTrue(new JSValue(1.0).JSEquals("1"), "tag_o20013");
+      Assert.IsFalse(new JSValue(1.0).JSEquals("true"), "tag_o20014");
+      Assert.IsFalse(new JSValue(1.0).JSEquals("false"), "tag_o20015");
+      Assert.IsFalse(new JSValue(1.0).JSEquals("Hello"), "tag_o20016");
+      Assert.IsFalse(new JSValue(1.0).JSEquals(false), "tag_o20017");
+      Assert.IsTrue(new JSValue(1.0).JSEquals(true), "tag_o20018");
+      Assert.IsFalse(new JSValue(1.0).JSEquals(0), "tag_o20019");
+      Assert.IsFalse(new JSValue(1.0).JSEquals(5), "tag_o20020");
+      Assert.IsTrue(new JSValue(1.0).JSEquals(1), "tag_o20021");
+      Assert.IsFalse(new JSValue(1.0).JSEquals(0.0), "tag_o20022");
+      Assert.IsFalse(new JSValue(1.0).JSEquals(0.5), "tag_o20023");
+      Assert.IsTrue(new JSValue(1.0).JSEquals(1.0), "tag_o20024");
 
-      Assert.IsFalse(new JSValue(0.5).JSEquals(JSValue.Null), "tag_n21001");
-      Assert.IsFalse(new JSValue(0.5).JSEquals(new JSValueObject { }), "tag_n21002");
-      Assert.IsFalse(new JSValue(0.5).JSEquals(new JSValueArray { }), "tag_n21003");
-      Assert.IsFalse(new JSValue(0.5).JSEquals(new JSValueArray { "Hello" }), "tag_n21004");
-      Assert.IsFalse(new JSValue(0.5).JSEquals(new JSValueArray { 0 }), "tag_n21005");
-      Assert.IsFalse(new JSValue(0.5).JSEquals(new JSValueArray { "0" }), "tag_n21006");
-      Assert.IsFalse(new JSValue(0.5).JSEquals(new JSValueArray { 1 }), "tag_n21007");
-      Assert.IsFalse(new JSValue(0.5).JSEquals(new JSValueArray { "1" }), "tag_n21008");
-      Assert.IsFalse(new JSValue(0.5).JSEquals(new JSValueArray { true }), "tag_n21009");
-      Assert.IsFalse(new JSValue(0.5).JSEquals(new JSValueArray { "true" }), "tag_n21010");
-      Assert.IsFalse(new JSValue(0.5).JSEquals(""), "tag_n21011");
-      Assert.IsFalse(new JSValue(0.5).JSEquals("0"), "tag_n21012");
-      Assert.IsFalse(new JSValue(0.5).JSEquals("1"), "tag_n21013");
-      Assert.IsFalse(new JSValue(0.5).JSEquals("true"), "tag_n21014");
-      Assert.IsFalse(new JSValue(0.5).JSEquals("false"), "tag_n21015");
-      Assert.IsFalse(new JSValue(0.5).JSEquals("Hello"), "tag_n21016");
-      Assert.IsFalse(new JSValue(0.5).JSEquals(false), "tag_n21017");
-      Assert.IsFalse(new JSValue(0.5).JSEquals(true), "tag_n21018");
-      Assert.IsFalse(new JSValue(0.5).JSEquals(0), "tag_n21019");
-      Assert.IsFalse(new JSValue(0.5).JSEquals(5), "tag_n21020");
-      Assert.IsFalse(new JSValue(0.5).JSEquals(1), "tag_n21021");
-      Assert.IsFalse(new JSValue(0.5).JSEquals(0.0), "tag_n21022");
-      Assert.IsTrue(new JSValue(0.5).JSEquals(0.5), "tag_n21023");
-      Assert.IsFalse(new JSValue(0.5).JSEquals(1.0), "tag_n21024");
+      Assert.IsFalse(new JSValue(0.5).JSEquals(JSValue.Null), "tag_o21001");
+      Assert.IsFalse(new JSValue(0.5).JSEquals(new JSValueObject { }), "tag_o21002");
+      Assert.IsFalse(new JSValue(0.5).JSEquals(new JSValueArray { }), "tag_o21003");
+      Assert.IsFalse(new JSValue(0.5).JSEquals(new JSValueArray { "Hello" }), "tag_o21004");
+      Assert.IsFalse(new JSValue(0.5).JSEquals(new JSValueArray { 0 }), "tag_o21005");
+      Assert.IsFalse(new JSValue(0.5).JSEquals(new JSValueArray { "0" }), "tag_o21006");
+      Assert.IsFalse(new JSValue(0.5).JSEquals(new JSValueArray { 1 }), "tag_o21007");
+      Assert.IsFalse(new JSValue(0.5).JSEquals(new JSValueArray { "1" }), "tag_o21008");
+      Assert.IsFalse(new JSValue(0.5).JSEquals(new JSValueArray { true }), "tag_o21009");
+      Assert.IsFalse(new JSValue(0.5).JSEquals(new JSValueArray { "true" }), "tag_o21010");
+      Assert.IsFalse(new JSValue(0.5).JSEquals(""), "tag_o21011");
+      Assert.IsFalse(new JSValue(0.5).JSEquals("0"), "tag_o21012");
+      Assert.IsFalse(new JSValue(0.5).JSEquals("1"), "tag_o21013");
+      Assert.IsFalse(new JSValue(0.5).JSEquals("true"), "tag_o21014");
+      Assert.IsFalse(new JSValue(0.5).JSEquals("false"), "tag_o21015");
+      Assert.IsFalse(new JSValue(0.5).JSEquals("Hello"), "tag_o21016");
+      Assert.IsFalse(new JSValue(0.5).JSEquals(false), "tag_o21017");
+      Assert.IsFalse(new JSValue(0.5).JSEquals(true), "tag_o21018");
+      Assert.IsFalse(new JSValue(0.5).JSEquals(0), "tag_o21019");
+      Assert.IsFalse(new JSValue(0.5).JSEquals(5), "tag_o21020");
+      Assert.IsFalse(new JSValue(0.5).JSEquals(1), "tag_o21021");
+      Assert.IsFalse(new JSValue(0.5).JSEquals(0.0), "tag_o21022");
+      Assert.IsTrue(new JSValue(0.5).JSEquals(0.5), "tag_o21023");
+      Assert.IsFalse(new JSValue(0.5).JSEquals(1.0), "tag_o21024");
     }
 
     [TestMethod]
@@ -936,87 +1008,87 @@ namespace Microsoft.ReactNative.Managed.UnitTests
         Assert.IsTrue(left != right, "operator !=: {0}", tag);
       }
 
-      CheckEquals(new JSValueObject { }, new JSValueObject { }, "tag_o101");
-      CheckEquals(new JSValueObject { ["prop1"] = 1 }, new JSValueObject { ["prop1"] = 1 }, "tag_o102");
+      CheckEquals(new JSValueObject { }, new JSValueObject { }, "tag_p101");
+      CheckEquals(new JSValueObject { ["prop1"] = 1 }, new JSValueObject { ["prop1"] = 1 }, "tag_p102");
       CheckEquals(new JSValueObject { ["prop1"] = 1, ["prop2"] = "Hello" },
-                  new JSValueObject { ["prop1"] = 1, ["prop2"] = "Hello" }, "tag_o103");
+                  new JSValueObject { ["prop1"] = 1, ["prop2"] = "Hello" }, "tag_p103");
       CheckEquals(new JSValueObject { ["prop1"] = new JSValueObject { } },
-                  new JSValueObject { ["prop1"] = new JSValueObject { } }, "tag_o104");
+                  new JSValueObject { ["prop1"] = new JSValueObject { } }, "tag_p104");
       CheckEquals(new JSValueObject { ["prop1"] = new JSValueObject { ["prop1"] = 1 } },
-                  new JSValueObject { ["prop1"] = new JSValueObject { ["prop1"] = 1 } }, "tag_o105");
+                  new JSValueObject { ["prop1"] = new JSValueObject { ["prop1"] = 1 } }, "tag_p105");
       CheckEquals(new JSValueObject { ["prop1"] = new JSValueArray { } },
-                  new JSValueObject { ["prop1"] = new JSValueArray { } }, "tag_o106");
+                  new JSValueObject { ["prop1"] = new JSValueArray { } }, "tag_p106");
       CheckEquals(new JSValueObject { ["prop1"] = new JSValueArray { 1 } },
-                  new JSValueObject { ["prop1"] = new JSValueArray { 1 } }, "tag_o107");
-      CheckNotEquals(new JSValueObject { ["prop1"] = 1 }, new JSValueObject { }, "tag_o108");
-      CheckNotEquals(new JSValueObject { ["prop1"] = 1 }, new JSValueObject { ["prop1"] = 2 }, "tag_o109");
-      CheckNotEquals(new JSValueObject { }, new JSValueArray { }, "tag_o110");
-      CheckNotEquals(new JSValueObject { }, "", "tag_o111");
-      CheckNotEquals(new JSValueObject { }, false, "tag_o112");
-      CheckNotEquals(new JSValueObject { }, true, "tag_o113");
-      CheckNotEquals(new JSValueObject { }, 0, "tag_o114");
-      CheckNotEquals(new JSValueObject { }, 0.0, "tag_o115");
+                  new JSValueObject { ["prop1"] = new JSValueArray { 1 } }, "tag_p107");
+      CheckNotEquals(new JSValueObject { ["prop1"] = 1 }, new JSValueObject { }, "tag_p108");
+      CheckNotEquals(new JSValueObject { ["prop1"] = 1 }, new JSValueObject { ["prop1"] = 2 }, "tag_p109");
+      CheckNotEquals(new JSValueObject { }, new JSValueArray { }, "tag_p110");
+      CheckNotEquals(new JSValueObject { }, "", "tag_p111");
+      CheckNotEquals(new JSValueObject { }, false, "tag_p112");
+      CheckNotEquals(new JSValueObject { }, true, "tag_p113");
+      CheckNotEquals(new JSValueObject { }, 0, "tag_p114");
+      CheckNotEquals(new JSValueObject { }, 0.0, "tag_p115");
 
 
-      CheckEquals(new JSValueArray { }, new JSValueArray { }, "tag_o201");
-      CheckEquals(new JSValueArray { 1 }, new JSValueArray { 1 }, "tag_o202");
+      CheckEquals(new JSValueArray { }, new JSValueArray { }, "tag_p201");
+      CheckEquals(new JSValueArray { 1 }, new JSValueArray { 1 }, "tag_p202");
       CheckEquals(new JSValueArray { 1, "Hello" },
-                  new JSValueArray { 1, "Hello" }, "tag_o203");
+                  new JSValueArray { 1, "Hello" }, "tag_p203");
       CheckEquals(new JSValueArray { new JSValueArray { } },
-                  new JSValueArray { new JSValueArray { } }, "tag_o204");
+                  new JSValueArray { new JSValueArray { } }, "tag_p204");
       CheckEquals(new JSValueArray { new JSValueArray { 1 } },
-                  new JSValueArray { new JSValueArray { 1 } }, "tag_o205");
+                  new JSValueArray { new JSValueArray { 1 } }, "tag_p205");
       CheckEquals(new JSValueArray { new JSValueObject { } },
-                  new JSValueArray { new JSValueObject { } }, "tag_o206");
+                  new JSValueArray { new JSValueObject { } }, "tag_p206");
       CheckEquals(new JSValueArray { new JSValueObject { ["prop1"] = 1 } },
-                  new JSValueArray { new JSValueObject { ["prop1"] = 1 } }, "tag_o207");
-      CheckNotEquals(new JSValueArray { 1 }, new JSValueArray { }, "tag_o208");
-      CheckNotEquals(new JSValueArray { 1 }, new JSValueArray { 2 }, "tag_o209");
-      CheckNotEquals(new JSValueArray { }, new JSValueObject { }, "tag_o210");
-      CheckNotEquals(new JSValueArray { }, "", "tag_o211");
-      CheckNotEquals(new JSValueArray { }, false, "tag_o212");
-      CheckNotEquals(new JSValueArray { }, true, "tag_o213");
-      CheckNotEquals(new JSValueArray { }, 0, "tag_o214");
-      CheckNotEquals(new JSValueArray { }, 0.0, "tag_o215");
+                  new JSValueArray { new JSValueObject { ["prop1"] = 1 } }, "tag_p207");
+      CheckNotEquals(new JSValueArray { 1 }, new JSValueArray { }, "tag_p208");
+      CheckNotEquals(new JSValueArray { 1 }, new JSValueArray { 2 }, "tag_p209");
+      CheckNotEquals(new JSValueArray { }, new JSValueObject { }, "tag_p210");
+      CheckNotEquals(new JSValueArray { }, "", "tag_p211");
+      CheckNotEquals(new JSValueArray { }, false, "tag_p212");
+      CheckNotEquals(new JSValueArray { }, true, "tag_p213");
+      CheckNotEquals(new JSValueArray { }, 0, "tag_p214");
+      CheckNotEquals(new JSValueArray { }, 0.0, "tag_p215");
 
-      CheckEquals("", "", "tag_o301");
-      CheckEquals("Hello", "Hello", "tag_o302");
-      CheckNotEquals("Hello1", "Hello2", "tag_o303");
-      CheckNotEquals("", new JSValueObject { }, "tag_o304");
-      CheckNotEquals("", new JSValueArray { }, "tag_o305");
-      CheckNotEquals("", false, "tag_o306");
-      CheckNotEquals("", 0, "tag_o307");
-      CheckNotEquals("", 0.0, "tag_o308");
+      CheckEquals("", "", "tag_p301");
+      CheckEquals("Hello", "Hello", "tag_p302");
+      CheckNotEquals("Hello1", "Hello2", "tag_p303");
+      CheckNotEquals("", new JSValueObject { }, "tag_p304");
+      CheckNotEquals("", new JSValueArray { }, "tag_p305");
+      CheckNotEquals("", false, "tag_p306");
+      CheckNotEquals("", 0, "tag_p307");
+      CheckNotEquals("", 0.0, "tag_p308");
 
-      CheckEquals(false, false, "tag_o401");
-      CheckEquals(true, true, "tag_o402");
-      CheckNotEquals(false, true, "tag_o403");
-      CheckNotEquals(true, false, "tag_o404");
-      CheckNotEquals(false, new JSValueObject { }, "tag_o405");
-      CheckNotEquals(false, new JSValueArray { }, "tag_o406");
-      CheckNotEquals(false, "", "tag_o407");
-      CheckNotEquals(false, 0, "tag_o408");
-      CheckNotEquals(false, 0.0, "tag_o409");
+      CheckEquals(false, false, "tag_p401");
+      CheckEquals(true, true, "tag_p402");
+      CheckNotEquals(false, true, "tag_p403");
+      CheckNotEquals(true, false, "tag_p404");
+      CheckNotEquals(false, new JSValueObject { }, "tag_p405");
+      CheckNotEquals(false, new JSValueArray { }, "tag_p406");
+      CheckNotEquals(false, "", "tag_p407");
+      CheckNotEquals(false, 0, "tag_p408");
+      CheckNotEquals(false, 0.0, "tag_p409");
 
-      CheckEquals(0, 0, "tag_o501");
-      CheckEquals(42, 42, "tag_o502");
-      CheckNotEquals(2, 3, "tag_o503");
-      CheckNotEquals(-1, 1, "tag_o504");
-      CheckNotEquals(0, new JSValueObject { }, "tag_o505");
-      CheckNotEquals(0, new JSValueArray { }, "tag_o506");
-      CheckNotEquals(0, "", "tag_o507");
-      CheckNotEquals(0, false, "tag_o508");
-      CheckNotEquals(0, 0.0, "tag_o509");
+      CheckEquals(0, 0, "tag_p501");
+      CheckEquals(42, 42, "tag_p502");
+      CheckNotEquals(2, 3, "tag_p503");
+      CheckNotEquals(-1, 1, "tag_p504");
+      CheckNotEquals(0, new JSValueObject { }, "tag_p505");
+      CheckNotEquals(0, new JSValueArray { }, "tag_p506");
+      CheckNotEquals(0, "", "tag_p507");
+      CheckNotEquals(0, false, "tag_p508");
+      CheckNotEquals(0, 0.0, "tag_p509");
 
-      CheckEquals(0.0, 0.0, "tag_o601");
-      CheckEquals(4.2, 4.2, "tag_o602");
-      CheckNotEquals(0.2, 0.3, "tag_o603");
-      CheckNotEquals(-0.1, 0.1, "tag_o604");
-      CheckNotEquals(0.0, new JSValueObject { }, "tag_o605");
-      CheckNotEquals(0.0, new JSValueArray { }, "tag_o606");
-      CheckNotEquals(0.0, "", "tag_o607");
-      CheckNotEquals(0.0, false, "tag_o608");
-      CheckNotEquals(0.0, 0, "tag_o609");
+      CheckEquals(0.0, 0.0, "tag_p601");
+      CheckEquals(4.2, 4.2, "tag_p602");
+      CheckNotEquals(0.2, 0.3, "tag_p603");
+      CheckNotEquals(-0.1, 0.1, "tag_p604");
+      CheckNotEquals(0.0, new JSValueObject { }, "tag_p605");
+      CheckNotEquals(0.0, new JSValueArray { }, "tag_p606");
+      CheckNotEquals(0.0, "", "tag_p607");
+      CheckNotEquals(0.0, false, "tag_p608");
+      CheckNotEquals(0.0, 0, "tag_p609");
     }
   }
 }

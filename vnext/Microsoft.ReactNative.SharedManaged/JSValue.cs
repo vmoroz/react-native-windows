@@ -10,11 +10,14 @@ using System.Text;
 
 namespace Microsoft.ReactNative.Managed
 {
-  // An alias to help build JSValue Object values
-  class JSValueObject : Dictionary<string, JSValue>
+  // JSValueObject is based on Dictionary<string, JSValue> and can be used to initialize Object value in JSValue.
+  // It is possible to write: JSValueObject{{"X", 4}, {"Y", 5}} or JSValueObject{["X"] = 4, ["Y"] = 5} and assign it to JSValue.
+  class JSValueObject : Dictionary<string, JSValue>, IEquatable<JSValueObject>
   {
+    // Default constructor
     public JSValueObject() { }
 
+    // Create JSValueObject as a shallow copy of 'other'.
     public static JSValueObject CopyFrom(IReadOnlyDictionary<string, JSValue> other)
     {
       JSValueObject obj = new JSValueObject();
@@ -25,11 +28,110 @@ namespace Microsoft.ReactNative.Managed
 
       return obj;
     }
+
+    // Return true if two JSValueObject interfaces are strictly equal to each other.
+    // Both objects must have the same set of equal properties.
+    // Property values must be equal.
+    public static bool Equals(IReadOnlyDictionary<string, JSValue> left, IReadOnlyDictionary<string, JSValue> right)
+    {
+      if (left == right) { return true; }
+      else if (left == null) { return false; }
+      else if (right == null) { return false; }
+      else if (left.Count != right.Count) { return false; }
+
+      foreach (var entry in left)
+      {
+        if (!right.TryGetValue(entry.Key, out var value) || !value.Equals(entry.Value))
+        {
+          return false;
+        }
+      }
+
+      return true;
+    }
+
+    // Return true if this JSValueObject is strictly equal to 'other'.
+    public bool Equals(JSValueObject other)
+    {
+      return Equals(this as IReadOnlyDictionary<string, JSValue>, other as IReadOnlyDictionary<string, JSValue>);
+    }
+
+    // Return true if this JSValueObject is strictly equal to 'other'.
+    public bool Equals(IReadOnlyDictionary<string, JSValue> other)
+    {
+      return Equals(this as IReadOnlyDictionary<string, JSValue>, other);
+    }
+
+    // Return true if this JSValueObject is strictly equal to 'obj'.
+    public override bool Equals(object obj)
+    {
+      return Equals(this as IReadOnlyDictionary<string, JSValue>, obj as IReadOnlyDictionary<string, JSValue>);
+    }
+
+    // True if Equals(left, right)
+    public static bool operator ==(JSValueObject left, IReadOnlyDictionary<string, JSValue> right)
+    {
+      return Equals(left, right);
+    }
+
+    // True if !Equals(left, right)
+    public static bool operator !=(JSValueObject left, IReadOnlyDictionary<string, JSValue> right)
+    {
+      return !Equals(left, right);
+    }
+
+    // True if Equals(left, right)
+    public static bool operator ==(IReadOnlyDictionary<string, JSValue> left, JSValueObject right)
+    {
+      return Equals(left, right);
+    }
+
+    // True if !Equals(left, right)
+    public static bool operator !=(IReadOnlyDictionary<string, JSValue> left, JSValueObject right)
+    {
+      return !Equals(left, right);
+    }
+
+    // Return true if this JSValueObject is strictly equal to other JSValueObject
+    // after their property values are converted to the same type.
+    // See JSValue::JSEquals for details about the conversion.
+    public static bool JSEquals(IReadOnlyDictionary<string, JSValue> left, IReadOnlyDictionary<string, JSValue> right)
+    {
+      if (left == right) { return true; }
+      else if (left == null) { return false; }
+      else if (right == null) { return false; }
+      else if (left.Count != right.Count) { return false; }
+
+      foreach (var keyValue in left)
+      {
+        if (!right.TryGetValue(keyValue.Key, out var rightValue) || !keyValue.Value.JSEquals(rightValue))
+        {
+          return false;
+        }
+      }
+
+      return true;
+    }
+
+    // Calculation of the JSValueObject hash code is quite expensive.
+    // It is not implemented.
+    public override int GetHashCode()
+    {
+      throw new NotImplementedException("JSValueObject currently does not support hash codes");
+    }
+
+    // Create JSValueObject from IJSValueReader.
+    public static JSValueObject ReadFrom(IJSValueReader reader) => JSValue.ReadObjectFrom(reader);
+
+    // Write this JSValueObject to IJSValueWriter.
+    public void WriteTo(IJSValueWriter writer) => JSValue.WriteObject(writer, this);
   }
 
-  // An alias to help build JSValue Array values
-  class JSValueArray : List<JSValue>
+  // JSValueObject is based on List<JSValue> and can be used to initialize Array value in JSValue.
+  // It is possible to write: JSValueArray{"X", 42, JSValue.Null, true} and assign it to JSValue.
+  class JSValueArray : List<JSValue>, IEquatable<JSValueArray>
   {
+    // Default constructor
     public JSValueArray() { }
 
     public static JSValueArray CopyFrom(IReadOnlyList<JSValue> other)
@@ -42,13 +144,111 @@ namespace Microsoft.ReactNative.Managed
 
       return arr;
     }
+
+    // Return true if two JSValuearray interfaces are strictly equal to each other.
+    // Both arrays must have the same set of items. Items must be equal.
+    public static bool Equals(IReadOnlyList<JSValue> left, IReadOnlyList<JSValue> right)
+    {
+      if (left == right) { return true; }
+      else if (left == null) { return false; }
+      else if (right == null) { return false; }
+      else if (left.Count != right.Count) { return false; }
+
+      for (int i = 0; i < left.Count; ++i)
+      {
+        if (!left[i].Equals(right[i]))
+        {
+          return false;
+        }
+      }
+
+      return true;
+    }
+
+    // Return true if this JSValueArray is strictly equal to 'other'.
+    public bool Equals(JSValueArray other)
+    {
+      return Equals(this as IReadOnlyList<JSValue>, other as IReadOnlyList<JSValue>);
+    }
+
+    // Return true if this JSValueArray is strictly equal to 'other'.
+    public bool Equals(IReadOnlyList<JSValue> other)
+    {
+      return Equals(this as IReadOnlyList<JSValue>, other);
+    }
+
+    // Return true if this JSValueArray is strictly equal to 'obj'.
+    public override bool Equals(object obj)
+    {
+      return Equals(this as IReadOnlyList<JSValue>, obj as IReadOnlyList<JSValue>);
+    }
+
+    // True if Equals(left, right)
+    public static bool operator ==(JSValueArray left, IReadOnlyList<JSValue> right)
+    {
+      return Equals(left, right);
+    }
+
+    // True if !Equals(left, right)
+    public static bool operator !=(JSValueArray left, IReadOnlyList<JSValue> right)
+    {
+      return !Equals(left, right);
+    }
+
+    // True if Equals(left, right)
+    public static bool operator ==(IReadOnlyList<JSValue> left, JSValueArray right)
+    {
+      return Equals(left, right);
+    }
+
+    // True if !Equals(left, right)
+    public static bool operator !=(IReadOnlyList<JSValue> left, JSValueArray right)
+    {
+      return !Equals(left, right);
+    }
+
+    // Return true if this JSValueArray is strictly equal to other JSValueArray
+    // after their property values are converted to the same type.
+    // See JSValue::JSEquals for details about the conversion.
+    public static bool JSEquals(IReadOnlyList<JSValue> left, IReadOnlyList<JSValue> right)
+    {
+      if (left == right) { return true; }
+      else if (left == null) { return false; }
+      else if (right == null) { return false; }
+      else if (left.Count != right.Count) { return false; }
+
+      for (int i = 0; i < left.Count; ++i)
+      {
+        if (!left[i].JSEquals(right[i]))
+        {
+          return false;
+        }
+      }
+
+      return true;
+    }
+
+    // Calculation of the JSValueArray hash code is quite expensive.
+    // It is not implemented.
+    public override int GetHashCode()
+    {
+      throw new NotImplementedException("JSValueArray currently does not support hash codes");
+    }
+
+    // Create JSValueArray from IJSValueReader.
+    public static JSValueArray ReadFrom(IJSValueReader reader) => JSValue.ReadArrayFrom(reader);
+
+    // Write this JSValueArray to IJSValueWriter.
+    public void WriteTo(IJSValueWriter writer) => JSValue.WriteArray(writer, this);
   }
 
   // JSValue represents an immutable JavaScript value passed as a parameter.
-  // It is created to simplify working with IJSValueReader.
+  // It is created to simplify working with IJSValueReader in complex situations.
+  // For example, when we need to serialize a TypeScript discriminating union and
+  // we need to read 'kind' property before we process other properties.
   //
   // JSValue is designed to minimize number of memory allocations:
-  // - It is a struct that avoid extra memory allocations when it is stored in a container.
+  // - It is a struct that avoids extra memory allocations when it is stored in a container.
   // - It avoids boxing simple values by using a union type to store them.
   // The JSValue is an immutable and is safe to be used from multiple threads.
   // It does not implement GetHashCode() and must not be used as a key in a dictionary.
@@ -59,6 +259,7 @@ namespace Microsoft.ReactNative.Managed
     public static readonly JSValue EmptyArray = new JSValueArray();
     public static readonly JSValue EmptyString = "";
 
+    // Used by AsBoolean() conversion from a string to a Boolean.
     private static readonly HashSet<string> StringToBoolean =
       new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "true", "1", "yes", "y", "on" };
 
@@ -68,6 +269,7 @@ namespace Microsoft.ReactNative.Managed
     private readonly SimpleValue m_simpleValue;
     private readonly object m_objValue;
 
+    // Create an Object JSValue.
     public JSValue(IReadOnlyDictionary<string, JSValue> value)
     {
       Type = JSValueType.Object;
@@ -75,6 +277,7 @@ namespace Microsoft.ReactNative.Managed
       m_objValue = value ?? EmptyObject.ObjectValue;
     }
 
+    // Create an Array JSValue.
     public JSValue(IReadOnlyList<JSValue> value)
     {
       Type = JSValueType.Array;
@@ -82,6 +285,7 @@ namespace Microsoft.ReactNative.Managed
       m_objValue = value ?? EmptyArray.ArrayValue;
     }
 
+    // Create a String JSValue.
     public JSValue(string value)
     {
       Type = JSValueType.String;
@@ -89,6 +293,7 @@ namespace Microsoft.ReactNative.Managed
       m_objValue = value ?? "";
     }
 
+    // Create a Boolean JSValue.
     public JSValue(bool value)
     {
       Type = JSValueType.Boolean;
@@ -96,6 +301,7 @@ namespace Microsoft.ReactNative.Managed
       m_objValue = null;
     }
 
+    // Create an Int64 JSValue.
     public JSValue(long value)
     {
       Type = JSValueType.Int64;
@@ -103,6 +309,7 @@ namespace Microsoft.ReactNative.Managed
       m_objValue = null;
     }
 
+    // Create a Double JSValue.
     public JSValue(double value)
     {
       Type = JSValueType.Double;
@@ -129,28 +336,34 @@ namespace Microsoft.ReactNative.Managed
     public static implicit operator JSValue(float value) => new JSValue(value);
     public static implicit operator JSValue(double value) => new JSValue(value);
 
+    // Get JSValue type.
     public JSValueType Type { get; }
 
+    // Return true if JSValue type is Null.
     public bool IsNull => Type == JSValueType.Null;
 
+    // Return true and Object value if JSValue type is Object, or false and JSValue.Null otherwise.
     public bool TryGetObject(out IReadOnlyDictionary<string, JSValue> value)
     {
       value = (Type == JSValueType.Object) ? (IReadOnlyDictionary<string, JSValue>)m_objValue : null;
       return value != null;
     }
 
+    // Return true and Array value if JSValue type is Array, or false and JSValue.Null otherwise.
     public bool TryGetArray(out IReadOnlyList<JSValue> value)
     {
       value = (Type == JSValueType.Array) ? (IReadOnlyList<JSValue>)m_objValue : null;
       return value != null;
     }
 
+    // Return true and String value if JSValue type is String, or false and JSValue.Null otherwise.
     public bool TryGetString(out string value)
     {
       value = (Type == JSValueType.String) ? (string)m_objValue : null;
       return value != null;
     }
 
+    // Return true and Boolean value if JSValue type is Boolean, or false and JSValue.Null otherwise.
     public bool TryGetBoolean(out bool value)
     {
       if (Type == JSValueType.Boolean)
@@ -163,6 +376,7 @@ namespace Microsoft.ReactNative.Managed
       return false;
     }
 
+    // Return true and Int64 value if JSValue type is Int64, or false and JSValue.Null otherwise.
     public bool TryGetInt64(out long value)
     {
       if (Type == JSValueType.Int64)
@@ -175,6 +389,7 @@ namespace Microsoft.ReactNative.Managed
       return false;
     }
 
+    // Return true and Double value if JSValue type is Double, or false and JSValue.Null otherwise.
     public bool TryGetDouble(out double value)
     {
       if (Type == JSValueType.Double)
@@ -187,12 +402,20 @@ namespace Microsoft.ReactNative.Managed
       return false;
     }
 
+    // Return Object representation of JSValue. It is JSValue.EmptyObject if type is not Object.
     public IReadOnlyDictionary<string, JSValue> AsObject() =>
       Type == JSValueType.Object ? ObjectValue : EmptyObject.ObjectValue;
 
+    // Return Array representation of JSValue. It is JSValue.EmptyArray if type is not Array.
     public IReadOnlyList<JSValue> AsArray() =>
       Type == JSValueType.Array ? ArrayValue : EmptyArray.ArrayValue;
 
+    // Return a String representation of JSValue.
+    // Null is "null".
+    // Object and Array are empty strings "".
+    // Boolean is "true" or "false".
+    // Int64 is converted to string using integer representation.
+    // Double uses AsJSString() conversion which uses "NaN", "Infinity", and "-Infinity" for special values.
     public string AsString()
     {
       switch (Type)
@@ -206,6 +429,10 @@ namespace Microsoft.ReactNative.Managed
       }
     }
 
+    // Return a Boolean representation of JSValue.
+    // Object and Array are true if they are not empty.
+    // String is true if it case-insensitively matches "true", "1", "yes", "y", or "on" strings.
+    // Int64 or Double are false if they are zero or NAN.
     public bool AsBoolean()
     {
       switch (Type)
@@ -215,11 +442,24 @@ namespace Microsoft.ReactNative.Managed
         case JSValueType.String: return StringToBoolean.Contains(StringValue);
         case JSValueType.Boolean: return BooleanValue;
         case JSValueType.Int64: return Int64Value != 0;
-        case JSValueType.Double: return DoubleValue != 0;
+        case JSValueType.Double: return !double.IsNaN(DoubleValue) && DoubleValue != 0;
         default: return false;
       }
     }
 
+    // Return an Int8 representation of JSValue. It is the same as (Int8)AsInt64().
+    public sbyte AsInt8() => (sbyte)AsInt64();
+
+    // Return an Int16 representation of JSValue. It is the same as (Int16)AsInt64().
+    public short AsInt16() => (short)AsInt64();
+
+    // Return an Int32 representation of JSValue. It is the same as (Int32)AsInt64().
+    public int AsInt32() => (int)AsInt64();
+
+    // Return an Int64 representation of JSValue.
+    // String is converted to double first before converting to Int64.
+    // Boolean is converted to 0 or 1.
+    // Null, Object, and Array are 0.
     public long AsInt64()
     {
       switch (Type)
@@ -232,6 +472,24 @@ namespace Microsoft.ReactNative.Managed
       }
     }
 
+    // Return an Uint8 representation of JSValue. It is the same as (UInt8)AsInt64().
+    public byte AsUInt8() => (byte)AsInt64();
+
+    // Return an UInt16 representation of JSValue. It is the same as (UInt16)AsInt64().
+    public ushort AsUInt16() => (ushort)AsInt64();
+
+    // Return an UInt32 representation of JSValue. It is the same as (UInt32)AsInt64().
+    public uint AsUInt32() => (uint)AsInt64();
+
+    // Return an UInt64 representation of JSValue. It is the same as (UInt64)AsInt64().
+    public ulong AsUInt64() => (ulong)AsInt64();
+
+    // Return a Single representation of JSValue. It is the same as (Single)AsDouble().
+    public float AsSingle() => (float)AsDouble();
+
+    // Return a double representation of JSValue.
+    // Boolean is converted to 0.0 or 1.0.
+    // Null, Object, and Array are 0.
     public double AsDouble()
     {
       switch (Type)
@@ -244,30 +502,43 @@ namespace Microsoft.ReactNative.Managed
       }
     }
 
+    // Cast JSValue to String using AsString() call.
     public static explicit operator string(JSValue value) => value.AsString();
 
+    // Cast JSValue to Boolean using AsBoolean() call.
     public static explicit operator bool(JSValue value) => value.AsBoolean();
 
-    public static explicit operator sbyte(JSValue value) => (sbyte)value.AsInt64();
+    // Cast JSValue to Int8 using AsInt8() call.
+    public static explicit operator sbyte(JSValue value) => value.AsInt8();
 
-    public static explicit operator short(JSValue value) => (short)value.AsInt64();
+    // Cast JSValue to Int16 using AsInt16() call.
+    public static explicit operator short(JSValue value) => value.AsInt16();
 
-    public static explicit operator int(JSValue value) => (int)value.AsInt64();
+    // Cast JSValue to Int32 using AsInt32() call.
+    public static explicit operator int(JSValue value) => value.AsInt32();
 
+    // Cast JSValue to Int64 using AsInt64() call.
     public static explicit operator long(JSValue value) => value.AsInt64();
 
-    public static explicit operator byte(JSValue value) => (byte)value.AsInt64();
+    // Cast JSValue to UInt8 using AsUInt8() call.
+    public static explicit operator byte(JSValue value) => value.AsUInt8();
 
-    public static explicit operator ushort(JSValue value) => (ushort)value.AsInt64();
+    // Cast JSValue to UInt16 using AsUInt16() call.
+    public static explicit operator ushort(JSValue value) => value.AsUInt16();
 
-    public static explicit operator uint(JSValue value) => (uint)value.AsInt64();
+    // Cast JSValue to UInt32 using AsUInt32() call.
+    public static explicit operator uint(JSValue value) => value.AsUInt32();
 
-    public static explicit operator ulong(JSValue value) => (ulong)value.AsInt64();
+    // Cast JSValue to UInt64 using AsUInt64() call.
+    public static explicit operator ulong(JSValue value) => value.AsUInt64();
 
-    public static explicit operator float(JSValue value) => (float)value.AsDouble();
+    // Cast JSValue to Single using AsSingle() call.
+    public static explicit operator float(JSValue value) => value.AsSingle();
 
+    // Cast JSValue to Double using AsDouble() call.
     public static explicit operator double(JSValue value) => value.AsDouble();
 
+    // Return a String representation of JSValue. It is equivalent to JavaScript String(value) result.
     public string AsJSString()
     {
       StringBuilder WriteValue(StringBuilder sb, JSValue node)
@@ -320,11 +591,12 @@ namespace Microsoft.ReactNative.Managed
       }
     }
 
+    // Return a Boolean representation of JSValue. It is equivalent to JavaScript Boolean(value) result.
     public bool AsJSBoolean()
     {
       switch (Type)
       {
-        case JSValueType.Object: return true;
+        case JSValueType.Object:
         case JSValueType.Array: return true;
         case JSValueType.String: return !string.IsNullOrEmpty(StringValue);
         case JSValueType.Boolean: return BooleanValue;
@@ -334,6 +606,7 @@ namespace Microsoft.ReactNative.Managed
       }
     }
 
+    // Return a Double representation of JSValue. It is equivalent to JavaScript Number(value) result.
     public double AsJSNumber()
     {
       switch (Type)
@@ -348,6 +621,7 @@ namespace Microsoft.ReactNative.Managed
       }
     }
 
+    // Convert JSValue to a readable string that can be used for logging and debugging.
     public override string ToString()
     {
       switch (Type)
@@ -396,7 +670,6 @@ namespace Microsoft.ReactNative.Managed
               sb.Append(item.ToString());
             }
 
-            sb.Length -= 2;
             sb.Append("]");
             return sb.ToString();
           }
@@ -408,8 +681,11 @@ namespace Microsoft.ReactNative.Managed
       }
     }
 
+    // Return value T that is created from JSValue using a ReadValue extension function.
+    // Default T is constructed by using default constructor.
     public T To<T>() => new JSValueTreeReader(this).ReadValue<T>();
 
+    // Create JSValue from a type that has WriteValue extension method defined to write to IJSValueWriter.
     public JSValue From<T>(T value)
     {
       var writer = new JSValueTreeWriter();
@@ -417,8 +693,11 @@ namespace Microsoft.ReactNative.Managed
       return writer.TakeValue();
     }
 
+    // Return property count if JSValue is Object, or 0 otherwise.
     public int PropertyCount => Type == JSValueType.Object ? ObjectValue.Count : 0;
 
+    // Try to get an object property value if JSValue type is Object and the property is found.
+    // It returns false and outputs JSValue.Null otherwise.
     public bool TryGetObjectProperty(string propertyName, out JSValue value)
     {
       if (TryGetObject(out var objectValue) && objectValue.TryGetValue(propertyName, out value))
@@ -430,16 +709,23 @@ namespace Microsoft.ReactNative.Managed
       return false;
     }
 
+    // Get an object property value if JSValue type is Object and the property is found,
+    // or JSValue.Null otherwise.
     public JSValue GetObjectProperty(string propertyName)
     {
       TryGetObjectProperty(propertyName, out JSValue result);
       return result;
     }
 
+    // Get an object property value if JSValue type is Object and the property is found,
+    // or JSValue.Null otherwise.
     public JSValue this[string propertyName] => GetObjectProperty(propertyName);
 
+    // Return item count if JSValue is Array, or 0 otherwise.
     public int ItemCount => Type == JSValueType.Array ? ArrayValue.Count : 0;
 
+    // Try to get an array item if JSValue type is Array and the index is in bounds.
+    // It returns false and outputs JSValue.Null otherwise.
     public bool TryGetArrayItem(int index, out JSValue value)
     {
       if (index >= 0 && TryGetArray(out var arrayValue) && index < arrayValue.Count)
@@ -452,24 +738,23 @@ namespace Microsoft.ReactNative.Managed
       return false;
     }
 
+    // Get an array item if JSValue type is Array and the index is in bounds,
+    // or JSValue.Null otherwise.
     public JSValue GetArrayItem(int index)
     {
       TryGetArrayItem(index, out JSValue result);
       return result;
     }
 
+    // Get an array item if JSValue type is Array and the index is in bounds,
+    // or JSValue.Null otherwise.
     public JSValue this[int index] => GetArrayItem(index);
 
-    public static bool operator ==(JSValue left, JSValue right)
-    {
-      return left.Equals(right);
-    }
-
-    public static bool operator !=(JSValue left, JSValue right)
-    {
-      return !left.Equals(right);
-    }
-
+    // Return true if this JSValue is strictly equal to JSValue.
+    // Compared values must have the same type and value.
+    //
+    // The behavior is similar to JavaScript === operator except for Object and Array where
+    // this functions does a deep structured comparison instead of pointer equality.
     public bool Equals(JSValue other)
     {
       if (Type != other.Type)
@@ -480,8 +765,8 @@ namespace Microsoft.ReactNative.Managed
       switch (Type)
       {
         case JSValueType.Null: return true;
-        case JSValueType.Object: return ObjectEquals(ObjectValue, other.ObjectValue);
-        case JSValueType.Array: return ArrayEquals(ArrayValue, other.ArrayValue);
+        case JSValueType.Object: return JSValueObject.Equals(ObjectValue, other.ObjectValue);
+        case JSValueType.Array: return JSValueArray.Equals(ArrayValue, other.ArrayValue);
         case JSValueType.String: return StringValue == other.StringValue;
         case JSValueType.Boolean: return BooleanValue == other.BooleanValue;
         case JSValueType.Int64: return Int64Value == other.Int64Value;
@@ -490,16 +775,53 @@ namespace Microsoft.ReactNative.Managed
       }
     }
 
+    // Return true if obj is a JSValue it is strictly equal to this JSValue. 
     public override bool Equals(object obj)
     {
       return (obj is JSValue) && Equals((JSValue)obj);
     }
 
+    // True if left.Equals(right)
+    public static bool operator ==(JSValue left, JSValue right)
+    {
+      return left.Equals(right);
+    }
+
+    //! True if !left.Equals(right)
+    public static bool operator !=(JSValue left, JSValue right)
+    {
+      return !left.Equals(right);
+    }
+
+    // Return true if this JSValue is strictly equal to JSValue after they are converted to the same type.
+    //
+    // Null is not converted to any other type before comparison.
+    // Object and Array types are converted first to a String type using AsString() before comparing
+    // with other types, and then we apply the same rules as for the String type.
+    // String is converted to Double before comparing with Boolean, Int64, or Double.
+    // Boolean is converted to 1.0 and +0.0 when comparing with String, Int64, or Double.
+    // Int64 is converted to Double before comparing with other types.
+    //
+    // The behavior is similar to JavaScript == operator except for Object and Array for which
+    // this functions does a deep structured comparison using JSEquals instead
+    // of pointer equality.
     public bool JSEquals(JSValue other)
     {
-      if (Type == JSValueType.Null || other.Type == JSValueType.Null)
+      if (Type == other.Type)
       {
-        return Type == other.Type;
+        switch (Type)
+        {
+          case JSValueType.Object:
+            return JSValueObject.JSEquals(ObjectValue, other.ObjectValue);
+          case JSValueType.Array:
+            return JSValueArray.JSEquals(ArrayValue, other.ArrayValue);
+          default:
+            return Equals(other);
+        }
+      }
+      else if (Type == JSValueType.Null || other.Type == JSValueType.Null)
+      {
+        return false;
       }
 
       // If one of the types Boolean, Int64, or Double, then compare as Numbers,
@@ -515,11 +837,14 @@ namespace Microsoft.ReactNative.Managed
       }
     }
 
+    // Calculation of the JSValue hash code is quite expensive.
+    // It is not implemented.
     public override int GetHashCode()
     {
       throw new NotImplementedException("JSValue currently does not support hash codes");
     }
 
+    // Create JSValue from IJSValueReader.
     public static JSValue ReadFrom(IJSValueReader reader)
     {
       if (reader is IJSValueTreeReader treeReader)
@@ -530,6 +855,7 @@ namespace Microsoft.ReactNative.Managed
       return InternalReadFrom(reader);
     }
 
+    // Create JSValueObject from IJSValueReader.
     public static JSValueObject ReadObjectFrom(IJSValueReader reader)
     {
       if (reader.ValueType == JSValueType.Object)
@@ -545,6 +871,7 @@ namespace Microsoft.ReactNative.Managed
       return new JSValueObject();
     }
 
+    // Create JSValueArray from IJSValueReader.
     public static JSValueArray ReadArrayFrom(IJSValueReader reader)
     {
       if (reader.ValueType == JSValueType.Array)
@@ -560,6 +887,7 @@ namespace Microsoft.ReactNative.Managed
       return new JSValueArray();
     }
 
+    // Write this JSValue to IJSValueWriter.
     public void WriteTo(IJSValueWriter writer)
     {
       switch (Type)
@@ -574,6 +902,7 @@ namespace Microsoft.ReactNative.Managed
       }
     }
 
+    // Write JSValueObject key-value pairs to IJSValueWriter.
     public static void WriteObject(IJSValueWriter writer, IEnumerable<KeyValuePair<string, JSValue>> value)
     {
       writer.WriteObjectBegin();
@@ -586,6 +915,7 @@ namespace Microsoft.ReactNative.Managed
       writer.WriteObjectEnd();
     }
 
+    // Write JSValueArray items to IJSValueWriter.
     public static void WriteArray(IJSValueWriter writer, IEnumerable<JSValue> value)
     {
       writer.WriteArrayBegin();
@@ -595,52 +925,6 @@ namespace Microsoft.ReactNative.Managed
       }
 
       writer.WriteArrayEnd();
-    }
-
-    private static bool ObjectEquals(IReadOnlyDictionary<string, JSValue> left, IReadOnlyDictionary<string, JSValue> right)
-    {
-      if (left == right)
-      {
-        return true;
-      }
-
-      if (left.Count != right.Count)
-      {
-        return false;
-      }
-
-      foreach (var entry in left)
-      {
-        if (!right.TryGetValue(entry.Key, out var value) || !value.Equals(entry.Value))
-        {
-          return false;
-        }
-      }
-
-      return true;
-    }
-
-    private static bool ArrayEquals(IReadOnlyList<JSValue> left, IReadOnlyList<JSValue> right)
-    {
-      if (left == right)
-      {
-        return true;
-      }
-
-      if (left.Count != right.Count)
-      {
-        return false;
-      }
-
-      for (int i = 0; i < left.Count; ++i)
-      {
-        if (!left[i].Equals(right[i]))
-        {
-          return false;
-        }
-      }
-
-      return true;
     }
 
     private static JSValue InternalReadFrom(IJSValueReader reader)
