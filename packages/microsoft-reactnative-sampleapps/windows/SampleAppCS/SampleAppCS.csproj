@@ -175,7 +175,7 @@
   </PropertyGroup>
   <PropertyGroup>
     <BundleCommand>
-      npx --no-install yarn run bundle-cs
+      echo hello
     </BundleCommand>
   </PropertyGroup>
   <Import Project="$(ReactNativeWindowsDir)\PropertySheets\Bundle.targets" />

@@ -27,7 +27,7 @@ namespace SampleLibraryCS
         [ReactInitializer]
         public void Initialize(IReactContext _)
         {
-            _timer = ThreadPoolTimer.CreatePeriodicTimer(new TimerElapsedHandler((timer) =>
+            _timer = ThreadPoolTimer.CreateTimer(new TimerElapsedHandler((timer) =>
             {
                 TimedEvent?.Invoke(++_timerCount);
                 if (_timerCount == 5)

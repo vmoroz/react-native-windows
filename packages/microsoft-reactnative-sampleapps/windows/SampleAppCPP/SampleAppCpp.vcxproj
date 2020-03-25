@@ -173,9 +173,6 @@
   </ImportGroup>
 
   <PropertyGroup>
-    <BundleCommand>
-      npx --no-install yarn run bundle-cpp
-    </BundleCommand>
   </PropertyGroup>
   <Import Project="$(ReactNativeWindowsDir)\PropertySheets\Bundle.Cpp.targets" />
 

@@ -22,11 +22,12 @@
       the application package. The asterisks are not wildcards.
     -->
     <Assembly Name="*Application*" Dynamic="Required All" />
-    
-    
-    <!-- Add your application specific runtime directives here. -->
-    <Namespace Name="Microsoft.ReactNative" Dynamic="Required All" MarshalObject="Required All" />
-    <Namespace Name="Microsoft.ReactNative.Managed" Dynamic="Required All" MarshalObject="Required All" />
 
+    <!-- Add your application specific runtime directives here. -->
+    <Namespace Name="Microsoft.ReactNative" Activate="Required All" Browse="Required All" Dynamic="Required All" MarshalObject="Required All" />
+    <Namespace Name="Microsoft.ReactNative.Managed" Activate="Required All" Browse="Required All" Dynamic="Required All" MarshalObject="Required All" />
+
+    <Namespace Name="SampleAppCS" Activate="Required All" Browse="Required All" Dynamic="Required All" MarshalObject="Required All" />
+    <Namespace Name="SampleLibraryCS" Activate="Required All" Browse="Required All" Dynamic="Required All" MarshalObject="Required All" />
   </Application>
 </Directives>
