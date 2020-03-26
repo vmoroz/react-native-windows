@@ -577,8 +577,8 @@ struct SimpleNativeModule {
   std::function<void(Point const &, Point const &)> JSLineFunction;
 
   // Use no arguments.
-  REACT_FUNCTION(NoArgFunction)
-  std::function<void()> NoArgFunction;
+  REACT_FUNCTION(JSNoArgFunction)
+  std::function<void()> JSNoArgFunction;
 
   // By default we use the module name from REACT_MODULE which is by default the struct name.
   // Here we specify module name local for this function.
@@ -1483,12 +1483,12 @@ TEST_CLASS (NativeModuleTest) {
   TEST_METHOD(TestFunction_NoArgFunctionField) {
     bool functionCalled = false;
     m_builderMock.ExpectFunction(
-        L"SimpleNativeModule", L"NoArgFunction", [&functionCalled](JSValueArray const &args) noexcept {
+        L"SimpleNativeModule", L"JSNoArgFunction", [&functionCalled](JSValueArray const &args) noexcept {
           TestCheckEqual(0, args.size());
           functionCalled = true;
         });
 
-    m_module->NoArgFunction();
+    m_module->JSNoArgFunction();
     TestCheck(functionCalled);
   }
 

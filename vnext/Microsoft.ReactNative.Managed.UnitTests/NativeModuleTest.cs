@@ -552,7 +552,7 @@ namespace Microsoft.ReactNative.Managed.UnitTests
     [ReactFunction]
     public Action<JSValue> JSValueFunctionProp { get; set; }
 
-
+    // Properties below are not exposed to JS and only used by tests to observe results.
     public bool IsInitialized { get; set; }
     public string Message { get; set; }
     public static string StaticMessage { get; set; }
@@ -1228,7 +1228,6 @@ namespace Microsoft.ReactNative.Managed.UnitTests
       m_module.OnIntEventProp(42);
       Assert.IsTrue(eventRaised);
     }
-
 
     [TestMethod]
     public void TestEvent_NoArgEventProperty()
