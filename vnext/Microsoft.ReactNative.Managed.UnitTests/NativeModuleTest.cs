@@ -1262,37 +1262,6 @@ namespace Microsoft.ReactNative.Managed.UnitTests
     }
 
     [TestMethod]
-    public void TestEvent_NoArgEventProperty()
-    {
-      bool eventRaised = false;
-      m_moduleBuilderMock.ExpectEvent("RCTDeviceEventEmitter", "OnNoArgEventProp", (IReadOnlyList<JSValue> args) =>
-      {
-        Assert.AreEqual(0, args.Count);
-        eventRaised = true;
-      });
-
-      m_module.OnNoArgEventProp();
-      Assert.IsTrue(eventRaised);
-    }
-
-    [TestMethod]
-    public void TestEvent_TwoArgsEventProperty()
-    {
-      bool eventRaised = false;
-      m_moduleBuilderMock.ExpectEvent("RCTDeviceEventEmitter", "OnTwoArgsEventProp", (IReadOnlyList<JSValue> args) =>
-      {
-        Assert.AreEqual(4, args[0]["X"]);
-        Assert.AreEqual(2, args[0]["Y"]);
-        Assert.AreEqual(12, args[1]["X"]);
-        Assert.AreEqual(18, args[1]["Y"]);
-        eventRaised = true;
-      });
-
-      m_module.OnTwoArgsEventProp(new Point { X = 4, Y = 2 }, new Point { X = 12, Y = 18 });
-      Assert.IsTrue(eventRaised);
-    }
-
-    [TestMethod]
     public void TestEvent_JSNameEventProperty()
     {
       bool eventRaised = false;

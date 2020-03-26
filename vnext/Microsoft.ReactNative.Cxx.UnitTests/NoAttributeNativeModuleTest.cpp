@@ -469,7 +469,7 @@ struct SimpleNativeModule2 {
     provider.Add(L"const62", "MyConstant62");
   }
 
-// Allows to emit native module events
+  // Allows to emit native module events
   std::function<void(int)> OnIntEvent;
 
   // An event without arguments
@@ -1338,8 +1338,8 @@ TEST_CLASS (NoAttributeNativeModuleTest) {
     m_builderMock.ExpectEvent(
         L"RCTDeviceEventEmitter", L"OnIntEvent", [&eventRaised](JSValueArray const &args) noexcept {
           TestCheck(args[0] == 42);
-      eventRaised = true;
-    });
+          eventRaised = true;
+        });
 
     m_module->OnIntEvent(42);
     TestCheck(eventRaised);
@@ -1461,7 +1461,7 @@ TEST_CLASS (NoAttributeNativeModuleTest) {
     TestCheck(functionCalled == true);
   }
 
-  TEST_METHOD(TestFunction_TwoArgFunctionField) {
+  TEST_METHOD(TestFunction_JSTwoArgFunctionField) {
     bool functionCalled = false;
     m_builderMock.ExpectFunction(
         L"SimpleNativeModule2", L"lineFunc", [&functionCalled](JSValueArray const &args) noexcept {
@@ -1476,10 +1476,10 @@ TEST_CLASS (NoAttributeNativeModuleTest) {
     TestCheck(functionCalled == true);
   }
 
-  TEST_METHOD(TestFunction_NoArgFunctionField) {
+  TEST_METHOD(TestFunction_JSNoArgFunctionField) {
     bool functionCalled = false;
     m_builderMock.ExpectFunction(
-        L"SimpleNativeModule", L"JSNoArgFunction", [&functionCalled](JSValueArray const &args) noexcept {
+        L"SimpleNativeModule2", L"JSNoArgFunction", [&functionCalled](JSValueArray const &args) noexcept {
           TestCheckEqual(0, args.size());
           functionCalled = true;
         });
