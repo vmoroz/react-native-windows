@@ -235,13 +235,14 @@ namespace Microsoft.ReactNative.Managed.UnitTests
       return constantWriter.TakeValue().AsObject();
     }
 
-    public void ExpectEvent(string eventEmitterName, string eventName, Action<JSValue> checkValue)
+    public void ExpectEvent(string eventEmitterName, string eventName, Action<IReadOnlyList<JSValue>> checkValues)
     {
       m_jsEventHandler = (string actualEventEmitterName, string actualEventName, JSValue value) =>
       {
         Assert.AreEqual(eventEmitterName, actualEventEmitterName);
         Assert.AreEqual(eventName, actualEventName);
-        checkValue(value);
+        Assert.AreEqual(JSValueType.Array, value.Type);
+        checkValues(value.AsArray());
       };
     }
 
@@ -266,7 +267,9 @@ namespace Microsoft.ReactNative.Managed.UnitTests
     public void EmitJSEvent(string eventEmitterName, string eventName, JSValueArgWriter paramsArgWriter)
     {
       var writer = new JSValueTreeWriter();
+      writer.WriteArrayBegin();
       paramsArgWriter(writer);
+      writer.WriteArrayEnd();
       m_jsEventHandler(eventEmitterName, eventName, writer.TakeValue());
     }
   }
