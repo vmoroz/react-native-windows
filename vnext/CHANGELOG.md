@@ -1,7 +1,37 @@
 # Change Log - react-native-windows
 
-This log was last generated on Sat, 21 Mar 2020 00:52:27 GMT and should not be manually modified.
+This log was last generated on Thu, 26 Mar 2020 14:54:10 GMT and should not be manually modified.
 
+## 0.61.0-beta.73
+Thu, 26 Mar 2020 14:54:10 GMT
+
+### Changes
+
+- Enable basic V8 direct debugging (tudorm@microsoft.com)
+## 0.61.0-beta.72
+Thu, 26 Mar 2020 05:34:25 GMT
+
+### Changes
+
+- Fix hang on react-native-init when run from a non-elevated prompt (acoates@microsoft.com)
+## 0.61.0-beta.71
+Tue, 24 Mar 2020 07:05:57 GMT
+
+### Changes
+
+- Do not enter loaded state when an error occurs during web bundle loadJSBundles (acoates@microsoft.com)
+## 0.61.0-beta.70
+Mon, 23 Mar 2020 21:05:53 GMT
+
+### Changes
+
+- Fixed crash when trying to load invalid image uri (jthysell@microsoft.com)
+## 0.61.0-beta.69
+Mon, 23 Mar 2020 14:55:40 GMT
+
+### Changes
+
+- Implemented Linking module protocol activation (vmorozov@microsoft.com)
 ## 0.61.0-beta.68
 Sat, 21 Mar 2020 00:52:27 GMT
 
