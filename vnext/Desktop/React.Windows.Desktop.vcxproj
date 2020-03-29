@@ -30,6 +30,9 @@
     <RootNamespace>facebook.react</RootNamespace>
     <DefaultLanguage>en-US</DefaultLanguage>
     <MinimumVisualStudioVersion>14.0</MinimumVisualStudioVersion>
+    <CppWinRTProjectLanguage>C++/WinRT</CppWinRTProjectLanguage>
+    <CppWinRTNamespaceMergeDepth>2</CppWinRTNamespaceMergeDepth>
+    <CppWinRTUsePrefixes>true</CppWinRTUsePrefixes>
   </PropertyGroup>
   <PropertyGroup Label="Permissive">
     <ENABLEPermissive>true</ENABLEPermissive>
