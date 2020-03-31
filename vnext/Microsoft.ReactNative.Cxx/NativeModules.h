@@ -110,32 +110,19 @@ template <template <class...> class TFunc, class... TArgs>
 struct IsCallback<TFunc<void(TArgs...) noexcept>> : std::true_type {};
 #endif
 
-// Finds how many callback the function has
-template <class TArgTuple>
-struct GetCallbackCount;
-
-template <>
-struct GetCallbackCount<std::tuple<>> {
-  constexpr static size_t Value = 0;
-};
-
-template <class TArg>
-struct GetCallbackCount<std::tuple<TArg>> {
-  constexpr static size_t Value = IsCallback<std::remove_const_t<std::remove_reference_t<TArg>>>::value ? 1 : 0;
-};
-
-template <class TArg0, class TArg1, class... TArgs>
-struct GetCallbackCount<std::tuple<TArg0, TArg1, TArgs...>> {
-  using TupleType = std::tuple<TArg0, TArg1, TArgs...>;
-  constexpr static size_t TupleSize = std::tuple_size_v<TupleType>;
-  constexpr static size_t Value =
-      (IsCallback<std::remove_const_t<std::remove_reference_t<std::tuple_element_t<TupleSize - 2, TupleType>>>>::value
-           ? 1
-           : 0) +
-      (IsCallback<std::remove_const_t<std::remove_reference_t<std::tuple_element_t<TupleSize - 1, TupleType>>>>::value
-           ? 1
-           : 0);
-};
+// Finds how many callbacks the function signature has.
+template <class... TArgs>
+constexpr size_t GetCallbackCount() noexcept {
+  using TupleType = std::tuple<std::remove_const_t<std::remove_reference_t<TArgs>>...>;
+  if constexpr (sizeof...(TArgs) >= 2) {
+    return (IsCallback<std::tuple_element_t<sizeof...(TArgs) - 1u, TupleType>>::value ? 1 : 0) +
+        (IsCallback<std::tuple_element_t<sizeof...(TArgs) - 2u, TupleType>>::value ? 1 : 0);
+  } else if constexpr (sizeof...(TArgs) == 1) {
+    return IsCallback<std::tuple_element_t<0, TupleType>>::value ? 1 : 0;
+  } else {
+    return 0;
+  }
+}
 
 template <class T>
 struct IsPromise : std::false_type {};
@@ -186,8 +173,7 @@ struct ModuleMethodInfo<TResult (TModule::*)(TArgs...) noexcept> {
     return false;
   }
 
-  constexpr static size_t CallbackCount =
-      Internal::GetCallbackCount<std::tuple<std::remove_reference_t<TArgs>...>>::Value;
+  constexpr static size_t CallbackCount = Internal::GetCallbackCount<TArgs...>();
   using ModuleType = TModule;
   using MethodType = TResult (TModule::*)(TArgs...) noexcept;
   using IndexSequence = std::make_index_sequence<sizeof...(TArgs) - (HasPromise() ? 1 : CallbackCount)>;
@@ -375,8 +361,7 @@ struct ModuleMethodInfo<TResult (*)(TArgs...) noexcept> {
     return false;
   }
 
-  constexpr static size_t CallbackCount =
-      Internal::GetCallbackCount<std::tuple<std::remove_reference_t<TArgs>...>>::Value;
+  constexpr static size_t CallbackCount = Internal::GetCallbackCount<TArgs...>();
   using MethodType = TResult (*)(TArgs...) noexcept;
   using IndexSequence = std::make_index_sequence<sizeof...(TArgs) - (HasPromise() ? 1 : CallbackCount)>;
 
