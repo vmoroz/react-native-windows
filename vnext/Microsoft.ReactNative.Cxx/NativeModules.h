@@ -730,6 +730,11 @@ struct ReactModuleBuilder {
     m_eventEmitterName = eventEmitterName ? eventEmitterName : L"RCTDeviceEventEmitter";
   }
 
+  void ModuleName(wchar_t const *moduleName, wchar_t const *eventEmitterName = nullptr) noexcept {
+    m_moduleName = moduleName;
+    m_eventEmitterName = eventEmitterName ? eventEmitterName : L"RCTDeviceEventEmitter";
+  }
+
   void CompleteRegistration() noexcept {
     // Add REACT_INIT initializers after REACT_EVENT and REACT_FUNCTION initializers.
     // This way REACT_INIT method is invoked after event and function fields are initialized.
@@ -767,6 +772,13 @@ struct ReactModuleBuilder {
 
   template <class TMethod>
   void RegisterMethod(TMethod method, wchar_t const *name) noexcept {
+    MethodReturnType returnType;
+    auto methodDelegate = ModuleMethodInfo<TMethod>::GetMethodDelegate(m_module, method, /*out*/ returnType);
+    m_moduleBuilder.AddMethod(name, returnType, methodDelegate);
+  }
+
+  template <class TMethod, class... TArgs>
+  void AddMethod(TMethod method, wchar_t const *name) noexcept {
     MethodReturnType returnType;
     auto methodDelegate = ModuleMethodInfo<TMethod>::GetMethodDelegate(m_module, method, /*out*/ returnType);
     m_moduleBuilder.AddMethod(name, returnType, methodDelegate);
@@ -838,6 +850,18 @@ inline ReactModuleProvider MakeModuleProvider() noexcept {
     auto module = &BoxedValue<TModule>::GetImpl(moduleObject);
     ReactModuleBuilder builder{module, moduleBuilder};
     RegisterModule(builder);
+    builder.CompleteRegistration();
+    return moduleObject;
+  };
+}
+
+template <template <class T> class TModuleSpec, class TModule>
+inline ReactModuleProvider MakeTurboModuleProvider() noexcept {
+  return [](IReactModuleBuilder const &moduleBuilder) noexcept {
+    auto moduleObject = make<BoxedValue<TModule>>();
+    auto module = &BoxedValue<TModule>::GetImpl(moduleObject);
+    ReactModuleBuilder builder{module, moduleBuilder};
+    TModuleSpec<TModule>::RegisterModule(builder);
     builder.CompleteRegistration();
     return moduleObject;
   };
