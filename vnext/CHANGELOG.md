@@ -1,7 +1,183 @@
 # Change Log - react-native-windows
 
-This log was last generated on Mon, 30 Mar 2020 22:21:02 GMT and should not be manually modified.
+This log was last generated on Fri, 10 Apr 2020 06:15:31 GMT and should not be manually modified.
 
+<!-- Start content -->
+
+## 0.0.0-master.28
+
+Fri, 10 Apr 2020 06:15:31 GMT
+
+### Changes
+
+- Improve inner loop and error reporting (local CLI) (asklar@microsoft.com)
+
+## 0.0.0-master.27
+
+Thu, 09 Apr 2020 21:36:07 GMT
+
+### Changes
+
+- Enable managed unit tests (jthysell@microsoft.com)
+
+## 0.0.0-master.26
+
+Thu, 09 Apr 2020 17:16:44 GMT
+
+### Changes
+
+- Creating new Microsoft.ReactNative.sln without legacy ReactUWP (jthysell@microsoft.com)
+
+## 0.0.0-master.25
+
+Wed, 08 Apr 2020 19:59:18 GMT
+
+### Changes
+
+- Remove using namespace in ReactPackageProvider.h (kaigu@microsoft.com)
+
+## 0.0.0-master.24
+
+Wed, 08 Apr 2020 17:48:10 GMT
+
+### Changes
+
+- Rework more publish logic - produce nugets in PRs (acoates@microsoft.com)
+
+## 0.0.0-master.23
+
+Wed, 08 Apr 2020 13:58:29 GMT
+
+### Changes
+
+- Apply version numbers to Microsoft.ReactNative (acoates@microsoft.com)
+
+## 0.0.0-master.22
+
+Wed, 08 Apr 2020 00:50:14 GMT
+
+### Changes
+
+- Optimizing VS component installer to speed up CI builds (jthysell@microsoft.com)
+
+## 0.0.0-master.21
+
+Tue, 07 Apr 2020 21:11:39 GMT
+
+### Changes
+
+- placeholderTextColor for secureTextEntry on TextInput (dzndlhov@microsoft.com)
+
+## 0.0.0-master.20
+
+Tue, 07 Apr 2020 20:21:01 GMT
+
+### Changes
+
+- Fix issue adding react-native-windows to a package in a monorepo (acoates@microsoft.com)
+
+## 0.0.0-master.19
+
+Tue, 07 Apr 2020 18:46:38 GMT
+
+### Patches
+
+- Start of implementation for nuget template (acoates@microsoft.com)
+
+## 0.0.0-master.18
+
+Tue, 07 Apr 2020 07:15:14 GMT
+
+### Changes
+
+- Enabling arm64 where possible (jthysell@microsoft.com)
+
+## 0.0.0-master.17
+
+Tue, 07 Apr 2020 06:29:14 GMT
+
+### Changes
+
+- Clean up normalization (ngerlem@microsoft.com)
+
+## 0.0.0-master.16
+
+Tue, 07 Apr 2020 00:48:37 GMT
+
+### Changes
+
+- undefined (julio@rochsquadron.net)
+
+## 0.0.0-master.15
+
+Mon, 06 Apr 2020 21:15:49 GMT
+
+### Changes
+
+- Update V8 package version (tudorm@microsoft.com)
+
+## 0.0.0-master.14
+
+Sat, 04 Apr 2020 05:07:07 GMT
+
+### Changes
+
+- Clean Up Directory Logic to Fix Publish (ngerlem@microsoft.com)
+
+## 0.0.0-master.13
+Thu, 02 Apr 2020 23:27:21 GMT
+
+### Changes
+
+- Fix VS 2019 16.5 build errors (jthysell@microsoft.com)
+## 0.0.0-master.12
+Thu, 02 Apr 2020 22:39:22 GMT
+
+### Changes
+
+- Improve popups (aschultz@microsoft.com)
+## 0.0.0-master.11
+Thu, 02 Apr 2020 18:40:22 GMT
+
+### Changes
+
+- Switching to VS 2019 and v142 tools (jthysell@microsoft.com)
+## 0.0.0-master.10
+Wed, 01 Apr 2020 21:47:08 GMT
+
+### Changes
+
+- Fix crash when calling measure on non-framework element (acoates@microsoft.com)
+## 0.0.0-master.9
+Wed, 01 Apr 2020 14:24:03 GMT
+
+### Changes
+
+- Fixed Mso test crash (vmorozov@microsoft.com)
+## 0.0.0-master.8
+Wed, 01 Apr 2020 05:12:32 GMT
+
+### Changes
+
+- Set $(ReactNativeWindowsDir) before it is used (vmorozov@microsoft.com)
+## 0.0.0-master.7
+Tue, 31 Mar 2020 21:49:07 GMT
+
+### Changes
+
+- Update MSBuild Tasks to use MSBuild x64 (jthysell@microsoft.com)
+## 0.0.0-master.6
+Tue, 31 Mar 2020 20:21:56 GMT
+
+### Changes
+
+- 1. Make changes in response to Vladimir's feedback in the PR for bb8c00133... 2. Fix a dumb bug in multiRemove; the parameterized query variable was not being bound so nothing ever got deleted (hpratt@microsoft.com)
+## 0.0.0-master.5
+Tue, 31 Mar 2020 02:03:05 GMT
+
+### Changes
+
+- Allow user to specify direct debugging port (daseramo@microsoft.com)
 ## 0.0.0-master.4
 Mon, 30 Mar 2020 22:21:02 GMT
 
