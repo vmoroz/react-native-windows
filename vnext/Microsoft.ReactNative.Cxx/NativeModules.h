@@ -4,33 +4,40 @@
 #pragma once
 #include "winrt/Microsoft.ReactNative.h"
 
-#include <type_traits>
 #include "JSValueReader.h"
 #include "JSValueWriter.h"
-#include "ModuleMemberRegistration.h"
 #include "ModuleRegistration.h"
 #include "ReactPromise.h"
 
-// REACT_MODULE annotates a C++ struct as a ReactNative module.
-// It can be any struct which can be instantiated using a default constructor.
-// Note that it must be a 'struct', not 'class' because macro does a forward declaration using the 'struct' keyword.
-//
+#include <type_traits>
+
+// REACT_MODULE(moduleStruct, [opt] moduleName, [opt] eventEmitterName)
 // Arguments:
 // - moduleStruct (required) - the struct name the macro is attached to.
 // - moduleName (optional) - the module name visible to JavaScript. Default is the moduleStruct name.
 // - eventEmitterName (optional) - the default event emitter name used by REACT_EVENT.
 //   Default is the RCTDeviceEventEmitter.
+//
+// REACT_MODULE annotates a C++ struct as a ReactNative module.
+// It can be any struct which can be instantiated using a default constructor.
+// Note that it must be a 'struct', not 'class' because macro does a forward declaration using the 'struct' keyword.
 #define REACT_MODULE(/* moduleStruct, [opt] moduleName, [opt] eventEmitterName */...) \
   INTERNAL_REACT_MODULE(__VA_ARGS__)(__VA_ARGS__)
 
+// REACT_INIT(method)
+// Arguments:
+// - method (required) - the method name the macro is attached to.
+//
 // REACT_INIT annotates a method that is called when a native module is initialized.
 // It must have 'IReactContext const &' parameter.
 // It must be an instance method.
-//
+#define REACT_INIT(method) INTERNAL_REACT_MEMBER_2_ARGS(InitMethod, method)
+
+// REACT_METHOD(method, [opt] methodName)
 // Arguments:
 // - method (required) - the method name the macro is attached to.
-#define REACT_INIT(method) INTERNAL_REACT_METHOD_3_ARGS(Init, method, L"")
-
+// - methodName (optional) - the method name visible to JavaScript. Default is the method name.
+//
 // REACT_METHOD annotates a method to export to JavaScript.
 // It declares an asynchronous method. To return a value:
 // - Return void and have a Callback as a last parameter. The Callback type can be any std::function like type. E.g.
@@ -40,61 +47,63 @@
 // - Return non-void value. In JavaScript it is treated as a method with one Callback. Return std::pair<Error, Value> to
 //   be able to communicate error condition.
 // It can be an instance or static method.
-//
+#define REACT_METHOD(/* method, [opt] methodName */...) INTERNAL_REACT_MEMBER(__VA_ARGS__)(Method, __VA_ARGS__)
+
+// REACT_SYNC_METHOD(method, [opt] methodName)
 // Arguments:
 // - method (required) - the method name the macro is attached to.
 // - methodName (optional) - the method name visible to JavaScript. Default is the method name.
-#define REACT_METHOD(/* method, [opt] methodName */...) INTERNAL_REACT_METHOD(__VA_ARGS__)(, __VA_ARGS__)
-
+//
 // REACT_SYNC_METHOD annotates a method that is called synchronously.
 // It must be used rarely because it may cause out-of-order execution when used along with asynchronous methods.
 // The method must return non-void value type.
 // It can be an instance or static method.
-//
+#define REACT_SYNC_METHOD(/* method, [opt] methodName */...) INTERNAL_REACT_MEMBER(__VA_ARGS__)(SyncMethod, __VA_ARGS__)
+
+// REACT_CONSTANT_PROVIDER(method)
 // Arguments:
 // - method (required) - the method name the macro is attached to.
-// - methodName (optional) - the method name visible to JavaScript. Default is the method name.
-#define REACT_SYNC_METHOD(/* method, [opt] methodName */...) INTERNAL_REACT_METHOD(__VA_ARGS__)(Sync, __VA_ARGS__)
-
+//
 // REACT_CONSTANT_PROVIDER annotates a method that defines constants.
 // It must have 'ReactConstantProvider &' parameter.
 // It can be an instance or static method.
-//
-// Arguments:
-// - method (required) - the method name the macro is attached to.
-#define REACT_CONSTANT_PROVIDER(method) INTERNAL_REACT_METHOD_3_ARGS(Const, method, L"")
+#define REACT_CONSTANT_PROVIDER(method) INTERNAL_REACT_MEMBER_2_ARGS(ConstantMethod, method)
 
-// REACT_CONSTANT annotates a field that defines a constant.
-// It can be an instance or static field.
-//
+// REACT_CONSTANT(field, [opt] constantName)
 // Arguments:
 // - field (required) - the field name the macro is attached to.
 // - constantName (optional) - the constant name visible to JavaScript. Default is the field name.
-#define REACT_CONSTANT(/* field, [opt] constantName */...) INTERNAL_REACT_CONSTANT(__VA_ARGS__)(__VA_ARGS__)
-
-// REACT_EVENT annotates a field that helps raise a JavaScript event.
-// The field type can be any std::function like type. E.g. Func<void(Args...)>.
-// It must be an instance field.
 //
+// REACT_CONSTANT annotates a field that defines a constant.
+// It can be an instance or static field.
+#define REACT_CONSTANT(/* field, [opt] constantName */...) \
+  INTERNAL_REACT_MEMBER(__VA_ARGS__)(ConstantField, __VA_ARGS__)
+
+// REACT_EVENT(field, [opt] eventName, [opt] eventEmitterName)
 // Arguments:
 // - field (required) - the field name the macro is attached to.
 // - eventName (optional) - the JavaScript event name. Default is the field name.
 // - eventEmitterName (optional) - the JavaScript module event emitter name. Default is module's eventEmitterName which
 //   is by default 'RCTDeviceEventEmitter'.
-#define REACT_EVENT(/* field, [opt] eventName, [opt] eventEmitterName */...) \
-  INTERNAL_REACT_EVENT(__VA_ARGS__)(__VA_ARGS__)
-
-// REACT_FUNCTION annotates a field that helps calling a JavaScript function.
+//
+// REACT_EVENT annotates a field that helps raise a JavaScript event.
 // The field type can be any std::function like type. E.g. Func<void(Args...)>.
 // It must be an instance field.
-//
+#define REACT_EVENT(/* field, [opt] eventName, [opt] eventEmitterName */...) \
+  INTERNAL_REACT_MEMBER(__VA_ARGS__)(EventField, __VA_ARGS__)
+
+// REACT_FUNCTION(field, [opt] functionName, [opt] moduleName)
 // Arguments:
 // - field (required) - the field name the macro is attached to.
 // - functionName (optional) - the JavaScript function name. Default is the field name.
 // - moduleName (optional) - the JavaScript module name. Default is module's moduleName which is by default the class
 //   name.
+//
+// REACT_FUNCTION annotates a field that helps calling a JavaScript function.
+// The field type can be any std::function like type. E.g. Func<void(Args...)>.
+// It must be an instance field.
 #define REACT_FUNCTION(/* field, [opt] functionName, [opt] moduleName */...) \
-  INTERNAL_REACT_FUNCTION(__VA_ARGS__)(__VA_ARGS__)
+  INTERNAL_REACT_MEMBER(__VA_ARGS__)(FunctionField, __VA_ARGS__)
 
 namespace winrt::Microsoft::ReactNative {
 
@@ -714,6 +723,9 @@ struct ModuleFunctionFieldInfo<TFunc<void(TArgs...)> TModule::*> {
   }
 };
 
+template <int I>
+using ReactMemberId = std::integral_constant<int, I>;
+
 template <class TModule>
 struct ReactModuleBuilder {
   ReactModuleBuilder(TModule *module, IReactModuleBuilder const &moduleBuilder) noexcept
@@ -765,52 +777,51 @@ struct ReactModuleBuilder {
   }
 
   template <class TMethod>
-  void RegisterInitMethod(TMethod method, wchar_t const * /*name*/ = nullptr) noexcept {
+  void RegisterInitMethod(
+      TMethod method,
+      wchar_t const * /*unused*/ = nullptr,
+      wchar_t const * /*unused*/ = nullptr) noexcept {
     auto initializer = ModuleInitMethodInfo<TMethod>::GetInitializer(m_module, method);
     m_initializers.push_back(std::move(initializer));
   }
 
   template <class TMethod>
-  void RegisterMethod(TMethod method, wchar_t const *name) noexcept {
-    MethodReturnType returnType;
-    auto methodDelegate = ModuleMethodInfo<TMethod>::GetMethodDelegate(m_module, method, /*out*/ returnType);
-    m_moduleBuilder.AddMethod(name, returnType, methodDelegate);
-  }
-
-  template <class TMethod, class... TArgs>
-  void AddMethod(TMethod method, wchar_t const *name) noexcept {
+  void RegisterMethod(TMethod method, wchar_t const *name, wchar_t const * /*unused*/ = nullptr) noexcept {
     MethodReturnType returnType;
     auto methodDelegate = ModuleMethodInfo<TMethod>::GetMethodDelegate(m_module, method, /*out*/ returnType);
     m_moduleBuilder.AddMethod(name, returnType, methodDelegate);
   }
 
   template <class TMethod>
-  void RegisterSyncMethod(TMethod method, wchar_t const *name) noexcept {
+  void RegisterSyncMethod(TMethod method, wchar_t const *name, wchar_t const * /*unused*/ = nullptr) noexcept {
     auto syncMethodDelegate = ModuleSyncMethodInfo<TMethod>::GetMethodDelegate(m_module, method);
     m_moduleBuilder.AddSyncMethod(name, syncMethodDelegate);
   }
 
   template <class TMethod>
-  void RegisterConstMethod(TMethod method, wchar_t const * /*name*/ = nullptr) noexcept {
+  void RegisterConstantMethod(
+      TMethod method,
+      wchar_t const * /*unused*/ = nullptr,
+      wchar_t const * /*unused*/ = nullptr) noexcept {
     auto constantProvider = ModuleConstantInfo<TMethod>::GetConstantProvider(m_module, method);
     m_moduleBuilder.AddConstantProvider(constantProvider);
   }
 
   template <class TField>
-  void RegisterConstant(TField field, wchar_t const *name) noexcept {
+  void RegisterConstantField(TField field, wchar_t const *name, wchar_t const * /*unused*/ = nullptr) noexcept {
     auto constantProvider = ModuleConstFieldInfo<TField>::GetConstantProvider(m_module, name, field);
     m_moduleBuilder.AddConstantProvider(constantProvider);
   }
 
   template <class TField>
-  void RegisterEvent(TField field, wchar_t const *eventName, wchar_t const *eventEmitterName = nullptr) noexcept {
+  void RegisterEventField(TField field, wchar_t const *eventName, wchar_t const *eventEmitterName = nullptr) noexcept {
     auto eventHandlerInitializer = ModuleEventFieldInfo<TField>::GetEventHandlerInitializer(
         m_module, field, eventName, eventEmitterName ? eventEmitterName : m_eventEmitterName);
     m_moduleBuilder.AddInitializer(eventHandlerInitializer);
   }
 
   template <class TField>
-  void RegisterFunction(TField field, wchar_t const *functionName, wchar_t const *moduleName = nullptr) noexcept {
+  void RegisterFunctionField(TField field, wchar_t const *functionName, wchar_t const *moduleName = nullptr) noexcept {
     auto functionInitializer = ModuleFunctionFieldInfo<TField>::GetFunctionInitializer(
         m_module, field, functionName, moduleName ? moduleName : m_moduleName);
     m_moduleBuilder.AddInitializer(functionInitializer);
@@ -850,18 +861,6 @@ inline ReactModuleProvider MakeModuleProvider() noexcept {
     auto module = &BoxedValue<TModule>::GetImpl(moduleObject);
     ReactModuleBuilder builder{module, moduleBuilder};
     RegisterModule(builder);
-    builder.CompleteRegistration();
-    return moduleObject;
-  };
-}
-
-template <template <class T> class TModuleSpec, class TModule>
-inline ReactModuleProvider MakeTurboModuleProvider() noexcept {
-  return [](IReactModuleBuilder const &moduleBuilder) noexcept {
-    auto moduleObject = make<BoxedValue<TModule>>();
-    auto module = &BoxedValue<TModule>::GetImpl(moduleObject);
-    ReactModuleBuilder builder{module, moduleBuilder};
-    TModuleSpec<TModule>::RegisterModule(builder);
     builder.CompleteRegistration();
     return moduleObject;
   };
