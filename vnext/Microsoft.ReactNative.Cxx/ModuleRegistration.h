@@ -56,7 +56,7 @@
   template <class TClass, class TRegistry>                                                       \
   constexpr static auto RegisterMember(                                                          \
       TRegistry &registry, winrt::Microsoft::ReactNative::ReactMemberId<__COUNTER__>) noexcept { \
-    return registry.Register##memberType(&TClass::member, memberName, moduleName);                      \
+    return registry.Register##memberType(&TClass::member, memberName, moduleName);               \
   }
 
 #define INTERNAL_REACT_MEMBER_3_ARGS(memberType, member, memberName) \
