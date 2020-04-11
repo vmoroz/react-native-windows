@@ -54,9 +54,9 @@
 // To invoke the static registration methods, we increment ReactMemberId while static member exists.
 #define INTERNAL_REACT_MEMBER_4_ARGS(memberType, member, memberName, moduleName)                 \
   template <class TClass, class TRegistry>                                                       \
-  constexpr static void RegisterMember(                                                          \
+  constexpr static auto RegisterMember(                                                          \
       TRegistry &registry, winrt::Microsoft::ReactNative::ReactMemberId<__COUNTER__>) noexcept { \
-    registry.Register##memberType(&TClass::member, memberName, moduleName);                      \
+    return registry.Register##memberType(&TClass::member, memberName, moduleName);                      \
   }
 
 #define INTERNAL_REACT_MEMBER_3_ARGS(memberType, member, memberName) \
