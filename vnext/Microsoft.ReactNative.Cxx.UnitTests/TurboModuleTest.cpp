@@ -22,7 +22,9 @@ struct MyTurboModuleSpec {
   template <class TModule>
   static constexpr void ValidateModule() noexcept {
     // TODO: see what virtual inheritance says about missing method
-    static_assert(ReactModuleVerifier<TModule>::MethodIsDefined(L"add"), "Method 'add' is not defined");
+    static_assert(
+        ReactModuleVerifier<TModule>::GetAsyncMethodCount(L"add") <= 1, "Method 'add' defined multiple times");
+    static_assert(ReactModuleVerifier<TModule>::GetAsyncMethodCount(L"add") == 1, "Method 'add' is not defined");
   }
 };
 

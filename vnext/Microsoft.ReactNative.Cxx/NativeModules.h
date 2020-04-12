@@ -837,10 +837,18 @@ enum class ReactMemberKind {
 
 template <class TModule>
 struct ReactModuleVerifier {
-  static constexpr bool MethodIsDefined(std::wstring_view name) noexcept {
-    ReactModuleVerifier verifier{name, ReactMemberKind::AsyncMethod};
+  static constexpr size_t GetAsyncMethodCount(std::wstring_view name) noexcept {
+    return GetMemberCount(name, ReactMemberKind::AsyncMethod);
+  }
+
+  static constexpr size_t GetSyncMethodCount(std::wstring_view name) noexcept {
+    return GetMemberCount(name, ReactMemberKind::SyncMethod);
+  }
+
+  static constexpr size_t GetMemberCount(std::wstring_view name, ReactMemberKind memberKind) noexcept {
+    ReactModuleVerifier verifier{name, memberKind};
     GetReactModuleInfo(static_cast<TModule *>(nullptr), verifier);
-    return verifier.m_matchCount == 1;
+    return verifier.m_matchCount;
   }
 
   constexpr ReactModuleVerifier(std::wstring_view memberName, ReactMemberKind memberKind) noexcept
