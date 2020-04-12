@@ -825,6 +825,133 @@ struct ReactModuleBuilder {
   std::vector<InitializerDelegate> m_initializers;
 };
 
+enum class ReactMemberKind
+{
+  AsyncMethod,
+  SyncMethod,
+  InitMethod,
+  ConstantProvider,
+  ConstantField,
+  EventField,
+  FunctionField,
+};
+
+template <class TModule>
+struct ReactModuleVerifier {
+  static constexpr bool MethodIsDefined(std::wstring_view name) noexcept
+  {
+    ReactModuleVerifier verifier{name, ReactMemberKind::AsyncMethod};
+    //RegisterModule(static_cast<TModule*>(nullptr), verifier);
+    return verifier.m_isGood;
+  }
+
+ constexpr ReactModuleVerifier(std::wstring_view memberName, ReactMemberKind memberKind) noexcept
+      : m_memberName{memberName}, m_memberKind{memberKind} {}
+
+ constexpr void Verify() noexcept
+ {
+   m_isGood = (m_memberName == L"Add");
+ }
+
+ std::wstring_view m_memberName;
+ ReactMemberKind m_memberKind;
+ size_t m_matchCount{0};
+ bool m_isGood{true};
+
+  template <int I>
+  constexpr void RegisterModule(std::wstring_view /*moduleName*/, std::wstring_view /*eventEmitterName*/, ReactMemberId<I>) const noexcept {
+    //RegisterModuleName(moduleName, eventEmitterName);
+    //RegisterMembers<I + 1>(static_cast<std::make_index_sequence<10> *>(nullptr));
+  }
+
+ // void RegisterModuleName(std::wstring_view moduleName, std::wstring_view eventEmitterName = L"") noexcept {
+ //   m_moduleName = moduleName;
+ //   m_eventEmitterName = !eventEmitterName.empty() ? eventEmitterName : L"RCTDeviceEventEmitter";
+ // }
+
+ // void CompleteRegistration() noexcept {
+ //   // Add REACT_INIT initializers after REACT_EVENT and REACT_FUNCTION initializers.
+ //   // This way REACT_INIT method is invoked after event and function fields are initialized.
+ //   for (auto &initializer : m_initializers) {
+ //     m_moduleBuilder.AddInitializer(initializer);
+ //   }
+ // }
+
+ // template <int I>
+ // auto HasRegisterMember(ReactModuleBuilder &builder, ReactMemberId<I> id)
+ //     -> decltype(TModule::template RegisterMember<TModule>(builder, id), std::true_type{});
+ // auto HasRegisterMember(...) -> std::false_type;
+
+ // template <int I>
+ // void RegisterMember() noexcept {
+ //   if constexpr (decltype(HasRegisterMember(*this, ReactMemberId<I>{}))::value) {
+ //     TModule::template RegisterMember<TModule>(*this, ReactMemberId<I>{});
+ //   }
+ // }
+
+ // // Register members in groups of 10 to avoid deep recursion.
+ // template <int StartIndex, int... I>
+ // void RegisterMembers(std::index_sequence<I...> *) noexcept {
+ //   if constexpr (decltype(HasRegisterMember(*this, ReactMemberId<StartIndex>{}))::value) {
+ //     (RegisterMember<StartIndex + I>(), ...);
+ //     RegisterMembers<StartIndex + sizeof...(I)>(static_cast<std::make_index_sequence<10> *>(nullptr));
+ //   }
+ // }
+
+ // template <class TMethod>
+ // void RegisterInitMethod(TMethod method, std::wstring_view /*_*/ = L"", std::wstring_view /*_*/ = L"") noexcept {
+ //   auto initializer = ModuleInitMethodInfo<TMethod>::GetInitializer(m_module, method);
+ //   m_initializers.push_back(std::move(initializer));
+ // }
+
+ // template <class TMethod>
+ // void RegisterMethod(TMethod method, std::wstring_view name, std::wstring_view /*_*/ = L"") noexcept {
+ //   MethodReturnType returnType;
+ //   auto methodDelegate = ModuleMethodInfo<TMethod>::GetMethodDelegate(m_module, method, /*out*/ returnType);
+ //   m_moduleBuilder.AddMethod(name, returnType, methodDelegate);
+ // }
+
+ // template <class TMethod>
+ // void RegisterSyncMethod(TMethod method, std::wstring_view name, std::wstring_view /*_*/ = L"") noexcept {
+ //   auto syncMethodDelegate = ModuleSyncMethodInfo<TMethod>::GetMethodDelegate(m_module, method);
+ //   m_moduleBuilder.AddSyncMethod(name, syncMethodDelegate);
+ // }
+
+ // template <class TMethod>
+ // void RegisterConstantMethod(TMethod method, std::wstring_view /*_*/ = L"", std::wstring_view /*_*/ = L"") noexcept {
+ //   auto constantProvider = ModuleConstantInfo<TMethod>::GetConstantProvider(m_module, method);
+ //   m_moduleBuilder.AddConstantProvider(constantProvider);
+ // }
+
+ // template <class TField>
+ // void RegisterConstantField(TField field, std::wstring_view name, std::wstring_view /*_*/ = L"") noexcept {
+ //   auto constantProvider = ModuleConstFieldInfo<TField>::GetConstantProvider(m_module, name, field);
+ //   m_moduleBuilder.AddConstantProvider(constantProvider);
+ // }
+
+ // template <class TField>
+ // void
+ // RegisterEventField(TField field, std::wstring_view eventName, std::wstring_view eventEmitterName = L"") noexcept {
+ //   auto eventHandlerInitializer = ModuleEventFieldInfo<TField>::GetEventHandlerInitializer(
+ //       m_module, field, eventName, !eventEmitterName.empty() ? eventEmitterName : m_eventEmitterName);
+ //   m_moduleBuilder.AddInitializer(eventHandlerInitializer);
+ // }
+
+ // template <class TField>
+ // void RegisterFunctionField(TField field, std::wstring_view name, std::wstring_view moduleName = L"") noexcept {
+ //   auto functionInitializer = ModuleFunctionFieldInfo<TField>::GetFunctionInitializer(
+ //       m_module, field, name, !moduleName.empty() ? moduleName : m_moduleName);
+ //   m_moduleBuilder.AddInitializer(functionInitializer);
+ // }
+
+ //private:
+ // void *m_module;
+ // IReactModuleBuilder m_moduleBuilder;
+ // std::wstring_view m_moduleName{L""};
+ // std::wstring_view m_eventEmitterName{L""};
+ // std::vector<InitializerDelegate> m_initializers;
+};
+
 template <class T>
 struct BoxedValue : implements<BoxedValue<T>, IBoxedValue> {
   BoxedValue() noexcept {}
@@ -850,7 +977,20 @@ inline ReactModuleProvider MakeModuleProvider() noexcept {
     auto moduleObject = make<BoxedValue<TModule>>();
     auto module = &BoxedValue<TModule>::GetImpl(moduleObject);
     ReactModuleBuilder builder{module, moduleBuilder};
-    RegisterModule(builder);
+    RegisterModule(module, builder);
+    builder.CompleteRegistration();
+    return moduleObject;
+  };
+}
+
+template <class TModule, class TModuleSpec>
+inline ReactModuleProvider MakeTurboModuleProvider() noexcept {
+  TModuleSpec::template ValidateModule<TModule>();
+  return [](IReactModuleBuilder const &moduleBuilder) noexcept {
+    auto moduleObject = make<BoxedValue<TModule>>();
+    auto module = &BoxedValue<TModule>::GetImpl(moduleObject);
+    ReactModuleBuilder builder{module, moduleBuilder};
+    RegisterModule(module, builder);
     builder.CompleteRegistration();
     return moduleObject;
   };
