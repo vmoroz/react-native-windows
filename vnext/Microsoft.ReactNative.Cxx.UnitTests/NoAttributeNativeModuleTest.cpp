@@ -507,7 +507,7 @@ struct SimpleNativeModule2 {
 
 /*static*/ std::string SimpleNativeModule2::StaticMessage;
 
-void RegisterModule(SimpleNativeModule2*, ReactModuleBuilder<SimpleNativeModule2> &moduleBuilder) noexcept {
+void GetReactModuleInfo(SimpleNativeModule2 *, ReactModuleBuilder<SimpleNativeModule2> &moduleBuilder) noexcept {
   moduleBuilder.RegisterModuleName(L"SimpleNativeModule2");
   moduleBuilder.RegisterInitMethod(&SimpleNativeModule2::Initialize);
   moduleBuilder.RegisterMethod(&SimpleNativeModule2::Add, L"Add");

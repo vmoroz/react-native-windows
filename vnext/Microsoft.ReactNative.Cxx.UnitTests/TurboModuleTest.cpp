@@ -12,7 +12,7 @@ namespace winrt::Microsoft::ReactNative {
 
 REACT_MODULE(MyTurboModule)
 struct MyTurboModule {
-  REACT_METHOD(Add)
+  REACT_METHOD(Add, L"add")
   int Add(int x, int y) noexcept {
     return x + y;
   }
@@ -22,7 +22,7 @@ struct MyTurboModuleSpec {
   template <class TModule>
   static constexpr void ValidateModule() noexcept {
     // TODO: see what virtual inheritance says about missing method
-    static_assert(ReactModuleVerifier<TModule>::MethodIsDefined(L"Add"), "Method 'Add' is not defined");
+    static_assert(ReactModuleVerifier<TModule>::MethodIsDefined(L"add"), "Method 'add' is not defined");
   }
 };
 

@@ -34,7 +34,7 @@
   template struct moduleStruct##_ModuleRegistration<int>;                                                           \
                                                                                                                     \
   template <class TRegistry>                                                                                        \
-  constexpr void RegisterModule(moduleStruct *, TRegistry &registry) noexcept {                                                     \
+  constexpr void GetReactModuleInfo(moduleStruct *, TRegistry &registry) noexcept {                                 \
     registry.RegisterModule(                                                                                        \
         moduleName, eventEmitterName, winrt::Microsoft::ReactNative::ReactMemberId<__COUNTER__>{});                 \
   }
