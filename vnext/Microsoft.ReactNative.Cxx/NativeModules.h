@@ -742,11 +742,6 @@ struct ReactModuleBuilder {
     m_eventEmitterName = !eventEmitterName.empty() ? eventEmitterName : L"RCTDeviceEventEmitter";
   }
 
-  void ModuleName(std::wstring_view moduleName, std::wstring_view eventEmitterName = L"") noexcept {
-    m_moduleName = moduleName;
-    m_eventEmitterName = !eventEmitterName.empty() ? eventEmitterName : L"RCTDeviceEventEmitter";
-  }
-
   void CompleteRegistration() noexcept {
     // Add REACT_INIT initializers after REACT_EVENT and REACT_FUNCTION initializers.
     // This way REACT_INIT method is invoked after event and function fields are initialized.
