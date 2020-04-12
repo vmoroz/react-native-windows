@@ -40,7 +40,7 @@
   }
 
 #define INTERNAL_REACT_MODULE_2_ARGS(moduleStruct, moduleName) \
-  INTERNAL_REACT_MODULE_3_ARGS(moduleStruct, moduleName, nullptr)
+  INTERNAL_REACT_MODULE_3_ARGS(moduleStruct, moduleName, L"")
 
 #define INTERNAL_REACT_MODULE_1_ARG(moduleStruct) INTERNAL_REACT_MODULE_2_ARGS(moduleStruct, L## #moduleStruct)
 
@@ -60,7 +60,7 @@
   }
 
 #define INTERNAL_REACT_MEMBER_3_ARGS(memberType, member, memberName) \
-  INTERNAL_REACT_MEMBER_4_ARGS(memberType, member, memberName, nullptr)
+  INTERNAL_REACT_MEMBER_4_ARGS(memberType, member, memberName, L"")
 
 #define INTERNAL_REACT_MEMBER_2_ARGS(memberType, member) INTERNAL_REACT_MEMBER_3_ARGS(memberType, member, L## #member)
 

@@ -611,9 +611,9 @@ struct ModuleConstFieldInfo<TValue TModule::*> {
   using ModuleType = TModule;
   using FieldType = TValue TModule::*;
 
-  static ConstantProviderDelegate GetConstantProvider(void *module, wchar_t const *name, FieldType field) noexcept {
-    return [ module = static_cast<ModuleType *>(module), name = std::wstring{name}, field ](
-        IJSValueWriter const &argWriter) mutable noexcept {
+  static ConstantProviderDelegate GetConstantProvider(void *module, std::wstring_view name, FieldType field) noexcept {
+    return
+        [ module = static_cast<ModuleType *>(module), name, field ](IJSValueWriter const &argWriter) mutable noexcept {
       WriteProperty(argWriter, name, module->*field);
     };
   }
@@ -624,8 +624,8 @@ struct ModuleConstFieldInfo<TValue *> {
   using FieldType = TValue *;
 
   static ConstantProviderDelegate
-  GetConstantProvider(void * /*module*/, wchar_t const *name, FieldType field) noexcept {
-    return [ name = std::wstring{name}, field ](IJSValueWriter const &argWriter) mutable noexcept {
+  GetConstantProvider(void * /*module*/, std::wstring_view name, FieldType field) noexcept {
+    return [ name, field ](IJSValueWriter const &argWriter) mutable noexcept {
       WriteProperty(argWriter, name, *field);
     };
   }
@@ -635,7 +635,7 @@ struct ReactConstantProvider {
   ReactConstantProvider(IJSValueWriter const &writer) noexcept : m_writer{writer} {}
 
   template <class T>
-  void Add(const wchar_t *name, const T &value) noexcept {
+  void Add(std::wstring_view name, const T &value) noexcept {
     WriteProperty(m_writer, name, value);
   }
 
@@ -683,8 +683,8 @@ struct ModuleEventFieldInfo<TFunc<void(TArgs...)> TModule::*> {
   static InitializerDelegate GetEventHandlerInitializer(
       void *module,
       FieldType field,
-      wchar_t const *eventName,
-      wchar_t const *eventEmitterName) noexcept {
+      std::wstring_view eventName,
+      std::wstring_view eventEmitterName) noexcept {
     return [ module = static_cast<ModuleType *>(module), field, eventName, eventEmitterName ](
         IReactContext const &reactContext) noexcept {
       module->*field = [ reactContext, eventEmitterName, eventName ](TArgs... args) noexcept {
@@ -710,8 +710,8 @@ struct ModuleFunctionFieldInfo<TFunc<void(TArgs...)> TModule::*> {
   static InitializerDelegate GetFunctionInitializer(
       void *module,
       FieldType field,
-      wchar_t const *functionName,
-      wchar_t const *moduleName) noexcept {
+      std::wstring_view functionName,
+      std::wstring_view moduleName) noexcept {
     return [ module = static_cast<ModuleType *>(module), field, functionName, moduleName ](
         IReactContext const &reactContext) noexcept {
       module->*field = [ reactContext, functionName, moduleName ](TArgs... args) noexcept {
@@ -732,19 +732,19 @@ struct ReactModuleBuilder {
       : m_module{module}, m_moduleBuilder{moduleBuilder} {}
 
   template <int I>
-  void RegisterModule(wchar_t const *moduleName, wchar_t const *eventEmitterName, ReactMemberId<I>) noexcept {
+  void RegisterModule(std::wstring_view moduleName, std::wstring_view eventEmitterName, ReactMemberId<I>) noexcept {
     RegisterModuleName(moduleName, eventEmitterName);
     RegisterMembers<I + 1>(static_cast<std::make_index_sequence<10> *>(nullptr));
   }
 
-  void RegisterModuleName(wchar_t const *moduleName, wchar_t const *eventEmitterName = nullptr) noexcept {
+  void RegisterModuleName(std::wstring_view moduleName, std::wstring_view eventEmitterName = L"") noexcept {
     m_moduleName = moduleName;
-    m_eventEmitterName = eventEmitterName ? eventEmitterName : L"RCTDeviceEventEmitter";
+    m_eventEmitterName = !eventEmitterName.empty() ? eventEmitterName : L"RCTDeviceEventEmitter";
   }
 
-  void ModuleName(wchar_t const *moduleName, wchar_t const *eventEmitterName = nullptr) noexcept {
+  void ModuleName(std::wstring_view moduleName, std::wstring_view eventEmitterName = L"") noexcept {
     m_moduleName = moduleName;
-    m_eventEmitterName = eventEmitterName ? eventEmitterName : L"RCTDeviceEventEmitter";
+    m_eventEmitterName = !eventEmitterName.empty() ? eventEmitterName : L"RCTDeviceEventEmitter";
   }
 
   void CompleteRegistration() noexcept {
@@ -777,61 +777,56 @@ struct ReactModuleBuilder {
   }
 
   template <class TMethod>
-  void RegisterInitMethod(
-      TMethod method,
-      wchar_t const * /*unused*/ = nullptr,
-      wchar_t const * /*unused*/ = nullptr) noexcept {
+  void RegisterInitMethod(TMethod method, std::wstring_view /*_*/ = L"", std::wstring_view /*_*/ = L"") noexcept {
     auto initializer = ModuleInitMethodInfo<TMethod>::GetInitializer(m_module, method);
     m_initializers.push_back(std::move(initializer));
   }
 
   template <class TMethod>
-  void RegisterMethod(TMethod method, wchar_t const *name, wchar_t const * /*unused*/ = nullptr) noexcept {
+  void RegisterMethod(TMethod method, std::wstring_view name, std::wstring_view /*_*/ = L"") noexcept {
     MethodReturnType returnType;
     auto methodDelegate = ModuleMethodInfo<TMethod>::GetMethodDelegate(m_module, method, /*out*/ returnType);
     m_moduleBuilder.AddMethod(name, returnType, methodDelegate);
   }
 
   template <class TMethod>
-  void RegisterSyncMethod(TMethod method, wchar_t const *name, wchar_t const * /*unused*/ = nullptr) noexcept {
+  void RegisterSyncMethod(TMethod method, std::wstring_view name, std::wstring_view /*_*/ = L"") noexcept {
     auto syncMethodDelegate = ModuleSyncMethodInfo<TMethod>::GetMethodDelegate(m_module, method);
     m_moduleBuilder.AddSyncMethod(name, syncMethodDelegate);
   }
 
   template <class TMethod>
-  void RegisterConstantMethod(
-      TMethod method,
-      wchar_t const * /*unused*/ = nullptr,
-      wchar_t const * /*unused*/ = nullptr) noexcept {
+  void RegisterConstantMethod(TMethod method, std::wstring_view /*_*/ = L"", std::wstring_view /*_*/ = L"") noexcept {
     auto constantProvider = ModuleConstantInfo<TMethod>::GetConstantProvider(m_module, method);
     m_moduleBuilder.AddConstantProvider(constantProvider);
   }
 
   template <class TField>
-  void RegisterConstantField(TField field, wchar_t const *name, wchar_t const * /*unused*/ = nullptr) noexcept {
+  void RegisterConstantField(TField field, std::wstring_view name, std::wstring_view /*_*/ = L"") noexcept {
     auto constantProvider = ModuleConstFieldInfo<TField>::GetConstantProvider(m_module, name, field);
     m_moduleBuilder.AddConstantProvider(constantProvider);
   }
 
   template <class TField>
-  void RegisterEventField(TField field, wchar_t const *eventName, wchar_t const *eventEmitterName = nullptr) noexcept {
+  void
+  RegisterEventField(TField field, std::wstring_view eventName, std::wstring_view eventEmitterName = L"") noexcept {
     auto eventHandlerInitializer = ModuleEventFieldInfo<TField>::GetEventHandlerInitializer(
-        m_module, field, eventName, eventEmitterName ? eventEmitterName : m_eventEmitterName);
+        m_module, field, eventName, !eventEmitterName.empty() ? eventEmitterName : m_eventEmitterName);
     m_moduleBuilder.AddInitializer(eventHandlerInitializer);
   }
 
   template <class TField>
-  void RegisterFunctionField(TField field, wchar_t const *functionName, wchar_t const *moduleName = nullptr) noexcept {
+  void RegisterFunctionField(TField field, std::wstring_view name, std::wstring_view moduleName = L"") noexcept {
     auto functionInitializer = ModuleFunctionFieldInfo<TField>::GetFunctionInitializer(
-        m_module, field, functionName, moduleName ? moduleName : m_moduleName);
+        m_module, field, name, !moduleName.empty() ? moduleName : m_moduleName);
     m_moduleBuilder.AddInitializer(functionInitializer);
   }
 
  private:
   void *m_module;
   IReactModuleBuilder m_moduleBuilder;
-  wchar_t const *m_moduleName{nullptr};
-  wchar_t const *m_eventEmitterName{nullptr};
+  std::wstring_view m_moduleName{L""};
+  std::wstring_view m_eventEmitterName{L""};
   std::vector<InitializerDelegate> m_initializers;
 };
 
