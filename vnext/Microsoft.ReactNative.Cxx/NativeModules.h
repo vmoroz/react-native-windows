@@ -888,20 +888,27 @@ struct ReactModuleBuilder {
   std::vector<InitializerDelegate> m_initializers;
 };
 
+struct VerificationResult
+{
+  size_t MethodNameCount{0};
+  size_t MatchCount{0};
+  int MatchedMemberId{0};
+};
+
 template <class TModule>
 struct ReactModuleVerifier {
-  static constexpr size_t GetAsyncMethodCount(std::wstring_view name) noexcept {
+  static constexpr VerificationResult GetAsyncMethodCount(std::wstring_view name) noexcept {
     return GetMemberCount(name, ReactMemberKind::AsyncMethod);
   }
 
-  static constexpr size_t GetSyncMethodCount(std::wstring_view name) noexcept {
+  static constexpr VerificationResult GetSyncMethodCount(std::wstring_view name) noexcept {
     return GetMemberCount(name, ReactMemberKind::SyncMethod);
   }
 
-  static constexpr size_t GetMemberCount(std::wstring_view name, ReactMemberKind memberKind) noexcept {
+  static constexpr VerificationResult GetMemberCount(std::wstring_view name, ReactMemberKind memberKind) noexcept {
     ReactModuleVerifier verifier{name, memberKind};
     GetReactModuleInfo(static_cast<TModule *>(nullptr), verifier);
-    return verifier.m_matchCount;
+    return verifier.m_result;
   }
 
   constexpr ReactModuleVerifier(std::wstring_view memberName, ReactMemberKind memberKind) noexcept
@@ -913,15 +920,19 @@ struct ReactModuleVerifier {
   }
 
   template <class TMember, class TAttribute, int I>
-  constexpr void Visit(TMember /*member*/, ReactAttributeId<I> /*attributeId*/, TAttribute attributeInfo) noexcept {
+  constexpr void Visit(
+      TMember /*member*/,
+      [[maybe_unused]] ReactAttributeId<I> attributeId,
+      [[maybe_unused]] TAttribute attributeInfo) noexcept {
     if constexpr (IsReactMemberAttribute<TAttribute>::value) {
       if (attributeInfo.JSMemberName == m_memberName) {
         if (IsMethod(attributeInfo())) {
-          ++m_methodNameCount;
+          ++m_result.MethodNameCount;
         }
 
         if (attributeInfo() == m_memberKind) {
-          ++m_matchCount;
+          m_result.MatchedMemberId = attributeId();
+          ++m_result.MatchCount;
         }
       }
     }
@@ -934,8 +945,7 @@ struct ReactModuleVerifier {
  private:
   std::wstring_view m_memberName;
   ReactMemberKind m_memberKind;
-  size_t m_methodNameCount{0};
-  size_t m_matchCount{0};
+  VerificationResult m_result;
 };
 
 template <class T>
