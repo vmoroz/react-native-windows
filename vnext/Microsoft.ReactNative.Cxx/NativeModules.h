@@ -153,6 +153,9 @@ constexpr void ValidateCoroutineArg() noexcept {
 // Module registration helpers
 //==============================================================================
 
+template <class... TArgs>
+struct MethodSpecArgs {};
+
 template <class TMethod>
 struct ModuleInitMethodInfo;
 
@@ -328,7 +331,7 @@ struct ModuleMethodInfo<TResult (TModule::*)(TArgs...) noexcept> {
           IJSValueWriter const &argWriter,
           MethodResultCallback const &callback,
           MethodResultCallback const &) mutable noexcept {
-        using ArgTuple = std::tuple<std::remove_reference_t<TArgs>...>;
+        using ArgTuple = std::tuple<std::remove_const_t<std::remove_reference_t<TArgs>>...>;
         ArgTuple typedArgs{};
         ReadArgs(argReader, std::get<I>(typedArgs)...);
         TResult result = (module->*method)(std::get<I>(std::move(typedArgs))...);
@@ -356,6 +359,34 @@ struct ModuleMethodInfo<TResult (TModule::*)(TArgs...) noexcept> {
     constexpr int selector = !isVoidResult ? 4 : HasPromise() ? 3 : CallbackCount;
     return Invoker<IndexSequence>::GetFunc(
         static_cast<ModuleType *>(module), method, std::integral_constant<size_t, selector>{});
+  }
+
+  template <class, class>
+  struct ArgMatcher;
+
+  template <size_t... I, class... TSpecArgs>
+  struct ArgMatcher<std::index_sequence<I...>, MethodSpecArgs<TSpecArgs...>> {
+    static constexpr bool Matches() noexcept {
+      if constexpr (sizeof...(I) == sizeof...(TSpecArgs)) {
+        using ArgTuple = std::tuple<std::remove_const_t<std::remove_reference_t<TArgs>>...>;
+        using SpecArgTuple = std::tuple<TSpecArgs...>;
+
+        static_assert(
+            (std::is_same_v<std::tuple_element_t<I, ArgTuple>, std::tuple_element_t<I, SpecArgTuple>> && ...), "");
+
+        return (std::is_same_v<std::tuple_element_t<I, ArgTuple>, std::tuple_element_t<I, SpecArgTuple>> && ...);
+      } else {
+        static_assert(sizeof...(I) >= sizeof...(TSpecArgs), "Spec has more input arguments");
+        static_assert(sizeof...(I) <= sizeof...(TSpecArgs), "Spec has less input arguments");
+      }
+
+      return false;
+    }
+  };
+
+  template <class TSpecArgs>
+  static constexpr bool Matches() noexcept {
+    return ArgMatcher<IndexSequence, TSpecArgs>::Matches();
   }
 };
 
@@ -947,9 +978,6 @@ struct ReactModuleVerifier {
   VerificationResult m_result;
 };
 
-template <class... TArgs>
-struct MethodSpecArgs {};
-
 template <class TModule, int I, class TSpecArgs>
 struct ReactMethodVerifier {
   static constexpr bool Verify() noexcept {
@@ -961,7 +989,7 @@ struct ReactMethodVerifier {
   template <class TMember, class TAttribute, int I>
   constexpr void
   Visit([[maybe_unused]] TMember member, ReactAttributeId<I> /*attributeId*/, TAttribute /*attributeInfo*/) noexcept {
-    m_result = true;
+    m_result = ModuleMethodInfo<TMember>::template Matches<TSpecArgs>();
   }
 
  private:
