@@ -47,7 +47,7 @@
 // - Return non-void value. In JavaScript it is treated as a method with one Callback. Return std::pair<Error, Value> to
 //   be able to communicate error condition.
 // It can be an instance or static method.
-#define REACT_METHOD(/* method, [opt] methodName */...) INTERNAL_REACT_MEMBER(__VA_ARGS__)(Method, __VA_ARGS__)
+#define REACT_METHOD(/* method, [opt] methodName */...) INTERNAL_REACT_MEMBER(__VA_ARGS__)(AsyncMethod, __VA_ARGS__)
 
 // REACT_SYNC_METHOD(method, [opt] methodName)
 // Arguments:
@@ -724,7 +724,64 @@ struct ModuleFunctionFieldInfo<TFunc<void(TArgs...)> TModule::*> {
 };
 
 template <int I>
-using ReactMemberId = std::integral_constant<int, I>;
+using ReactAttributeId = std::integral_constant<int, I>;
+
+template <class TModule>
+struct ReactMemberInfoIterator {
+  template <int StartIndex, class TVisitor>
+  constexpr void ForEachMember(TVisitor &visitor) noexcept {
+    ForEachMember<StartIndex>(visitor, static_cast<std::make_index_sequence<10> *>(nullptr));
+  }
+
+ private:
+  template <class TVisitor, int I>
+  static auto HasGetReactMemberAttribute(TVisitor &visitor, ReactAttributeId<I> id)
+      -> decltype(TModule::template GetReactMemberAttribute<TModule>(visitor, id), std::true_type{});
+  static auto HasGetReactMemberAttribute(...) -> std::false_type;
+
+  template <int I, class TVisitor>
+  constexpr void GetMemberInfo(TVisitor &visitor) noexcept {
+    if constexpr (decltype(HasGetReactMemberAttribute(visitor, ReactAttributeId<I>{}))::value) {
+      TModule::template GetReactMemberAttribute<TModule>(visitor, ReactAttributeId<I>{});
+    }
+  }
+
+  // Visit members in groups of 10 to avoid deep recursion.
+  template <int StartIndex, class TVisitor, int... I>
+  constexpr void ForEachMember(TVisitor &visitor, std::index_sequence<I...> *) noexcept {
+    if constexpr (decltype(HasGetReactMemberAttribute(visitor, ReactAttributeId<StartIndex>{}))::value) {
+      (GetMemberInfo<StartIndex + I>(visitor), ...);
+      ForEachMember<StartIndex + sizeof...(I)>(visitor, static_cast<std::make_index_sequence<10> *>(nullptr));
+    }
+  }
+};
+
+enum class ReactMemberKind {
+  InitMethod,
+  AsyncMethod,
+  SyncMethod,
+  ConstantMethod,
+  ConstantField,
+  EventField,
+  FunctionField,
+};
+
+template <ReactMemberKind MemberKind>
+struct ReactMemberAttribute : std::integral_constant<ReactMemberKind, MemberKind> {
+  constexpr ReactMemberAttribute(std::wstring_view jsMemberName, std::wstring_view jsModuleName) noexcept
+      : JSMemberName{jsMemberName}, JSModuleName{jsModuleName} {}
+
+  std::wstring_view JSMemberName;
+  std::wstring_view JSModuleName;
+};
+
+using ReactInitMethodAttribute = ReactMemberAttribute<ReactMemberKind::InitMethod>;
+using ReactAsyncMethodAttribute = ReactMemberAttribute<ReactMemberKind::AsyncMethod>;
+using ReactSyncMethodAttribute = ReactMemberAttribute<ReactMemberKind::SyncMethod>;
+using ReactConstantMethodAttribute = ReactMemberAttribute<ReactMemberKind::ConstantMethod>;
+using ReactConstantFieldAttribute = ReactMemberAttribute<ReactMemberKind::ConstantField>;
+using ReactEventFieldAttribute = ReactMemberAttribute<ReactMemberKind::EventField>;
+using ReactFunctionFieldAttribute = ReactMemberAttribute<ReactMemberKind::FunctionField>;
 
 template <class TModule>
 struct ReactModuleBuilder {
@@ -732,9 +789,9 @@ struct ReactModuleBuilder {
       : m_module{module}, m_moduleBuilder{moduleBuilder} {}
 
   template <int I>
-  void RegisterModule(std::wstring_view moduleName, std::wstring_view eventEmitterName, ReactMemberId<I>) noexcept {
+  void RegisterModule(std::wstring_view moduleName, std::wstring_view eventEmitterName, ReactAttributeId<I>) noexcept {
     RegisterModuleName(moduleName, eventEmitterName);
-    RegisterMembers<I + 1>(static_cast<std::make_index_sequence<10> *>(nullptr));
+    ReactMemberInfoIterator<TModule>{}.ForEachMember<I + 1>(*this);
   }
 
   void RegisterModuleName(std::wstring_view moduleName, std::wstring_view eventEmitterName = L"") noexcept {
@@ -750,71 +807,79 @@ struct ReactModuleBuilder {
     }
   }
 
-  template <int I>
-  auto HasRegisterMember(ReactModuleBuilder &builder, ReactMemberId<I> id)
-      -> decltype(TModule::template RegisterMember<TModule>(builder, id), std::true_type{});
-  auto HasRegisterMember(...) -> std::false_type;
-
-  template <int I>
-  void RegisterMember() noexcept {
-    if constexpr (decltype(HasRegisterMember(*this, ReactMemberId<I>{}))::value) {
-      TModule::template RegisterMember<TModule>(*this, ReactMemberId<I>{});
-    }
-  }
-
-  // Register members in groups of 10 to avoid deep recursion.
-  template <int StartIndex, int... I>
-  void RegisterMembers(std::index_sequence<I...> *) noexcept {
-    if constexpr (decltype(HasRegisterMember(*this, ReactMemberId<StartIndex>{}))::value) {
-      (RegisterMember<StartIndex + I>(), ...);
-      RegisterMembers<StartIndex + sizeof...(I)>(static_cast<std::make_index_sequence<10> *>(nullptr));
-    }
-  }
-
-  template <class TMethod>
-  void RegisterInitMethod(TMethod method, std::wstring_view /*_*/ = L"", std::wstring_view /*_*/ = L"") noexcept {
-    auto initializer = ModuleInitMethodInfo<TMethod>::GetInitializer(m_module, method);
-    m_initializers.push_back(std::move(initializer));
-  }
-
-  template <class TMethod>
-  void RegisterMethod(TMethod method, std::wstring_view name, std::wstring_view /*_*/ = L"") noexcept {
-    MethodReturnType returnType;
-    auto methodDelegate = ModuleMethodInfo<TMethod>::GetMethodDelegate(m_module, method, /*out*/ returnType);
-    m_moduleBuilder.AddMethod(name, returnType, methodDelegate);
+  template <class TMember, class TAttribute, int I>
+  void Visit(TMember /*member*/, ReactAttributeId<I> /*attributeId*/, TAttribute /*attributeInfo*/) noexcept {
+    // switch (memberKind) {
+    //  case ReactMemberKind::InitMethod:
+    //    RegisterInitMethod(member);
+    //    break;
+    //  case ReactMemberKind::AsyncMethod:
+    //    RegisterMethod(member, memberName);
+    //    break;
+    //  case ReactMemberKind::SyncMethod:
+    //    RegisterSyncMethod(member, memberName);
+    //    break;
+    //  case ReactMemberKind::ConstantMethod:
+    //    RegisterConstantMethod(member);
+    //    break;
+    //  case ReactMemberKind::ConstantField:
+    //    RegisterConstantField(member, memberName);
+    //    break;
+    //  case ReactMemberKind::EventField:
+    //    RegisterEventField(member, memberName, moduleName);
+    //    break;
+    //  case ReactMemberKind::FunctionField:
+    //    RegisterFunctionField(member, memberName, moduleName);
+    //    break;
   }
 
   template <class TMethod>
-  void RegisterSyncMethod(TMethod method, std::wstring_view name, std::wstring_view /*_*/ = L"") noexcept {
-    auto syncMethodDelegate = ModuleSyncMethodInfo<TMethod>::GetMethodDelegate(m_module, method);
-    m_moduleBuilder.AddSyncMethod(name, syncMethodDelegate);
+  void RegisterInitMethod(TMethod /*method*/) noexcept {
+    // auto initializer = ModuleInitMethodInfo<TMethod>::GetInitializer(m_module, method);
+    // m_initializers.push_back(std::move(initializer));
   }
 
   template <class TMethod>
-  void RegisterConstantMethod(TMethod method, std::wstring_view /*_*/ = L"", std::wstring_view /*_*/ = L"") noexcept {
-    auto constantProvider = ModuleConstantInfo<TMethod>::GetConstantProvider(m_module, method);
-    m_moduleBuilder.AddConstantProvider(constantProvider);
+  void RegisterMethod(TMethod method, std::wstring_view name) noexcept {
+    // MethodReturnType returnType;
+    // auto methodDelegate = ModuleMethodInfo<TMethod>::GetMethodDelegate(m_module, method, /*out*/ returnType);
+    // m_moduleBuilder.AddMethod(name, returnType, methodDelegate);
+  }
+
+  template <class TMethod>
+  void RegisterSyncMethod(TMethod /*method*/, std::wstring_view /*name*/) noexcept {
+    // auto syncMethodDelegate = ModuleSyncMethodInfo<TMethod>::GetMethodDelegate(m_module, method);
+    // m_moduleBuilder.AddSyncMethod(name, syncMethodDelegate);
+  }
+
+  template <class TMethod>
+  void RegisterConstantMethod(TMethod /*method*/) noexcept {
+    // auto constantProvider = ModuleConstantInfo<TMethod>::GetConstantProvider(m_module, method);
+    // m_moduleBuilder.AddConstantProvider(constantProvider);
   }
 
   template <class TField>
-  void RegisterConstantField(TField field, std::wstring_view name, std::wstring_view /*_*/ = L"") noexcept {
-    auto constantProvider = ModuleConstFieldInfo<TField>::GetConstantProvider(m_module, name, field);
-    m_moduleBuilder.AddConstantProvider(constantProvider);
+  void RegisterConstantField(TField /*field*/, std::wstring_view /*name*/) noexcept {
+    // auto constantProvider = ModuleConstFieldInfo<TField>::GetConstantProvider(m_module, name, field);
+    // m_moduleBuilder.AddConstantProvider(constantProvider);
+  }
+
+  template <class TField>
+  void RegisterEventField(
+      TField /*field*/,
+      std::wstring_view /*eventName*/,
+      std::wstring_view /*eventEmitterName*/ = L"") noexcept {
+    // auto eventHandlerInitializer = ModuleEventFieldInfo<TField>::GetEventHandlerInitializer(
+    //    m_module, field, eventName, !eventEmitterName.empty() ? eventEmitterName : m_eventEmitterName);
+    // m_moduleBuilder.AddInitializer(eventHandlerInitializer);
   }
 
   template <class TField>
   void
-  RegisterEventField(TField field, std::wstring_view eventName, std::wstring_view eventEmitterName = L"") noexcept {
-    auto eventHandlerInitializer = ModuleEventFieldInfo<TField>::GetEventHandlerInitializer(
-        m_module, field, eventName, !eventEmitterName.empty() ? eventEmitterName : m_eventEmitterName);
-    m_moduleBuilder.AddInitializer(eventHandlerInitializer);
-  }
-
-  template <class TField>
-  void RegisterFunctionField(TField field, std::wstring_view name, std::wstring_view moduleName = L"") noexcept {
-    auto functionInitializer = ModuleFunctionFieldInfo<TField>::GetFunctionInitializer(
-        m_module, field, name, !moduleName.empty() ? moduleName : m_moduleName);
-    m_moduleBuilder.AddInitializer(functionInitializer);
+  RegisterFunctionField(TField /*field*/, std::wstring_view /*name*/, std::wstring_view /*moduleName*/ = L"") noexcept {
+    // auto functionInitializer = ModuleFunctionFieldInfo<TField>::GetFunctionInitializer(
+    //    m_module, field, name, !moduleName.empty() ? moduleName : m_moduleName);
+    // m_moduleBuilder.AddInitializer(functionInitializer);
   }
 
  private:
@@ -823,16 +888,6 @@ struct ReactModuleBuilder {
   std::wstring_view m_moduleName{L""};
   std::wstring_view m_eventEmitterName{L""};
   std::vector<InitializerDelegate> m_initializers;
-};
-
-enum class ReactMemberKind {
-  AsyncMethod,
-  SyncMethod,
-  InitMethod,
-  ConstantProvider,
-  ConstantField,
-  EventField,
-  FunctionField,
 };
 
 template <class TModule>
@@ -855,77 +910,31 @@ struct ReactModuleVerifier {
       : m_memberName{memberName}, m_memberKind{memberKind} {}
 
   template <int I>
-  constexpr void RegisterModule(std::wstring_view /*_*/, std::wstring_view /*_*/, ReactMemberId<I>) noexcept {
-    RegisterMembers<I + 1>(static_cast<std::make_index_sequence<10> *>(nullptr));
+  constexpr void RegisterModule(std::wstring_view /*_*/, std::wstring_view /*_*/, ReactAttributeId<I>) noexcept {
+    ReactMemberInfoIterator<TModule>{}.ForEachMember<I + 1>(*this);
   }
 
-  template <int I>
-  auto HasRegisterMember(ReactModuleVerifier &verifier, ReactMemberId<I> id)
-      -> decltype(TModule::template RegisterMember<TModule>(verifier, id), std::true_type{});
-  auto HasRegisterMember(...) -> std::false_type;
+  template <class TMember, class TAttribute, int I>
+  constexpr void Visit(TMember /*member*/, ReactAttributeId<I> /*attributeId*/, TAttribute attributeInfo) noexcept {
+    if (attributeInfo.JSMemberName == m_memberName) {
+      if (IsMethod(attributeInfo())) {
+        ++m_methodNameCount;
+      }
 
-  template <int I>
-  constexpr void RegisterMember() noexcept {
-    if constexpr (decltype(HasRegisterMember(*this, ReactMemberId<I>{}))::value) {
-      TModule::template RegisterMember<TModule>(*this, ReactMemberId<I>{});
+      if (attributeInfo() == m_memberKind) {
+        ++m_matchCount;
+      }
     }
   }
 
-  // Register members in groups of 10 to avoid deep recursion.
-  template <int StartIndex, int... I>
-  constexpr void RegisterMembers(std::index_sequence<I...> *) noexcept {
-    if constexpr (decltype(HasRegisterMember(*this, ReactMemberId<StartIndex>{}))::value) {
-      (RegisterMember<StartIndex + I>(), ...);
-      RegisterMembers<StartIndex + sizeof...(I)>(static_cast<std::make_index_sequence<10> *>(nullptr));
-    }
-  }
-
-  template <class TMethod>
-  constexpr void
-  RegisterInitMethod(TMethod /*_*/, std::wstring_view /*_*/ = L"", std::wstring_view /*_*/ = L"") noexcept {}
-
-  template <class TMethod>
-  constexpr void RegisterMethod(TMethod /*_*/, std::wstring_view name, std::wstring_view /*_*/ = L"") noexcept {
-    if (m_memberKind == ReactMemberKind::AsyncMethod && m_memberName == name) {
-      ++m_matchCount;
-    }
-  }
-
-  template <class TMethod>
-  constexpr void RegisterSyncMethod(TMethod /*_*/, std::wstring_view name, std::wstring_view /*_*/ = L"") noexcept {
-    if (m_memberKind == ReactMemberKind::SyncMethod && m_memberName == name) {
-      ++m_matchCount;
-    }
-  }
-
-  template <class TMethod>
-  constexpr void
-  RegisterConstantMethod(TMethod /*_*/, std::wstring_view /*_*/ = L"", std::wstring_view /*_*/ = L"") noexcept {}
-
-  template <class TField>
-  constexpr void RegisterConstantField(TField /*_*/, std::wstring_view name, std::wstring_view /*_*/ = L"") noexcept {
-    if (m_memberKind == ReactMemberKind::ConstantField && m_memberName == name) {
-      ++m_matchCount;
-    }
-  }
-
-  template <class TField>
-  constexpr void RegisterEventField(TField /*_*/, std::wstring_view name, std::wstring_view /*_*/ = L"") noexcept {
-    if (m_memberKind == ReactMemberKind::EventField && m_memberName == name) {
-      ++m_matchCount;
-    }
-  }
-
-  template <class TField>
-  constexpr void RegisterFunctionField(TField /*_*/, std::wstring_view name, std::wstring_view /*_*/ = L"") noexcept {
-    if (m_memberKind == ReactMemberKind::FunctionField && m_memberName == name) {
-      ++m_matchCount;
-    }
+  static bool constexpr IsMethod(ReactMemberKind memberKind) noexcept {
+    return memberKind == ReactMemberKind::AsyncMethod || memberKind == ReactMemberKind::SyncMethod;
   }
 
  private:
   std::wstring_view m_memberName;
   ReactMemberKind m_memberKind;
+  size_t m_methodNameCount{0};
   size_t m_matchCount{0};
 };
 
