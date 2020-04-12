@@ -808,78 +808,71 @@ struct ReactModuleBuilder {
   }
 
   template <class TMember, class TAttribute, int I>
-  void Visit(TMember /*member*/, ReactAttributeId<I> /*attributeId*/, TAttribute /*attributeInfo*/) noexcept {
-    // switch (memberKind) {
-    //  case ReactMemberKind::InitMethod:
-    //    RegisterInitMethod(member);
-    //    break;
-    //  case ReactMemberKind::AsyncMethod:
-    //    RegisterMethod(member, memberName);
-    //    break;
-    //  case ReactMemberKind::SyncMethod:
-    //    RegisterSyncMethod(member, memberName);
-    //    break;
-    //  case ReactMemberKind::ConstantMethod:
-    //    RegisterConstantMethod(member);
-    //    break;
-    //  case ReactMemberKind::ConstantField:
-    //    RegisterConstantField(member, memberName);
-    //    break;
-    //  case ReactMemberKind::EventField:
-    //    RegisterEventField(member, memberName, moduleName);
-    //    break;
-    //  case ReactMemberKind::FunctionField:
-    //    RegisterFunctionField(member, memberName, moduleName);
-    //    break;
+  void Visit(
+      [[maybe_unused]] TMember member,
+      ReactAttributeId<I> /*attributeId*/,
+      [[maybe_unused]] TAttribute attributeInfo) noexcept {
+    if constexpr (std::is_same_v<TAttribute, ReactInitMethodAttribute>) {
+      RegisterInitMethod(member);
+    } else if constexpr (std::is_same_v<TAttribute, ReactAsyncMethodAttribute>) {
+      RegisterMethod(member, attributeInfo.JSMemberName);
+    } else if constexpr (std::is_same_v<TAttribute, ReactSyncMethodAttribute>) {
+      RegisterSyncMethod(member, attributeInfo.JSMemberName);
+    } else if constexpr (std::is_same_v<TAttribute, ReactConstantMethodAttribute>) {
+      RegisterConstantMethod(member);
+    } else if constexpr (std::is_same_v<TAttribute, ReactConstantFieldAttribute>) {
+      RegisterConstantField(member, attributeInfo.JSMemberName);
+    } else if constexpr (std::is_same_v<TAttribute, ReactEventFieldAttribute>) {
+      RegisterEventField(member, attributeInfo.JSMemberName, attributeInfo.JSModuleName);
+    } else if constexpr (std::is_same_v<TAttribute, ReactFunctionFieldAttribute>) {
+      RegisterFunctionField(member, attributeInfo.JSMemberName, attributeInfo.JSModuleName);
+    }
   }
 
   template <class TMethod>
-  void RegisterInitMethod(TMethod /*method*/) noexcept {
-    // auto initializer = ModuleInitMethodInfo<TMethod>::GetInitializer(m_module, method);
-    // m_initializers.push_back(std::move(initializer));
+  void RegisterInitMethod(TMethod method) noexcept {
+    auto initializer = ModuleInitMethodInfo<TMethod>::GetInitializer(m_module, method);
+    m_initializers.push_back(std::move(initializer));
   }
 
   template <class TMethod>
   void RegisterMethod(TMethod method, std::wstring_view name) noexcept {
-    // MethodReturnType returnType;
-    // auto methodDelegate = ModuleMethodInfo<TMethod>::GetMethodDelegate(m_module, method, /*out*/ returnType);
-    // m_moduleBuilder.AddMethod(name, returnType, methodDelegate);
+    MethodReturnType returnType;
+    auto methodDelegate = ModuleMethodInfo<TMethod>::GetMethodDelegate(m_module, method, /*out*/ returnType);
+    m_moduleBuilder.AddMethod(name, returnType, methodDelegate);
   }
 
   template <class TMethod>
-  void RegisterSyncMethod(TMethod /*method*/, std::wstring_view /*name*/) noexcept {
-    // auto syncMethodDelegate = ModuleSyncMethodInfo<TMethod>::GetMethodDelegate(m_module, method);
-    // m_moduleBuilder.AddSyncMethod(name, syncMethodDelegate);
+  void RegisterSyncMethod(TMethod method, std::wstring_view name) noexcept {
+    auto syncMethodDelegate = ModuleSyncMethodInfo<TMethod>::GetMethodDelegate(m_module, method);
+    m_moduleBuilder.AddSyncMethod(name, syncMethodDelegate);
   }
 
   template <class TMethod>
-  void RegisterConstantMethod(TMethod /*method*/) noexcept {
-    // auto constantProvider = ModuleConstantInfo<TMethod>::GetConstantProvider(m_module, method);
-    // m_moduleBuilder.AddConstantProvider(constantProvider);
+  void RegisterConstantMethod(TMethod method) noexcept {
+    auto constantProvider = ModuleConstantInfo<TMethod>::GetConstantProvider(m_module, method);
+    m_moduleBuilder.AddConstantProvider(constantProvider);
   }
 
   template <class TField>
-  void RegisterConstantField(TField /*field*/, std::wstring_view /*name*/) noexcept {
-    // auto constantProvider = ModuleConstFieldInfo<TField>::GetConstantProvider(m_module, name, field);
-    // m_moduleBuilder.AddConstantProvider(constantProvider);
-  }
-
-  template <class TField>
-  void RegisterEventField(
-      TField /*field*/,
-      std::wstring_view /*eventName*/,
-      std::wstring_view /*eventEmitterName*/ = L"") noexcept {
-    // auto eventHandlerInitializer = ModuleEventFieldInfo<TField>::GetEventHandlerInitializer(
-    //    m_module, field, eventName, !eventEmitterName.empty() ? eventEmitterName : m_eventEmitterName);
-    // m_moduleBuilder.AddInitializer(eventHandlerInitializer);
+  void RegisterConstantField(TField field, std::wstring_view name) noexcept {
+    auto constantProvider = ModuleConstFieldInfo<TField>::GetConstantProvider(m_module, name, field);
+    m_moduleBuilder.AddConstantProvider(constantProvider);
   }
 
   template <class TField>
   void
-  RegisterFunctionField(TField /*field*/, std::wstring_view /*name*/, std::wstring_view /*moduleName*/ = L"") noexcept {
-    // auto functionInitializer = ModuleFunctionFieldInfo<TField>::GetFunctionInitializer(
-    //    m_module, field, name, !moduleName.empty() ? moduleName : m_moduleName);
-    // m_moduleBuilder.AddInitializer(functionInitializer);
+  RegisterEventField(TField field, std::wstring_view eventName, std::wstring_view eventEmitterName = L"") noexcept {
+    auto eventHandlerInitializer = ModuleEventFieldInfo<TField>::GetEventHandlerInitializer(
+        m_module, field, eventName, !eventEmitterName.empty() ? eventEmitterName : m_eventEmitterName);
+    m_moduleBuilder.AddInitializer(eventHandlerInitializer);
+  }
+
+  template <class TField>
+  void RegisterFunctionField(TField field, std::wstring_view name, std::wstring_view moduleName = L"") noexcept {
+    auto functionInitializer = ModuleFunctionFieldInfo<TField>::GetFunctionInitializer(
+        m_module, field, name, !moduleName.empty() ? moduleName : m_moduleName);
+    m_moduleBuilder.AddInitializer(functionInitializer);
   }
 
  private:
