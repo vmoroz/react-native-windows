@@ -733,18 +733,18 @@ struct ReactMemberInfoIterator {
     ForEachMember<StartIndex>(visitor, static_cast<std::make_index_sequence<10> *>(nullptr));
   }
 
- private:
-  template <class TVisitor, int I>
-  static auto HasGetReactMemberAttribute(TVisitor &visitor, ReactAttributeId<I> id)
-      -> decltype(TModule::template GetReactMemberAttribute<TModule>(visitor, id), std::true_type{});
-  static auto HasGetReactMemberAttribute(...) -> std::false_type;
-
   template <int I, class TVisitor>
   constexpr void GetMemberInfo(TVisitor &visitor) noexcept {
     if constexpr (decltype(HasGetReactMemberAttribute(visitor, ReactAttributeId<I>{}))::value) {
       TModule::template GetReactMemberAttribute<TModule>(visitor, ReactAttributeId<I>{});
     }
   }
+
+ private:
+  template <class TVisitor, int I>
+  static auto HasGetReactMemberAttribute(TVisitor &visitor, ReactAttributeId<I> id)
+      -> decltype(TModule::template GetReactMemberAttribute<TModule>(visitor, id), std::true_type{});
+  static auto HasGetReactMemberAttribute(...) -> std::false_type;
 
   // Visit members in groups of 10 to avoid deep recursion.
   template <int StartIndex, class TVisitor, int... I>
@@ -888,8 +888,7 @@ struct ReactModuleBuilder {
   std::vector<InitializerDelegate> m_initializers;
 };
 
-struct VerificationResult
-{
+struct VerificationResult {
   size_t MethodNameCount{0};
   size_t MatchCount{0};
   int MatchedMemberId{0};
@@ -946,6 +945,27 @@ struct ReactModuleVerifier {
   std::wstring_view m_memberName;
   ReactMemberKind m_memberKind;
   VerificationResult m_result;
+};
+
+template <class... TArgs>
+struct MethodSpecArgs {};
+
+template <class TModule, int I, class TSpecArgs>
+struct ReactMethodVerifier {
+  static constexpr bool Verify() noexcept {
+    ReactMethodVerifier verifier;
+    ReactMemberInfoIterator<TModule>{}.GetMemberInfo<I>(verifier);
+    return verifier.m_result;
+  }
+
+  template <class TMember, class TAttribute, int I>
+  constexpr void
+  Visit([[maybe_unused]] TMember member, ReactAttributeId<I> /*attributeId*/, TAttribute /*attributeInfo*/) noexcept {
+    m_result = true;
+  }
+
+ private:
+  bool m_result{false};
 };
 
 template <class T>
