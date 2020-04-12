@@ -783,6 +783,11 @@ using ReactConstantFieldAttribute = ReactMemberAttribute<ReactMemberKind::Consta
 using ReactEventFieldAttribute = ReactMemberAttribute<ReactMemberKind::EventField>;
 using ReactFunctionFieldAttribute = ReactMemberAttribute<ReactMemberKind::FunctionField>;
 
+template <class T>
+struct IsReactMemberAttribute : std::false_type {};
+template <ReactMemberKind MemberKind>
+struct IsReactMemberAttribute<ReactMemberAttribute<MemberKind>> : std::true_type {};
+
 template <class TModule>
 struct ReactModuleBuilder {
   ReactModuleBuilder(TModule *module, IReactModuleBuilder const &moduleBuilder) noexcept
@@ -909,13 +914,15 @@ struct ReactModuleVerifier {
 
   template <class TMember, class TAttribute, int I>
   constexpr void Visit(TMember /*member*/, ReactAttributeId<I> /*attributeId*/, TAttribute attributeInfo) noexcept {
-    if (attributeInfo.JSMemberName == m_memberName) {
-      if (IsMethod(attributeInfo())) {
-        ++m_methodNameCount;
-      }
+    if constexpr (IsReactMemberAttribute<TAttribute>::value) {
+      if (attributeInfo.JSMemberName == m_memberName) {
+        if (IsMethod(attributeInfo())) {
+          ++m_methodNameCount;
+        }
 
-      if (attributeInfo() == m_memberKind) {
-        ++m_matchCount;
+        if (attributeInfo() == m_memberKind) {
+          ++m_matchCount;
+        }
       }
     }
   }
