@@ -372,7 +372,8 @@ struct ModuleMethodInfo<TResult (TModule::*)(TArgs...) noexcept> {
         using SpecArgTuple = std::tuple<TSpecArgs...>;
 
         static_assert(
-            (std::is_same_v<std::tuple_element_t<I, ArgTuple>, std::tuple_element_t<I, SpecArgTuple>> && ...), "");
+            (std::is_same_v<std::tuple_element_t<I, ArgTuple>, std::tuple_element_t<I, SpecArgTuple>> && ...),
+            "Argument types do not match spec");
 
         return (std::is_same_v<std::tuple_element_t<I, ArgTuple>, std::tuple_element_t<I, SpecArgTuple>> && ...);
       } else {
@@ -927,15 +928,15 @@ struct VerificationResult {
 
 template <class TModule>
 struct ReactModuleVerifier {
-  static constexpr VerificationResult GetAsyncMethodCount(std::wstring_view name) noexcept {
-    return GetMemberCount(name, ReactMemberKind::AsyncMethod);
+  static constexpr VerificationResult VerifyAsyncMethod(std::wstring_view name) noexcept {
+    return VerifyMember(name, ReactMemberKind::AsyncMethod);
   }
 
-  static constexpr VerificationResult GetSyncMethodCount(std::wstring_view name) noexcept {
-    return GetMemberCount(name, ReactMemberKind::SyncMethod);
+  static constexpr VerificationResult VerifySyncMethod(std::wstring_view name) noexcept {
+    return VerifyMember(name, ReactMemberKind::SyncMethod);
   }
 
-  static constexpr VerificationResult GetMemberCount(std::wstring_view name, ReactMemberKind memberKind) noexcept {
+  static constexpr VerificationResult VerifyMember(std::wstring_view name, ReactMemberKind memberKind) noexcept {
     ReactModuleVerifier verifier{name, memberKind};
     GetReactModuleInfo(static_cast<TModule *>(nullptr), verifier);
     return verifier.m_result;

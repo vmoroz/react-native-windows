@@ -21,12 +21,14 @@ struct MyTurboModule {
 struct MyTurboModuleSpec {
   template <class TModule>
   static constexpr void ValidateModule() noexcept {
-    // TODO: see what virtual inheritance says about missing method
-    constexpr auto verificationResult = ReactModuleVerifier<TModule>::GetAsyncMethodCount(L"add");
+    constexpr auto verificationResult = ReactModuleVerifier<TModule>::VerifyAsyncMethod(L"add");
+
     static_assert(verificationResult.MethodNameCount <= 1, "Name 'add' used for multiple methods");
     static_assert(verificationResult.MatchCount == 1, "Async Method 'add' is not defined");
+
     constexpr bool matches =
         ReactMethodVerifier<TModule, verificationResult.MatchedMemberId, MethodSpecArgs<int, int>>::Verify();
+
     static_assert(matches, "Async Method 'add' does not match signature");
   }
 };
