@@ -154,7 +154,13 @@ constexpr void ValidateCoroutineArg() noexcept {
 //==============================================================================
 
 template <class... TArgs>
-struct MethodSpecArgs {};
+struct ArgsSpec : std::tuple<TArgs...> {};
+
+template <class... TArgs>
+struct CallbackSpec : std::tuple<TArgs...> {};
+
+template <class... TArgs>
+struct PromiseSpec : std::tuple<TArgs...> {};
 
 template <class TMethod>
 struct ModuleInitMethodInfo;
@@ -365,7 +371,7 @@ struct ModuleMethodInfo<TResult (TModule::*)(TArgs...) noexcept> {
   struct ArgMatcher;
 
   template <size_t... I, class... TSpecArgs>
-  struct ArgMatcher<std::index_sequence<I...>, MethodSpecArgs<TSpecArgs...>> {
+  struct ArgMatcher<std::index_sequence<I...>, ArgsSpec<TSpecArgs...>> {
     static constexpr bool Matches() noexcept {
       if constexpr (sizeof...(I) == sizeof...(TSpecArgs)) {
         using ArgTuple = std::tuple<std::remove_const_t<std::remove_reference_t<TArgs>>...>;

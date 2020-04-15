@@ -25,11 +25,11 @@ struct MyTurboModuleSpec {
 
     static_assert(verificationResult.MethodNameCount <= 1, "Name 'add' used for multiple methods");
     static_assert(verificationResult.MatchCount == 1, "Async Method 'add' is not defined");
-
-    constexpr bool matches =
-        ReactMethodVerifier<TModule, verificationResult.MatchedMemberId, MethodSpecArgs<int, int>>::Verify();
-
-    static_assert(matches, "Async Method 'add' does not match signature");
+    if constexpr (verificationResult.MatchCount == 1) {
+      constexpr bool matches =
+          ReactMethodVerifier<TModule, verificationResult.MatchedMemberId, ArgsSpec<int, int>>::Verify();
+      static_assert(matches, "Async Method 'add' does not match signature (see output)");
+    }
   }
 };
 
