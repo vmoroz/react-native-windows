@@ -92,6 +92,11 @@ struct MyTurboModule {
   }
 };
 
+// The TurboModule spec is going to be generated from the Flow spec file.
+// It verifies that:
+// - module methods names are unique;
+// - method names are matching to the module spec method names;
+// - method signatures match the spec method signatures.
 struct MyTurboModuleSpec : winrt::Microsoft::ReactNative::TurboModuleSpec {
   static constexpr auto methods = std::tuple{
       Method<void(int, int, Callback<int>)>{0, L"add"},
