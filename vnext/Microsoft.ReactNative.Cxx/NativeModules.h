@@ -157,6 +157,11 @@ constexpr bool HasPromise() noexcept {
   return false;
 }
 
+template <class TResult>
+constexpr bool IsVoidResult() noexcept {
+  return std::is_void_v<TResult> || std::is_same_v<TResult, winrt::fire_and_forget>;
+}
+
 template <class TResult, class TArg>
 constexpr void ValidateCoroutineArg() noexcept {
   if constexpr (std::is_same_v<TResult, fire_and_forget>) {
@@ -248,6 +253,7 @@ template <class TModule, class TResult, class... TArgs>
 struct ModuleMethodInfo<TResult (TModule::*)(TArgs...) noexcept> {
   constexpr static size_t CallbackCount = Internal::GetCallbackCount<TArgs...>();
   constexpr static bool HasPromise = Internal::HasPromise<TArgs...>();
+  constexpr static bool IsVoidResult = Internal::IsVoidResult<TResult>();
   using ModuleType = TModule;
   using MethodType = TResult (TModule::*)(TArgs...) noexcept;
   using IndexSequence = std::make_index_sequence<sizeof...(TArgs) - (HasPromise ? 1 : CallbackCount)>;
@@ -405,8 +411,7 @@ struct ModuleMethodInfo<TResult (TModule::*)(TArgs...) noexcept> {
 
   static MethodDelegate GetMethodDelegate(void *module, MethodType method, MethodReturnType &returnType) noexcept {
     (Internal::ValidateCoroutineArg<TResult, TArgs>(), ...);
-    constexpr bool isVoidResult = std::is_void_v<TResult> || std::is_same_v<TResult, winrt::fire_and_forget>;
-    if constexpr (!isVoidResult) {
+    if constexpr (!IsVoidResult) {
       returnType = MethodReturnType::Callback;
     } else if constexpr (HasPromise) {
       returnType = MethodReturnType::Promise;
@@ -418,7 +423,7 @@ struct ModuleMethodInfo<TResult (TModule::*)(TArgs...) noexcept> {
       returnType = MethodReturnType::Void;
     }
 
-    constexpr int selector = !isVoidResult ? 4 : HasPromise ? 3 : CallbackCount;
+    constexpr int selector = !IsVoidResult ? 4 : HasPromise ? 3 : CallbackCount;
     return Invoker<IndexSequence>::GetFunc(
         static_cast<ModuleType *>(module), method, std::integral_constant<size_t, selector>{});
   }
@@ -450,8 +455,8 @@ struct ModuleMethodInfo<TResult (TModule::*)(TArgs...) noexcept> {
   template <class TSignatureSpec>
   static constexpr bool Matches() noexcept {
     using SignatureSpec = Internal::MethodSignature<TSignatureSpec>;
-    //static_assert(false, "args do not match");
-    //return SignatureSpec::MatchOrFail();
+    // static_assert(false, "args do not match");
+    // return SignatureSpec::MatchOrFail();
     // ArgMatcher<IndexSequence, TSpecArgs>::Matches();
     return true;
   }
@@ -462,6 +467,8 @@ template <class TResult, class... TArgs>
 struct ModuleMethodInfo<TResult (*)(TArgs...) noexcept> {
   constexpr static size_t CallbackCount = Internal::GetCallbackCount<TArgs...>();
   constexpr static bool HasPromise = Internal::HasPromise<TArgs...>();
+  constexpr static bool IsVoidResult = Internal::IsVoidResult<TResult>();
+
   using MethodType = TResult (*)(TArgs...) noexcept;
   using IndexSequence = std::make_index_sequence<sizeof...(TArgs) - (HasPromise ? 1 : CallbackCount)>;
 
@@ -618,8 +625,7 @@ struct ModuleMethodInfo<TResult (*)(TArgs...) noexcept> {
 
   static MethodDelegate GetMethodDelegate(void * /*module*/, MethodType method, MethodReturnType &returnType) noexcept {
     (Internal::ValidateCoroutineArg<TResult, TArgs>(), ...);
-    constexpr bool isVoidResult = std::is_void_v<TResult> || std::is_same_v<TResult, winrt::fire_and_forget>;
-    if constexpr (!isVoidResult) {
+    if constexpr (!IsVoidResult) {
       returnType = MethodReturnType::Callback;
     } else if constexpr (HasPromise) {
       returnType = MethodReturnType::Promise;
@@ -631,7 +637,7 @@ struct ModuleMethodInfo<TResult (*)(TArgs...) noexcept> {
       returnType = MethodReturnType::Void;
     }
 
-    constexpr int selector = !isVoidResult ? 4 : HasPromise ? 3 : CallbackCount;
+    constexpr int selector = !IsVoidResult ? 4 : HasPromise ? 3 : CallbackCount;
     return Invoker<IndexSequence>::GetFunc(method, std::integral_constant<size_t, selector>{});
   }
 };
