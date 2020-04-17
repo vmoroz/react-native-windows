@@ -291,19 +291,6 @@ struct ModuleMethodInfo<TResult (TModule::*)(TArgs...) noexcept> {
       }
     };
 
-    template <class T>
-    struct PromiseCreator;
-
-    template <class T>
-    struct PromiseCreator<ReactPromise<T>> {
-      static ReactPromise<T> Create(
-          const IJSValueWriter &argWriter,
-          const MethodResultCallback &resolve,
-          const MethodResultCallback &reject) noexcept {
-        return ReactPromise<T>(argWriter, resolve, reject);
-      }
-    };
-
     // Method with one callback
     static MethodDelegate GetFunc(ModuleType *module, MethodType method, std::integral_constant<size_t, 1>) noexcept {
       return [module, method](
@@ -352,7 +339,7 @@ struct ModuleMethodInfo<TResult (TModule::*)(TArgs...) noexcept> {
         using PromiseArg = std::remove_const_t<std::tuple_element_t<sizeof...(TArgs) - 1, AllArgsTuple>>;
         ArgsTuple typedArgs{};
         ReadArgs(argReader, std::get<I>(typedArgs)...);
-        auto promise = PromiseCreator<PromiseArg>::Create(argWriter, resolve, reject);
+        auto promise = PromiseArg{argWriter, resolve, reject};
         (module->*method)(std::get<I>(std::move(typedArgs))..., std::move(promise));
       };
     }
@@ -470,19 +457,6 @@ struct ModuleMethodInfo<TResult (*)(TArgs...) noexcept> {
       }
     };
 
-    template <class T>
-    struct PromiseCreator;
-
-    template <class T>
-    struct PromiseCreator<ReactPromise<T>> {
-      static ReactPromise<T> Create(
-          const IJSValueWriter &argWriter,
-          const MethodResultCallback &resolve,
-          const MethodResultCallback &reject) noexcept {
-        return ReactPromise<T>(argWriter, resolve, reject);
-      }
-    };
-
     // Method with one callback
     static MethodDelegate GetFunc(MethodType method, std::integral_constant<size_t, 1>) noexcept {
       return [method](
@@ -531,7 +505,7 @@ struct ModuleMethodInfo<TResult (*)(TArgs...) noexcept> {
         using PromiseArg = std::remove_const_t<std::tuple_element_t<sizeof...(TArgs) - 1, AllArgsTuple>>;
         ArgsTuple typedArgs{};
         ReadArgs(argReader, std::get<I>(typedArgs)...);
-        auto promise = PromiseCreator<PromiseArg>::Create(argWriter, resolve, reject);
+        auto promise = PromiseArg{argWriter, resolve, reject};
         (*method)(std::get<I>(std::move(typedArgs))..., std::move(promise));
       };
     }
