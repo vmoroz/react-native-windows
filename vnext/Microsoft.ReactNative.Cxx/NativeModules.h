@@ -162,6 +162,21 @@ constexpr bool IsVoidResult() noexcept {
   return std::is_void_v<TResult> || std::is_same_v<TResult, winrt::fire_and_forget>;
 }
 
+template <class T>
+struct CallbackCreator;
+
+template <template <class> class TCallback, class... TArgs>
+struct CallbackCreator<TCallback<void(TArgs...)>> {
+  static TCallback<void(TArgs...)> Create(
+      IJSValueWriter const &argWriter,
+      MethodResultCallback const &callback) noexcept {
+    return TCallback([callback, argWriter](TArgs... args) noexcept {
+      WriteArgs(argWriter, std::move(args)...);
+      callback(argWriter);
+    });
+  }
+};
+
 template <class TResult, class TArg>
 constexpr void ValidateCoroutineArg() noexcept {
   if constexpr (std::is_same_v<TResult, fire_and_forget>) {
@@ -276,21 +291,6 @@ struct ModuleMethodInfo<TResult (TModule::*)(TArgs...) noexcept> {
       };
     }
 
-    template <class T>
-    struct CallbackCreator;
-
-    template <template <class...> class TCallback, class... TArgs>
-    struct CallbackCreator<TCallback<void(TArgs...)>> {
-      static TCallback<void(TArgs...)> Create(
-          const IJSValueWriter &argWriter,
-          const MethodResultCallback &callback) noexcept {
-        return TCallback([callback = std::move(callback), argWriter](TArgs... args) noexcept {
-          WriteArgs(argWriter, std::move(args)...);
-          callback(argWriter);
-        });
-      }
-    };
-
     // Method with one callback
     static MethodDelegate GetFunc(ModuleType *module, MethodType method, std::integral_constant<size_t, 1>) noexcept {
       return [module, method](
@@ -301,7 +301,7 @@ struct ModuleMethodInfo<TResult (TModule::*)(TArgs...) noexcept> {
         using ArgTuple = std::tuple<std::remove_reference_t<TArgs>...>;
         ArgTuple typedArgs{};
         ReadArgs(argReader, std::get<I>(typedArgs)...);
-        auto cb = CallbackCreator<std::remove_const_t<std::remove_reference_t<
+        auto cb = Internal::CallbackCreator<std::remove_const_t<std::remove_reference_t<
             std::tuple_element_t<sizeof...(TArgs) - 1, ArgTuple>>>>::Create(argWriter, callback);
         (module->*method)(std::get<I>(std::move(typedArgs))..., std::move(cb));
       };
@@ -319,9 +319,9 @@ struct ModuleMethodInfo<TResult (TModule::*)(TArgs...) noexcept> {
         ReadArgs(argReader, std::get<I>(typedArgs)...);
         // Some native modules use first callback as failure, others use second. We make them both to
         // behave the same way and let developers to assign meaning to the first and second callbacks.
-        auto firstCallback = CallbackCreator<std::remove_const_t<
+        auto firstCallback = Internal::CallbackCreator<std::remove_const_t<
             std::remove_reference_t<std::tuple_element_t<sizeof...(TArgs) - 2, ArgTuple>>>>::Create(argWriter, resolve);
-        auto secondCallback = CallbackCreator<std::remove_const_t<
+        auto secondCallback = Internal::CallbackCreator<std::remove_const_t<
             std::remove_reference_t<std::tuple_element_t<sizeof...(TArgs) - 1, ArgTuple>>>>::Create(argWriter, reject);
         (module->*method)(std::get<I>(std::move(typedArgs))..., std::move(firstCallback), std::move(secondCallback));
       };
@@ -442,21 +442,6 @@ struct ModuleMethodInfo<TResult (*)(TArgs...) noexcept> {
       };
     }
 
-    template <class T>
-    struct CallbackCreator;
-
-    template <template <class...> class TCallback, class... TArgs>
-    struct CallbackCreator<TCallback<void(TArgs...)>> {
-      static TCallback<void(TArgs...)> Create(
-          const IJSValueWriter &argWriter,
-          const MethodResultCallback &callback) noexcept {
-        return TCallback([callback = std::move(callback), argWriter](TArgs... args) noexcept {
-          WriteArgs(argWriter, std::move(args)...);
-          callback(argWriter);
-        });
-      }
-    };
-
     // Method with one callback
     static MethodDelegate GetFunc(MethodType method, std::integral_constant<size_t, 1>) noexcept {
       return [method](
@@ -467,7 +452,7 @@ struct ModuleMethodInfo<TResult (*)(TArgs...) noexcept> {
         using ArgTuple = std::tuple<std::remove_reference_t<TArgs>...>;
         ArgTuple typedArgs{};
         ReadArgs(argReader, std::get<I>(typedArgs)...);
-        auto cb = CallbackCreator<std::remove_const_t<std::remove_reference_t<
+        auto cb = Internal::CallbackCreator<std::remove_const_t<std::remove_reference_t<
             std::tuple_element_t<sizeof...(TArgs) - 1, ArgTuple>>>>::Create(argWriter, callback);
         (*method)(std::get<I>(std::move(typedArgs))..., std::move(cb));
       };
@@ -485,9 +470,9 @@ struct ModuleMethodInfo<TResult (*)(TArgs...) noexcept> {
         ReadArgs(argReader, std::get<I>(typedArgs)...);
         // Some native modules use first callback as failure, others use second. We make them both to
         // behave the same way and let developers to assign meaning to the first and second callbacks.
-        auto firstCallback = CallbackCreator<std::remove_const_t<
+        auto firstCallback = Internal::CallbackCreator<std::remove_const_t<
             std::remove_reference_t<std::tuple_element_t<sizeof...(TArgs) - 2, ArgTuple>>>>::Create(argWriter, resolve);
-        auto secondCallback = CallbackCreator<std::remove_const_t<
+        auto secondCallback = Internal::CallbackCreator<std::remove_const_t<
             std::remove_reference_t<std::tuple_element_t<sizeof...(TArgs) - 1, ArgTuple>>>>::Create(argWriter, reject);
         (*method)(std::get<I>(std::move(typedArgs))..., std::move(firstCallback), std::move(secondCallback));
       };
