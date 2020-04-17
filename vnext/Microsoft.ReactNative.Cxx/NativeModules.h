@@ -460,17 +460,10 @@ struct ModuleMethodInfo<TResult (TModule::*)(TArgs...) noexcept> {
 // Static asynchronous method
 template <class TResult, class... TArgs>
 struct ModuleMethodInfo<TResult (*)(TArgs...) noexcept> {
-  constexpr static bool HasPromise() noexcept {
-    if constexpr (sizeof...(TArgs) > 0) {
-      return Internal::IsPromise<std::remove_const_t<std::remove_reference_t<
-          std::tuple_element_t<sizeof...(TArgs) - 1, std::tuple<std::remove_reference_t<TArgs>...>>>>>::value;
-    }
-    return false;
-  }
-
   constexpr static size_t CallbackCount = Internal::GetCallbackCount<TArgs...>();
+  constexpr static bool HasPromise = Internal::HasPromise<TArgs...>();
   using MethodType = TResult (*)(TArgs...) noexcept;
-  using IndexSequence = std::make_index_sequence<sizeof...(TArgs) - (HasPromise() ? 1 : CallbackCount)>;
+  using IndexSequence = std::make_index_sequence<sizeof...(TArgs) - (HasPromise ? 1 : CallbackCount)>;
 
   template <class>
   struct Invoker;
@@ -628,7 +621,7 @@ struct ModuleMethodInfo<TResult (*)(TArgs...) noexcept> {
     constexpr bool isVoidResult = std::is_void_v<TResult> || std::is_same_v<TResult, winrt::fire_and_forget>;
     if constexpr (!isVoidResult) {
       returnType = MethodReturnType::Callback;
-    } else if constexpr (HasPromise()) {
+    } else if constexpr (HasPromise) {
       returnType = MethodReturnType::Promise;
     } else if constexpr (CallbackCount == 2) {
       returnType = MethodReturnType::TwoCallbacks;
@@ -638,7 +631,7 @@ struct ModuleMethodInfo<TResult (*)(TArgs...) noexcept> {
       returnType = MethodReturnType::Void;
     }
 
-    constexpr int selector = !isVoidResult ? 4 : HasPromise() ? 3 : CallbackCount;
+    constexpr int selector = !isVoidResult ? 4 : HasPromise ? 3 : CallbackCount;
     return Invoker<IndexSequence>::GetFunc(method, std::integral_constant<size_t, selector>{});
   }
 };
