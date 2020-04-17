@@ -10,19 +10,6 @@
 
 namespace winrt::Microsoft::ReactNative {
 
-// static_assert(verificationResult.MethodNameCount <= 1, "Name 'add' used for multiple methods");
-// static_assert(verificationResult.MatchCount == 1, "Async Method 'add' is not defined");
-//// if constexpr (verificationResult.MatchCount == 1) {
-////  constexpr bool matches =
-////      ReactMethodVerifier<TModule, verificationResult.MatchedMemberId, ArgsSpec<int, int>>::Verify();
-////  static_assert(matches, "Async Method 'add' does not match signature (see output)");
-////}
-
-// TurboModule spec provides method names with method signature spec.
-// The spec verification checks:
-// - that methods names are unique
-// - list of names matches the spec list
-// - methods match the method signature specification
 struct TurboModuleSpec {
   struct BaseMethodSpec {
     constexpr BaseMethodSpec(int index, std::wstring_view name) : Index{index}, Name{name} {}
@@ -34,6 +21,7 @@ struct TurboModuleSpec {
   template <class TSignature>
   struct Method : BaseMethodSpec {
     using BaseMethodSpec::BaseMethodSpec;
+    using Signature = TSignature;
   };
 
   template <class... TArgs>
@@ -43,8 +31,9 @@ struct TurboModuleSpec {
   struct Promise : std::tuple<TArgs...> {};
 
   struct MethodCheckResult {
-    size_t MethodNameCount{0};
-    size_t MatchCount{0};
+    bool IsUniqueName{false};
+    bool IsMethodFound{false};
+    bool IsSignatureMatching{true};
   };
 
   template <class TModule, class TModuleSpec, size_t I>
@@ -52,8 +41,16 @@ struct TurboModuleSpec {
     constexpr auto verificationResult =
         ReactModuleVerifier<TModule>::VerifyAsyncMethod(std::get<I>(TModuleSpec::methods).Name);
     MethodCheckResult result{};
-    result.MethodNameCount = verificationResult.MethodNameCount;
-    result.MatchCount = verificationResult.MatchCount;
+    result.IsUniqueName = verificationResult.MethodNameCount <= 1;
+    result.IsMethodFound = verificationResult.MatchCount == 1;
+    if constexpr (verificationResult.MatchCount == 1) {
+      result.IsSignatureMatching = 
+          ReactMethodVerifier<
+          TModule,
+          verificationResult.MatchedMemberId,
+          Internal::RemoveConstRef<decltype(std::get<I>(TModuleSpec::methods))>::Signature>::Verify();
+    }
+
     return result;
   };
 
@@ -70,18 +67,21 @@ struct TurboModuleSpec {
 };
 
 } // namespace winrt::Microsoft::ReactNative
-#define REACT_SHOW_METHOD_SPEC_ERRORS(index, methodName, signatures)                                                \
-  static_assert(methodCheckResults[index].MethodNameCount <= 1, "Name '" methodName "' used for multiple methods"); \
-  static_assert(                                                                                                    \
-      methodCheckResults[index].MatchCount == 1,                                                                    \
-      "Method '" methodName                                                                                         \
-      "' is not defined (see details below in output).\n"                                                           \
-      "It must be one of the following:\n" signatures                                                               \
-      "The C++ method name could be different. In that case add the L\"" methodName                                 \
-      "\" to the attribute:\n"                                                                                      \
-      "  REACT_METHOD(method, L\"" methodName                                                                       \
-      "\")\n"                                                                                                       \
-      "  \n");
+#define REACT_SHOW_METHOD_SIGNATURES(methodName, signatures)                      \
+  " (see details below in output).\n"                                             \
+  "  It must be one of the following:\n" signatures                               \
+  "  The C++ method name could be different. In that case add the L\"" methodName \
+  "\" to the attribute:\n"                                                        \
+  "    REACT_METHOD(method, L\"" methodName "\")\n...\n"
+
+#define REACT_SHOW_METHOD_SPEC_ERRORS(index, methodName, signatures)                                        \
+  static_assert(methodCheckResults[index].IsUniqueName, "Name '" methodName "' used for multiple methods"); \
+  static_assert(                                                                                            \
+      methodCheckResults[index].IsMethodFound,                                                              \
+      "Method '" methodName "' is not defined" REACT_SHOW_METHOD_SIGNATURES(methodName, signatures));       \
+  static_assert(                                                                                            \
+      methodCheckResults[index].IsSignatureMatching,                                                        \
+      "Method '" methodName "' does not match signature" REACT_SHOW_METHOD_SIGNATURES(methodName, signatures));
 
 namespace ReactNativeTests {
 REACT_MODULE(MyTurboModule)
@@ -99,7 +99,7 @@ struct MyTurboModule {
 // - method signatures match the spec method signatures.
 struct MyTurboModuleSpec : winrt::Microsoft::ReactNative::TurboModuleSpec {
   static constexpr auto methods = std::tuple{
-      Method<void(int, int, Callback<int>)>{0, L"add"},
+      Method<void(int, int, Callback<int>) noexcept>{0, L"add"},
   };
 
   template <class TModule>
@@ -109,9 +109,9 @@ struct MyTurboModuleSpec : winrt::Microsoft::ReactNative::TurboModuleSpec {
     REACT_SHOW_METHOD_SPEC_ERRORS(
         0,
         "add",
-        "  REACT_METHOD(add) int add(int, int) noexcept {/*implementation*/}\n"
-        "  REACT_METHOD(add) void add(int, int, Callback<int>) noexcept {/*implementation*/}\n"
-        "  REACT_METHOD(add) winrt::fire_and_forget add(int, int, Callback<int>) noexcept {/*implementation*/}\n");
+        "    REACT_METHOD(add) int add(int, int) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(add) void add(int, int, ReactCallback<int>) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(add) winrt::fire_and_forget add(int, int, ReactCallback<int>) noexcept {/*implementation*/}\n");
   }
 };
 
