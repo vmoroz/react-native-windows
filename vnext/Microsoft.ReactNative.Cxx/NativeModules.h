@@ -427,90 +427,97 @@ struct ModuleMethodInfo<TResult (*)(TArgs...) noexcept> {
   template <class>
   struct Invoker;
 
+  // Fire and forget method
   template <size_t... I>
-  struct Invoker<std::index_sequence<I...>> {
-    // Fire and forget method
-    static MethodDelegate GetFunc(MethodType method, std::integral_constant<size_t, 0>) noexcept {
-      return [method](
-                 IJSValueReader const &argReader,
-                 IJSValueWriter const & /*argWriter*/,
-                 MethodResultCallback const &,
-                 MethodResultCallback const &) mutable noexcept {
-        std::tuple<std::remove_reference_t<TArgs>...> typedArgs{};
-        ReadArgs(argReader, std::get<I>(typedArgs)...);
-        (*method)(std::get<I>(std::move(typedArgs))...);
-      };
-    }
+  static MethodDelegate
+  GetFunc(MethodType method, std::index_sequence<I...>, std::integral_constant<size_t, 0>) noexcept {
+    return [method](
+               IJSValueReader const &argReader,
+               IJSValueWriter const & /*argWriter*/,
+               MethodResultCallback const &,
+               MethodResultCallback const &) mutable noexcept {
+      std::tuple<std::remove_reference_t<TArgs>...> typedArgs{};
+      ReadArgs(argReader, std::get<I>(typedArgs)...);
+      (*method)(std::get<I>(std::move(typedArgs))...);
+    };
+  }
 
-    // Method with one callback
-    static MethodDelegate GetFunc(MethodType method, std::integral_constant<size_t, 1>) noexcept {
-      return [method](
-                 IJSValueReader const &argReader,
-                 IJSValueWriter const &argWriter,
-                 MethodResultCallback const &callback,
-                 MethodResultCallback const &) mutable noexcept {
-        using ArgTuple = std::tuple<std::remove_reference_t<TArgs>...>;
-        ArgTuple typedArgs{};
-        ReadArgs(argReader, std::get<I>(typedArgs)...);
-        auto cb = Internal::CallbackCreator<std::remove_const_t<std::remove_reference_t<
-            std::tuple_element_t<sizeof...(TArgs) - 1, ArgTuple>>>>::Create(argWriter, callback);
-        (*method)(std::get<I>(std::move(typedArgs))..., std::move(cb));
-      };
-    }
+  // Method with one callback
+  template <size_t... I>
+  static MethodDelegate
+  GetFunc(MethodType method, std::index_sequence<I...>, std::integral_constant<size_t, 1>) noexcept {
+    return [method](
+               IJSValueReader const &argReader,
+               IJSValueWriter const &argWriter,
+               MethodResultCallback const &callback,
+               MethodResultCallback const &) mutable noexcept {
+      using ArgTuple = std::tuple<std::remove_reference_t<TArgs>...>;
+      ArgTuple typedArgs{};
+      ReadArgs(argReader, std::get<I>(typedArgs)...);
+      auto cb = Internal::CallbackCreator<std::remove_const_t<
+          std::remove_reference_t<std::tuple_element_t<sizeof...(TArgs) - 1, ArgTuple>>>>::Create(argWriter, callback);
+      (*method)(std::get<I>(std::move(typedArgs))..., std::move(cb));
+    };
+  }
 
-    // Method with two callbacks
-    static MethodDelegate GetFunc(MethodType method, std::integral_constant<size_t, 2>) noexcept {
-      return [method](
-                 IJSValueReader const &argReader,
-                 IJSValueWriter const &argWriter,
-                 MethodResultCallback const &resolve,
-                 MethodResultCallback const &reject) mutable noexcept {
-        using ArgTuple = std::tuple<std::remove_reference_t<TArgs>...>;
-        ArgTuple typedArgs{};
-        ReadArgs(argReader, std::get<I>(typedArgs)...);
-        // Some native modules use first callback as failure, others use second. We make them both to
-        // behave the same way and let developers to assign meaning to the first and second callbacks.
-        auto firstCallback = Internal::CallbackCreator<std::remove_const_t<
-            std::remove_reference_t<std::tuple_element_t<sizeof...(TArgs) - 2, ArgTuple>>>>::Create(argWriter, resolve);
-        auto secondCallback = Internal::CallbackCreator<std::remove_const_t<
-            std::remove_reference_t<std::tuple_element_t<sizeof...(TArgs) - 1, ArgTuple>>>>::Create(argWriter, reject);
-        (*method)(std::get<I>(std::move(typedArgs))..., std::move(firstCallback), std::move(secondCallback));
-      };
-    }
+  // Method with two callbacks
+  template <size_t... I>
+  static MethodDelegate
+  GetFunc(MethodType method, std::index_sequence<I...>, std::integral_constant<size_t, 2>) noexcept {
+    return [method](
+               IJSValueReader const &argReader,
+               IJSValueWriter const &argWriter,
+               MethodResultCallback const &resolve,
+               MethodResultCallback const &reject) mutable noexcept {
+      using ArgTuple = std::tuple<std::remove_reference_t<TArgs>...>;
+      ArgTuple typedArgs{};
+      ReadArgs(argReader, std::get<I>(typedArgs)...);
+      // Some native modules use first callback as failure, others use second. We make them both to
+      // behave the same way and let developers to assign meaning to the first and second callbacks.
+      auto firstCallback = Internal::CallbackCreator<std::remove_const_t<
+          std::remove_reference_t<std::tuple_element_t<sizeof...(TArgs) - 2, ArgTuple>>>>::Create(argWriter, resolve);
+      auto secondCallback = Internal::CallbackCreator<std::remove_const_t<
+          std::remove_reference_t<std::tuple_element_t<sizeof...(TArgs) - 1, ArgTuple>>>>::Create(argWriter, reject);
+      (*method)(std::get<I>(std::move(typedArgs))..., std::move(firstCallback), std::move(secondCallback));
+    };
+  }
 
-    // Method with Promise
-    static MethodDelegate GetFunc(MethodType method, std::integral_constant<size_t, 3>) noexcept {
-      return [method](
-                 IJSValueReader const &argReader,
-                 IJSValueWriter const &argWriter,
-                 MethodResultCallback const &resolve,
-                 MethodResultCallback const &reject) mutable noexcept {
-        using AllArgsTuple = std::tuple<std::remove_reference_t<TArgs>...>;
-        using ArgsTuple = std::tuple<std::tuple_element_t<I, AllArgsTuple>...>;
-        using PromiseArg = std::remove_const_t<std::tuple_element_t<sizeof...(TArgs) - 1, AllArgsTuple>>;
-        ArgsTuple typedArgs{};
-        ReadArgs(argReader, std::get<I>(typedArgs)...);
-        auto promise = PromiseArg{argWriter, resolve, reject};
-        (*method)(std::get<I>(std::move(typedArgs))..., std::move(promise));
-      };
-    }
+  // Method with Promise
+  template <size_t... I>
+  static MethodDelegate
+  GetFunc(MethodType method, std::index_sequence<I...>, std::integral_constant<size_t, 3>) noexcept {
+    return [method](
+               IJSValueReader const &argReader,
+               IJSValueWriter const &argWriter,
+               MethodResultCallback const &resolve,
+               MethodResultCallback const &reject) mutable noexcept {
+      using AllArgsTuple = std::tuple<std::remove_reference_t<TArgs>...>;
+      using ArgsTuple = std::tuple<std::tuple_element_t<I, AllArgsTuple>...>;
+      using PromiseArg = std::remove_const_t<std::tuple_element_t<sizeof...(TArgs) - 1, AllArgsTuple>>;
+      ArgsTuple typedArgs{};
+      ReadArgs(argReader, std::get<I>(typedArgs)...);
+      auto promise = PromiseArg{argWriter, resolve, reject};
+      (*method)(std::get<I>(std::move(typedArgs))..., std::move(promise));
+    };
+  }
 
-    // Async method with return value
-    static MethodDelegate GetFunc(MethodType method, std::integral_constant<size_t, 4>) noexcept {
-      return [method](
-                 IJSValueReader const &argReader,
-                 IJSValueWriter const &argWriter,
-                 MethodResultCallback const &callback,
-                 MethodResultCallback const &) mutable noexcept {
-        using ArgTuple = std::tuple<std::remove_reference_t<TArgs>...>;
-        ArgTuple typedArgs{};
-        ReadArgs(argReader, std::get<I>(typedArgs)...);
-        TResult result = (*method)(std::get<I>(typedArgs)...);
-        WriteArgs(argWriter, result);
-        callback(argWriter);
-      };
-    }
-  };
+  // Async method with return value
+  template <size_t... I>
+  static MethodDelegate
+  GetFunc(MethodType method, std::index_sequence<I...>, std::integral_constant<size_t, 4>) noexcept {
+    return [method](
+               IJSValueReader const &argReader,
+               IJSValueWriter const &argWriter,
+               MethodResultCallback const &callback,
+               MethodResultCallback const &) mutable noexcept {
+      using ArgTuple = std::tuple<std::remove_reference_t<TArgs>...>;
+      ArgTuple typedArgs{};
+      ReadArgs(argReader, std::get<I>(typedArgs)...);
+      TResult result = (*method)(std::get<I>(typedArgs)...);
+      WriteArgs(argWriter, result);
+      callback(argWriter);
+    };
+  }
 
   static MethodDelegate GetMethodDelegate(void * /*module*/, MethodType method, MethodReturnType &returnType) noexcept {
     (Internal::ValidateCoroutineArg<TResult, TArgs>(), ...);
@@ -527,7 +534,7 @@ struct ModuleMethodInfo<TResult (*)(TArgs...) noexcept> {
     }
 
     constexpr int selector = !IsVoidResult ? 4 : HasPromise ? 3 : CallbackCount;
-    return Invoker<IndexSequence>::GetFunc(method, std::integral_constant<size_t, selector>{});
+    return GetFunc(method, IndexSequence{}, std::integral_constant<size_t, selector>{});
   }
 };
 
