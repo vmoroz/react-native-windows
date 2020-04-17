@@ -291,41 +291,6 @@ struct ModuleMethodInfo<TResult (TModule::*)(TArgs...) noexcept> {
       }
     };
 
-    template <class T, class TDummy>
-    struct RejectCallbackCreator;
-
-    template <template <class...> class TCallback, class TArg>
-    struct RejectCallbackCreator<
-        TCallback<void(TArg)>,
-        std::enable_if_t<std::is_assignable_v<std::string, TArg> || std::is_assignable_v<std::wstring, TArg>>> {
-      static TCallback<void(TArg)> Create(
-          const IJSValueWriter &argWriter,
-          const MethodResultCallback &callback) noexcept {
-        return TCallback([callback = std::move(callback), argWriter](TArg arg) noexcept {
-          argWriter.WriteArrayBegin();
-          argWriter.WriteObjectBegin();
-          argWriter.WritePropertyName(L"message");
-          WriteValue(argWriter, arg);
-          argWriter.WriteObjectEnd();
-          argWriter.WriteArrayEnd();
-          callback(argWriter);
-        });
-      }
-    };
-
-    template <template <class...> class TCallback>
-    struct RejectCallbackCreator<TCallback<void()>, void> : CallbackCreator<TCallback<void()>> {};
-
-    template <template <class...> class TCallback, class TArg>
-    struct RejectCallbackCreator<
-        TCallback<void(TArg)>,
-        std::enable_if_t<!std::is_assignable_v<std::string, TArg> && !std::is_assignable_v<std::wstring, TArg>>>
-        : CallbackCreator<TCallback<void(TArg)>> {};
-
-    template <template <class...> class TCallback, class TArg0, class TArg1, class... TArgs>
-    struct RejectCallbackCreator<TCallback<void(TArg0, TArg1, TArgs...)>, void>
-        : CallbackCreator<TCallback<void(TArg0, TArg1, TArgs...)>> {};
-
     template <class T>
     struct PromiseCreator;
 
@@ -504,41 +469,6 @@ struct ModuleMethodInfo<TResult (*)(TArgs...) noexcept> {
         });
       }
     };
-
-    template <class T, class TDummy>
-    struct RejectCallbackCreator;
-
-    template <template <class...> class TCallback, class TArg>
-    struct RejectCallbackCreator<
-        TCallback<void(TArg)>,
-        std::enable_if_t<std::is_assignable_v<std::string, TArg> || std::is_assignable_v<std::wstring, TArg>>> {
-      static TCallback<void(TArg)> Create(
-          const IJSValueWriter &argWriter,
-          const MethodResultCallback &callback) noexcept {
-        return TCallback([callback = std::move(callback), argWriter](TArg arg) noexcept {
-          argWriter.WriteArrayBegin();
-          argWriter.WriteObjectBegin();
-          argWriter.WritePropertyName(L"message");
-          WriteValue(argWriter, arg);
-          argWriter.WriteObjectEnd();
-          argWriter.WriteArrayEnd();
-          callback(argWriter);
-        });
-      }
-    };
-
-    template <template <class...> class TCallback>
-    struct RejectCallbackCreator<TCallback<void()>, void> : CallbackCreator<TCallback<void()>> {};
-
-    template <template <class...> class TCallback, class TArg>
-    struct RejectCallbackCreator<
-        TCallback<void(TArg)>,
-        std::enable_if_t<!std::is_assignable_v<std::string, TArg> && !std::is_assignable_v<std::wstring, TArg>>>
-        : CallbackCreator<TCallback<void(TArg)>> {};
-
-    template <template <class...> class TCallback, class TArg0, class TArg1, class... TArgs>
-    struct RejectCallbackCreator<TCallback<void(TArg0, TArg1, TArgs...)>, void>
-        : CallbackCreator<TCallback<void(TArg0, TArg1, TArgs...)>> {};
 
     template <class T>
     struct PromiseCreator;
