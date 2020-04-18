@@ -300,8 +300,12 @@ struct ModuleMethodInfo<TResult (TModule::*)(TArgs...) noexcept> {
   using ArgsTuple = std::tuple<Internal::RemoveConstRef<TArgs>...>;
   using InputArgsTuple = Internal::TakeFirstTupleElements<InputArgCount, ArgsTuple>;
 
-  template <class TSelector, size_t... I>
-  static MethodDelegate GetFunc(ModuleType *module, MethodType method, std::index_sequence<I...>, TSelector) noexcept {
+  template <int Selector, size_t... I, size_t... CallbackIndex>
+  static MethodDelegate GetFunc(
+      ModuleType *module,
+      MethodType method,
+      std::index_sequence<I...>,
+      std::index_sequence<CallbackIndex...>) noexcept {
     return [ module, method ](
         IJSValueReader const &argReader,
         [[maybe_unused]] IJSValueWriter const &argWriter,
@@ -309,28 +313,17 @@ struct ModuleMethodInfo<TResult (TModule::*)(TArgs...) noexcept> {
         [[maybe_unused]] MethodResultCallback const &callback2) mutable noexcept {
       InputArgsTuple inputArgs{};
       ReadArgs(argReader, std::get<I>(inputArgs)...);
-      if constexpr (std::is_same_v<TSelector, std::integral_constant<size_t, 0>>) {
-        // Fire and forget method
-        (module->*method)(std::get<I>(std::move(inputArgs))...);
-      } else if constexpr (std::is_same_v<TSelector, std::integral_constant<size_t, 1>>) {
-        // Method with one callback
-        auto cb1 = Internal::CallbackCreator<Internal::TupleElementOrVoid<InputArgCount, ArgsTuple>>::Create(
-            argWriter, callback1);
-        (module->*method)(std::get<I>(std::move(inputArgs))..., std::move(cb1));
-      } else if constexpr (std::is_same_v<TSelector, std::integral_constant<size_t, 2>>) {
-        // Method with two callbacks
-        // Some native modules use first callback as failure, others use second. We make them both to
-        // behave the same way and let developers to assign meaning to the first and second callbacks.
-        auto cb1 = Internal::CallbackCreator<Internal::TupleElementOrVoid<InputArgCount, ArgsTuple>>::Create(
-            argWriter, callback1);
-        auto cb2 = Internal::CallbackCreator<Internal::TupleElementOrVoid<InputArgCount + 1u, ArgsTuple>>::Create(
-            argWriter, callback2);
-        (module->*method)(std::get<I>(std::move(inputArgs))..., std::move(cb1), std::move(cb2));
-      } else if constexpr (std::is_same_v<TSelector, std::integral_constant<size_t, 3>>) {
+      if constexpr (Selector <= 2) {
+        auto resultCallbacks = std::tuple{callback1, callback2};
+        auto callbacks = std::tuple{
+            Internal::CallbackCreator<Internal::TupleElementOrVoid<InputArgCount + CallbackIndex, ArgsTuple>>::Create(
+                argWriter, std::get<CallbackIndex>(resultCallbacks))...};
+        (module->*method)(std::get<I>(std::move(inputArgs))..., std::get<CallbackIndex>(callbacks)...);
+      } else if constexpr (Selector == 3) {
         // Method with Promise
         auto promise = Internal::TupleElementOrVoid<InputArgCount, ArgsTuple>{argWriter, callback1, callback2};
         (module->*method)(std::get<I>(std::move(inputArgs))..., std::move(promise));
-      } else if constexpr (std::is_same_v<TSelector, std::integral_constant<size_t, 4>>) {
+      } else if constexpr (Selector == 4) {
         // Async method with return value
         TResult result = (module->*method)(std::get<I>(std::move(inputArgs))...);
         WriteArgs(argWriter, result);
@@ -354,11 +347,11 @@ struct ModuleMethodInfo<TResult (TModule::*)(TArgs...) noexcept> {
     }
 
     constexpr int selector = !IsVoidResult ? 4 : HasPromise ? 3 : CallbackCount;
-    return GetFunc(
+    return GetFunc<selector>(
         static_cast<ModuleType *>(module),
         method,
         std::make_index_sequence<InputArgCount>{},
-        std::integral_constant<size_t, selector>{});
+        std::make_index_sequence<CallbackCount>{});
   }
 
   // template <class, class>
