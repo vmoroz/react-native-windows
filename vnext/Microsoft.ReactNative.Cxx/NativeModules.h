@@ -300,8 +300,22 @@ struct ModuleMethodInfo<TResult (TModule::*)(TArgs...) noexcept> {
   using ArgsTuple = std::tuple<Internal::RemoveConstRef<TArgs>...>;
   using InputArgsTuple = Internal::TakeFirstTupleElements<InputArgCount, ArgsTuple>;
 
-  template <int Selector, size_t... I, size_t... CallbackIndex>
-  static MethodDelegate GetFunc(
+  constexpr static MethodReturnType GetMethodReturnType() noexcept {
+    if constexpr (!IsVoidResult) {
+      return MethodReturnType::Callback;
+    } else if constexpr (HasPromise) {
+      return MethodReturnType::Promise;
+    } else if constexpr (CallbackCount == 2) {
+      return MethodReturnType::TwoCallbacks;
+    } else if constexpr (CallbackCount == 1) {
+      return MethodReturnType::Callback;
+    } else {
+      return MethodReturnType::Void;
+    }
+  }
+
+  template <size_t... I, size_t... CallbackIndex>
+  static MethodDelegate GetMethodDelegate(
       ModuleType *module,
       MethodType method,
       std::index_sequence<I...>,
@@ -309,45 +323,32 @@ struct ModuleMethodInfo<TResult (TModule::*)(TArgs...) noexcept> {
     return [ module, method ](
         IJSValueReader const &argReader,
         [[maybe_unused]] IJSValueWriter const &argWriter,
-        [[maybe_unused]] MethodResultCallback const &callback1,
-        [[maybe_unused]] MethodResultCallback const &callback2) mutable noexcept {
+        [[maybe_unused]] MethodResultCallback const &resolve,
+        [[maybe_unused]] MethodResultCallback const &reject) mutable noexcept {
       InputArgsTuple inputArgs{};
       ReadArgs(argReader, std::get<I>(inputArgs)...);
-      if constexpr (Selector <= 2) {
-        auto resultCallbacks = std::tuple{callback1, callback2};
+      if constexpr (!IsVoidResult) {
+        TResult result = (module->*method)(std::get<I>(std::move(inputArgs))...);
+        WriteArgs(argWriter, result);
+        resolve(argWriter);
+      } else if constexpr (HasPromise) {
+        auto promise = Internal::TupleElementOrVoid<InputArgCount, ArgsTuple>{argWriter, resolve, reject};
+        (module->*method)(std::get<I>(std::move(inputArgs))..., std::move(promise));
+      } else {
+        // When method uses two callbacks the order of resolve and reject can be reversed.
+        auto resultCallbacks = std::tuple{resolve, reject};
         auto callbacks = std::tuple{
             Internal::CallbackCreator<Internal::TupleElementOrVoid<InputArgCount + CallbackIndex, ArgsTuple>>::Create(
                 argWriter, std::get<CallbackIndex>(resultCallbacks))...};
         (module->*method)(std::get<I>(std::move(inputArgs))..., std::get<CallbackIndex>(callbacks)...);
-      } else if constexpr (Selector == 3) {
-        // Method with Promise
-        auto promise = Internal::TupleElementOrVoid<InputArgCount, ArgsTuple>{argWriter, callback1, callback2};
-        (module->*method)(std::get<I>(std::move(inputArgs))..., std::move(promise));
-      } else if constexpr (Selector == 4) {
-        // Async method with return value
-        TResult result = (module->*method)(std::get<I>(std::move(inputArgs))...);
-        WriteArgs(argWriter, result);
-        callback1(argWriter);
       }
     };
   }
 
   static MethodDelegate GetMethodDelegate(void *module, MethodType method, MethodReturnType &returnType) noexcept {
     (Internal::ValidateCoroutineArg<TResult, TArgs>(), ...);
-    if constexpr (!IsVoidResult) {
-      returnType = MethodReturnType::Callback;
-    } else if constexpr (HasPromise) {
-      returnType = MethodReturnType::Promise;
-    } else if constexpr (CallbackCount == 2) {
-      returnType = MethodReturnType::TwoCallbacks;
-    } else if constexpr (CallbackCount == 1) {
-      returnType = MethodReturnType::Callback;
-    } else {
-      returnType = MethodReturnType::Void;
-    }
-
-    constexpr int selector = !IsVoidResult ? 4 : HasPromise ? 3 : CallbackCount;
-    return GetFunc<selector>(
+    returnType = GetMethodReturnType();
+    return GetMethodDelegate(
         static_cast<ModuleType *>(module),
         method,
         std::make_index_sequence<InputArgCount>{},
