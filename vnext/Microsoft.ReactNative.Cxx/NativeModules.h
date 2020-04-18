@@ -107,6 +107,9 @@
 
 namespace winrt::Microsoft::ReactNative {
 
+template <class... TArgs>
+struct CallbackSignature {};
+
 namespace Internal {
 
 template <class T>
@@ -121,11 +124,17 @@ using GetLastArg = GetArgAt<sizeof...(TArgs) - 1, TArgs...>;
 // Checks if provided type has a callback-like signature TFunc<void(TArgs...)
 template <class T>
 struct IsCallback : std::false_type {};
+
 template <template <class...> class TFunc, class... TArgs>
-struct IsCallback<TFunc<void(TArgs...)>> : std::true_type {};
+struct IsCallback<TFunc<void(TArgs...)>> : std::true_type {
+  using Signature = CallbackSignature<RemoveConstRef<TArgs>...>;
+};
+
 #if defined(__cpp_noexcept_function_type) || (_HAS_NOEXCEPT_FUNCTION_TYPES == 1)
 template <template <class...> class TFunc, class... TArgs>
-struct IsCallback<TFunc<void(TArgs...) noexcept>> : std::true_type {};
+struct IsCallback<TFunc<void(TArgs...) noexcept>> : std::true_type {
+  using Signature = CallbackSignature<RemoveConstRef<TArgs>...>;
+};
 #endif
 
 // Finds how many callbacks the function signature has.
@@ -352,6 +361,43 @@ struct ModuleInitMethodInfo<void (TModule::*)(IReactContext const &) noexcept> {
   }
 };
 
+template <class TBeforeLastArg, class TLastArg, bool, bool>
+struct MakeCallbackSignaturesImpl2 {
+  using Type = std::tuple<
+      typename Internal::IsCallback<TBeforeLastArg>::Signature,
+      typename Internal::IsCallback<TLastArg>::Signature>;
+};
+
+template <class TBeforeLastArg, class TLastArg>
+struct MakeCallbackSignaturesImpl2<TBeforeLastArg, TLastArg, false, true> {
+  using Type = std::tuple<typename Internal::IsCallback<TLastArg>::Signature>;
+};
+
+template <class TBeforeLastArg, class TLastArg>
+struct MakeCallbackSignaturesImpl2<TBeforeLastArg, TLastArg, false, false> {
+  using Type = std::tuple<>;
+};
+
+template <class TResult, class TLastArg, class TBeforeLastArg>
+struct MakeCallbackSignaturesImpl {
+  using Type = std::tuple<CallbackSignature<TResult>>;
+};
+
+template <class TLastArg, class TBeforeLastArg>
+struct MakeCallbackSignaturesImpl<void, TLastArg, TBeforeLastArg> {
+  using Type = MakeCallbackSignaturesImpl2<
+      TBeforeLastArg,
+      TLastArg,
+      Internal::IsCallback<TBeforeLastArg>::value,
+      Internal::IsCallback<TLastArg>::value>;
+};
+
+template <class TResult, class TArgsTuple>
+using MakeCallbackSignatures = typename MakeCallbackSignaturesImpl<
+    TResult,
+    Internal::TupleElementOrVoid<std::tuple_size_v<TArgsTuple> - 1, TArgsTuple>,
+    Internal::TupleElementOrVoid<std::tuple_size_v<TArgsTuple> - 2, TArgsTuple>>::Type;
+
 template <class TResult, class... TArgs>
 struct ModuleMethodInfoBase {
   constexpr static size_t CallbackCount = Internal::GetCallbackCount<TArgs...>();
@@ -363,6 +409,12 @@ struct ModuleMethodInfoBase {
   using InputArgsTuple = Internal::TakeFirstTupleElements<InputArgCount, ArgsTuple>;
   template <size_t Index>
   using OutputArgType = Internal::TupleElementOrVoid<InputArgCount + Index, ArgsTuple>;
+
+  using Signature = MethodSignature<
+      void,
+      InputArgsTuple,
+      MakeCallbackSignatures<TResult, ArgsTuple>,
+      std::conditional_t<HasPromise, OutputArgType<0>, void>>;
 
   constexpr static MethodReturnType GetMethodReturnType() noexcept {
     if constexpr (!IsVoidResult) {
