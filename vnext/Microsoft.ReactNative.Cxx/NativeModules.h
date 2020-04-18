@@ -270,12 +270,12 @@ struct MethodSignature2<TResult(TArgs...) noexcept> {
 //==============================================================================
 
 struct MethodSignatureMatchResult {
-  bool IsResultMatching{false};
-  int ArgCountCompare{0};
-  bool AreArgsMatching{false};
-  int CallbackCountCompare{0};
-  bool AreCallbacksMatching{false};
-  bool IsPromiseMathcing{false};
+  int ArgCountCompare;
+  int CallbackCountCompare;
+  bool IsResultMatching;
+  bool AreArgsMatching;
+  bool AreCallbacksMatching;
+  bool IsPromiseMathcing;
 };
 
 template <class TResult, class TInputArgs, class TOutputCallbacks, class TOutputPromise>
