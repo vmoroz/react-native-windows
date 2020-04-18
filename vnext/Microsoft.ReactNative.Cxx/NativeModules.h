@@ -266,6 +266,79 @@ struct MethodSignature<TResult(TArgs...) noexcept> {
 } // namespace Internal
 
 //==============================================================================
+// MethodSpec is used to compare method signatures.
+//==============================================================================
+
+template <class TResult, class TInputArgs, class TOutputCallbacks, class TOutputPromise>
+struct MethodSpec {
+  using Result = TResult;
+  using InputArgs = TInputArgs;
+  using OutputCallbacks = TOutputCallbacks;
+  using OutputPromise = TOutputPromise;
+  constexpr static size_t ArgCount = std::tuple_size_v<InputArgs>;
+  constexpr static size_t CallbackCount = std::tuple_size_v<TOutputCallbacks>;
+
+  template <class TOtherMethodSpec>
+  static constexpr bool MatchResult() noexcept {
+    constexpr bool isMatching = std::is_same_v<Result, typename TOtherMethodSpec::Result>;
+    static_assert(isMatching, "Result type does not match spec");
+    return isMatching;
+  }
+
+  template <class TOtherInputArgs, size_t... I>
+  static constexpr bool MatchInputArgs(std::index_sequence<I...>) noexcept {
+    constexpr bool areMatching =
+        (std::is_same_v<std::tuple_element_t<I, InputArgs>, std::tuple_element_t<I, TOtherInputArgs>> && ...);
+    static_assert(areMatching, "Argument types do not match spec");
+    return areMatching;
+  }
+
+  template <class TOtherMethodSpec>
+  static constexpr bool MatchInputArgs() noexcept {
+    if constexpr (ArgCount == TOtherMethodSpec::ArgCount) {
+      return MatchInputArgs<typename TOtherMethodSpec::InputArgs>(std::make_index_sequence<ArgCount>);
+    } else {
+      static_assert(ArgCount >= TOtherMethodSpec::ArgCount, "Spec has less input arguments");
+      static_assert(ArgCount <= TOtherMethodSpec::ArgCount, "Spec has more input arguments");
+      return false;
+    }
+  }
+
+  template <class TOtherOutputCallbacks, size_t... I>
+  static constexpr bool MatchOutputCallbacks(std::index_sequence<I...>) noexcept {
+    constexpr bool areMatching =
+        (std::is_same_v<std::tuple_element_t<I, OutputCallbacks>, std::tuple_element_t<I, TOtherOutputCallbacks>> &&
+         ...);
+    static_assert(areMatching, "Callback types do not match spec");
+    return areMatching;
+  }
+
+  template <class TOtherMethodSpec>
+  static constexpr bool MatchOutputCallbacks() noexcept {
+    if constexpr (CallbackCount == TOtherMethodSpec::CallbackCount) {
+      return MatchOutputCallbacks<typename TOtherMethodSpec::OutputCallbacks>(std::make_index_sequence<CallbackCount>);
+    } else {
+      static_assert(CallbackCount >= TOtherMethodSpec::CallbackCount, "Spec has less output callbacks");
+      static_assert(CallbackCount <= TOtherMethodSpec::CallbackCount, "Spec has more output callbacks");
+      return false;
+    }
+  }
+
+  template <class TOtherMethodSpec>
+  static constexpr bool MatchOutputPromise() noexcept {
+    constexpr bool isMatching = std::is_same_v<OutputPromise, typename TOtherMethodSpec::OutputPromise>;
+    static_assert(isMatching, "Promise type does not match spec");
+    return isMatching;
+  }
+
+  template <class TOtherMethodSpec>
+  static constexpr bool MatchSpec() noexcept {
+    return MatchResult<TOtherMethodSpec>() && MatchInputArgs<TOtherMethodSpec>() &&
+        MatchOutputCallbacks<TOtherMethodSpec>() && MatchOutputPromise<TOtherMethodSpec>();
+  }
+};
+
+//==============================================================================
 // Module registration helpers
 //==============================================================================
 
