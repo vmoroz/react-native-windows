@@ -321,11 +321,11 @@ struct ModuleMethodInfo<TResult (TModule::*)(TArgs...) noexcept> : ModuleMethodI
   using ModuleType = TModule;
   using MethodType = TResult (TModule::*)(TArgs...) noexcept;
 
-  template <size_t... I, size_t... CallbackIndex>
+  template <size_t... ArgIndex, size_t... CallbackIndex>
   static MethodDelegate GetMethodDelegate(
       ModuleType *module,
       MethodType method,
-      std::index_sequence<I...>,
+      std::index_sequence<ArgIndex...>,
       std::index_sequence<CallbackIndex...>) noexcept {
     return [ module, method ](
         IJSValueReader const &argReader,
@@ -333,21 +333,21 @@ struct ModuleMethodInfo<TResult (TModule::*)(TArgs...) noexcept> : ModuleMethodI
         [[maybe_unused]] MethodResultCallback const &resolve,
         [[maybe_unused]] MethodResultCallback const &reject) mutable noexcept {
       typename Super::InputArgsTuple inputArgs{};
-      ReadArgs(argReader, std::get<I>(inputArgs)...);
+      ReadArgs(argReader, std::get<ArgIndex>(inputArgs)...);
       if constexpr (!Super::IsVoidResult) {
-        TResult result = (module->*method)(std::get<I>(std::move(inputArgs))...);
+        TResult result = (module->*method)(std::get<ArgIndex>(std::move(inputArgs))...);
         WriteArgs(argWriter, result);
         resolve(argWriter);
       } else if constexpr (Super::HasPromise) {
         auto promise = typename Super::template OutputArgType<0>{argWriter, resolve, reject};
-        (module->*method)(std::get<I>(std::move(inputArgs))..., std::move(promise));
+        (module->*method)(std::get<ArgIndex>(std::move(inputArgs))..., std::move(promise));
       } else {
         // When method uses two callbacks the order of resolve and reject can be reversed.
         auto resultCallbacks = std::tuple{resolve, reject};
         auto callbacks =
             std::tuple{Internal::CallbackCreator<typename Super::template OutputArgType<CallbackIndex>>::Create(
                 argWriter, std::get<CallbackIndex>(resultCallbacks))...};
-        (module->*method)(std::get<I>(std::move(inputArgs))..., std::get<CallbackIndex>(callbacks)...);
+        (module->*method)(std::get<ArgIndex>(std::move(inputArgs))..., std::get<CallbackIndex>(callbacks)...);
       }
     };
   }
@@ -378,30 +378,32 @@ struct ModuleMethodInfo<TResult (*)(TArgs...) noexcept> : ModuleMethodInfoBase<T
   using Super = ModuleMethodInfoBase<TResult, TArgs...>;
   using MethodType = TResult (*)(TArgs...) noexcept;
 
-  template <size_t... I, size_t... CallbackIndex>
-  static MethodDelegate
-  GetMethodDelegate(MethodType method, std::index_sequence<I...>, std::index_sequence<CallbackIndex...>) noexcept {
+  template <size_t... ArgIndex, size_t... CallbackIndex>
+  static MethodDelegate GetMethodDelegate(
+      MethodType method,
+      std::index_sequence<ArgIndex...>,
+      std::index_sequence<CallbackIndex...>) noexcept {
     return [method](
         IJSValueReader const &argReader,
         [[maybe_unused]] IJSValueWriter const &argWriter,
         [[maybe_unused]] MethodResultCallback const &resolve,
         [[maybe_unused]] MethodResultCallback const &reject) mutable noexcept {
       typename Super::InputArgsTuple inputArgs{};
-      ReadArgs(argReader, std::get<I>(inputArgs)...);
+      ReadArgs(argReader, std::get<ArgIndex>(inputArgs)...);
       if constexpr (!Super::IsVoidResult) {
-        TResult result = (*method)(std::get<I>(std::move(inputArgs))...);
+        TResult result = (*method)(std::get<ArgIndex>(std::move(inputArgs))...);
         WriteArgs(argWriter, result);
         resolve(argWriter);
       } else if constexpr (Super::HasPromise) {
         auto promise = typename Super::template OutputArgType<0>{argWriter, resolve, reject};
-        (*method)(std::get<I>(std::move(inputArgs))..., std::move(promise));
+        (*method)(std::get<ArgIndex>(std::move(inputArgs))..., std::move(promise));
       } else {
         // Note that when method uses two callbacks the order of resolve and reject is reversed in some native modules.
         auto resultCallbacks = std::tuple{resolve, reject};
         auto callbacks =
             std::tuple{Internal::CallbackCreator<typename Super::template OutputArgType<CallbackIndex>>::Create(
                 argWriter, std::get<CallbackIndex>(resultCallbacks))...};
-        (*method)(std::get<I>(std::move(inputArgs))..., std::get<CallbackIndex>(callbacks)...);
+        (*method)(std::get<ArgIndex>(std::move(inputArgs))..., std::get<CallbackIndex>(callbacks)...);
       }
     };
   }
