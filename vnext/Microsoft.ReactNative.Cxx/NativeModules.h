@@ -196,28 +196,28 @@ struct MakeArgsTuple<std::index_sequence<I...>, TArgs...> {
 };
 
 template <class TIndexSequence, class TTuple>
-struct TakeFirstTupleElementsWorker;
+struct TakeFirstTupleElementsImpl;
 
 template <class TTuple, size_t... Index>
-struct TakeFirstTupleElementsWorker<std::index_sequence<Index...>, TTuple> {
+struct TakeFirstTupleElementsImpl<std::index_sequence<Index...>, TTuple> {
   using Type = std::tuple<std::tuple_element_t<Index, TTuple>...>;
 };
 
 template <size_t Count, class TTuple>
-using TakeFirstTupleElements = typename TakeFirstTupleElementsWorker<std::make_index_sequence<Count>, TTuple>::Type;
+using TakeFirstTupleElements = typename TakeFirstTupleElementsImpl<std::make_index_sequence<Count>, TTuple>::Type;
 
 template <bool, size_t Index, class TTuple>
-struct TupleElementOrVoidWorker {
+struct TupleElementOrVoidImpl {
   using Type = void;
 };
 
 template <size_t Index, class TTuple>
-struct TupleElementOrVoidWorker<true, Index, TTuple> {
+struct TupleElementOrVoidImpl<true, Index, TTuple> {
   using Type = std::tuple_element_t<Index, TTuple>;
 };
 
 template <size_t Index, class TTuple>
-using TupleElementOrVoid = typename TupleElementOrVoidWorker<(Index < std::tuple_size_v<TTuple>), Index, TTuple>::Type;
+using TupleElementOrVoid = typename TupleElementOrVoidImpl<(Index < std::tuple_size_v<TTuple>), Index, TTuple>::Type;
 
 template <class TSignature>
 struct MethodSignature2;
