@@ -220,10 +220,10 @@ template <size_t Index, class TTuple>
 using TupleElementOrVoid = typename TupleElementOrVoidWorker<(Index < std::tuple_size_v<TTuple>), Index, TTuple>::Type;
 
 template <class TSignature>
-struct MethodSignature;
+struct MethodSignature2;
 
 template <class TResult, class... TArgs>
-struct MethodSignature<TResult(TArgs...) noexcept> {
+struct MethodSignature2<TResult(TArgs...) noexcept> {
   constexpr static size_t ArgCount = sizeof...(TArgs);
   constexpr static size_t CallbackCount = GetCallbackCount<TArgs...>();
   constexpr static bool HasPromise = HasPromise<TArgs...>();
@@ -437,7 +437,7 @@ struct ModuleMethodInfo<TResult (TModule::*)(TArgs...) noexcept> : ModuleMethodI
 
   template <class TSignatureSpec>
   static constexpr bool Matches() noexcept {
-    using SignatureSpec = Internal::MethodSignature<TSignatureSpec>;
+    using SignatureSpec = Internal::MethodSignature2<TSignatureSpec>;
     // static_assert(false, "args do not match");
     // return SignatureSpec::MatchOrFail();
     // ArgMatcher<IndexSequence, TSpecArgs>::Matches();
@@ -490,7 +490,7 @@ struct ModuleMethodInfo<TResult (*)(TArgs...) noexcept> : ModuleMethodInfoBase<T
 
   template <class TSignatureSpec>
   static constexpr bool Matches() noexcept {
-    using SignatureSpec = Internal::MethodSignature<TSignatureSpec>;
+    using SignatureSpec = Internal::MethodSignature2<TSignatureSpec>;
     // static_assert(false, "args do not match");
     // return SignatureSpec::MatchOrFail();
     // ArgMatcher<IndexSequence, TSpecArgs>::Matches();
