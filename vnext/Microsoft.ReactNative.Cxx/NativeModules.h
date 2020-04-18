@@ -170,7 +170,7 @@ struct CallbackCreator<TCallback<void(TArgs...)>> {
   static TCallback<void(TArgs...)> Create(
       IJSValueWriter const &argWriter,
       MethodResultCallback const &callback) noexcept {
-    return TCallback([callback, argWriter](TArgs... args) noexcept {
+    return TCallback([ callback, argWriter ](TArgs... args) noexcept {
       WriteArgs(argWriter, std::move(args)...);
       callback(argWriter);
     });
@@ -205,6 +205,19 @@ struct TakeFirstTupleElementsWorker<std::index_sequence<Index...>, TTuple> {
 
 template <size_t Count, class TTuple>
 using TakeFirstTupleElements = typename TakeFirstTupleElementsWorker<std::make_index_sequence<Count>, TTuple>::Type;
+
+template <bool, size_t Index, class TTuple>
+struct TupleElementOrVoidWorker {
+  using Type = void;
+};
+
+template <size_t Index, class TTuple>
+struct TupleElementOrVoidWorker<true, Index, TTuple> {
+  using Type = std::tuple_element_t<Index, TTuple>;
+};
+
+template <size_t Index, class TTuple>
+using TupleElementOrVoid = typename TupleElementOrVoidWorker<(Index < std::tuple_size_v<TTuple>), Index, TTuple>::Type;
 
 template <class TSignature>
 struct MethodSignature;
@@ -265,7 +278,7 @@ struct ModuleInitMethodInfo<void (TModule::*)(IReactContext const &) noexcept> {
   using MethodType = void (TModule::*)(IReactContext const &) noexcept;
 
   static InitializerDelegate GetInitializer(void *module, MethodType method) noexcept {
-    return [module = static_cast<ModuleType *>(module), method](IReactContext const &reactContext) noexcept {
+    return [ module = static_cast<ModuleType *>(module), method ](IReactContext const &reactContext) noexcept {
       (module->*method)(reactContext);
     };
   }
@@ -287,101 +300,42 @@ struct ModuleMethodInfo<TResult (TModule::*)(TArgs...) noexcept> {
   using ArgsTuple = std::tuple<Internal::RemoveConstRef<TArgs>...>;
   using InputArgsTuple = Internal::TakeFirstTupleElements<InputArgCount, ArgsTuple>;
 
-  // Fire and forget method
-  template <size_t... I>
-  static MethodDelegate GetFunc(
-      ModuleType *module,
-      MethodType method,
-      std::index_sequence<I...>,
-      std::integral_constant<size_t, 0>) noexcept {
-    return [module, method](
-               IJSValueReader const &argReader,
-               IJSValueWriter const & /*argWriter*/,
-               MethodResultCallback const &,
-               MethodResultCallback const &) mutable noexcept {
+  template <class TSelector, size_t... I>
+  static MethodDelegate GetFunc(ModuleType *module, MethodType method, std::index_sequence<I...>, TSelector) noexcept {
+    return [ module, method ](
+        IJSValueReader const &argReader,
+        [[maybe_unused]] IJSValueWriter const &argWriter,
+        [[maybe_unused]] MethodResultCallback const &callback1,
+        [[maybe_unused]] MethodResultCallback const &callback2) mutable noexcept {
       InputArgsTuple inputArgs{};
       ReadArgs(argReader, std::get<I>(inputArgs)...);
-      (module->*method)(std::get<I>(std::move(inputArgs))...);
-    };
-  }
-
-  // Method with one callback
-  template <size_t... I>
-  static MethodDelegate GetFunc(
-      ModuleType *module,
-      MethodType method,
-      std::index_sequence<I...>,
-      std::integral_constant<size_t, 1>) noexcept {
-    return [module, method](
-               IJSValueReader const &argReader,
-               IJSValueWriter const &argWriter,
-               MethodResultCallback const &callback,
-               MethodResultCallback const &) mutable noexcept {
-      InputArgsTuple inputArgs{};
-      ReadArgs(argReader, std::get<I>(inputArgs)...);
-      auto cb = Internal::CallbackCreator<std::tuple_element_t<ArgCount - 1, ArgsTuple>>::Create(argWriter, callback);
-      (module->*method)(std::get<I>(std::move(inputArgs))..., std::move(cb));
-    };
-  }
-
-  // Method with two callbacks
-  template <size_t... I>
-  static MethodDelegate GetFunc(
-      ModuleType *module,
-      MethodType method,
-      std::index_sequence<I...>,
-      std::integral_constant<size_t, 2>) noexcept {
-    return [module, method](
-               IJSValueReader const &argReader,
-               IJSValueWriter const &argWriter,
-               MethodResultCallback const &callback1,
-               MethodResultCallback const &callback2) mutable noexcept {
-      InputArgsTuple inputArgs{};
-      ReadArgs(argReader, std::get<I>(inputArgs)...);
-      // Some native modules use first callback as failure, others use second. We make them both to
-      // behave the same way and let developers to assign meaning to the first and second callbacks.
-      auto cb1 = Internal::CallbackCreator<std::tuple_element_t<ArgCount - 2, ArgsTuple>>::Create(argWriter, callback1);
-      auto cb2 = Internal::CallbackCreator<std::tuple_element_t<ArgCount - 1, ArgsTuple>>::Create(argWriter, callback2);
-      (module->*method)(std::get<I>(std::move(inputArgs))..., std::move(cb1), std::move(cb2));
-    };
-  }
-
-  // Method with Promise
-  template <size_t... I>
-  static MethodDelegate GetFunc(
-      ModuleType *module,
-      MethodType method,
-      std::index_sequence<I...>,
-      std::integral_constant<size_t, 3>) noexcept {
-    return [module, method](
-               IJSValueReader const &argReader,
-               IJSValueWriter const &argWriter,
-               MethodResultCallback const &resolve,
-               MethodResultCallback const &reject) mutable noexcept {
-      InputArgsTuple inputArgs{};
-      ReadArgs(argReader, std::get<I>(inputArgs)...);
-      auto promise = std::tuple_element_t<ArgCount - 1, ArgsTuple>{argWriter, resolve, reject};
-      (module->*method)(std::get<I>(std::move(inputArgs))..., std::move(promise));
-    };
-  }
-
-  // Async method with return value
-  template <size_t... I>
-  static MethodDelegate GetFunc(
-      ModuleType *module,
-      MethodType method,
-      std::index_sequence<I...>,
-      std::integral_constant<size_t, 4>) noexcept {
-    return [module, method](
-               IJSValueReader const &argReader,
-               IJSValueWriter const &argWriter,
-               MethodResultCallback const &callback,
-               MethodResultCallback const &) mutable noexcept {
-      InputArgsTuple inputArgs{};
-      ReadArgs(argReader, std::get<I>(inputArgs)...);
-      TResult result = (module->*method)(std::get<I>(std::move(inputArgs))...);
-      WriteArgs(argWriter, result);
-      callback(argWriter);
+      if constexpr (std::is_same_v<TSelector, std::integral_constant<size_t, 0>>) {
+        // Fire and forget method
+        (module->*method)(std::get<I>(std::move(inputArgs))...);
+      } else if constexpr (std::is_same_v<TSelector, std::integral_constant<size_t, 1>>) {
+        // Method with one callback
+        auto cb1 = Internal::CallbackCreator<Internal::TupleElementOrVoid<InputArgCount, ArgsTuple>>::Create(
+            argWriter, callback1);
+        (module->*method)(std::get<I>(std::move(inputArgs))..., std::move(cb1));
+      } else if constexpr (std::is_same_v<TSelector, std::integral_constant<size_t, 2>>) {
+        // Method with two callbacks
+        // Some native modules use first callback as failure, others use second. We make them both to
+        // behave the same way and let developers to assign meaning to the first and second callbacks.
+        auto cb1 = Internal::CallbackCreator<Internal::TupleElementOrVoid<InputArgCount, ArgsTuple>>::Create(
+            argWriter, callback1);
+        auto cb2 = Internal::CallbackCreator<Internal::TupleElementOrVoid<InputArgCount + 1u, ArgsTuple>>::Create(
+            argWriter, callback2);
+        (module->*method)(std::get<I>(std::move(inputArgs))..., std::move(cb1), std::move(cb2));
+      } else if constexpr (std::is_same_v<TSelector, std::integral_constant<size_t, 3>>) {
+        // Method with Promise
+        auto promise = Internal::TupleElementOrVoid<InputArgCount, ArgsTuple>{argWriter, callback1, callback2};
+        (module->*method)(std::get<I>(std::move(inputArgs))..., std::move(promise));
+      } else if constexpr (std::is_same_v<TSelector, std::integral_constant<size_t, 4>>) {
+        // Async method with return value
+        TResult result = (module->*method)(std::get<I>(std::move(inputArgs))...);
+        WriteArgs(argWriter, result);
+        callback1(argWriter);
+      }
     };
   }
 
@@ -459,10 +413,10 @@ struct ModuleMethodInfo<TResult (*)(TArgs...) noexcept> {
   static MethodDelegate
   GetFunc(MethodType method, std::index_sequence<I...>, std::integral_constant<size_t, 0>) noexcept {
     return [method](
-               IJSValueReader const &argReader,
-               IJSValueWriter const & /*argWriter*/,
-               MethodResultCallback const &,
-               MethodResultCallback const &) mutable noexcept {
+        IJSValueReader const &argReader,
+        IJSValueWriter const & /*argWriter*/,
+        MethodResultCallback const &,
+        MethodResultCallback const &) mutable noexcept {
       std::tuple<std::remove_reference_t<TArgs>...> typedArgs{};
       ReadArgs(argReader, std::get<I>(typedArgs)...);
       (*method)(std::get<I>(std::move(typedArgs))...);
@@ -474,10 +428,10 @@ struct ModuleMethodInfo<TResult (*)(TArgs...) noexcept> {
   static MethodDelegate
   GetFunc(MethodType method, std::index_sequence<I...>, std::integral_constant<size_t, 1>) noexcept {
     return [method](
-               IJSValueReader const &argReader,
-               IJSValueWriter const &argWriter,
-               MethodResultCallback const &callback,
-               MethodResultCallback const &) mutable noexcept {
+        IJSValueReader const &argReader,
+        IJSValueWriter const &argWriter,
+        MethodResultCallback const &callback,
+        MethodResultCallback const &) mutable noexcept {
       using ArgTuple = std::tuple<std::remove_reference_t<TArgs>...>;
       ArgTuple typedArgs{};
       ReadArgs(argReader, std::get<I>(typedArgs)...);
@@ -492,10 +446,10 @@ struct ModuleMethodInfo<TResult (*)(TArgs...) noexcept> {
   static MethodDelegate
   GetFunc(MethodType method, std::index_sequence<I...>, std::integral_constant<size_t, 2>) noexcept {
     return [method](
-               IJSValueReader const &argReader,
-               IJSValueWriter const &argWriter,
-               MethodResultCallback const &resolve,
-               MethodResultCallback const &reject) mutable noexcept {
+        IJSValueReader const &argReader,
+        IJSValueWriter const &argWriter,
+        MethodResultCallback const &resolve,
+        MethodResultCallback const &reject) mutable noexcept {
       using ArgTuple = std::tuple<std::remove_reference_t<TArgs>...>;
       ArgTuple typedArgs{};
       ReadArgs(argReader, std::get<I>(typedArgs)...);
@@ -514,10 +468,10 @@ struct ModuleMethodInfo<TResult (*)(TArgs...) noexcept> {
   static MethodDelegate
   GetFunc(MethodType method, std::index_sequence<I...>, std::integral_constant<size_t, 3>) noexcept {
     return [method](
-               IJSValueReader const &argReader,
-               IJSValueWriter const &argWriter,
-               MethodResultCallback const &resolve,
-               MethodResultCallback const &reject) mutable noexcept {
+        IJSValueReader const &argReader,
+        IJSValueWriter const &argWriter,
+        MethodResultCallback const &resolve,
+        MethodResultCallback const &reject) mutable noexcept {
       using AllArgsTuple = std::tuple<std::remove_reference_t<TArgs>...>;
       using ArgsTuple = std::tuple<std::tuple_element_t<I, AllArgsTuple>...>;
       using PromiseArg = std::remove_const_t<std::tuple_element_t<sizeof...(TArgs) - 1, AllArgsTuple>>;
@@ -533,10 +487,10 @@ struct ModuleMethodInfo<TResult (*)(TArgs...) noexcept> {
   static MethodDelegate
   GetFunc(MethodType method, std::index_sequence<I...>, std::integral_constant<size_t, 4>) noexcept {
     return [method](
-               IJSValueReader const &argReader,
-               IJSValueWriter const &argWriter,
-               MethodResultCallback const &callback,
-               MethodResultCallback const &) mutable noexcept {
+        IJSValueReader const &argReader,
+        IJSValueWriter const &argWriter,
+        MethodResultCallback const &callback,
+        MethodResultCallback const &) mutable noexcept {
       using ArgTuple = std::tuple<std::remove_reference_t<TArgs>...>;
       ArgTuple typedArgs{};
       ReadArgs(argReader, std::get<I>(typedArgs)...);
@@ -581,7 +535,7 @@ struct ModuleSyncMethodInfo<TResult (TModule::*)(TArgs...) noexcept> {
   template <size_t... I>
   struct Invoker<std::index_sequence<I...>> {
     static SyncMethodDelegate GetFunc(ModuleType *module, MethodType method) noexcept {
-      return [module, method](IJSValueReader const &argReader, IJSValueWriter const &argWriter) mutable noexcept {
+      return [ module, method ](IJSValueReader const &argReader, IJSValueWriter const &argWriter) mutable noexcept {
         using ArgTuple = std::tuple<std::remove_reference_t<TArgs>...>;
         ArgTuple typedArgs{};
         ReadArgs(argReader, std::get<I>(typedArgs)...);
@@ -632,7 +586,8 @@ struct ModuleConstFieldInfo<TValue TModule::*> {
   using FieldType = TValue TModule::*;
 
   static ConstantProviderDelegate GetConstantProvider(void *module, std::wstring_view name, FieldType field) noexcept {
-    return [module = static_cast<ModuleType *>(module), name, field](IJSValueWriter const &argWriter) mutable noexcept {
+    return
+        [ module = static_cast<ModuleType *>(module), name, field ](IJSValueWriter const &argWriter) mutable noexcept {
       WriteProperty(argWriter, name, module->*field);
     };
   }
@@ -644,7 +599,9 @@ struct ModuleConstFieldInfo<TValue *> {
 
   static ConstantProviderDelegate
   GetConstantProvider(void * /*module*/, std::wstring_view name, FieldType field) noexcept {
-    return [name, field](IJSValueWriter const &argWriter) mutable noexcept { WriteProperty(argWriter, name, *field); };
+    return [ name, field ](IJSValueWriter const &argWriter) mutable noexcept {
+      WriteProperty(argWriter, name, *field);
+    };
   }
 };
 
@@ -669,7 +626,7 @@ struct ModuleConstantInfo<void (TModule::*)(ReactConstantProvider &) noexcept> {
   using MethodType = void (TModule::*)(ReactConstantProvider &) noexcept;
 
   static ConstantProviderDelegate GetConstantProvider(void *module, MethodType method) noexcept {
-    return [module = static_cast<ModuleType *>(module), method](IJSValueWriter const &argWriter) mutable noexcept {
+    return [ module = static_cast<ModuleType *>(module), method ](IJSValueWriter const &argWriter) mutable noexcept {
       ReactConstantProvider constantProvider{argWriter};
       (module->*method)(constantProvider);
     };
@@ -702,9 +659,9 @@ struct ModuleEventFieldInfo<TFunc<void(TArgs...)> TModule::*> {
       FieldType field,
       std::wstring_view eventName,
       std::wstring_view eventEmitterName) noexcept {
-    return [module = static_cast<ModuleType *>(module), field, eventName, eventEmitterName](
-               IReactContext const &reactContext) noexcept {
-      module->*field = [reactContext, eventEmitterName, eventName](TArgs... args) noexcept {
+    return [ module = static_cast<ModuleType *>(module), field, eventName, eventEmitterName ](
+        IReactContext const &reactContext) noexcept {
+      module->*field = [ reactContext, eventEmitterName, eventName ](TArgs... args) noexcept {
         reactContext.EmitJSEvent(
             eventEmitterName, eventName, [&args...]([[maybe_unused]] IJSValueWriter const &argWriter) noexcept {
               (void)argWriter; // [[maybe_unused]] above does not work
@@ -729,9 +686,9 @@ struct ModuleFunctionFieldInfo<TFunc<void(TArgs...)> TModule::*> {
       FieldType field,
       std::wstring_view functionName,
       std::wstring_view moduleName) noexcept {
-    return [module = static_cast<ModuleType *>(module), field, functionName, moduleName](
-               IReactContext const &reactContext) noexcept {
-      module->*field = [reactContext, functionName, moduleName](TArgs... args) noexcept {
+    return [ module = static_cast<ModuleType *>(module), field, functionName, moduleName ](
+        IReactContext const &reactContext) noexcept {
+      module->*field = [ reactContext, functionName, moduleName ](TArgs... args) noexcept {
         reactContext.CallJSFunction(moduleName, functionName, [&args...](IJSValueWriter const &argWriter) noexcept {
           WriteArgs(argWriter, args...);
         });

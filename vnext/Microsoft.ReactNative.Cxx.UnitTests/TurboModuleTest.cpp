@@ -44,8 +44,7 @@ struct TurboModuleSpec {
     result.IsUniqueName = verificationResult.MethodNameCount <= 1;
     result.IsMethodFound = verificationResult.MatchCount == 1;
     if constexpr (verificationResult.MatchCount == 1) {
-      result.IsSignatureMatching = 
-          ReactMethodVerifier<
+      result.IsSignatureMatching = ReactMethodVerifier<
           TModule,
           verificationResult.MatchedMemberId,
           Internal::RemoveConstRef<decltype(std::get<I>(TModuleSpec::methods))>::Signature>::Verify();
