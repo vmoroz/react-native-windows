@@ -284,14 +284,8 @@ struct ModuleInitMethodInfo<void (TModule::*)(IReactContext const &) noexcept> {
   }
 };
 
-template <class TFunc>
-struct ModuleMethodInfo;
-
-// Instance asynchronous method
-template <class TModule, class TResult, class... TArgs>
-struct ModuleMethodInfo<TResult (TModule::*)(TArgs...) noexcept> {
-  using ModuleType = TModule;
-  using MethodType = TResult (TModule::*)(TArgs...) noexcept;
+template <class TResult, class... TArgs>
+struct ModuleMethodInfoBase {
   constexpr static size_t CallbackCount = Internal::GetCallbackCount<TArgs...>();
   constexpr static bool HasPromise = Internal::HasPromise<TArgs...>();
   constexpr static bool IsVoidResult = Internal::IsVoidResult<TResult>();
@@ -313,6 +307,17 @@ struct ModuleMethodInfo<TResult (TModule::*)(TArgs...) noexcept> {
       return MethodReturnType::Void;
     }
   }
+};
+
+template <class TFunc>
+struct ModuleMethodInfo;
+
+// Instance asynchronous method
+template <class TModule, class TResult, class... TArgs>
+struct ModuleMethodInfo<TResult (TModule::*)(TArgs...) noexcept> : ModuleMethodInfoBase<TResult, TArgs...> {
+  using Super = ModuleMethodInfoBase<TResult, TArgs...>;
+  using ModuleType = TModule;
+  using MethodType = TResult (TModule::*)(TArgs...) noexcept;
 
   template <size_t... I, size_t... CallbackIndex>
   static MethodDelegate GetMethodDelegate(
@@ -325,21 +330,22 @@ struct ModuleMethodInfo<TResult (TModule::*)(TArgs...) noexcept> {
         [[maybe_unused]] IJSValueWriter const &argWriter,
         [[maybe_unused]] MethodResultCallback const &resolve,
         [[maybe_unused]] MethodResultCallback const &reject) mutable noexcept {
-      InputArgsTuple inputArgs{};
+      typename Super::InputArgsTuple inputArgs{};
       ReadArgs(argReader, std::get<I>(inputArgs)...);
-      if constexpr (!IsVoidResult) {
+      if constexpr (!Super::IsVoidResult) {
         TResult result = (module->*method)(std::get<I>(std::move(inputArgs))...);
         WriteArgs(argWriter, result);
         resolve(argWriter);
-      } else if constexpr (HasPromise) {
-        auto promise = Internal::TupleElementOrVoid<InputArgCount, ArgsTuple>{argWriter, resolve, reject};
+      } else if constexpr (Super::HasPromise) {
+        auto promise =
+            Internal::TupleElementOrVoid<Super::InputArgCount, typename Super::ArgsTuple>{argWriter, resolve, reject};
         (module->*method)(std::get<I>(std::move(inputArgs))..., std::move(promise));
       } else {
         // When method uses two callbacks the order of resolve and reject can be reversed.
         auto resultCallbacks = std::tuple{resolve, reject};
-        auto callbacks = std::tuple{
-            Internal::CallbackCreator<Internal::TupleElementOrVoid<InputArgCount + CallbackIndex, ArgsTuple>>::Create(
-                argWriter, std::get<CallbackIndex>(resultCallbacks))...};
+        auto callbacks = std::tuple{Internal::CallbackCreator<
+            Internal::TupleElementOrVoid<Super::InputArgCount + CallbackIndex, typename Super::ArgsTuple>>::
+                                        Create(argWriter, std::get<CallbackIndex>(resultCallbacks))...};
         (module->*method)(std::get<I>(std::move(inputArgs))..., std::get<CallbackIndex>(callbacks)...);
       }
     };
@@ -347,37 +353,13 @@ struct ModuleMethodInfo<TResult (TModule::*)(TArgs...) noexcept> {
 
   static MethodDelegate GetMethodDelegate(void *module, MethodType method, MethodReturnType &returnType) noexcept {
     (Internal::ValidateCoroutineArg<TResult, TArgs>(), ...);
-    returnType = GetMethodReturnType();
+    returnType = Super::GetMethodReturnType();
     return GetMethodDelegate(
         static_cast<ModuleType *>(module),
         method,
-        std::make_index_sequence<InputArgCount>{},
-        std::make_index_sequence<CallbackCount>{});
+        std::make_index_sequence<Super::InputArgCount>{},
+        std::make_index_sequence<Super::CallbackCount>{});
   }
-
-  // template <class, class>
-  // struct ArgMatcher;
-
-  // template <size_t... I, class... TSpecArgs>
-  // struct ArgMatcher<std::index_sequence<I...>, ArgsSpec<TSpecArgs...>> {
-  //  static constexpr bool Matches() noexcept {
-  //    if constexpr (sizeof...(I) == sizeof...(TSpecArgs)) {
-  //      using ArgTuple = std::tuple<std::remove_const_t<std::remove_reference_t<TArgs>>...>;
-  //      using SpecArgTuple = std::tuple<TSpecArgs...>;
-
-  //      static_assert(
-  //          (std::is_same_v<std::tuple_element_t<I, ArgTuple>, std::tuple_element_t<I, SpecArgTuple>> && ...),
-  //          "Argument types do not match spec");
-
-  //      return (std::is_same_v<std::tuple_element_t<I, ArgTuple>, std::tuple_element_t<I, SpecArgTuple>> && ...);
-  //    } else {
-  //      static_assert(sizeof...(I) >= sizeof...(TSpecArgs), "Spec has more input arguments");
-  //      static_assert(sizeof...(I) <= sizeof...(TSpecArgs), "Spec has less input arguments");
-  //    }
-
-  //    return false;
-  //  }
-  //};
 
   template <class TSignatureSpec>
   static constexpr bool Matches() noexcept {
@@ -391,29 +373,9 @@ struct ModuleMethodInfo<TResult (TModule::*)(TArgs...) noexcept> {
 
 // Static asynchronous method
 template <class TResult, class... TArgs>
-struct ModuleMethodInfo<TResult (*)(TArgs...) noexcept> {
+struct ModuleMethodInfo<TResult (*)(TArgs...) noexcept> : ModuleMethodInfoBase<TResult, TArgs...> {
+  using Super = ModuleMethodInfoBase<TResult, TArgs...>;
   using MethodType = TResult (*)(TArgs...) noexcept;
-  constexpr static size_t CallbackCount = Internal::GetCallbackCount<TArgs...>();
-  constexpr static bool HasPromise = Internal::HasPromise<TArgs...>();
-  constexpr static bool IsVoidResult = Internal::IsVoidResult<TResult>();
-  constexpr static size_t ArgCount = sizeof...(TArgs);
-  using ArgsTuple = std::tuple<Internal::RemoveConstRef<TArgs>...>;
-  constexpr static size_t InputArgCount = ArgCount - (HasPromise ? 1u : CallbackCount);
-  using InputArgsTuple = Internal::TakeFirstTupleElements<InputArgCount, ArgsTuple>;
-
-  constexpr static MethodReturnType GetMethodReturnType() noexcept {
-    if constexpr (!IsVoidResult) {
-      return MethodReturnType::Callback;
-    } else if constexpr (HasPromise) {
-      return MethodReturnType::Promise;
-    } else if constexpr (CallbackCount == 2) {
-      return MethodReturnType::TwoCallbacks;
-    } else if constexpr (CallbackCount == 1) {
-      return MethodReturnType::Callback;
-    } else {
-      return MethodReturnType::Void;
-    }
-  }
 
   template <size_t... I, size_t... CallbackIndex>
   static MethodDelegate
@@ -423,21 +385,22 @@ struct ModuleMethodInfo<TResult (*)(TArgs...) noexcept> {
         [[maybe_unused]] IJSValueWriter const &argWriter,
         [[maybe_unused]] MethodResultCallback const &resolve,
         [[maybe_unused]] MethodResultCallback const &reject) mutable noexcept {
-      InputArgsTuple inputArgs{};
+      typename Super::InputArgsTuple inputArgs{};
       ReadArgs(argReader, std::get<I>(inputArgs)...);
-      if constexpr (!IsVoidResult) {
+      if constexpr (!Super::IsVoidResult) {
         TResult result = (*method)(std::get<I>(std::move(inputArgs))...);
         WriteArgs(argWriter, result);
         resolve(argWriter);
-      } else if constexpr (HasPromise) {
-        auto promise = Internal::TupleElementOrVoid<InputArgCount, ArgsTuple>{argWriter, resolve, reject};
+      } else if constexpr (Super::HasPromise) {
+        auto promise =
+            Internal::TupleElementOrVoid<Super::InputArgCount, typename Super::ArgsTuple>{argWriter, resolve, reject};
         (*method)(std::get<I>(std::move(inputArgs))..., std::move(promise));
       } else {
         // When method uses two callbacks the order of resolve and reject can be reversed.
         auto resultCallbacks = std::tuple{resolve, reject};
-        auto callbacks = std::tuple{
-            Internal::CallbackCreator<Internal::TupleElementOrVoid<InputArgCount + CallbackIndex, ArgsTuple>>::Create(
-                argWriter, std::get<CallbackIndex>(resultCallbacks))...};
+        auto callbacks = std::tuple{Internal::CallbackCreator<
+            Internal::TupleElementOrVoid<Super::InputArgCount + CallbackIndex, typename Super::ArgsTuple>>::
+                                        Create(argWriter, std::get<CallbackIndex>(resultCallbacks))...};
         (*method)(std::get<I>(std::move(inputArgs))..., std::get<CallbackIndex>(callbacks)...);
       }
     };
@@ -445,9 +408,9 @@ struct ModuleMethodInfo<TResult (*)(TArgs...) noexcept> {
 
   static MethodDelegate GetMethodDelegate(void * /*module*/, MethodType method, MethodReturnType &returnType) noexcept {
     (Internal::ValidateCoroutineArg<TResult, TArgs>(), ...);
-    returnType = GetMethodReturnType();
+    returnType = Super::GetMethodReturnType();
     return GetMethodDelegate(
-        method, std::make_index_sequence<InputArgCount>{}, std::make_index_sequence<CallbackCount>{});
+        method, std::make_index_sequence<Super::InputArgCount>{}, std::make_index_sequence<Super::CallbackCount>{});
   }
 
   template <class TSignatureSpec>
