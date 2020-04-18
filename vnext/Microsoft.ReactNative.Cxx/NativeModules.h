@@ -293,6 +293,8 @@ struct ModuleMethodInfoBase {
   using ArgsTuple = std::tuple<Internal::RemoveConstRef<TArgs>...>;
   constexpr static size_t InputArgCount = ArgCount - (HasPromise ? 1u : CallbackCount);
   using InputArgsTuple = Internal::TakeFirstTupleElements<InputArgCount, ArgsTuple>;
+  template <size_t Index>
+  using OutputArgType = Internal::TupleElementOrVoid<InputArgCount + Index, ArgsTuple>;
 
   constexpr static MethodReturnType GetMethodReturnType() noexcept {
     if constexpr (!IsVoidResult) {
@@ -337,15 +339,14 @@ struct ModuleMethodInfo<TResult (TModule::*)(TArgs...) noexcept> : ModuleMethodI
         WriteArgs(argWriter, result);
         resolve(argWriter);
       } else if constexpr (Super::HasPromise) {
-        auto promise =
-            Internal::TupleElementOrVoid<Super::InputArgCount, typename Super::ArgsTuple>{argWriter, resolve, reject};
+        auto promise = typename Super::template OutputArgType<0>{argWriter, resolve, reject};
         (module->*method)(std::get<I>(std::move(inputArgs))..., std::move(promise));
       } else {
         // When method uses two callbacks the order of resolve and reject can be reversed.
         auto resultCallbacks = std::tuple{resolve, reject};
-        auto callbacks = std::tuple{Internal::CallbackCreator<
-            Internal::TupleElementOrVoid<Super::InputArgCount + CallbackIndex, typename Super::ArgsTuple>>::
-                                        Create(argWriter, std::get<CallbackIndex>(resultCallbacks))...};
+        auto callbacks =
+            std::tuple{Internal::CallbackCreator<typename Super::template OutputArgType<CallbackIndex>>::Create(
+                argWriter, std::get<CallbackIndex>(resultCallbacks))...};
         (module->*method)(std::get<I>(std::move(inputArgs))..., std::get<CallbackIndex>(callbacks)...);
       }
     };
@@ -392,15 +393,14 @@ struct ModuleMethodInfo<TResult (*)(TArgs...) noexcept> : ModuleMethodInfoBase<T
         WriteArgs(argWriter, result);
         resolve(argWriter);
       } else if constexpr (Super::HasPromise) {
-        auto promise =
-            Internal::TupleElementOrVoid<Super::InputArgCount, typename Super::ArgsTuple>{argWriter, resolve, reject};
+        auto promise = typename Super::template OutputArgType<0>{argWriter, resolve, reject};
         (*method)(std::get<I>(std::move(inputArgs))..., std::move(promise));
       } else {
-        // When method uses two callbacks the order of resolve and reject can be reversed.
+        // Note that when method uses two callbacks the order of resolve and reject is reversed in some native modules.
         auto resultCallbacks = std::tuple{resolve, reject};
-        auto callbacks = std::tuple{Internal::CallbackCreator<
-            Internal::TupleElementOrVoid<Super::InputArgCount + CallbackIndex, typename Super::ArgsTuple>>::
-                                        Create(argWriter, std::get<CallbackIndex>(resultCallbacks))...};
+        auto callbacks =
+            std::tuple{Internal::CallbackCreator<typename Super::template OutputArgType<CallbackIndex>>::Create(
+                argWriter, std::get<CallbackIndex>(resultCallbacks))...};
         (*method)(std::get<I>(std::move(inputArgs))..., std::get<CallbackIndex>(callbacks)...);
       }
     };
