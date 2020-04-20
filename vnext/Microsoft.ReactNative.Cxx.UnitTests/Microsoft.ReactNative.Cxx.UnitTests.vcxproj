@@ -112,6 +112,7 @@
     <ClInclude Include="JsonJSValueReader.h" />
     <ClInclude Include="JsonReader.h" />
     <ClInclude Include="pch.h" />
+    <ClInclude Include="Point.h" />
     <ClInclude Include="ReactModuleBuilderMock.h" />
   </ItemGroup>
   <ItemGroup>
