@@ -191,7 +191,7 @@ struct CallbackCreator<TCallback<void(TArgs...)>> {
   static TCallback<void(TArgs...)> Create(
       IJSValueWriter const &argWriter,
       MethodResultCallback const &callback) noexcept {
-    return TCallback([callback, argWriter](TArgs... args) noexcept {
+    return TCallback([ callback, argWriter ](TArgs... args) noexcept {
       WriteArgs(argWriter, std::move(args)...);
       callback(argWriter);
     });
@@ -203,7 +203,7 @@ struct CallbackCreator<TCallback<void(TArgs...) noexcept>> {
   static TCallback<void(TArgs...)> Create(
       IJSValueWriter const &argWriter,
       MethodResultCallback const &callback) noexcept {
-    return TCallback([callback, argWriter](TArgs... args) noexcept {
+    return TCallback([ callback, argWriter ](TArgs... args) noexcept {
       WriteArgs(argWriter, std::move(args)...);
       callback(argWriter);
     });
@@ -235,7 +235,7 @@ struct IsPromise<ReactPromise<T>> : std::true_type {};
 template <class TArgsTuple>
 constexpr size_t GetPromiseCount() noexcept {
   if constexpr (
-      std::tuple_size_v<TArgsTuple> > 0 &&
+      std::tuple_size_v<TArgsTuple>> 0 &&
       IsPromise<TupleElementOrVoid<std::tuple_size_v<TArgsTuple> - 1, TArgsTuple>>::value) {
     return 1;
   } else {
@@ -256,21 +256,6 @@ constexpr void ValidateCoroutineArg() noexcept {
         "Coroutine parameter must be passed by value for safe access: " __FUNCSIG__);
   }
 }
-
-// ==== RenameList =============================================================
-
-template <class TSource, template <class...> class TTarget>
-struct RenameListImpl {};
-
-// RenameList renames one type list to another.
-// E.g. RenameList<Spec<int, double>, std::tuple> ==> std::tuple<int, double>
-template <class TSource, template <class...> class TTarget>
-using RenameList = typename RenameListImpl<TSource, TTarget>::type;
-
-template <template <class...> class TSource, class... TItems, template <class...> class TTarget>
-struct RenameListImpl<TSource<TItems...>, TTarget> {
-  using Type = TTarget<TItems...>;
-};
 
 // ==== TransformListItems =====================================================
 
@@ -354,13 +339,13 @@ struct MethodSignature {
     result.ArgCountCompare = Compare(ArgCount, TOtherMethodSignature::ArgCount);
     if (result.ArgCountCompare == 0) {
       result.AreArgsMatching =
-          MatchInputArgs<typename TOtherMethodSignature::InputArgs>(std::make_index_sequence<ArgCount>);
+          MatchInputArgs<typename TOtherMethodSignature::InputArgs>(std::make_index_sequence<ArgCount>{});
     }
 
     result.CallbackCountCompare = Compare(CallbackCount, TOtherMethodSignature::CallbackCount);
     if (result.CallbackCountCompare == 0) {
       result.AreCallbacksMatching = MatchOutputCallbacks<typename TOtherMethodSignature::OutputCallbacks>(
-          std::make_index_sequence<CallbackCount>);
+          std::make_index_sequence<CallbackCount>{});
     }
 
     result.IsPromiseMathcing = std::is_same_v<OutputPromises, typename TOtherMethodSignature::OutputPromises>;
@@ -382,7 +367,7 @@ struct ModuleInitMethodInfo<void (TModule::*)(IReactContext const &) noexcept> {
   using MethodType = void (TModule::*)(IReactContext const &) noexcept;
 
   static InitializerDelegate GetInitializer(void *module, MethodType method) noexcept {
-    return [module = static_cast<ModuleType *>(module), method](IReactContext const &reactContext) noexcept {
+    return [ module = static_cast<ModuleType *>(module), method ](IReactContext const &reactContext) noexcept {
       (module->*method)(reactContext);
     };
   }
@@ -403,8 +388,11 @@ struct MakeCallbackSignaturesImpl<void, TOutputCallbackTuple> {
 template <class TResult, class TOutputCallbackTuple>
 using MakeCallbackSignatures = typename MakeCallbackSignaturesImpl<TResult, TOutputCallbackTuple>::Type;
 
+template <class TSignature>
+struct ModuleMethodInfoBase;
+
 template <class TResult, class... TArgs>
-struct ModuleMethodInfoBase {
+struct ModuleMethodInfoBase<TResult(TArgs...) noexcept> {
   constexpr static bool IsVoidResult = IsVoidResult<TResult>();
   constexpr static size_t ArgCount = sizeof...(TArgs);
   using ArgTuple = std::tuple<RemoveConstRef<TArgs>...>;
@@ -431,6 +419,12 @@ struct ModuleMethodInfoBase {
       return MethodReturnType::Void;
     }
   }
+
+  template <class TSignatureSpec>
+  static constexpr bool Matches() noexcept {
+    MethodSignatureMatchResult matchResult = Signature::template Match<TSignatureSpec>();
+    return true;
+  }
 };
 
 template <class TFunc>
@@ -438,8 +432,8 @@ struct ModuleMethodInfo;
 
 // Instance asynchronous method
 template <class TModule, class TResult, class... TArgs>
-struct ModuleMethodInfo<TResult (TModule::*)(TArgs...) noexcept> : ModuleMethodInfoBase<TResult, TArgs...> {
-  using Super = ModuleMethodInfoBase<TResult, TArgs...>;
+struct ModuleMethodInfo<TResult (TModule::*)(TArgs...) noexcept> : ModuleMethodInfoBase<TResult(TArgs...) noexcept> {
+  using Super = ModuleMethodInfoBase<TResult(TArgs...) noexcept>;
   using ModuleType = TModule;
   using MethodType = TResult (TModule::*)(TArgs...) noexcept;
 
@@ -450,11 +444,11 @@ struct ModuleMethodInfo<TResult (TModule::*)(TArgs...) noexcept> : ModuleMethodI
       std::index_sequence<ArgIndex...>,
       std::index_sequence<CallbackIndex...>,
       std::index_sequence<PromiseIndex...>) noexcept {
-    return [module, method](
-               IJSValueReader const &argReader,
-               [[maybe_unused]] IJSValueWriter const &argWriter,
-               [[maybe_unused]] MethodResultCallback const &resolve,
-               [[maybe_unused]] MethodResultCallback const &reject) mutable noexcept {
+    return [ module, method ](
+        IJSValueReader const &argReader,
+        [[maybe_unused]] IJSValueWriter const &argWriter,
+        [[maybe_unused]] MethodResultCallback const &resolve,
+        [[maybe_unused]] MethodResultCallback const &reject) mutable noexcept {
       typename Super::InputArgTuple inputArgs{};
       ReadArgs(argReader, std::get<ArgIndex>(inputArgs)...);
       if constexpr (!Super::IsVoidResult) {
@@ -486,30 +480,12 @@ struct ModuleMethodInfo<TResult (TModule::*)(TArgs...) noexcept> : ModuleMethodI
         std::make_index_sequence<Super::CallbackCount>{},
         std::make_index_sequence<Super::PromiseCount>{});
   }
-
-  template <class TSignatureSpec>
-  static constexpr bool Matches() noexcept {
-    //using SignatureSpec = Internal::MethodSignature2<TSignatureSpec>;
-    //  static_assert(isMatching, "Result type does not match spec");
-    //  static_assert(areMatching, "Argument types do not match spec");
-    //    static_assert(ArgCount >= TOtherMethodSignature::ArgCount, "Spec has less input arguments");
-    //    static_assert(ArgCount <= TOtherMethodSignature::ArgCount, "Spec has more input arguments");
-    //  static_assert(areMatching, "Callback types do not match spec");
-    //    static_assert(CallbackCount >= TOtherMethodSignature::CallbackCount, "Spec has less output callbacks");
-    //    static_assert(CallbackCount <= TOtherMethodSignature::CallbackCount, "Spec has more output callbacks");
-    //  static_assert(isMatching, "Promise type does not match spec");
-
-    // static_assert(false, "args do not match");
-    // return SignatureSpec::MatchOrFail();
-    // ArgMatcher<IndexSequence, TSpecArgs>::Matches();
-    return true;
-  }
 };
 
 // Static asynchronous method
 template <class TResult, class... TArgs>
-struct ModuleMethodInfo<TResult (*)(TArgs...) noexcept> : ModuleMethodInfoBase<TResult, TArgs...> {
-  using Super = ModuleMethodInfoBase<TResult, TArgs...>;
+struct ModuleMethodInfo<TResult (*)(TArgs...) noexcept> : ModuleMethodInfoBase<TResult(TArgs...) noexcept> {
+  using Super = ModuleMethodInfoBase<TResult(TArgs...) noexcept>;
   using MethodType = TResult (*)(TArgs...) noexcept;
 
   template <size_t... ArgIndex, size_t... CallbackIndex, size_t... PromiseIndex>
@@ -519,10 +495,10 @@ struct ModuleMethodInfo<TResult (*)(TArgs...) noexcept> : ModuleMethodInfoBase<T
       std::index_sequence<CallbackIndex...>,
       std::index_sequence<PromiseIndex...>) noexcept {
     return [method](
-               IJSValueReader const &argReader,
-               [[maybe_unused]] IJSValueWriter const &argWriter,
-               [[maybe_unused]] MethodResultCallback const &resolve,
-               [[maybe_unused]] MethodResultCallback const &reject) mutable noexcept {
+        IJSValueReader const &argReader,
+        [[maybe_unused]] IJSValueWriter const &argWriter,
+        [[maybe_unused]] MethodResultCallback const &resolve,
+        [[maybe_unused]] MethodResultCallback const &reject) mutable noexcept {
       typename Super::InputArgTuple inputArgs{};
       ReadArgs(argReader, std::get<ArgIndex>(inputArgs)...);
       if constexpr (!Super::IsVoidResult) {
@@ -553,15 +529,6 @@ struct ModuleMethodInfo<TResult (*)(TArgs...) noexcept> : ModuleMethodInfoBase<T
         std::make_index_sequence<Super::CallbackCount>{},
         std::make_index_sequence<Super::PromiseCount>{});
   }
-
-  template <class TSignatureSpec>
-  static constexpr bool Matches() noexcept {
-    //using SignatureSpec = Internal::MethodSignature2<TSignatureSpec>;
-    // static_assert(false, "args do not match");
-    // return SignatureSpec::MatchOrFail();
-    // ArgMatcher<IndexSequence, TSpecArgs>::Matches();
-    return true;
-  }
 };
 
 template <class TFunc>
@@ -580,7 +547,7 @@ struct ModuleSyncMethodInfo<TResult (TModule::*)(TArgs...) noexcept> {
   template <size_t... I>
   struct Invoker<std::index_sequence<I...>> {
     static SyncMethodDelegate GetFunc(ModuleType *module, MethodType method) noexcept {
-      return [module, method](IJSValueReader const &argReader, IJSValueWriter const &argWriter) mutable noexcept {
+      return [ module, method ](IJSValueReader const &argReader, IJSValueWriter const &argWriter) mutable noexcept {
         using ArgTuple = std::tuple<std::remove_reference_t<TArgs>...>;
         ArgTuple typedArgs{};
         ReadArgs(argReader, std::get<I>(typedArgs)...);
@@ -631,7 +598,8 @@ struct ModuleConstFieldInfo<TValue TModule::*> {
   using FieldType = TValue TModule::*;
 
   static ConstantProviderDelegate GetConstantProvider(void *module, std::wstring_view name, FieldType field) noexcept {
-    return [module = static_cast<ModuleType *>(module), name, field](IJSValueWriter const &argWriter) mutable noexcept {
+    return
+        [ module = static_cast<ModuleType *>(module), name, field ](IJSValueWriter const &argWriter) mutable noexcept {
       WriteProperty(argWriter, name, module->*field);
     };
   }
@@ -643,7 +611,9 @@ struct ModuleConstFieldInfo<TValue *> {
 
   static ConstantProviderDelegate
   GetConstantProvider(void * /*module*/, std::wstring_view name, FieldType field) noexcept {
-    return [name, field](IJSValueWriter const &argWriter) mutable noexcept { WriteProperty(argWriter, name, *field); };
+    return [ name, field ](IJSValueWriter const &argWriter) mutable noexcept {
+      WriteProperty(argWriter, name, *field);
+    };
   }
 };
 
@@ -668,7 +638,7 @@ struct ModuleConstantInfo<void (TModule::*)(ReactConstantProvider &) noexcept> {
   using MethodType = void (TModule::*)(ReactConstantProvider &) noexcept;
 
   static ConstantProviderDelegate GetConstantProvider(void *module, MethodType method) noexcept {
-    return [module = static_cast<ModuleType *>(module), method](IJSValueWriter const &argWriter) mutable noexcept {
+    return [ module = static_cast<ModuleType *>(module), method ](IJSValueWriter const &argWriter) mutable noexcept {
       ReactConstantProvider constantProvider{argWriter};
       (module->*method)(constantProvider);
     };
@@ -701,9 +671,9 @@ struct ModuleEventFieldInfo<TFunc<void(TArgs...)> TModule::*> {
       FieldType field,
       std::wstring_view eventName,
       std::wstring_view eventEmitterName) noexcept {
-    return [module = static_cast<ModuleType *>(module), field, eventName, eventEmitterName](
-               IReactContext const &reactContext) noexcept {
-      module->*field = [reactContext, eventEmitterName, eventName](TArgs... args) noexcept {
+    return [ module = static_cast<ModuleType *>(module), field, eventName, eventEmitterName ](
+        IReactContext const &reactContext) noexcept {
+      module->*field = [ reactContext, eventEmitterName, eventName ](TArgs... args) noexcept {
         reactContext.EmitJSEvent(
             eventEmitterName, eventName, [&args...]([[maybe_unused]] IJSValueWriter const &argWriter) noexcept {
               (void)argWriter; // [[maybe_unused]] above does not work
@@ -728,9 +698,9 @@ struct ModuleFunctionFieldInfo<TFunc<void(TArgs...)> TModule::*> {
       FieldType field,
       std::wstring_view functionName,
       std::wstring_view moduleName) noexcept {
-    return [module = static_cast<ModuleType *>(module), field, functionName, moduleName](
-               IReactContext const &reactContext) noexcept {
-      module->*field = [reactContext, functionName, moduleName](TArgs... args) noexcept {
+    return [ module = static_cast<ModuleType *>(module), field, functionName, moduleName ](
+        IReactContext const &reactContext) noexcept {
+      module->*field = [ reactContext, functionName, moduleName ](TArgs... args) noexcept {
         reactContext.CallJSFunction(moduleName, functionName, [&args...](IJSValueWriter const &argWriter) noexcept {
           WriteArgs(argWriter, args...);
         });
@@ -963,9 +933,6 @@ struct ReactModuleVerifier {
   VerificationResult m_result;
 };
 
-// template <class TModule, int I, class TSignature>
-// struct ReactMethodVerifier;
-
 template <class TModule, int I, class TSignature>
 struct ReactMethodVerifier {
   static constexpr bool Verify() noexcept {
@@ -995,14 +962,14 @@ struct TurboModuleSpec {
   template <class TSignature>
   struct Method : BaseMethodSpec {
     using BaseMethodSpec::BaseMethodSpec;
-    using Signature = TSignature;
+    using Signature = typename ModuleMethodInfoBase<TSignature>::Signature;
   };
 
   template <class... TArgs>
-  struct Callback : std::tuple<TArgs...> {};
+  using Callback = std::function<void(TArgs...)>;
 
-  template <class... TArgs>
-  struct Promise : std::tuple<TArgs...> {};
+  template <class TArg>
+  using Promise = ReactPromise<TArg>;
 
   struct MethodCheckResult {
     bool IsUniqueName{false};
