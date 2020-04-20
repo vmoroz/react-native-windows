@@ -47,7 +47,7 @@ struct TurboModuleSpec {
       result.IsSignatureMatching = ReactMethodVerifier<
           TModule,
           verificationResult.MatchedMemberId,
-          Internal::RemoveConstRef<decltype(std::get<I>(TModuleSpec::methods))>::Signature>::Verify();
+          typename RemoveConstRef<decltype(std::get<I>(TModuleSpec::methods))>::Signature>::Verify();
     }
 
     return result;

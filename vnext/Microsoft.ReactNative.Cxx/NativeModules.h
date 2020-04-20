@@ -105,71 +105,67 @@
 #define REACT_FUNCTION(/* field, [opt] functionName, [opt] moduleName */...) \
   INTERNAL_REACT_MEMBER(__VA_ARGS__)(FunctionField, __VA_ARGS__)
 
+//
+// Code below helps to register React native modules and verify method signatures
+// against specification.
+//
+
 namespace winrt::Microsoft::ReactNative {
 
-template <class... TArgs>
-struct CallbackSignature {};
-
-namespace Internal {
-
+// Often used to create a tuple with arguments or to create a method signature.
 template <class T>
 using RemoveConstRef = std::remove_const_t<std::remove_reference_t<T>>;
 
-template <size_t I, class... TArgs>
-using GetArgAt = std::tuple_element_t<I, std::tuple<TArgs...>>;
-
-template <class... TArgs>
-using GetLastArg = GetArgAt<sizeof...(TArgs) - 1, TArgs...>;
-
-// Checks if provided type has a callback-like signature TFunc<void(TArgs...)
+// Checks if type T has a callback-like signature TFunc<void(TArgs...)
 template <class T>
 struct IsCallback : std::false_type {};
-
-template <template <class...> class TFunc, class... TArgs>
-struct IsCallback<TFunc<void(TArgs...)>> : std::true_type {
-  using Signature = CallbackSignature<RemoveConstRef<TArgs>...>;
-};
-
+template <template <class> class TFunc, class... TArgs>
+struct IsCallback<TFunc<void(TArgs...)>> : std::true_type {};
 #if defined(__cpp_noexcept_function_type) || (_HAS_NOEXCEPT_FUNCTION_TYPES == 1)
-template <template <class...> class TFunc, class... TArgs>
-struct IsCallback<TFunc<void(TArgs...) noexcept>> : std::true_type {
-  using Signature = CallbackSignature<RemoveConstRef<TArgs>...>;
-};
+template <template <class> class TFunc, class... TArgs>
+struct IsCallback<TFunc<void(TArgs...) noexcept>> : std::true_type {};
 #endif
 
-// Finds how many callbacks the function signature has.
-template <class... TArgs>
+// Finds how many callbacks the function signature has in the end: 0, 1, or 2.
+template <class TArgsTuple>
 constexpr size_t GetCallbackCount() noexcept {
-  using TupleType = std::tuple<std::remove_const_t<std::remove_reference_t<TArgs>>...>;
-  if constexpr (sizeof...(TArgs) >= 2) {
-    return (IsCallback<std::tuple_element_t<sizeof...(TArgs) - 1u, TupleType>>::value ? 1 : 0) +
-        (IsCallback<std::tuple_element_t<sizeof...(TArgs) - 2u, TupleType>>::value ? 1 : 0);
-  } else if constexpr (sizeof...(TArgs) == 1) {
-    return IsCallback<std::tuple_element_t<0, TupleType>>::value ? 1 : 0;
+  if constexpr (std::tuple_size_v<TArgsTuple> >= 2) {
+    return (IsCallback<std::tuple_element_t<std::tuple_size_v<TArgsTuple> - 1, TArgsTuple>>::value ? 1 : 0) +
+        (IsCallback<std::tuple_element_t<std::tuple_size_v<TArgsTuple> - 2, TArgsTuple>>::value ? 1 : 0);
+  } else if constexpr (std::tuple_size_v<TArgsTuple> == 1) {
+    return IsCallback<std::tuple_element_t<0, TArgsTuple>>::value ? 1 : 0;
   } else {
     return 0;
   }
 }
 
-template <class T>
-struct IsPromise : std::false_type {};
-template <class T>
-struct IsPromise<ReactPromise<T>> : std::true_type {};
-
-// Return true if last parameter is Promise
+// Callback is any std::function<void(TArgs...)> like type.
+// For the signature comparison we want to use only input arguments.
 template <class... TArgs>
-constexpr bool HasPromise() noexcept {
-  if constexpr (sizeof...(TArgs) > 0) {
-    return IsPromise<std::tuple_element_t<sizeof...(TArgs) - 1, std::tuple<RemoveConstRef<TArgs>...>>>::value;
-  }
+struct CallbackSignature {};
 
-  return false;
-}
+// ==== GetCallbackSignature ===================================================
 
-template <class TResult>
-constexpr bool IsVoidResult() noexcept {
-  return std::is_void_v<TResult> || std::is_same_v<TResult, winrt::fire_and_forget>;
-}
+template <class T>
+struct GetCallbackSignatureImpl {};
+
+// Get callback signature from a callback.
+template <class TCallback>
+using GetCallbackSignature = typename GetCallbackSignatureImpl<TCallback>::Type;
+
+template <template <class> class TCallback, class... TArgs>
+struct GetCallbackSignatureImpl<TCallback<void(TArgs...)>> {
+  using Type = CallbackSignature<TArgs...>;
+};
+
+#if defined(__cpp_noexcept_function_type) || (_HAS_NOEXCEPT_FUNCTION_TYPES == 1)
+template <template <class> class TCallback, class... TArgs>
+struct GetCallbackSignatureImpl<TCallback<void(TArgs...) noexcept>> {
+  using Type = CallbackSignature<TArgs...>;
+};
+#endif
+
+// ==== CallbackCreator ========================================================
 
 template <class T>
 struct CallbackCreator;
@@ -179,41 +175,26 @@ struct CallbackCreator<TCallback<void(TArgs...)>> {
   static TCallback<void(TArgs...)> Create(
       IJSValueWriter const &argWriter,
       MethodResultCallback const &callback) noexcept {
-    return TCallback([ callback, argWriter ](TArgs... args) noexcept {
+    return TCallback([callback, argWriter](TArgs... args) noexcept {
       WriteArgs(argWriter, std::move(args)...);
       callback(argWriter);
     });
   }
 };
 
-template <class TResult, class TArg>
-constexpr void ValidateCoroutineArg() noexcept {
-  if constexpr (std::is_same_v<TResult, fire_and_forget>) {
-    static_assert(
-        !std::is_reference_v<TArg> && !std::is_pointer_v<TArg>,
-        "Coroutine parameter must be passed by value for safe access: " __FUNCSIG__);
+template <template <class> class TCallback, class... TArgs>
+struct CallbackCreator<TCallback<void(TArgs...) noexcept>> {
+  static TCallback<void(TArgs...)> Create(
+      IJSValueWriter const &argWriter,
+      MethodResultCallback const &callback) noexcept {
+    return TCallback([callback, argWriter](TArgs... args) noexcept {
+      WriteArgs(argWriter, std::move(args)...);
+      callback(argWriter);
+    });
   }
-}
-
-template <class TIndexSequence, class... TArgs>
-struct MakeArgsTuple;
-
-template <size_t... I, class... TArgs>
-struct MakeArgsTuple<std::index_sequence<I...>, TArgs...> {
-  static_assert(sizeof...(I) <= sizeof...(TArgs), "Number of I must be less or equal number of TArgs");
-  using Type = std::tuple<std::tuple_element_t<I, std::tuple<TArgs...>>...>;
 };
 
-template <class TIndexSequence, class TTuple>
-struct TakeFirstTupleElementsImpl;
-
-template <class TTuple, size_t... Index>
-struct TakeFirstTupleElementsImpl<std::index_sequence<Index...>, TTuple> {
-  using Type = std::tuple<std::tuple_element_t<Index, TTuple>...>;
-};
-
-template <size_t Count, class TTuple>
-using TakeFirstTupleElements = typename TakeFirstTupleElementsImpl<std::make_index_sequence<Count>, TTuple>::Type;
+// ==== TupleElementOrVoid =====================================================
 
 template <bool, size_t Index, class TTuple>
 struct TupleElementOrVoidImpl {
@@ -228,51 +209,81 @@ struct TupleElementOrVoidImpl<true, Index, TTuple> {
 template <size_t Index, class TTuple>
 using TupleElementOrVoid = typename TupleElementOrVoidImpl<(Index < std::tuple_size_v<TTuple>), Index, TTuple>::Type;
 
-template <class TSignature>
-struct MethodSignature2;
+// Checks if type T is a has a ReactPromise
+template <class T>
+struct IsPromise : std::false_type {};
+template <class T>
+struct IsPromise<ReactPromise<T>> : std::true_type {};
 
-template <class TResult, class... TArgs>
-struct MethodSignature2<TResult(TArgs...) noexcept> {
-  constexpr static size_t ArgCount = sizeof...(TArgs);
-  constexpr static size_t CallbackCount = GetCallbackCount<TArgs...>();
-  constexpr static bool HasPromise = HasPromise<TArgs...>();
-  using IndexSequence = std::make_index_sequence<ArgCount - (HasPromise ? 1 : CallbackCount)>;
-  using ArgsTuple = typename MakeArgsTuple<IndexSequence, TArgs...>::Type;
-  using Result = TResult;
-  using PromiseType = std::conditional_t<HasPromise, GetLastArg<TArgs...>, void>;
-  using LastCallback = std::conditional_t<CallbackCount >= 0, GetLastArg<TArgs...>, void>;
-  using NextToLastCallback = std::conditional_t<CallbackCount == 2, GetArgAt<ArgCount - 2, TArgs...>, void>;
-
-  template <class TOtherSignature, size_t... I>
-  static constexpr bool MatchArgs(std::index_sequence<I...>) noexcept {
-    constexpr bool isMatching =
-        (std::is_same_v<GetArgAt<I, ArgsTuple>, GetArgAt<I, TOtherSignature::ArgsTuple>> && ...);
-    static_assert(isMatching, "Argument types do not match spec");
-    return isMatching;
+// Return 1 if last parameter is Promise, otherwise 0.
+template <class TArgsTuple>
+constexpr size_t GetPromiseCount() noexcept {
+  if constexpr (
+      std::tuple_size_v<TArgsTuple> > 0 &&
+      IsPromise<TupleElementOrVoid<std::tuple_size_v<TArgsTuple> - 1, TArgsTuple>>::value) {
+    return 1;
+  } else {
+    return 0;
   }
+}
 
-  template <class TOtherSignature>
-  static constexpr bool MatchOrFail() noexcept {
-    if constexpr (ArgCount == TOtherSignature::ArgCount) {
-      return MatchArgs<TOtherSignature>(std::make_index_sequence<ArgCount>);
-    } else {
-      static_assert(ArgCount >= TOtherSignature::ArgCount, "Spec has more input arguments");
-      static_assert(ArgCount <= TOtherSignature::ArgCount, "Spec has less input arguments");
-      return false;
-    }
+template <class TResult>
+constexpr bool IsVoidResult() noexcept {
+  return std::is_void_v<TResult> || std::is_same_v<TResult, winrt::fire_and_forget>;
+}
 
-    // if (CallbackCount == TOtherSignature::CallbackCount) {
-
-    //} else {
-    //  static_assert(CallbackCount >= TOtherSignature::CallbackCount, "Spec has more callbacks");
-    //  static_assert(CallbackCount <= TOtherSignature::CallbackCount, "Spec has less callbacks");
-    //  return false;
-    //}
-    return true;
+template <class TResult, class TArg>
+constexpr void ValidateCoroutineArg() noexcept {
+  if constexpr (std::is_same_v<TResult, fire_and_forget>) {
+    static_assert(
+        !std::is_reference_v<TArg> && !std::is_pointer_v<TArg>,
+        "Coroutine parameter must be passed by value for safe access: " __FUNCSIG__);
   }
+}
+
+// ==== RenameList =============================================================
+
+template <class TSource, template <class...> class TTarget>
+struct RenameListImpl {};
+
+// RenameList renames one type list to another.
+// E.g. RenameList<Spec<int, double>, std::tuple> ==> std::tuple<int, double>
+template <class TSource, template <class...> class TTarget>
+using RenameList = typename RenameListImpl<TSource, TTarget>::type;
+
+template <template <class...> class TSource, class... TItems, template <class...> class TTarget>
+struct RenameListImpl<TSource<TItems...>, TTarget> {
+  using Type = TTarget<TItems...>;
 };
 
-} // namespace Internal
+// ==== TransformListItems =====================================================
+
+template <template <class...> class TFunc, class TList>
+struct TransformListItemsImpl;
+
+// TransformListItems transforms each variadic item parameter type using TFunc.
+// E.g. std::tuple<int, double> ==> std::tuple<TFunc<int>, TFunc<double>>.
+template <template <class...> class TFunc, class TList>
+using TransformListItems = typename TransformListItemsImpl<TFunc, TList>::Type;
+
+template <template <class...> class TFunc, template <class...> class TList, class... TItems>
+struct TransformListItemsImpl<TFunc, TList<TItems...>> {
+  using Type = TList<TFunc<TItems>...>;
+};
+
+// ==== TakeTupleElements ======================================================
+
+template <size_t StartIndex, class TIndexSequence, class TTuple>
+struct TakeTupleElementsImpl;
+
+// Take Count tuple type parameters starting with StartIndex from TTuple.
+template <size_t StartIndex, size_t Count, class TTuple>
+using TakeTupleElements = typename TakeTupleElementsImpl<StartIndex, std::make_index_sequence<Count>, TTuple>::Type;
+
+template <size_t StartIndex, class TTuple, size_t... Index>
+struct TakeTupleElementsImpl<StartIndex, std::index_sequence<Index...>, TTuple> {
+  using Type = std::tuple<std::tuple_element_t<StartIndex + Index, TTuple>...>;
+};
 
 //==============================================================================
 // MethodSignature is used to compare method signatures.
@@ -287,12 +298,12 @@ struct MethodSignatureMatchResult {
   bool IsPromiseMathcing;
 };
 
-template <class TResult, class TInputArgs, class TOutputCallbacks, class TOutputPromise>
+template <class TResult, class TInputArgs, class TOutputCallbacks, class TOutputPromises>
 struct MethodSignature {
   using Result = TResult;
   using InputArgs = TInputArgs;
   using OutputCallbacks = TOutputCallbacks;
-  using OutputPromise = TOutputPromise;
+  using OutputPromises = TOutputPromises;
   constexpr static size_t ArgCount = std::tuple_size_v<InputArgs>;
   constexpr static size_t CallbackCount = std::tuple_size_v<TOutputCallbacks>;
 
@@ -336,7 +347,7 @@ struct MethodSignature {
           std::make_index_sequence<CallbackCount>);
     }
 
-    result.IsPromiseMathcing = std::is_same_v<OutputPromise, typename TOtherMethodSignature::OutputPromise>;
+    result.IsPromiseMathcing = std::is_same_v<OutputPromises, typename TOtherMethodSignature::OutputPromises>;
 
     return result;
   }
@@ -355,71 +366,46 @@ struct ModuleInitMethodInfo<void (TModule::*)(IReactContext const &) noexcept> {
   using MethodType = void (TModule::*)(IReactContext const &) noexcept;
 
   static InitializerDelegate GetInitializer(void *module, MethodType method) noexcept {
-    return [ module = static_cast<ModuleType *>(module), method ](IReactContext const &reactContext) noexcept {
+    return [module = static_cast<ModuleType *>(module), method](IReactContext const &reactContext) noexcept {
       (module->*method)(reactContext);
     };
   }
 };
 
-template <class TBeforeLastArg, class TLastArg, bool, bool>
-struct MakeCallbackSignaturesImpl2 {
-  using Type = std::tuple<
-      typename Internal::IsCallback<TBeforeLastArg>::Signature,
-      typename Internal::IsCallback<TLastArg>::Signature>;
-};
+// ==== MakeCallbackSignatures =================================================
 
-template <class TBeforeLastArg, class TLastArg>
-struct MakeCallbackSignaturesImpl2<TBeforeLastArg, TLastArg, false, true> {
-  using Type = std::tuple<typename Internal::IsCallback<TLastArg>::Signature>;
-};
-
-template <class TBeforeLastArg, class TLastArg>
-struct MakeCallbackSignaturesImpl2<TBeforeLastArg, TLastArg, false, false> {
-  using Type = std::tuple<>;
-};
-
-template <class TResult, class TLastArg, class TBeforeLastArg>
+template <class TResult, class TOutputCallbackTuple>
 struct MakeCallbackSignaturesImpl {
   using Type = std::tuple<CallbackSignature<TResult>>;
 };
 
-template <class TLastArg, class TBeforeLastArg>
-struct MakeCallbackSignaturesImpl<void, TLastArg, TBeforeLastArg> {
-  using Type = MakeCallbackSignaturesImpl2<
-      TBeforeLastArg,
-      TLastArg,
-      Internal::IsCallback<TBeforeLastArg>::value,
-      Internal::IsCallback<TLastArg>::value>;
+template <class TOutputCallbackTuple>
+struct MakeCallbackSignaturesImpl<void, TOutputCallbackTuple> {
+  using Type = TransformListItems<GetCallbackSignature, TOutputCallbackTuple>;
 };
 
-template <class TResult, class TArgsTuple>
-using MakeCallbackSignatures = typename MakeCallbackSignaturesImpl<
-    TResult,
-    Internal::TupleElementOrVoid<std::tuple_size_v<TArgsTuple> - 1, TArgsTuple>,
-    Internal::TupleElementOrVoid<std::tuple_size_v<TArgsTuple> - 2, TArgsTuple>>::Type;
+template <class TResult, class TOutputCallbackTuple>
+using MakeCallbackSignatures = typename MakeCallbackSignaturesImpl<TResult, TOutputCallbackTuple>::Type;
 
 template <class TResult, class... TArgs>
 struct ModuleMethodInfoBase {
-  constexpr static size_t CallbackCount = Internal::GetCallbackCount<TArgs...>();
-  constexpr static bool HasPromise = Internal::HasPromise<TArgs...>();
-  constexpr static bool IsVoidResult = Internal::IsVoidResult<TResult>();
+  constexpr static bool IsVoidResult = IsVoidResult<TResult>();
   constexpr static size_t ArgCount = sizeof...(TArgs);
-  using ArgsTuple = std::tuple<Internal::RemoveConstRef<TArgs>...>;
-  constexpr static size_t InputArgCount = ArgCount - (HasPromise ? 1u : CallbackCount);
-  using InputArgsTuple = Internal::TakeFirstTupleElements<InputArgCount, ArgsTuple>;
-  template <size_t Index>
-  using OutputArgType = Internal::TupleElementOrVoid<InputArgCount + Index, ArgsTuple>;
+  using ArgTuple = std::tuple<RemoveConstRef<TArgs>...>;
+  constexpr static size_t CallbackCount = GetCallbackCount<ArgTuple>();
+  constexpr static size_t PromiseCount = GetPromiseCount<ArgTuple>();
+  constexpr static size_t InputArgCount = ArgCount - CallbackCount - PromiseCount;
+  using InputArgTuple = TakeTupleElements<0, InputArgCount, ArgTuple>;
+  using OutputCallbackTuple = TakeTupleElements<InputArgCount, CallbackCount, ArgTuple>;
+  using OutputPromiseTuple = TakeTupleElements<InputArgCount, PromiseCount, ArgTuple>;
 
-  using Signature = MethodSignature<
-      void,
-      InputArgsTuple,
-      MakeCallbackSignatures<TResult, ArgsTuple>,
-      std::conditional_t<HasPromise, OutputArgType<0>, void>>;
+  using Signature =
+      MethodSignature<void, InputArgTuple, MakeCallbackSignatures<TResult, OutputCallbackTuple>, OutputPromiseTuple>;
 
   constexpr static MethodReturnType GetMethodReturnType() noexcept {
     if constexpr (!IsVoidResult) {
       return MethodReturnType::Callback;
-    } else if constexpr (HasPromise) {
+    } else if constexpr (PromiseCount == 1) {
       return MethodReturnType::Promise;
     } else if constexpr (CallbackCount == 2) {
       return MethodReturnType::TwoCallbacks;
@@ -441,31 +427,33 @@ struct ModuleMethodInfo<TResult (TModule::*)(TArgs...) noexcept> : ModuleMethodI
   using ModuleType = TModule;
   using MethodType = TResult (TModule::*)(TArgs...) noexcept;
 
-  template <size_t... ArgIndex, size_t... CallbackIndex>
+  template <size_t... ArgIndex, size_t... CallbackIndex, size_t... PromiseIndex>
   static MethodDelegate GetMethodDelegate(
       ModuleType *module,
       MethodType method,
       std::index_sequence<ArgIndex...>,
-      std::index_sequence<CallbackIndex...>) noexcept {
-    return [ module, method ](
-        IJSValueReader const &argReader,
-        [[maybe_unused]] IJSValueWriter const &argWriter,
-        [[maybe_unused]] MethodResultCallback const &resolve,
-        [[maybe_unused]] MethodResultCallback const &reject) mutable noexcept {
-      typename Super::InputArgsTuple inputArgs{};
+      std::index_sequence<CallbackIndex...>,
+      std::index_sequence<PromiseIndex...>) noexcept {
+    return [module, method](
+               IJSValueReader const &argReader,
+               [[maybe_unused]] IJSValueWriter const &argWriter,
+               [[maybe_unused]] MethodResultCallback const &resolve,
+               [[maybe_unused]] MethodResultCallback const &reject) mutable noexcept {
+      typename Super::InputArgTuple inputArgs{};
       ReadArgs(argReader, std::get<ArgIndex>(inputArgs)...);
       if constexpr (!Super::IsVoidResult) {
         TResult result = (module->*method)(std::get<ArgIndex>(std::move(inputArgs))...);
         WriteArgs(argWriter, result);
         resolve(argWriter);
-      } else if constexpr (Super::HasPromise) {
-        auto promise = typename Super::template OutputArgType<0>{argWriter, resolve, reject};
-        (module->*method)(std::get<ArgIndex>(std::move(inputArgs))..., std::move(promise));
+      } else if constexpr (Super::PromiseCount == 1) {
+        auto promises = std::tuple{
+            std::tuple_element_t<PromiseIndex, typename Super::OutputPromiseTuple>{argWriter, resolve, reject}...};
+        (module->*method)(std::get<ArgIndex>(std::move(inputArgs))..., std::get<PromiseIndex>(promises)...);
       } else {
         // When method uses two callbacks the order of resolve and reject can be reversed.
         auto resultCallbacks = std::tuple{resolve, reject};
-        auto callbacks =
-            std::tuple{Internal::CallbackCreator<typename Super::template OutputArgType<CallbackIndex>>::Create(
+        auto callbacks = std::tuple{
+            CallbackCreator<std::tuple_element_t<CallbackIndex, typename Super::OutputCallbackTuple>>::Create(
                 argWriter, std::get<CallbackIndex>(resultCallbacks))...};
         (module->*method)(std::get<ArgIndex>(std::move(inputArgs))..., std::get<CallbackIndex>(callbacks)...);
       }
@@ -473,18 +461,19 @@ struct ModuleMethodInfo<TResult (TModule::*)(TArgs...) noexcept> : ModuleMethodI
   }
 
   static MethodDelegate GetMethodDelegate(void *module, MethodType method, MethodReturnType &returnType) noexcept {
-    (Internal::ValidateCoroutineArg<TResult, TArgs>(), ...);
+    (ValidateCoroutineArg<TResult, TArgs>(), ...);
     returnType = Super::GetMethodReturnType();
     return GetMethodDelegate(
         static_cast<ModuleType *>(module),
         method,
         std::make_index_sequence<Super::InputArgCount>{},
-        std::make_index_sequence<Super::CallbackCount>{});
+        std::make_index_sequence<Super::CallbackCount>{},
+        std::make_index_sequence<Super::PromiseCount>{});
   }
 
   template <class TSignatureSpec>
   static constexpr bool Matches() noexcept {
-    using SignatureSpec = Internal::MethodSignature2<TSignatureSpec>;
+    //using SignatureSpec = Internal::MethodSignature2<TSignatureSpec>;
     //  static_assert(isMatching, "Result type does not match spec");
     //  static_assert(areMatching, "Argument types do not match spec");
     //    static_assert(ArgCount >= TOtherMethodSignature::ArgCount, "Spec has less input arguments");
@@ -507,30 +496,32 @@ struct ModuleMethodInfo<TResult (*)(TArgs...) noexcept> : ModuleMethodInfoBase<T
   using Super = ModuleMethodInfoBase<TResult, TArgs...>;
   using MethodType = TResult (*)(TArgs...) noexcept;
 
-  template <size_t... ArgIndex, size_t... CallbackIndex>
+  template <size_t... ArgIndex, size_t... CallbackIndex, size_t... PromiseIndex>
   static MethodDelegate GetMethodDelegate(
       MethodType method,
       std::index_sequence<ArgIndex...>,
-      std::index_sequence<CallbackIndex...>) noexcept {
+      std::index_sequence<CallbackIndex...>,
+      std::index_sequence<PromiseIndex...>) noexcept {
     return [method](
-        IJSValueReader const &argReader,
-        [[maybe_unused]] IJSValueWriter const &argWriter,
-        [[maybe_unused]] MethodResultCallback const &resolve,
-        [[maybe_unused]] MethodResultCallback const &reject) mutable noexcept {
-      typename Super::InputArgsTuple inputArgs{};
+               IJSValueReader const &argReader,
+               [[maybe_unused]] IJSValueWriter const &argWriter,
+               [[maybe_unused]] MethodResultCallback const &resolve,
+               [[maybe_unused]] MethodResultCallback const &reject) mutable noexcept {
+      typename Super::InputArgTuple inputArgs{};
       ReadArgs(argReader, std::get<ArgIndex>(inputArgs)...);
       if constexpr (!Super::IsVoidResult) {
         TResult result = (*method)(std::get<ArgIndex>(std::move(inputArgs))...);
         WriteArgs(argWriter, result);
         resolve(argWriter);
-      } else if constexpr (Super::HasPromise) {
-        auto promise = typename Super::template OutputArgType<0>{argWriter, resolve, reject};
-        (*method)(std::get<ArgIndex>(std::move(inputArgs))..., std::move(promise));
+      } else if constexpr (Super::PromiseCount == 1) {
+        auto promises = std::tuple{
+            std::tuple_element_t<PromiseIndex, typename Super::OutputPromiseTuple>{argWriter, resolve, reject}...};
+        (*method)(std::get<ArgIndex>(std::move(inputArgs))..., std::get<PromiseIndex>(promises)...);
       } else {
-        // Note that when method uses two callbacks the order of resolve and reject is reversed in some native modules.
+        // When method uses two callbacks the order of resolve and reject can be reversed.
         auto resultCallbacks = std::tuple{resolve, reject};
-        auto callbacks =
-            std::tuple{Internal::CallbackCreator<typename Super::template OutputArgType<CallbackIndex>>::Create(
+        auto callbacks = std::tuple{
+            CallbackCreator<std::tuple_element_t<CallbackIndex, typename Super::OutputCallbackTuple>>::Create(
                 argWriter, std::get<CallbackIndex>(resultCallbacks))...};
         (*method)(std::get<ArgIndex>(std::move(inputArgs))..., std::get<CallbackIndex>(callbacks)...);
       }
@@ -538,15 +529,18 @@ struct ModuleMethodInfo<TResult (*)(TArgs...) noexcept> : ModuleMethodInfoBase<T
   }
 
   static MethodDelegate GetMethodDelegate(void * /*module*/, MethodType method, MethodReturnType &returnType) noexcept {
-    (Internal::ValidateCoroutineArg<TResult, TArgs>(), ...);
+    (ValidateCoroutineArg<TResult, TArgs>(), ...);
     returnType = Super::GetMethodReturnType();
     return GetMethodDelegate(
-        method, std::make_index_sequence<Super::InputArgCount>{}, std::make_index_sequence<Super::CallbackCount>{});
+        method,
+        std::make_index_sequence<Super::InputArgCount>{},
+        std::make_index_sequence<Super::CallbackCount>{},
+        std::make_index_sequence<Super::PromiseCount>{});
   }
 
   template <class TSignatureSpec>
   static constexpr bool Matches() noexcept {
-    using SignatureSpec = Internal::MethodSignature2<TSignatureSpec>;
+    //using SignatureSpec = Internal::MethodSignature2<TSignatureSpec>;
     // static_assert(false, "args do not match");
     // return SignatureSpec::MatchOrFail();
     // ArgMatcher<IndexSequence, TSpecArgs>::Matches();
@@ -570,7 +564,7 @@ struct ModuleSyncMethodInfo<TResult (TModule::*)(TArgs...) noexcept> {
   template <size_t... I>
   struct Invoker<std::index_sequence<I...>> {
     static SyncMethodDelegate GetFunc(ModuleType *module, MethodType method) noexcept {
-      return [ module, method ](IJSValueReader const &argReader, IJSValueWriter const &argWriter) mutable noexcept {
+      return [module, method](IJSValueReader const &argReader, IJSValueWriter const &argWriter) mutable noexcept {
         using ArgTuple = std::tuple<std::remove_reference_t<TArgs>...>;
         ArgTuple typedArgs{};
         ReadArgs(argReader, std::get<I>(typedArgs)...);
@@ -621,8 +615,7 @@ struct ModuleConstFieldInfo<TValue TModule::*> {
   using FieldType = TValue TModule::*;
 
   static ConstantProviderDelegate GetConstantProvider(void *module, std::wstring_view name, FieldType field) noexcept {
-    return
-        [ module = static_cast<ModuleType *>(module), name, field ](IJSValueWriter const &argWriter) mutable noexcept {
+    return [module = static_cast<ModuleType *>(module), name, field](IJSValueWriter const &argWriter) mutable noexcept {
       WriteProperty(argWriter, name, module->*field);
     };
   }
@@ -634,9 +627,7 @@ struct ModuleConstFieldInfo<TValue *> {
 
   static ConstantProviderDelegate
   GetConstantProvider(void * /*module*/, std::wstring_view name, FieldType field) noexcept {
-    return [ name, field ](IJSValueWriter const &argWriter) mutable noexcept {
-      WriteProperty(argWriter, name, *field);
-    };
+    return [name, field](IJSValueWriter const &argWriter) mutable noexcept { WriteProperty(argWriter, name, *field); };
   }
 };
 
@@ -661,7 +652,7 @@ struct ModuleConstantInfo<void (TModule::*)(ReactConstantProvider &) noexcept> {
   using MethodType = void (TModule::*)(ReactConstantProvider &) noexcept;
 
   static ConstantProviderDelegate GetConstantProvider(void *module, MethodType method) noexcept {
-    return [ module = static_cast<ModuleType *>(module), method ](IJSValueWriter const &argWriter) mutable noexcept {
+    return [module = static_cast<ModuleType *>(module), method](IJSValueWriter const &argWriter) mutable noexcept {
       ReactConstantProvider constantProvider{argWriter};
       (module->*method)(constantProvider);
     };
@@ -694,9 +685,9 @@ struct ModuleEventFieldInfo<TFunc<void(TArgs...)> TModule::*> {
       FieldType field,
       std::wstring_view eventName,
       std::wstring_view eventEmitterName) noexcept {
-    return [ module = static_cast<ModuleType *>(module), field, eventName, eventEmitterName ](
-        IReactContext const &reactContext) noexcept {
-      module->*field = [ reactContext, eventEmitterName, eventName ](TArgs... args) noexcept {
+    return [module = static_cast<ModuleType *>(module), field, eventName, eventEmitterName](
+               IReactContext const &reactContext) noexcept {
+      module->*field = [reactContext, eventEmitterName, eventName](TArgs... args) noexcept {
         reactContext.EmitJSEvent(
             eventEmitterName, eventName, [&args...]([[maybe_unused]] IJSValueWriter const &argWriter) noexcept {
               (void)argWriter; // [[maybe_unused]] above does not work
@@ -721,9 +712,9 @@ struct ModuleFunctionFieldInfo<TFunc<void(TArgs...)> TModule::*> {
       FieldType field,
       std::wstring_view functionName,
       std::wstring_view moduleName) noexcept {
-    return [ module = static_cast<ModuleType *>(module), field, functionName, moduleName ](
-        IReactContext const &reactContext) noexcept {
-      module->*field = [ reactContext, functionName, moduleName ](TArgs... args) noexcept {
+    return [module = static_cast<ModuleType *>(module), field, functionName, moduleName](
+               IReactContext const &reactContext) noexcept {
+      module->*field = [reactContext, functionName, moduleName](TArgs... args) noexcept {
         reactContext.CallJSFunction(moduleName, functionName, [&args...](IJSValueWriter const &argWriter) noexcept {
           WriteArgs(argWriter, args...);
         });
@@ -1020,5 +1011,4 @@ inline ReactModuleProvider MakeTurboModuleProvider() noexcept {
     return moduleObject;
   };
 }
-
 } // namespace winrt::Microsoft::ReactNative
