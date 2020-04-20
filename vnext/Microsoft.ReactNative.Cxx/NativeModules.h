@@ -171,13 +171,13 @@ using GetCallbackSignature = typename GetCallbackSignatureImpl<TCallback>::Type;
 
 template <template <class> class TCallback, class... TArgs>
 struct GetCallbackSignatureImpl<TCallback<void(TArgs...)>> {
-  using Type = CallbackSignature<TArgs...>;
+  using Type = CallbackSignature<RemoveConstRef<TArgs>...>;
 };
 
 #if defined(__cpp_noexcept_function_type) || (_HAS_NOEXCEPT_FUNCTION_TYPES == 1)
 template <template <class> class TCallback, class... TArgs>
 struct GetCallbackSignatureImpl<TCallback<void(TArgs...) noexcept>> {
-  using Type = CallbackSignature<TArgs...>;
+  using Type = CallbackSignature<RemoveConstRef<TArgs>...>;
 };
 #endif
 
@@ -386,6 +386,11 @@ struct MakeCallbackSignaturesImpl {
 
 template <class TOutputCallbackTuple>
 struct MakeCallbackSignaturesImpl<void, TOutputCallbackTuple> {
+  using Type = TransformListItems<GetCallbackSignature, TOutputCallbackTuple>;
+};
+
+template <class TOutputCallbackTuple>
+struct MakeCallbackSignaturesImpl<winrt::fire_and_forget, TOutputCallbackTuple> {
   using Type = TransformListItems<GetCallbackSignature, TOutputCallbackTuple>;
 };
 
