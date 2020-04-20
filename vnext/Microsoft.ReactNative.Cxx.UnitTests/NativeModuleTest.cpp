@@ -635,7 +635,6 @@ TEST_CLASS (NativeModuleTest) {
     m_builderMock.Call1(L"StaticSayHello", std::function<void(const std::string &)>([
                         ](const std::string &result) noexcept { TestCheck(result == "Hello"); }));
     TestCheck(m_builderMock.IsResolveCallbackCalled());
-    TestCheck(m_builderMock.IsResolveCallbackCalled());
   }
 
   TEST_METHOD(TestMethodCall_SayHello0) {
