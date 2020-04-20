@@ -310,7 +310,7 @@ struct MyTurboModule {
       std::function<void(std::string const &)> const &reject) noexcept {
     reject("Goodbye");
   }
-#if 0
+
   REACT_METHOD(DividePromise)
   void DividePromise(int x, int y, React::ReactPromise<int> const &result) noexcept {
     if (y != 0) {
@@ -347,7 +347,7 @@ struct MyTurboModule {
 
   REACT_METHOD(NegateDispatchQueuePromise)
   void NegateDispatchQueuePromise(int x, React::ReactPromise<int> const &result) noexcept {
-    Mso::DispatchQueue::ConcurrentQueue().Post([x, result]() noexcept {
+    Mso::DispatchQueue::ConcurrentQueue().Post([ x, result ]() noexcept {
       if (x >= 0) {
         result.Resolve(-x);
       } else {
@@ -360,7 +360,7 @@ struct MyTurboModule {
 
   REACT_METHOD(NegateFuturePromise)
   void NegateFuturePromise(int x, React::ReactPromise<int> const &result) noexcept {
-    Mso::PostFuture([x, result]() noexcept {
+    Mso::PostFuture([ x, result ]() noexcept {
       if (x >= 0) {
         result.Resolve(-x);
       } else {
@@ -429,7 +429,7 @@ struct MyTurboModule {
 
   REACT_METHOD(StaticNegateDispatchQueuePromise)
   static void StaticNegateDispatchQueuePromise(int x, React::ReactPromise<int> const &result) noexcept {
-    Mso::DispatchQueue::ConcurrentQueue().Post([x, result]() noexcept {
+    Mso::DispatchQueue::ConcurrentQueue().Post([ x, result ]() noexcept {
       if (x >= 0) {
         result.Resolve(-x);
       } else {
@@ -442,7 +442,7 @@ struct MyTurboModule {
 
   REACT_METHOD(StaticNegateFuturePromise)
   static void StaticNegateFuturePromise(int x, React::ReactPromise<int> const &result) noexcept {
-    Mso::PostFuture([x, result]() noexcept {
+    Mso::PostFuture([ x, result ]() noexcept {
       if (x >= 0) {
         result.Resolve(-x);
       } else {
@@ -474,7 +474,7 @@ struct MyTurboModule {
     error.Message = "Promise rejected";
     result.Reject(std::move(error));
   }
-
+#if 0
   REACT_SYNC_METHOD(AddSync)
   int AddSync(int x, int y) noexcept {
     return x + y;
@@ -632,6 +632,22 @@ struct MyTurboModuleSpec : winrt::Microsoft::ReactNative::TurboModuleSpec {
       Method<void(int, Callback<int>, Callback<std::string>) noexcept>{35, L"StaticNegateFutureCallbacks"},
       Method<void(Callback<std::string>, Callback<std::string>) noexcept>{36, L"StaticResolveSayHelloCallbacks"},
       Method<void(Callback<std::string>, Callback<std::string>) noexcept>{37, L"StaticRejectSayHelloCallbacks"},
+      Method<void(int, int, Promise<int>) noexcept>{38, L"DividePromise"},
+      Method<void(int, Promise<int>) noexcept>{39, L"NegatePromise"},
+      Method<void(int, Promise<int>) noexcept>{40, L"NegateAsyncPromise"},
+      Method<void(int, Promise<int>) noexcept>{41, L"NegateDispatchQueuePromise"},
+      Method<void(int, Promise<int>) noexcept>{42, L"NegateFuturePromise"},
+      Method<void(int, Promise<void>) noexcept>{43, L"voidPromise"},
+      Method<void(Promise<std::string>) noexcept>{44, L"ResolveSayHelloPromise"},
+      Method<void(Promise<std::string>) noexcept>{45, L"RejectSayHelloPromise"},
+      Method<void(int, int, Promise<int>) noexcept>{46, L"StaticDividePromise"},
+      Method<void(int, Promise<int>) noexcept>{47, L"StaticNegatePromise"},
+      Method<void(int, Promise<int>) noexcept>{48, L"StaticNegateAsyncPromise"},
+      Method<void(int, Promise<int>) noexcept>{49, L"StaticNegateDispatchQueuePromise"},
+      Method<void(int, Promise<int>) noexcept>{50, L"StaticNegateFuturePromise"},
+      Method<void(int, Promise<void>) noexcept>{51, L"staticVoidPromise"},
+      Method<void(Promise<std::string>) noexcept>{52, L"StaticResolveSayHelloPromise"},
+      Method<void(Promise<std::string>) noexcept>{53, L"StaticRejectSayHelloPromise"},
   };
 
   template <class TModule>
@@ -940,6 +956,118 @@ struct MyTurboModuleSpec : winrt::Microsoft::ReactNative::TurboModuleSpec {
         "    REACT_METHOD(StaticRejectSayHelloCallbacks) winrt::fire_and_forget StaticRejectSayHelloCallbacks(ReactCallback<std::string>, ReactCallback<std::string>) noexcept {/*implementation*/}\n"
         "    REACT_METHOD(StaticRejectSayHelloCallbacks) static void StaticRejectSayHelloCallbacks(ReactCallback<std::string>, ReactCallback<std::string>) noexcept {/*implementation*/}\n"
         "    REACT_METHOD(StaticRejectSayHelloCallbacks) static winrt::fire_and_forget StaticRejectSayHelloCallbacks(ReactCallback<std::string>, ReactCallback<std::string>) noexcept {/*implementation*/}\n");
+    REACT_SHOW_METHOD_SPEC_ERRORS(
+        38,
+        "DividePromise",
+        "    REACT_METHOD(DividePromise) void DividePromise(int, int, ReactPromise<int>) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(DividePromise) winrt::fire_and_forget DividePromise(int, int, ReactPromise<int>) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(DividePromise) static void DividePromise(int, int, ReactPromise<int>) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(DividePromise) static winrt::fire_and_forget DividePromise(int, int, ReactPromise<int>) noexcept {/*implementation*/}\n");
+    REACT_SHOW_METHOD_SPEC_ERRORS(
+        39,
+        "NegatePromise",
+        "    REACT_METHOD(NegatePromise) void NegatePromise(int, ReactPromise<int>) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(NegatePromise) winrt::fire_and_forget NegatePromise(int, ReactPromise<int>) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(NegatePromise) static void NegatePromise(int, ReactPromise<int>) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(NegatePromise) static winrt::fire_and_forget NegatePromise(int, ReactPromise<int>) noexcept {/*implementation*/}\n");
+    REACT_SHOW_METHOD_SPEC_ERRORS(
+        40,
+        "NegateAsyncPromise",
+        "    REACT_METHOD(NegateAsyncPromise) void NegateAsyncPromise(int, ReactPromise<int>) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(NegateAsyncPromise) winrt::fire_and_forget NegateAsyncPromise(int, ReactPromise<int>) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(NegateAsyncPromise) static void NegateAsyncPromise(int, ReactPromise<int>) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(NegateAsyncPromise) static winrt::fire_and_forget NegateAsyncPromise(int, ReactPromise<int>) noexcept {/*implementation*/}\n");
+    REACT_SHOW_METHOD_SPEC_ERRORS(
+        41,
+        "NegateDispatchQueuePromise",
+        "    REACT_METHOD(NegateDispatchQueuePromise) void NegateDispatchQueuePromise(int, ReactPromise<int>) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(NegateDispatchQueuePromise) winrt::fire_and_forget NegateDispatchQueuePromise(int, ReactPromise<int>) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(NegateDispatchQueuePromise) static void NegateDispatchQueuePromise(int, ReactPromise<int>) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(NegateDispatchQueuePromise) static winrt::fire_and_forget NegateDispatchQueuePromise(int, ReactPromise<int>) noexcept {/*implementation*/}\n");
+    REACT_SHOW_METHOD_SPEC_ERRORS(
+        42,
+        "NegateFuturePromise",
+        "    REACT_METHOD(NegateFuturePromise) void NegateFuturePromise(int, ReactPromise<int>) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(NegateFuturePromise) winrt::fire_and_forget NegateFuturePromise(int, ReactPromise<int>) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(NegateFuturePromise) static void NegateFuturePromise(int, ReactPromise<int>) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(NegateFuturePromise) static winrt::fire_and_forget NegateFuturePromise(int, ReactPromise<int>) noexcept {/*implementation*/}\n");
+    REACT_SHOW_METHOD_SPEC_ERRORS(
+        43,
+        "voidPromise",
+        "    REACT_METHOD(voidPromise) void voidPromise(int, ReactPromise<void>) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(voidPromise) winrt::fire_and_forget voidPromise(int, ReactPromise<void>) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(voidPromise) static void voidPromise(int, ReactPromise<void>) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(voidPromise) static winrt::fire_and_forget voidPromise(int, ReactPromise<void>) noexcept {/*implementation*/}\n");
+    REACT_SHOW_METHOD_SPEC_ERRORS(
+        44,
+        "ResolveSayHelloPromise",
+        "    REACT_METHOD(ResolveSayHelloPromise) void ResolveSayHelloPromise(ReactPromise<std::string>) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(ResolveSayHelloPromise) winrt::fire_and_forget ResolveSayHelloPromise(ReactPromise<std::string>) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(ResolveSayHelloPromise) static void ResolveSayHelloPromise(ReactPromise<std::string>) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(ResolveSayHelloPromise) static winrt::fire_and_forget ResolveSayHelloPromise(ReactPromise<std::string>) noexcept {/*implementation*/}\n");
+    REACT_SHOW_METHOD_SPEC_ERRORS(
+        45,
+        "RejectSayHelloPromise",
+        "    REACT_METHOD(RejectSayHelloPromise) void RejectSayHelloPromise(ReactPromise<std::string>) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(RejectSayHelloPromise) winrt::fire_and_forget RejectSayHelloPromise(ReactPromise<std::string>) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(RejectSayHelloPromise) static void RejectSayHelloPromise(ReactPromise<std::string>) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(RejectSayHelloPromise) static winrt::fire_and_forget RejectSayHelloPromise(ReactPromise<std::string>) noexcept {/*implementation*/}\n");
+    REACT_SHOW_METHOD_SPEC_ERRORS(
+        46,
+        "StaticDividePromise",
+        "    REACT_METHOD(StaticDividePromise) void StaticDividePromise(int, int, ReactPromise<int>) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(StaticDividePromise) winrt::fire_and_forget StaticDividePromise(int, int, ReactPromise<int>) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(StaticDividePromise) static void StaticDividePromise(int, int, ReactPromise<int>) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(StaticDividePromise) static winrt::fire_and_forget StaticDividePromise(int, int, ReactPromise<int>) noexcept {/*implementation*/}\n");
+    REACT_SHOW_METHOD_SPEC_ERRORS(
+        47,
+        "StaticNegatePromise",
+        "    REACT_METHOD(StaticNegatePromise) void StaticNegatePromise(int, ReactPromise<int>) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(StaticNegatePromise) winrt::fire_and_forget StaticNegatePromise(int, ReactPromise<int>) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(StaticNegatePromise) static void StaticNegatePromise(int, ReactPromise<int>) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(StaticNegatePromise) static winrt::fire_and_forget StaticNegatePromise(int, ReactPromise<int>) noexcept {/*implementation*/}\n");
+    REACT_SHOW_METHOD_SPEC_ERRORS(
+        48,
+        "StaticNegateAsyncPromise",
+        "    REACT_METHOD(StaticNegateAsyncPromise) void StaticNegateAsyncPromise(int, ReactPromise<int>) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(StaticNegateAsyncPromise) winrt::fire_and_forget StaticNegateAsyncPromise(int, ReactPromise<int>) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(StaticNegateAsyncPromise) static void StaticNegateAsyncPromise(int, ReactPromise<int>) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(StaticNegateAsyncPromise) static winrt::fire_and_forget StaticNegateAsyncPromise(int, ReactPromise<int>) noexcept {/*implementation*/}\n");
+    REACT_SHOW_METHOD_SPEC_ERRORS(
+        49,
+        "StaticNegateDispatchQueuePromise",
+        "    REACT_METHOD(StaticNegateDispatchQueuePromise) void StaticNegateDispatchQueuePromise(int, ReactPromise<int>) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(StaticNegateDispatchQueuePromise) winrt::fire_and_forget StaticNegateDispatchQueuePromise(int, ReactPromise<int>) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(StaticNegateDispatchQueuePromise) static void StaticNegateDispatchQueuePromise(int, ReactPromise<int>) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(StaticNegateDispatchQueuePromise) static winrt::fire_and_forget StaticNegateDispatchQueuePromise(int, ReactPromise<int>) noexcept {/*implementation*/}\n");
+    REACT_SHOW_METHOD_SPEC_ERRORS(
+        50,
+        "StaticNegateFuturePromise",
+        "    REACT_METHOD(StaticNegateFuturePromise) void StaticNegateFuturePromise(int, ReactPromise<int>) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(StaticNegateFuturePromise) winrt::fire_and_forget StaticNegateFuturePromise(int, ReactPromise<int>) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(StaticNegateFuturePromise) static void StaticNegateFuturePromise(int, ReactPromise<int>) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(StaticNegateFuturePromise) static winrt::fire_and_forget StaticNegateFuturePromise(int, ReactPromise<int>) noexcept {/*implementation*/}\n");
+    REACT_SHOW_METHOD_SPEC_ERRORS(
+        51,
+        "staticVoidPromise",
+        "    REACT_METHOD(staticVoidPromise) void staticVoidPromise(int, ReactPromise<void>) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(staticVoidPromise) winrt::fire_and_forget staticVoidPromise(int, ReactPromise<void>) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(staticVoidPromise) static void staticVoidPromise(int, ReactPromise<void>) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(staticVoidPromise) static winrt::fire_and_forget staticVoidPromise(int, ReactPromise<void>) noexcept {/*implementation*/}\n");
+    REACT_SHOW_METHOD_SPEC_ERRORS(
+        52,
+        "StaticResolveSayHelloPromise",
+        "    REACT_METHOD(StaticResolveSayHelloPromise) void StaticResolveSayHelloPromise(ReactPromise<std::string>) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(StaticResolveSayHelloPromise) winrt::fire_and_forget StaticResolveSayHelloPromise(ReactPromise<std::string>) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(StaticResolveSayHelloPromise) static void StaticResolveSayHelloPromise(ReactPromise<std::string>) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(StaticResolveSayHelloPromise) static winrt::fire_and_forget StaticResolveSayHelloPromise(ReactPromise<std::string>) noexcept {/*implementation*/}\n");
+    REACT_SHOW_METHOD_SPEC_ERRORS(
+        53,
+        "StaticRejectSayHelloPromise",
+        "    REACT_METHOD(StaticRejectSayHelloPromise) void StaticRejectSayHelloPromise(ReactPromise<std::string>) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(StaticRejectSayHelloPromise) winrt::fire_and_forget StaticRejectSayHelloPromise(ReactPromise<std::string>) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(StaticRejectSayHelloPromise) static void StaticRejectSayHelloPromise(ReactPromise<std::string>) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(StaticRejectSayHelloPromise) static winrt::fire_and_forget StaticRejectSayHelloPromise(ReactPromise<std::string>) noexcept {/*implementation*/}\n");
   }
 };
 
@@ -1345,7 +1473,7 @@ TEST_CLASS (TurboModuleTest) {
             [](std::string const &error) noexcept { TestCheck(error == "Goodbye"); }));
     TestCheck(m_builderMock.IsRejectCallbackCalled());
   }
-#if 0
+
   TEST_METHOD(TestMethodCall_DividePromise) {
     m_builderMock.Call2(
         L"DividePromise",
@@ -1629,7 +1757,7 @@ TEST_CLASS (TurboModuleTest) {
             [](React::JSValue const &error) noexcept { TestCheck(error["message"] == "Promise rejected"); }));
     TestCheck(m_builderMock.IsRejectCallbackCalled());
   }
-
+#if 0
   TEST_METHOD(TestMethodSyncCall_AddSync) {
     int result;
     m_builderMock.CallSync(L"AddSync", /*out*/ result, 3, 5);
