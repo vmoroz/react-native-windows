@@ -5,8 +5,8 @@
 #include "ReactModuleBuilderMock.h"
 
 #include <sstream>
-#include "future/futureWait.h"
 #include "Point.h"
+#include "future/futureWait.h"
 
 namespace ReactNativeTests {
 
@@ -1381,10 +1381,11 @@ TEST_CLASS (NativeModuleTest) {
 
   TEST_METHOD(TestEvent_JSEventEmitterEventField) {
     bool eventRaised = false;
-    m_builderMock.ExpectEvent(L"MyEventEmitter", L"onStringEvent", [&eventRaised](React::JSValueArray const &args) noexcept {
-      TestCheckEqual("Hello World!", args[0]);
-      eventRaised = true;
-    });
+    m_builderMock.ExpectEvent(
+        L"MyEventEmitter", L"onStringEvent", [&eventRaised](React::JSValueArray const &args) noexcept {
+          TestCheckEqual("Hello World!", args[0]);
+          eventRaised = true;
+        });
 
     m_module->OnStringEvent("Hello World!");
     TestCheck(eventRaised == true);
@@ -1484,10 +1485,11 @@ TEST_CLASS (NativeModuleTest) {
 
   TEST_METHOD(TestFunction_JSModuleNameFunctionField) {
     bool functionCalled = false;
-    m_builderMock.ExpectFunction(L"MyModule", L"stringFunc", [&functionCalled](React::JSValueArray const &args) noexcept {
-      TestCheck(args[0] == "Hello World!");
-      functionCalled = true;
-    });
+    m_builderMock.ExpectFunction(
+        L"MyModule", L"stringFunc", [&functionCalled](React::JSValueArray const &args) noexcept {
+          TestCheck(args[0] == "Hello World!");
+          functionCalled = true;
+        });
 
     m_module->JSStringFunction("Hello World!");
     TestCheck(functionCalled == true);

@@ -1087,5 +1087,5 @@ inline ReactModuleProvider MakeTurboModuleProvider() noexcept {
 } // namespace winrt::Microsoft::ReactNative
 
 namespace React {
-  using namespace winrt::Microsoft::ReactNative;
+using namespace winrt::Microsoft::ReactNative;
 }

@@ -11,8 +11,8 @@
 namespace ReactNativeTests {
 REACT_MODULE(MyTurboModule)
 struct MyTurboModule {
-  //REACT_INIT(Initialize)
-  //void Initialize(React::IReactContext const &context) noexcept {
+  // REACT_INIT(Initialize)
+  // void Initialize(React::IReactContext const &context) noexcept {
   //  IsInitialized = true;
   //  TestCheck(context != nullptr);
 
@@ -689,10 +689,8 @@ TEST_CLASS (TurboModuleTest) {
   }
 
   TEST_METHOD(TestMethodCall_StaticSayHello) {
-    m_builderMock.Call1(
-        L"StaticSayHello", std::function<void(const std::string &)>([](const std::string &result) noexcept {
-          TestCheck(result == "Hello");
-        }));
+    m_builderMock.Call1(L"StaticSayHello", std::function<void(const std::string &)>([
+                        ](const std::string &result) noexcept { TestCheck(result == "Hello"); }));
     TestCheck(m_builderMock.IsResolveCallbackCalled());
   }
 };
