@@ -105,6 +105,22 @@
 #define REACT_FUNCTION(/* field, [opt] functionName, [opt] moduleName */...) \
   INTERNAL_REACT_MEMBER(__VA_ARGS__)(FunctionField, __VA_ARGS__)
 
+#define REACT_SHOW_METHOD_SIGNATURES(methodName, signatures)                      \
+  " (see details below in output).\n"                                             \
+  "  It must be one of the following:\n" signatures                               \
+  "  The C++ method name could be different. In that case add the L\"" methodName \
+  "\" to the attribute:\n"                                                        \
+  "    REACT_METHOD(method, L\"" methodName "\")\n...\n"
+
+#define REACT_SHOW_METHOD_SPEC_ERRORS(index, methodName, signatures)                                        \
+  static_assert(methodCheckResults[index].IsUniqueName, "Name '" methodName "' used for multiple methods"); \
+  static_assert(                                                                                            \
+      methodCheckResults[index].IsMethodFound,                                                              \
+      "Method '" methodName "' is not defined" REACT_SHOW_METHOD_SIGNATURES(methodName, signatures));       \
+  static_assert(                                                                                            \
+      methodCheckResults[index].IsSignatureMatching,                                                        \
+      "Method '" methodName "' does not match signature" REACT_SHOW_METHOD_SIGNATURES(methodName, signatures));
+
 //
 // Code below helps to register React native modules and verify method signatures
 // against specification.
@@ -966,6 +982,61 @@ struct ReactMethodVerifier {
 
  private:
   bool m_result{false};
+};
+
+struct TurboModuleSpec {
+  struct BaseMethodSpec {
+    constexpr BaseMethodSpec(int index, std::wstring_view name) : Index{index}, Name{name} {}
+
+    int Index;
+    std::wstring_view Name;
+  };
+
+  template <class TSignature>
+  struct Method : BaseMethodSpec {
+    using BaseMethodSpec::BaseMethodSpec;
+    using Signature = TSignature;
+  };
+
+  template <class... TArgs>
+  struct Callback : std::tuple<TArgs...> {};
+
+  template <class... TArgs>
+  struct Promise : std::tuple<TArgs...> {};
+
+  struct MethodCheckResult {
+    bool IsUniqueName{false};
+    bool IsMethodFound{false};
+    bool IsSignatureMatching{true};
+  };
+
+  template <class TModule, class TModuleSpec, size_t I>
+  static constexpr MethodCheckResult CheckMethod() noexcept {
+    constexpr auto verificationResult =
+        ReactModuleVerifier<TModule>::VerifyAsyncMethod(std::get<I>(TModuleSpec::methods).Name);
+    MethodCheckResult result{};
+    result.IsUniqueName = verificationResult.MethodNameCount <= 1;
+    result.IsMethodFound = verificationResult.MatchCount == 1;
+    if constexpr (verificationResult.MatchCount == 1) {
+      result.IsSignatureMatching = ReactMethodVerifier<
+          TModule,
+          verificationResult.MatchedMemberId,
+          typename RemoveConstRef<decltype(std::get<I>(TModuleSpec::methods))>::Signature>::Verify();
+    }
+
+    return result;
+  };
+
+  template <class TModule, class TModuleSpec, size_t... I>
+  static constexpr auto CheckMethodsHelper(std::index_sequence<I...>) noexcept {
+    return std::array<MethodCheckResult, sizeof...(I)>{CheckMethod<TModule, TModuleSpec, I>()...};
+  };
+
+  template <class TModule, class TModuleSpec>
+  static constexpr auto CheckMethods() noexcept {
+    return CheckMethodsHelper<TModule, TModuleSpec>(
+        std::make_index_sequence<std::tuple_size_v<decltype(TModuleSpec::methods)>>{});
+  }
 };
 
 template <class T>
