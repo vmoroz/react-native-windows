@@ -297,6 +297,7 @@ struct MethodSignatureMatchResult {
   bool AreArgsMatching;
   bool AreCallbacksMatching;
   bool IsPromiseMathcing;
+  bool IsSucceeded;
 };
 
 template <class TResult, class TInputArgs, class TOutputCallbacks, class TOutputPromises>
@@ -308,7 +309,7 @@ struct MethodSignature {
   constexpr static size_t ArgCount = std::tuple_size_v<InputArgs>;
   constexpr static size_t CallbackCount = std::tuple_size_v<TOutputCallbacks>;
 
-  static constexpr int Compare(size_t left, size_t right) noexcept {
+  static constexpr int CompareSize(size_t left, size_t right) noexcept {
     if (left < right) {
       return -1;
     } else if (right < left) {
@@ -336,19 +337,22 @@ struct MethodSignature {
 
     result.IsResultMatching = std::is_same_v<Result, typename TOtherMethodSignature::Result>;
 
-    result.ArgCountCompare = Compare(ArgCount, TOtherMethodSignature::ArgCount);
+    result.ArgCountCompare = CompareSize(ArgCount, TOtherMethodSignature::ArgCount);
     if (result.ArgCountCompare == 0) {
       result.AreArgsMatching =
           MatchInputArgs<typename TOtherMethodSignature::InputArgs>(std::make_index_sequence<ArgCount>{});
     }
 
-    result.CallbackCountCompare = Compare(CallbackCount, TOtherMethodSignature::CallbackCount);
+    result.CallbackCountCompare = CompareSize(CallbackCount, TOtherMethodSignature::CallbackCount);
     if (result.CallbackCountCompare == 0) {
       result.AreCallbacksMatching = MatchOutputCallbacks<typename TOtherMethodSignature::OutputCallbacks>(
           std::make_index_sequence<CallbackCount>{});
     }
 
     result.IsPromiseMathcing = std::is_same_v<OutputPromises, typename TOtherMethodSignature::OutputPromises>;
+
+    result.IsSucceeded = result.IsResultMatching && result.ArgCountCompare == 0 && result.AreArgsMatching &&
+        result.CallbackCountCompare == 0 && result.AreCallbacksMatching && result.IsPromiseMathcing;
 
     return result;
   }
@@ -388,6 +392,29 @@ struct MakeCallbackSignaturesImpl<void, TOutputCallbackTuple> {
 template <class TResult, class TOutputCallbackTuple>
 using MakeCallbackSignatures = typename MakeCallbackSignaturesImpl<TResult, TOutputCallbackTuple>::Type;
 
+template <class TMethodSignature, class TMethodSpecSignature>
+constexpr static bool MatchMethodSignature() noexcept {
+  constexpr MethodSignatureMatchResult matchResult = TMethodSignature::template Match<TMethodSpecSignature>();
+
+  static_assert(matchResult.IsResultMatching, "Method return type is different from the method spec.");
+
+  static_assert(matchResult.ArgCountCompare >= 0, "Method has less arguments than method spec.");
+  static_assert(matchResult.ArgCountCompare <= 0, "Method has more arguments than method spec.");
+  if constexpr (matchResult.ArgCountCompare == 0) {
+    static_assert(matchResult.AreArgsMatching, "Method argument types are different from the method spec.");
+  }
+
+  static_assert(matchResult.CallbackCountCompare >= 0, "Method has less callbacks than method spec.");
+  static_assert(matchResult.CallbackCountCompare <= 0, "Method has more callbacks than method spec.");
+  if constexpr (matchResult.CallbackCountCompare == 0) {
+    static_assert(matchResult.AreCallbacksMatching, "Method callback types are different from the method spec.");
+  }
+
+  static_assert(matchResult.IsPromiseMathcing, "Method Promise type is different from the method spec.");
+
+  return matchResult.IsSucceeded;
+}
+
 template <class TSignature>
 struct ModuleMethodInfoBase;
 
@@ -418,12 +445,6 @@ struct ModuleMethodInfoBase<TResult(TArgs...) noexcept> {
     } else {
       return MethodReturnType::Void;
     }
-  }
-
-  template <class TSignatureSpec>
-  static constexpr bool Matches() noexcept {
-    MethodSignatureMatchResult matchResult = Signature::template Match<TSignatureSpec>();
-    return true;
   }
 };
 
@@ -458,14 +479,15 @@ struct ModuleMethodInfo<TResult (TModule::*)(TArgs...) noexcept> : ModuleMethodI
       } else if constexpr (Super::PromiseCount == 1) {
         auto promises = std::tuple{
             std::tuple_element_t<PromiseIndex, typename Super::OutputPromiseTuple>{argWriter, resolve, reject}...};
-        (module->*method)(std::get<ArgIndex>(std::move(inputArgs))..., std::get<PromiseIndex>(promises)...);
+        (module->*method)(std::get<ArgIndex>(std::move(inputArgs))..., std::get<PromiseIndex>(std::move(promises))...);
       } else {
         // When method uses two callbacks the order of resolve and reject can be reversed.
         auto resultCallbacks = std::tuple{resolve, reject};
         auto callbacks = std::tuple{
             CallbackCreator<std::tuple_element_t<CallbackIndex, typename Super::OutputCallbackTuple>>::Create(
                 argWriter, std::get<CallbackIndex>(resultCallbacks))...};
-        (module->*method)(std::get<ArgIndex>(std::move(inputArgs))..., std::get<CallbackIndex>(callbacks)...);
+        (module->*method)(
+            std::get<ArgIndex>(std::move(inputArgs))..., std::get<CallbackIndex>(std::move(callbacks))...);
       }
     };
   }
@@ -479,6 +501,12 @@ struct ModuleMethodInfo<TResult (TModule::*)(TArgs...) noexcept> : ModuleMethodI
         std::make_index_sequence<Super::InputArgCount>{},
         std::make_index_sequence<Super::CallbackCount>{},
         std::make_index_sequence<Super::PromiseCount>{});
+  }
+
+  template <class TMethodSpec>
+  static constexpr bool Match() noexcept {
+    // Do not move this method to the ModuleMethodInfoBase for better error reporting.
+    return MatchMethodSignature<typename Super::Signature, typename TMethodSpec::Signature>();
   }
 };
 
@@ -508,14 +536,14 @@ struct ModuleMethodInfo<TResult (*)(TArgs...) noexcept> : ModuleMethodInfoBase<T
       } else if constexpr (Super::PromiseCount == 1) {
         auto promises = std::tuple{
             std::tuple_element_t<PromiseIndex, typename Super::OutputPromiseTuple>{argWriter, resolve, reject}...};
-        (*method)(std::get<ArgIndex>(std::move(inputArgs))..., std::get<PromiseIndex>(promises)...);
+        (*method)(std::get<ArgIndex>(std::move(inputArgs))..., std::get<PromiseIndex>(std::move(promises))...);
       } else {
         // When method uses two callbacks the order of resolve and reject can be reversed.
         auto resultCallbacks = std::tuple{resolve, reject};
         auto callbacks = std::tuple{
             CallbackCreator<std::tuple_element_t<CallbackIndex, typename Super::OutputCallbackTuple>>::Create(
                 argWriter, std::get<CallbackIndex>(resultCallbacks))...};
-        (*method)(std::get<ArgIndex>(std::move(inputArgs))..., std::get<CallbackIndex>(callbacks)...);
+        (*method)(std::get<ArgIndex>(std::move(inputArgs))..., std::get<CallbackIndex>(std::move(callbacks))...);
       }
     };
   }
@@ -528,6 +556,12 @@ struct ModuleMethodInfo<TResult (*)(TArgs...) noexcept> : ModuleMethodInfoBase<T
         std::make_index_sequence<Super::InputArgCount>{},
         std::make_index_sequence<Super::CallbackCount>{},
         std::make_index_sequence<Super::PromiseCount>{});
+  }
+
+  template <class TMethodSpec>
+  static constexpr bool Match() noexcept {
+    // Do not move this method to the ModuleMethodInfoBase for better error reporting.
+    return MatchMethodSignature<typename Super::Signature, typename TMethodSpec::Signature>();
   }
 };
 
@@ -933,7 +967,7 @@ struct ReactModuleVerifier {
   VerificationResult m_result;
 };
 
-template <class TModule, int I, class TSignature>
+template <class TModule, int I, class TMethodSpec>
 struct ReactMethodVerifier {
   static constexpr bool Verify() noexcept {
     ReactMethodVerifier verifier{};
@@ -944,7 +978,7 @@ struct ReactMethodVerifier {
   template <class TMember, class TAttribute, int I>
   constexpr void
   Visit([[maybe_unused]] TMember member, ReactAttributeId<I> /*attributeId*/, TAttribute /*attributeInfo*/) noexcept {
-    m_result = ModuleMethodInfo<TMember>::template Matches<TSignature>();
+    m_result = ModuleMethodInfo<TMember>::template Match<TMethodSpec>();
   }
 
  private:
@@ -988,7 +1022,7 @@ struct TurboModuleSpec {
       result.IsSignatureMatching = ReactMethodVerifier<
           TModule,
           verificationResult.MatchedMemberId,
-          typename RemoveConstRef<decltype(std::get<I>(TModuleSpec::methods))>::Signature>::Verify();
+          RemoveConstRef<decltype(std::get<I>(TModuleSpec::methods))>>::Verify();
     }
 
     return result;
