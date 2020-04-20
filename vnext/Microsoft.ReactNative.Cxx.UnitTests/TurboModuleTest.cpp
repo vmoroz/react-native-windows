@@ -5,7 +5,7 @@
 #include "ReactModuleBuilderMock.h"
 
 #include <sstream>
-#include "NativeModules.h"
+#include "Point.h"
 #include "future/futureWait.h"
 
 namespace ReactNativeTests {
@@ -55,7 +55,7 @@ struct MyTurboModule {
   void SayHello0() noexcept {
     Message = "Hello_0";
   }
-#if 0
+
   REACT_METHOD(PrintPoint)
   void PrintPoint(Point pt) noexcept {
     std::stringstream ss;
@@ -70,9 +70,9 @@ struct MyTurboModule {
     Message = ss.str();
   }
 
-  REACT_METHOD(StaticSayHello1)
-  static void StaticSayHello1() noexcept {
-    StaticMessage = "Hello_1";
+  REACT_METHOD(StaticSayHello0)
+  static void StaticSayHello0() noexcept {
+    StaticMessage = "Hello_0";
   }
 
   REACT_METHOD(StaticPrintPoint)
@@ -88,7 +88,7 @@ struct MyTurboModule {
     ss << "Static Line: (" << start.X << ", " << start.Y << ")-(" << end.X << ", " << end.Y << ")";
     StaticMessage = ss.str();
   }
-
+#if 0
   REACT_METHOD(AddCallback)
   void AddCallback(int x, int y, std::function<void(int)> const &resolve) noexcept {
     resolve(x + y);
@@ -601,8 +601,11 @@ struct MyTurboModuleSpec : winrt::Microsoft::ReactNative::TurboModuleSpec {
       Method<void(int, Callback<int>) noexcept>{4, L"StaticNegate"},
       Method<void(Callback<std::string>) noexcept>{5, L"StaticSayHello"},
       Method<void() noexcept>{6, L"SayHello0"},
-      //Method<void(Point) noexcept>{7, L"PrintPoint"},
-      // Method<void(Point, Point) noexcept>{8, L"PrintLine"},
+      Method<void(Point) noexcept>{7, L"PrintPoint"},
+      Method<void(Point, Point) noexcept>{8, L"PrintLine"},
+      Method<void() noexcept>{9, L"StaticSayHello0"},
+      Method<void(Point) noexcept>{10, L"StaticPrintPoint"},
+      Method<void(Point, Point) noexcept>{11, L"StaticPrintLine"},
   };
 
   template <class TModule>
@@ -669,7 +672,42 @@ struct MyTurboModuleSpec : winrt::Microsoft::ReactNative::TurboModuleSpec {
         "    REACT_METHOD(SayHello0) void SayHello0() noexcept {/*implementation*/}\n"
         "    REACT_METHOD(SayHello0) winrt::fire_and_forget SayHello0() noexcept {/*implementation*/}\n"
         "    REACT_METHOD(SayHello0) static void SayHello0() noexcept {/*implementation*/}\n"
-        "    REACT_METHOD(SayHello0) static winrt::fire_and_forget SayHello0(SayHello0) noexcept {/*implementation*/}\n");
+        "    REACT_METHOD(SayHello0) static winrt::fire_and_forget SayHello0() noexcept {/*implementation*/}\n");
+    REACT_SHOW_METHOD_SPEC_ERRORS(
+        7,
+        "PrintPoint",
+        "    REACT_METHOD(PrintPoint) void PrintPoint(Point) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(PrintPoint) winrt::fire_and_forget PrintPoint(Point) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(PrintPoint) static void PrintPoint(Point) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(PrintPoint) static winrt::fire_and_forget PrintPoint(Point) noexcept {/*implementation*/}\n");
+    REACT_SHOW_METHOD_SPEC_ERRORS(
+        8,
+        "PrintLine",
+        "    REACT_METHOD(PrintPoint) void PrintLine(Point, Point) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(PrintPoint) winrt::fire_and_forget PrintLine(Point, Point) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(PrintPoint) static void PrintLine(Point, Point) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(PrintPoint) static winrt::fire_and_forget PrintLine(Point, Point) noexcept {/*implementation*/}\n");
+    REACT_SHOW_METHOD_SPEC_ERRORS(
+        9,
+        "StaticSayHello0",
+        "    REACT_METHOD(StaticSayHello0) void StaticSayHello0() noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(StaticSayHello0) winrt::fire_and_forget StaticSayHello0() noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(StaticSayHello0) static void StaticSayHello0() noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(StaticSayHello0) static winrt::fire_and_forget StaticSayHello0() noexcept {/*implementation*/}\n");
+    REACT_SHOW_METHOD_SPEC_ERRORS(
+        10,
+        "StaticPrintPoint",
+        "    REACT_METHOD(StaticPrintPoint) void StaticPrintPoint(Point) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(StaticPrintPoint) winrt::fire_and_forget StaticPrintPoint(Point) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(StaticPrintPoint) static void StaticPrintPoint(Point) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(StaticPrintPoint) static winrt::fire_and_forget StaticPrintPoint(Point) noexcept {/*implementation*/}\n");
+    REACT_SHOW_METHOD_SPEC_ERRORS(
+        11,
+        "StaticPrintLine",
+        "    REACT_METHOD(StaticPrintPoint) void StaticPrintLine(Point, Point) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(StaticPrintPoint) winrt::fire_and_forget StaticPrintLine(Point, Point) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(StaticPrintPoint) static void StaticPrintLine(Point, Point) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(StaticPrintPoint) static winrt::fire_and_forget StaticPrintLine(Point, Point) noexcept {/*implementation*/}\n");
   }
 };
 
@@ -727,7 +765,6 @@ TEST_CLASS (TurboModuleTest) {
     TestCheck(m_module->Message == "Hello_0");
   }
 
-#if 0
   TEST_METHOD(TestMethodCall_PrintPoint) {
     m_builderMock.Call0(L"PrintPoint", Point{/*X =*/3, /*Y =*/5});
     TestCheck(m_module->Message == "Point: (3, 5)");
@@ -738,21 +775,21 @@ TEST_CLASS (TurboModuleTest) {
     TestCheck(m_module->Message == "Line: (3, 5)-(6, 8)");
   }
 
-  TEST_METHOD(TestMethodCall_StaticSayHello1) {
-    m_builderMock.Call0(L"StaticSayHello1");
-    TestCheck(SimpleNativeModule::StaticMessage == "Hello_1");
+  TEST_METHOD(TestMethodCall_StaticSayHello0) {
+    m_builderMock.Call0(L"StaticSayHello0");
+    TestCheck(MyTurboModule::StaticMessage == "Hello_0");
   }
 
   TEST_METHOD(TestMethodCall_StaticPrintPoint) {
     m_builderMock.Call0(L"StaticPrintPoint", Point{/*X =*/13, /*Y =*/15});
-    TestCheck(SimpleNativeModule::StaticMessage == "Static Point: (13, 15)");
+    TestCheck(MyTurboModule::StaticMessage == "Static Point: (13, 15)");
   }
 
   TEST_METHOD(TestMethodCall_StaticPrintLine) {
     m_builderMock.Call0(L"StaticPrintLine", Point{/*X =*/13, /*Y =*/15}, Point{/*X =*/16, /*Y =*/18});
-    TestCheck(SimpleNativeModule::StaticMessage == "Static Line: (13, 15)-(16, 18)");
+    TestCheck(MyTurboModule::StaticMessage == "Static Line: (13, 15)-(16, 18)");
   }
-
+#if 0
   TEST_METHOD(TestMethodCall_AddCallback) {
     m_builderMock.Call1(
         L"AddCallback", std::function<void(int)>([](int result) noexcept { TestCheck(result == -1); }), 7, -8);
@@ -1524,7 +1561,7 @@ TEST_CLASS (TurboModuleTest) {
   TEST_METHOD(TestFunction_JSIntFunctionField) {
     bool functionCalled = false;
     m_builderMock.ExpectFunction(
-        L"SimpleNativeModule", L"JSIntFunction", [&functionCalled](React::JSValueArray const &args) noexcept {
+        L"MyTurboModule", L"JSIntFunction", [&functionCalled](React::JSValueArray const &args) noexcept {
           TestCheck(args[0] == 42);
           functionCalled = true;
         });
@@ -1536,7 +1573,7 @@ TEST_CLASS (TurboModuleTest) {
   TEST_METHOD(TestFunction_JSNameFunctionField) {
     bool functionCalled = false;
     m_builderMock.ExpectFunction(
-        L"SimpleNativeModule", L"pointFunc", [&functionCalled](React::JSValueArray const &args) noexcept {
+        L"MyTurboModule", L"pointFunc", [&functionCalled](React::JSValueArray const &args) noexcept {
           TestCheck(args[0]["X"] == 4);
           TestCheck(args[0]["Y"] == 2);
           functionCalled = true;
@@ -1549,7 +1586,7 @@ TEST_CLASS (TurboModuleTest) {
   TEST_METHOD(TestFunction_TwoArgFunctionField) {
     bool functionCalled = false;
     m_builderMock.ExpectFunction(
-        L"SimpleNativeModule", L"lineFunc", [&functionCalled](React::JSValueArray const &args) noexcept {
+        L"MyTurboModule", L"lineFunc", [&functionCalled](React::JSValueArray const &args) noexcept {
           TestCheck(args[0]["X"] == 4);
           TestCheck(args[0]["Y"] == 2);
           TestCheck(args[1]["X"] == 12);
@@ -1564,7 +1601,7 @@ TEST_CLASS (TurboModuleTest) {
   TEST_METHOD(TestFunction_NoArgFunctionField) {
     bool functionCalled = false;
     m_builderMock.ExpectFunction(
-        L"SimpleNativeModule", L"JSNoArgFunction", [&functionCalled](React::JSValueArray const &args) noexcept {
+        L"MyTurboModule", L"JSNoArgFunction", [&functionCalled](React::JSValueArray const &args) noexcept {
           TestCheckEqual(0, args.size());
           functionCalled = true;
         });
@@ -1588,7 +1625,7 @@ TEST_CLASS (TurboModuleTest) {
   TEST_METHOD(TestFunction_JSValueObjectFunctionField) {
     bool functionCalled = false;
     m_builderMock.ExpectFunction(
-        L"SimpleNativeModule", L"JSValueFunction", ([&functionCalled](React::JSValueArray const &args) noexcept {
+        L"MyTurboModule", L"JSValueFunction", ([&functionCalled](React::JSValueArray const &args) noexcept {
           TestCheck(args[0]["X"] == 4);
           TestCheck(args[0]["Y"] == 2);
           functionCalled = true;
@@ -1601,7 +1638,7 @@ TEST_CLASS (TurboModuleTest) {
   TEST_METHOD(TestFunction_JSValueArrayFunctionField) {
     bool functionCalled = false;
     m_builderMock.ExpectFunction(
-        L"SimpleNativeModule", L"JSValueFunction", ([&functionCalled](React::JSValueArray const &args) noexcept {
+        L"MyTurboModule", L"JSValueFunction", ([&functionCalled](React::JSValueArray const &args) noexcept {
           TestCheck(args[0][0] == "X");
           TestCheck(args[0][1] == 4);
           TestCheck(args[0][2] == true);
