@@ -9,6 +9,7 @@
 #include "ModuleRegistration.h"
 #include "ReactPromise.h"
 
+#include <functional>
 #include <type_traits>
 
 // REACT_MODULE(moduleStruct, [opt] moduleName, [opt] eventEmitterName)
