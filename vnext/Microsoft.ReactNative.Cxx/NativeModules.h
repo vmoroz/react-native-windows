@@ -112,6 +112,13 @@
   "\" to the attribute:\n"                                                        \
   "    REACT_METHOD(method, L\"" methodName "\")\n...\n"
 
+#define REACT_SHOW_SYNC_METHOD_SIGNATURES(methodName, signatures)                      \
+  " (see details below in output).\n"                                             \
+  "  It must be one of the following:\n" signatures                               \
+  "  The C++ method name could be different. In that case add the L\"" methodName \
+  "\" to the attribute:\n"                                                        \
+  "    REACT_SYNC_METHOD(method, L\"" methodName "\")\n...\n"
+
 #define REACT_SHOW_METHOD_SPEC_ERRORS(index, methodName, signatures)                                        \
   static_assert(methodCheckResults[index].IsUniqueName, "Name '" methodName "' used for multiple methods"); \
   static_assert(                                                                                            \
@@ -120,6 +127,15 @@
   static_assert(                                                                                            \
       methodCheckResults[index].IsSignatureMatching,                                                        \
       "Method '" methodName "' does not match signature" REACT_SHOW_METHOD_SIGNATURES(methodName, signatures));
+
+#define REACT_SHOW_SYNC_METHOD_SPEC_ERRORS(index, methodName, signatures)                                        \
+  static_assert(methodCheckResults[index].IsUniqueName, "Name '" methodName "' used for multiple methods"); \
+  static_assert(                                                                                            \
+      methodCheckResults[index].IsMethodFound,                                                              \
+      "Method '" methodName "' is not defined" REACT_SHOW_SYNC_METHOD_SIGNATURES(methodName, signatures));       \
+  static_assert(                                                                                            \
+      methodCheckResults[index].IsSignatureMatching,                                                        \
+      "Method '" methodName "' does not match signature" REACT_SHOW_SYNC_METHOD_SIGNATURES(methodName, signatures));
 
 //
 // Code below helps to register React native modules and verify method signatures
@@ -570,61 +586,72 @@ struct ModuleMethodInfo<TResult (*)(TArgs...) noexcept> : ModuleMethodInfoBase<T
   }
 };
 
+template <class TSignature>
+struct ModuleSyncMethodInfoBase;
+
+template <class TResult, class... TArgs>
+struct ModuleSyncMethodInfoBase<TResult(TArgs...) noexcept> {
+  using ArgTuple = std::tuple<RemoveConstRef<TArgs>...>;
+  using Signature = MethodSignature<TResult, ArgTuple, std::tuple<>, std::tuple<>>;
+};
+
 template <class TFunc>
 struct ModuleSyncMethodInfo;
 
 // Instance synchronous method
 template <class TModule, class TResult, class... TArgs>
-struct ModuleSyncMethodInfo<TResult (TModule::*)(TArgs...) noexcept> {
+struct ModuleSyncMethodInfo<TResult (TModule::*)(TArgs...) noexcept> : ModuleSyncMethodInfoBase<TResult(TArgs...) noexcept> {
+  using Super = ModuleSyncMethodInfoBase<TResult(TArgs...) noexcept>;
   using ModuleType = TModule;
   using MethodType = TResult (TModule::*)(TArgs...) noexcept;
-  using IndexSequence = std::make_index_sequence<sizeof...(TArgs)>;
-
-  template <class>
-  struct Invoker;
 
   template <size_t... I>
-  struct Invoker<std::index_sequence<I...>> {
-    static SyncMethodDelegate GetFunc(ModuleType *module, MethodType method) noexcept {
-      return [ module, method ](IJSValueReader const &argReader, IJSValueWriter const &argWriter) mutable noexcept {
-        using ArgTuple = std::tuple<std::remove_reference_t<TArgs>...>;
-        ArgTuple typedArgs{};
-        ReadArgs(argReader, std::get<I>(typedArgs)...);
-        TResult result = (module->*method)(std::get<I>(std::move(typedArgs))...);
-        WriteArgs(argWriter, result);
-      };
-    }
-  };
+  static SyncMethodDelegate GetFunc(ModuleType *module, MethodType method, std::index_sequence<I...>) noexcept {
+    return [module, method](IJSValueReader const &argReader, IJSValueWriter const &argWriter) mutable noexcept {
+      using ArgTuple = std::tuple<std::remove_reference_t<TArgs>...>;
+      ArgTuple typedArgs{};
+      ReadArgs(argReader, std::get<I>(typedArgs)...);
+      TResult result = (module->*method)(std::get<I>(std::move(typedArgs))...);
+      WriteArgs(argWriter, result);
+    };
+  }
 
   static SyncMethodDelegate GetMethodDelegate(void *module, MethodType method) noexcept {
-    return Invoker<IndexSequence>::GetFunc(static_cast<ModuleType *>(module), method);
+    return GetFunc(static_cast<ModuleType *>(module), method, std::make_index_sequence<sizeof...(TArgs)>{});
+  }
+
+  template <class TMethodSpec>
+  static constexpr bool Match() noexcept {
+    // Do not move this method to the ModuleSyncMethodInfoBase for better error reporting.
+    return MatchMethodSignature<typename Super::Signature, typename TMethodSpec::Signature>();
   }
 };
 
 // Static synchronous method
 template <class TResult, class... TArgs>
-struct ModuleSyncMethodInfo<TResult (*)(TArgs...) noexcept> {
+struct ModuleSyncMethodInfo<TResult (*)(TArgs...) noexcept> : ModuleSyncMethodInfoBase<TResult(TArgs...) noexcept> {
+  using Super = ModuleSyncMethodInfoBase<TResult(TArgs...) noexcept>;
   using MethodType = TResult (*)(TArgs...) noexcept;
-  using IndexSequence = std::make_index_sequence<sizeof...(TArgs)>;
-
-  template <class>
-  struct Invoker;
 
   template <size_t... I>
-  struct Invoker<std::index_sequence<I...>> {
-    static SyncMethodDelegate GetFunc(MethodType method) noexcept {
-      return [method](IJSValueReader const &argReader, IJSValueWriter const &argWriter) mutable noexcept {
-        using ArgTuple = std::tuple<std::remove_reference_t<TArgs>...>;
-        ArgTuple typedArgs{};
-        ReadArgs(argReader, std::get<I>(typedArgs)...);
-        TResult result = (*method)(std::get<I>(std::move(typedArgs))...);
-        WriteArgs(argWriter, result);
-      };
-    }
-  };
+  static SyncMethodDelegate GetFunc(MethodType method, std::index_sequence<I...>) noexcept {
+    return [method](IJSValueReader const &argReader, IJSValueWriter const &argWriter) mutable noexcept {
+      using ArgTuple = std::tuple<std::remove_reference_t<TArgs>...>;
+      ArgTuple typedArgs{};
+      ReadArgs(argReader, std::get<I>(typedArgs)...);
+      TResult result = (*method)(std::get<I>(std::move(typedArgs))...);
+      WriteArgs(argWriter, result);
+    };
+  }
 
   static SyncMethodDelegate GetMethodDelegate(void * /*module*/, MethodType method) noexcept {
-    return Invoker<IndexSequence>::GetFunc(method);
+    return GetFunc(method, std::make_index_sequence<sizeof...(TArgs)>{});
+  }
+
+  template <class TMethodSpec>
+  static constexpr bool Match() noexcept {
+    // Do not move this method to the ModuleSyncMethodInfoBase for better error reporting.
+    return MatchMethodSignature<typename Super::Signature, typename TMethodSpec::Signature>();
   }
 };
 
@@ -921,14 +948,6 @@ struct VerificationResult {
 
 template <class TModule>
 struct ReactModuleVerifier {
-  static constexpr VerificationResult VerifyAsyncMethod(std::wstring_view name) noexcept {
-    return VerifyMember(name, ReactMemberKind::AsyncMethod);
-  }
-
-  static constexpr VerificationResult VerifySyncMethod(std::wstring_view name) noexcept {
-    return VerifyMember(name, ReactMemberKind::SyncMethod);
-  }
-
   static constexpr VerificationResult VerifyMember(std::wstring_view name, ReactMemberKind memberKind) noexcept {
     ReactModuleVerifier verifier{name, memberKind};
     GetReactModuleInfo(static_cast<TModule *>(nullptr), verifier);
@@ -990,6 +1009,24 @@ struct ReactMethodVerifier {
   bool m_result{false};
 };
 
+template <class TModule, int I, class TMethodSpec>
+struct ReactSyncMethodVerifier {
+  static constexpr bool Verify() noexcept {
+    ReactSyncMethodVerifier verifier{};
+    ReactMemberInfoIterator<TModule>{}.GetMemberInfo<I>(verifier);
+    return verifier.m_result;
+  }
+
+  template <class TMember, class TAttribute, int I>
+  constexpr void
+  Visit([[maybe_unused]] TMember member, ReactAttributeId<I> /*attributeId*/, TAttribute /*attributeInfo*/) noexcept {
+    m_result = ModuleSyncMethodInfo<TMember>::template Match<TMethodSpec>();
+  }
+
+ private:
+  bool m_result{false};
+};
+
 struct TurboModuleSpec {
   struct BaseMethodSpec {
     constexpr BaseMethodSpec(int index, std::wstring_view name) : Index{index}, Name{name} {}
@@ -1002,6 +1039,14 @@ struct TurboModuleSpec {
   struct Method : BaseMethodSpec {
     using BaseMethodSpec::BaseMethodSpec;
     using Signature = typename ModuleMethodInfoBase<TSignature>::Signature;
+    static constexpr bool IsSynchronous = false;
+  };
+
+  template <class TSignature>
+  struct SyncMethod : BaseMethodSpec {
+    using BaseMethodSpec::BaseMethodSpec;
+    using Signature = typename ModuleSyncMethodInfoBase<TSignature>::Signature;
+    static constexpr bool IsSynchronous = true;
   };
 
   template <class... TArgs>
@@ -1018,25 +1063,33 @@ struct TurboModuleSpec {
 
   template <class TModule, class TModuleSpec, size_t I>
   static constexpr MethodCheckResult CheckMethod() noexcept {
-    constexpr auto verificationResult =
-        ReactModuleVerifier<TModule>::VerifyAsyncMethod(std::get<I>(TModuleSpec::methods).Name);
+    constexpr VerificationResult verificationResult = ReactModuleVerifier<TModule>::VerifyMember(
+        std::get<I>(TModuleSpec::methods).Name,
+        std::get<I>(TModuleSpec::methods).IsSynchronous ? ReactMemberKind::SyncMethod : ReactMemberKind::AsyncMethod);
     MethodCheckResult result{};
     result.IsUniqueName = verificationResult.MethodNameCount <= 1;
     result.IsMethodFound = verificationResult.MatchCount == 1;
     if constexpr (verificationResult.MatchCount == 1) {
-      result.IsSignatureMatching = ReactMethodVerifier<
-          TModule,
-          verificationResult.MatchedMemberId,
-          RemoveConstRef<decltype(std::get<I>(TModuleSpec::methods))>>::Verify();
+      if constexpr (std::get<I>(TModuleSpec::methods).IsSynchronous) {
+        result.IsSignatureMatching = ReactSyncMethodVerifier<
+            TModule,
+            verificationResult.MatchedMemberId,
+            RemoveConstRef<decltype(std::get<I>(TModuleSpec::methods))>>::Verify();
+      } else {
+        result.IsSignatureMatching = ReactMethodVerifier<
+            TModule,
+            verificationResult.MatchedMemberId,
+            RemoveConstRef<decltype(std::get<I>(TModuleSpec::methods))>>::Verify();
+      }
     }
 
     return result;
-  };
+  }
 
   template <class TModule, class TModuleSpec, size_t... I>
   static constexpr auto CheckMethodsHelper(std::index_sequence<I...>) noexcept {
     return std::array<MethodCheckResult, sizeof...(I)>{CheckMethod<TModule, TModuleSpec, I>()...};
-  };
+  }
 
   template <class TModule, class TModuleSpec>
   static constexpr auto CheckMethods() noexcept {

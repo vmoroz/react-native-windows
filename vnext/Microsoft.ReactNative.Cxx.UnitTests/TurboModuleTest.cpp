@@ -474,7 +474,7 @@ struct MyTurboModule {
     error.Message = "Promise rejected";
     result.Reject(std::move(error));
   }
-#if 0
+
   REACT_SYNC_METHOD(AddSync)
   int AddSync(int x, int y) noexcept {
     return x + y;
@@ -504,7 +504,7 @@ struct MyTurboModule {
   static std::string StaticSayHelloSync() noexcept {
     return "Hello";
   }
-
+#if 0
   REACT_CONSTANT(Constant1)
   const std::string Constant1{"MyConstant1"};
 
@@ -648,6 +648,12 @@ struct MyTurboModuleSpec : winrt::Microsoft::ReactNative::TurboModuleSpec {
       Method<void(int, Promise<void>) noexcept>{51, L"staticVoidPromise"},
       Method<void(Promise<std::string>) noexcept>{52, L"StaticResolveSayHelloPromise"},
       Method<void(Promise<std::string>) noexcept>{53, L"StaticRejectSayHelloPromise"},
+      SyncMethod<int(int, int) noexcept>{54, L"AddSync"},
+      SyncMethod<int(int) noexcept>{55, L"NegateSync"},
+      SyncMethod<std::string() noexcept>{56, L"SayHelloSync"},
+      SyncMethod<int(int, int) noexcept>{57, L"StaticAddSync"},
+      SyncMethod<int(int) noexcept>{58, L"StaticNegateSync"},
+      SyncMethod<std::string() noexcept>{59, L"StaticSayHelloSync"},
   };
 
   template <class TModule>
@@ -1068,6 +1074,36 @@ struct MyTurboModuleSpec : winrt::Microsoft::ReactNative::TurboModuleSpec {
         "    REACT_METHOD(StaticRejectSayHelloPromise) winrt::fire_and_forget StaticRejectSayHelloPromise(ReactPromise<std::string>) noexcept {/*implementation*/}\n"
         "    REACT_METHOD(StaticRejectSayHelloPromise) static void StaticRejectSayHelloPromise(ReactPromise<std::string>) noexcept {/*implementation*/}\n"
         "    REACT_METHOD(StaticRejectSayHelloPromise) static winrt::fire_and_forget StaticRejectSayHelloPromise(ReactPromise<std::string>) noexcept {/*implementation*/}\n");
+    REACT_SHOW_SYNC_METHOD_SPEC_ERRORS(
+        54,
+        "AddSync",
+        "    REACT_METHOD(AddSync) int AddSync(int, int) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(AddSync) static int AddSync(int, int) noexcept {/*implementation*/}\n");
+    REACT_SHOW_SYNC_METHOD_SPEC_ERRORS(
+        55,
+        "NegateSync",
+        "    REACT_METHOD(NegateSync) int NegateSync(int) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(NegateSync) static int NegateSync(int) noexcept {/*implementation*/}\n");
+    REACT_SHOW_SYNC_METHOD_SPEC_ERRORS(
+        56,
+        "SayHelloSync",
+        "    REACT_METHOD(SayHelloSync) std::string SayHelloSync() noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(SayHelloSync) static std::string SayHelloSync() noexcept {/*implementation*/}\n");
+    REACT_SHOW_SYNC_METHOD_SPEC_ERRORS(
+        57,
+        "StaticAddSync",
+        "    REACT_METHOD(StaticAddSync) int StaticAddSync(int, int) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(StaticAddSync) static int StaticAddSync(int, int) noexcept {/*implementation*/}\n");
+    REACT_SHOW_SYNC_METHOD_SPEC_ERRORS(
+        58,
+        "StaticNegateSync",
+        "    REACT_METHOD(StaticNegateSync) int StaticNegateSync(int) noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(StaticNegateSync) static int StaticNegateSync(int) noexcept {/*implementation*/}\n");
+    REACT_SHOW_SYNC_METHOD_SPEC_ERRORS(
+        59,
+        "StaticSayHelloSync",
+        "    REACT_METHOD(StaticSayHelloSync) std::string StaticSayHelloSync() noexcept {/*implementation*/}\n"
+        "    REACT_METHOD(StaticSayHelloSync) static std::string StaticSayHelloSync() noexcept {/*implementation*/}\n");
   }
 };
 
@@ -1757,7 +1793,7 @@ TEST_CLASS (TurboModuleTest) {
             [](React::JSValue const &error) noexcept { TestCheck(error["message"] == "Promise rejected"); }));
     TestCheck(m_builderMock.IsRejectCallbackCalled());
   }
-#if 0
+
   TEST_METHOD(TestMethodSyncCall_AddSync) {
     int result;
     m_builderMock.CallSync(L"AddSync", /*out*/ result, 3, 5);
@@ -1793,7 +1829,7 @@ TEST_CLASS (TurboModuleTest) {
     m_builderMock.CallSync(L"StaticSayHelloSync", /*out*/ result);
     TestCheck(result == "Hello");
   }
-
+#if 0
   TEST_METHOD(TestConstants) {
     auto constants = m_builderMock.GetConstants();
     TestCheck(constants["Constant1"] == "MyConstant1");
