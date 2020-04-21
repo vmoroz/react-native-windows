@@ -112,7 +112,7 @@
   "\" to the attribute:\n"                                                        \
   "    REACT_METHOD(method, L\"" methodName "\")\n...\n"
 
-#define REACT_SHOW_SYNC_METHOD_SIGNATURES(methodName, signatures)                      \
+#define REACT_SHOW_SYNC_METHOD_SIGNATURES(methodName, signatures)                 \
   " (see details below in output).\n"                                             \
   "  It must be one of the following:\n" signatures                               \
   "  The C++ method name could be different. In that case add the L\"" methodName \
@@ -128,11 +128,11 @@
       methodCheckResults[index].IsSignatureMatching,                                                        \
       "Method '" methodName "' does not match signature" REACT_SHOW_METHOD_SIGNATURES(methodName, signatures));
 
-#define REACT_SHOW_SYNC_METHOD_SPEC_ERRORS(index, methodName, signatures)                                        \
+#define REACT_SHOW_SYNC_METHOD_SPEC_ERRORS(index, methodName, signatures)                                   \
   static_assert(methodCheckResults[index].IsUniqueName, "Name '" methodName "' used for multiple methods"); \
   static_assert(                                                                                            \
       methodCheckResults[index].IsMethodFound,                                                              \
-      "Method '" methodName "' is not defined" REACT_SHOW_SYNC_METHOD_SIGNATURES(methodName, signatures));       \
+      "Method '" methodName "' is not defined" REACT_SHOW_SYNC_METHOD_SIGNATURES(methodName, signatures));  \
   static_assert(                                                                                            \
       methodCheckResults[index].IsSignatureMatching,                                                        \
       "Method '" methodName "' does not match signature" REACT_SHOW_SYNC_METHOD_SIGNATURES(methodName, signatures));
@@ -600,14 +600,15 @@ struct ModuleSyncMethodInfo;
 
 // Instance synchronous method
 template <class TModule, class TResult, class... TArgs>
-struct ModuleSyncMethodInfo<TResult (TModule::*)(TArgs...) noexcept> : ModuleSyncMethodInfoBase<TResult(TArgs...) noexcept> {
+struct ModuleSyncMethodInfo<TResult (TModule::*)(TArgs...) noexcept>
+    : ModuleSyncMethodInfoBase<TResult(TArgs...) noexcept> {
   using Super = ModuleSyncMethodInfoBase<TResult(TArgs...) noexcept>;
   using ModuleType = TModule;
   using MethodType = TResult (TModule::*)(TArgs...) noexcept;
 
   template <size_t... I>
   static SyncMethodDelegate GetFunc(ModuleType *module, MethodType method, std::index_sequence<I...>) noexcept {
-    return [module, method](IJSValueReader const &argReader, IJSValueWriter const &argWriter) mutable noexcept {
+    return [ module, method ](IJSValueReader const &argReader, IJSValueWriter const &argWriter) mutable noexcept {
       using ArgTuple = std::tuple<std::remove_reference_t<TArgs>...>;
       ArgTuple typedArgs{};
       ReadArgs(argReader, std::get<I>(typedArgs)...);

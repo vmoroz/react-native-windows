@@ -11,15 +11,15 @@
 namespace ReactNativeTests {
 REACT_MODULE(MyTurboModule)
 struct MyTurboModule {
-  // REACT_INIT(Initialize)
-  // void Initialize(React::IReactContext const &context) noexcept {
-  //  IsInitialized = true;
-  //  TestCheck(context != nullptr);
+  REACT_INIT(Initialize)
+  void Initialize(React::IReactContext const &context) noexcept {
+    IsInitialized = true;
+    TestCheck(context != nullptr);
 
-  //  // Event and Function fields are initialized before REACT_INIT method call.
-  //  TestCheck(this->OnIntEvent != nullptr);
-  //  TestCheck(this->JSIntFunction != nullptr);
-  //}
+    // Event and Function fields are initialized before REACT_INIT method call.
+    TestCheck(this->OnIntEvent != nullptr);
+    TestCheck(this->JSIntFunction != nullptr);
+  }
 
   REACT_METHOD(Add)
   int Add(int x, int y) noexcept {
@@ -504,7 +504,7 @@ struct MyTurboModule {
   static std::string StaticSayHelloSync() noexcept {
     return "Hello";
   }
-#if 0
+
   REACT_CONSTANT(Constant1)
   const std::string Constant1{"MyConstant1"};
 
@@ -578,7 +578,7 @@ struct MyTurboModule {
   // Use React::JSValue which is an immutable JSON-like data representation.
   REACT_FUNCTION(JSValueFunction)
   std::function<void(const React::JSValue &)> JSValueFunction;
-#endif
+
  public: // Used to report some test messages
   bool IsInitialized{false};
   std::string Message;
@@ -1829,7 +1829,7 @@ TEST_CLASS (TurboModuleTest) {
     m_builderMock.CallSync(L"StaticSayHelloSync", /*out*/ result);
     TestCheck(result == "Hello");
   }
-#if 0
+
   TEST_METHOD(TestConstants) {
     auto constants = m_builderMock.GetConstants();
     TestCheck(constants["Constant1"] == "MyConstant1");
@@ -2045,7 +2045,6 @@ TEST_CLASS (TurboModuleTest) {
   TEST_METHOD(TestInitialized) {
     TestCheck(m_module->IsInitialized);
   }
-#endif
 };
 
 } // namespace ReactNativeTests
