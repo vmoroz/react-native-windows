@@ -10,8 +10,23 @@
 
 namespace ReactNativeTests {
 
-REACT_MODULE(SimpleNativeModule)
-struct SimpleNativeModule {
+REACT_MODULE(Module1, L"Module1")
+struct Module1 {
+  REACT_METHOD(Add)
+  int Add(int x, int y) noexcept {
+    return x + y;
+  }
+};
+
+REACT_MODULE(Module2, L"Module1")
+struct Module2 {
+  REACT_METHOD(Add)
+  int Add(int x, int y) noexcept {
+    return x + y;
+  }
+};
+
+REACT_MODULE(SimpleNativeModule) struct SimpleNativeModule {
   REACT_INIT(Initialize)
   void Initialize(React::IReactContext const &context) noexcept {
     IsInitialized = true;
@@ -595,6 +610,7 @@ TEST_CLASS (NativeModuleTest) {
   SimpleNativeModule *m_module;
 
   NativeModuleTest() {
+    React::AddAttributedModules(nullptr);
     m_moduleBuilder = winrt::make<React::ReactModuleBuilderImpl>(m_builderMock);
     auto provider = React::MakeModuleProvider<SimpleNativeModule>();
     m_moduleObject = m_builderMock.CreateModule(provider, m_moduleBuilder);

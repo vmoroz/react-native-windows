@@ -20,7 +20,8 @@
                                                                                                                     \
   template <class TDummy>                                                                                           \
   struct moduleStruct##_ModuleRegistration final : winrt::Microsoft::ReactNative::ModuleRegistration {              \
-    moduleStruct##_ModuleRegistration() noexcept : winrt::Microsoft::ReactNative::ModuleRegistration{moduleName} {} \
+    moduleStruct##_ModuleRegistration() noexcept                                                           \
+        : winrt::Microsoft::ReactNative::ModuleRegistration{L## #moduleStruct, moduleName} {} \
                                                                                                                     \
     winrt::Microsoft::ReactNative::ReactModuleProvider MakeModuleProvider() const noexcept override {               \
       return winrt::Microsoft::ReactNative::MakeModuleProvider<moduleStruct>();                                     \
@@ -74,7 +75,7 @@
 namespace winrt::Microsoft::ReactNative {
 
 struct ModuleRegistration {
-  ModuleRegistration(wchar_t const *moduleName) noexcept;
+  ModuleRegistration(wchar_t const *structName, wchar_t const *moduleName) noexcept;
 
   virtual ReactModuleProvider MakeModuleProvider() const noexcept = 0;
 
@@ -86,11 +87,16 @@ struct ModuleRegistration {
     return m_next;
   }
 
+  wchar_t const *StructName() const noexcept {
+    return m_structName;
+  }
+
   wchar_t const *ModuleName() const noexcept {
     return m_moduleName;
   }
 
  private:
+  wchar_t const *m_structName{nullptr};
   wchar_t const *m_moduleName{nullptr};
   ModuleRegistration const *m_next{nullptr};
 

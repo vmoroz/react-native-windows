@@ -8,6 +8,7 @@
   do {                             \
     if (!(condition)) {            \
       assert(false && #condition); \
+      *((int *)0) = 1;             \
       std::terminate();            \
     }                              \
   } while (false)
@@ -18,6 +19,7 @@
   do {                                        \
     if (!(condition)) {                       \
       assert(false && (message));             \
+      *((int *)0) = 1;                        \
       std::terminate();                       \
     }                                         \
   } while (false)
