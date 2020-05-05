@@ -268,6 +268,7 @@
     <ClCompile Include="Modules\AppStateData.cpp">
       <Filter>Modules</Filter>
     </ClCompile>
+    <ClCompile Include="Modules\ClipboardModule.cpp" />
     <ClCompile Include="Modules\DevSettingsModule.cpp">
       <Filter>Modules</Filter>
     </ClCompile>
@@ -300,6 +301,8 @@
     <ClCompile Include="ReactHost\UwpReactInstanceProxy.cpp">
       <Filter>ReactHost</Filter>
     </ClCompile>
+    <ClCompile Include="ReactPropertyBag.cpp" />
+    <ClCompile Include="ReactPropertyNameTable.cpp" />
     <ClCompile Include="ReactSupport.cpp" />
     <ClCompile Include="RedBox.cpp" />
     <ClCompile Include="Threading\BatchingQueueThread.cpp">
@@ -319,6 +322,48 @@
     <ClCompile Include="TestHook.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\include\ReactUWP\Utils\CppWinrtLessExceptions.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\ReactUWP\Utils\Helpers.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\ReactUWP\Utils\LocalBundleReader.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\ReactUWP\Utils\PropertyHandlerUtils.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\ReactUWP\Utils\PropertyUtils.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\ReactUWP\Utils\ResourceBrushUtils.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\ReactUWP\Utils\StandardControlResourceKeyNames.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\ReactUWP\Utils\UwpPreparedScriptStore.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\ReactUWP\Utils\UwpScriptStore.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\ReactUWP\Views\ControlViewManager.h">
+      <Filter>Views</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\ReactUWP\Views\FrameworkElementViewManager.h">
+      <Filter>Views</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\ReactUWP\Views\KeyboardEventHandler.h">
+      <Filter>Views</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\ReactUWP\Views\ShadowNodeBase.h">
+      <Filter>Views</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\ReactUWP\Views\ViewManagerBase.h">
+      <Filter>Views</Filter>
+    </ClInclude>
     <ClInclude Include="..\ReactUWP\Base\CoreNativeModules.h">
       <Filter>Base</Filter>
     </ClInclude>
@@ -454,48 +499,6 @@
     <ClInclude Include="..\ReactUWP\Polyester\IconViewManager.h">
       <Filter>Polyester</Filter>
     </ClInclude>
-    <ClInclude Include="..\include\ReactUWP\Utils\CppWinrtLessExceptions.h">
-      <Filter>Utils</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\ReactUWP\Utils\Helpers.h">
-      <Filter>Utils</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\ReactUWP\Utils\LocalBundleReader.h">
-      <Filter>Utils</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\ReactUWP\Utils\PropertyHandlerUtils.h">
-      <Filter>Utils</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\ReactUWP\Utils\PropertyUtils.h">
-      <Filter>Utils</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\ReactUWP\Utils\ResourceBrushUtils.h">
-      <Filter>Utils</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\ReactUWP\Utils\StandardControlResourceKeyNames.h">
-      <Filter>Utils</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\ReactUWP\Utils\UwpPreparedScriptStore.h">
-      <Filter>Utils</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\ReactUWP\Utils\UwpScriptStore.h">
-      <Filter>Utils</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\ReactUWP\Views\ControlViewManager.h">
-      <Filter>Views</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\ReactUWP\Views\FrameworkElementViewManager.h">
-      <Filter>Views</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\ReactUWP\Views\KeyboardEventHandler.h">
-      <Filter>Views</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\ReactUWP\Views\ShadowNodeBase.h">
-      <Filter>Views</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\ReactUWP\Views\ViewManagerBase.h">
-      <Filter>Views</Filter>
-    </ClInclude>
     <ClInclude Include="..\ReactUWP\Views\ActivityIndicatorViewManager.h">
       <Filter>Views</Filter>
     </ClInclude>
@@ -605,6 +608,7 @@
     <ClInclude Include="Modules\AppStateData.h">
       <Filter>Modules</Filter>
     </ClInclude>
+    <ClInclude Include="Modules\ClipboardModule.h" />
     <ClInclude Include="Modules\DevSettingsModule.h">
       <Filter>Modules</Filter>
     </ClInclude>
@@ -655,6 +659,8 @@
     <ClInclude Include="ReactHost\UwpReactInstanceProxy.h">
       <Filter>ReactHost</Filter>
     </ClInclude>
+    <ClInclude Include="ReactPropertyBag.h" />
+    <ClInclude Include="ReactPropertyNameTable.h" />
     <ClInclude Include="ReactSupport.h" />
     <ClInclude Include="RedBox.h" />
     <ClInclude Include="Threading\BatchingQueueThread.h">
@@ -702,6 +708,7 @@
     <Midl Include="ReactInstance.idl" />
     <Midl Include="ReactInstanceSettings.idl" />
     <Midl Include="ReactNativeHost.idl" />
+    <Midl Include="ReactPropertyBag.idl" />
     <Midl Include="ReactRootView.idl" />
     <Midl Include="XamlHelper.idl" />
   </ItemGroup>
