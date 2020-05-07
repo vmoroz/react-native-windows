@@ -104,6 +104,13 @@ namespace Microsoft.ReactNative.Managed.UnitTests
       return promise.Task;
     }
 
+    public Task<bool> Call12<T1, T2, TResult1, TResult2>(string methodName, T1 arg1, T2 arg2, Action<TResult1, TResult2> resolve)
+    {
+      var promise = new TaskCompletionSource<bool>();
+      GetMethod1(methodName)?.Invoke(ArgReader(arg1, arg2), ArgWriter(), ResolveCallback2(resolve, promise), null);
+      return promise.Task;
+    }
+
     public Task<bool> Call2<TResult, TError>(string methodName, Action<TResult> resolve, Action<TError> reject)
     {
       var promise = new TaskCompletionSource<bool>();
@@ -205,6 +212,18 @@ namespace Microsoft.ReactNative.Managed.UnitTests
       var resulReader = new JSValueTreeReader((writer as JSValueTreeWriter).TakeValue());
       resulReader.ReadArgs(out T result);
       return result;
+    }
+
+    private MethodResultCallback ResolveCallback2<T1, T2>(Action<T1, T2> resolve, TaskCompletionSource<bool> promise = null)
+    {
+      return (IJSValueWriter writer) =>
+      {
+        var resulReader = new JSValueTreeReader((writer as JSValueTreeWriter).TakeValue());
+        resulReader.ReadArgs(out T1 t1, out T2 t2);
+        resolve(t1, t2);
+        IsResolveCallbackCalled = true;
+        promise?.SetResult(true);
+      };
     }
 
     private static IJSValueWriter ArgWriter() => new JSValueTreeWriter();
