@@ -40,6 +40,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Common", "..\..\..\vnext\Co
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Microsoft.ReactNative.Cxx", "..\..\..\vnext\Microsoft.ReactNative.Cxx\Microsoft.ReactNative.Cxx.vcxitems", "{DA8B35B3-DA00-4B02-BDE6-6A397B3FD46B}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Mso", "..\..\..\vnext\Mso\Mso.vcxitems", "{84E05BFA-CBAF-4F0D-BFB6-4CE85742A57E}"
+EndProject
 Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
 		..\..\..\vnext\ReactWindowsCore\ReactWindowsCore.vcxitems*{11c084a3-a57c-4296-a679-cac17b603144}*SharedItemsImports = 4
