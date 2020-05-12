@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
 
+using Microsoft.ReactNative;
 using Microsoft.ReactNative.Managed;
 using System;
 using System.Diagnostics;
@@ -15,8 +16,38 @@ namespace SampleLibraryCS
         public int y = 0;
     };
 
-    // Sample ReactModule
+    struct CallbackArguments
+    {
+        public JSValue Error;
+        public JSValue Props;
+    }
 
+    static class TwoParamsSerialization
+    {
+        // Writing CallbackArguments value as two arguments to the IJSValueWriter.
+        public static void WriteValue(this IJSValueWriter writer, CallbackArguments value)
+        {
+            if (value.Error.IsNull)
+            {
+                writer.WriteNull();
+            }
+            else
+            {
+                writer.WriteValue(value.Error);
+            }
+
+            if (value.Props.IsNull)
+            {
+                writer.WriteNull();
+            }
+            else
+            {
+                writer.WriteValue(value.Props);
+            }
+        }
+    }
+
+    // Sample ReactModule
     [ReactModule]
     internal sealed class SampleModuleCS
     {
@@ -61,6 +92,21 @@ namespace SampleLibraryCS
         #endregion
 
         #region Methods
+
+        [ReactMethod("prepare")]
+        public async void Prepare(string fileName, int key, JSValue options, Action<CallbackArguments> callback)
+        {
+            Debug.WriteLine($"{nameof(SampleModuleCS)}.{nameof(fileName)}={fileName}");
+            Debug.WriteLine($"{nameof(SampleModuleCS)}.{nameof(key)}={key}");
+            Debug.WriteLine($"{nameof(SampleModuleCS)}.{nameof(options)}={options}");
+            await Task.Run(() => { });
+            callback(
+               new CallbackArguments
+               {
+                   Error = JSValue.Null,
+                   Props = new JSValueObject() { { "duration", new JSValue(1.1) } }
+               });
+        }
 
         [ReactMethod]
         public void VoidMethod()

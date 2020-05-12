@@ -91,6 +91,11 @@ class SampleApp extends Component {
 
     // SampleModuleCS method calls
 
+    NativeModules.SampleModuleCS.prepare("file", 1, 4, function(error, props) {
+      log(`SampleModuleCS.prepare.error: ${error}`);
+      log(`SampleModuleCS.prepare.props.duration: ${props.duration}`);
+    });
+
     NativeModules.SampleModuleCS.VoidMethod();
 
     NativeModules.SampleModuleCS.VoidMethodWithArgs(numberArg);
