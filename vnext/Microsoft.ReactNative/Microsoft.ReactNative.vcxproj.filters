@@ -687,9 +687,9 @@
     <Midl Include="IReactContext.idl" />
     <Midl Include="IReactDispatcher.idl" />
     <Midl Include="IReactModuleBuilder.idl" />
+    <Midl Include="IReactNotifications.idl" />
     <Midl Include="IReactPackageBuilder.idl" />
     <Midl Include="IReactPackageProvider.idl" />
-    <Midl Include="IRedBoxHandler.idl" />
     <Midl Include="IReactPropertyBag.idl" />
     <Midl Include="IViewManager.idl" />
     <Midl Include="NoExceptionAttribute.idl" />
@@ -699,6 +699,7 @@
     <Midl Include="ReactInstanceSettings.idl" />
     <Midl Include="ReactNativeHost.idl" />
     <Midl Include="ReactRootView.idl" />
+    <Midl Include="RedBoxHandler.idl" />
     <Midl Include="XamlHelper.idl" />
   </ItemGroup>
   <ItemGroup>
