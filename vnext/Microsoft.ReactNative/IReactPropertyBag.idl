@@ -53,12 +53,9 @@ namespace Microsoft.ReactNative {
     Object Set(IReactPropertyName name, Object value);
   }
 
-  // Global name table for atomic namespaces and names.
-  // It only keeps weak pointers. If a namespace of name is not used, then
-  // they are deleted. After that the is recreated.
-  // It is better to keep pointer to often used names to avoid their lookup and recreation.
+  // Helper methods for the property bag implementation.
   [webhosthidden]
-  static runtimeclass ReactPropertyNametable
+  static runtimeclass ReactPropertyBagHelper
   {
     // Return a global namespace that corresponds to an empty string.
     static IReactPropertyNamespace GlobalNamespace { get; };
@@ -70,12 +67,7 @@ namespace Microsoft.ReactNative {
     // Get atomic IReactPropertyName for the namespace and local name.
     // If ns is null, then it uses IReactPropertyNamespace.GlobalNamespace.
     static IReactPropertyName GetName(IReactPropertyNamespace ns, String localName);
-  }
 
-  // Helper methods for the property bag implementation.
-  [webhosthidden]
-  static runtimeclass ReactPropertyBagHelper
-  {
     // Create new instance of IReactPropertyBag
     static IReactPropertyBag CreatePropertyBag();
   }

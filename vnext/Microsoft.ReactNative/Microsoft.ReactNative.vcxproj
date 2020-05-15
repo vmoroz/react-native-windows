@@ -306,6 +306,10 @@
     <ClInclude Include="IReactModuleBuilder.h">
       <DependentUpon>IReactModuleBuilder.idl</DependentUpon>
     </ClInclude>
+    <ClInclude Include="IReactNotificationService.h">
+      <DependentUpon>IReactNotificationService.idl</DependentUpon>
+      <SubType>Code</SubType>
+    </ClInclude>
     <ClInclude Include="LifecycleState.h" />
     <ClInclude Include="Modules\AppStateData.h" />
     <ClInclude Include="Modules\ClipboardModule.h" />
@@ -476,6 +480,10 @@
     </ClCompile>
     <ClCompile Include="IReactModuleBuilder.cpp">
       <DependentUpon>IReactModuleBuilder.idl</DependentUpon>
+    </ClCompile>
+    <ClCompile Include="IReactNotificationService.cpp">
+      <DependentUpon>IReactNotificationService.idl</DependentUpon>
+      <SubType>Code</SubType>
     </ClCompile>
     <ClCompile Include="Modules\AppStateData.cpp" />
     <ClCompile Include="Modules\ClipboardModule.cpp" />
