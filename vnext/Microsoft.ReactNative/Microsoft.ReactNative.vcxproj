@@ -555,7 +555,7 @@
     <Midl Include="IJSValueWriter.idl" />
     <Midl Include="ILifecycleEventListener.idl" />
     <Midl Include="IReactDispatcher.idl" />
-    <Midl Include="IReactNotifications.idl" />
+    <Midl Include="IReactNotificationService.idl" />
     <Midl Include="IReactPropertyBag.idl" />
     <Midl Include="IReactModuleBuilder.idl" />
     <Midl Include="IReactPackageBuilder.idl" />

@@ -695,7 +695,7 @@
     <Midl Include="IReactContext.idl" />
     <Midl Include="IReactDispatcher.idl" />
     <Midl Include="IReactModuleBuilder.idl" />
-    <Midl Include="IReactNotifications.idl" />
+    <Midl Include="IReactNotificationService.idl" />
     <Midl Include="IReactPackageBuilder.idl" />
     <Midl Include="IReactPackageProvider.idl" />
     <Midl Include="IReactPropertyBag.idl" />
