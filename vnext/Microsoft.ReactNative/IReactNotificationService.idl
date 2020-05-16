@@ -44,7 +44,9 @@ namespace Microsoft.ReactNative {
     Object Data { get; };
   }
 
-  // Delegate to handle notifications. TODO: params
+  // Delegate to handle notifications.
+  // The sender parameter is the object that sent the notification. It can be null.
+  // The data contains the notification-specific data including the notification subscription.
   [webhosthidden]
   delegate void ReactNotificationHandler(Object sender, IReactNotificationData data);
 
