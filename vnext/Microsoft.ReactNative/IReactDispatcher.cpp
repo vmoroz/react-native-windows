@@ -20,6 +20,10 @@ void ReactDispatcher::Post(ReactDispatcherCallback const &callback) noexcept {
   return m_queue.Post([callback]() noexcept { callback(); });
 }
 
+/*static*/ IReactDispatcher ReactDispatcher::CreateSerialDispatcher() noexcept {
+  return make<ReactDispatcher>(Mso::DispatchQueue{});
+}
+
 /*static*/ Mso::DispatchQueue ReactDispatcher::GetUIDispatchQueue(IReactPropertyBag const &properties) noexcept {
   return GetUIDispatcher(properties).as<ReactDispatcher>()->m_queue;
 }

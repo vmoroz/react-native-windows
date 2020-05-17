@@ -116,6 +116,8 @@ void ReactNotificationService::ModifySubscriptions(
         m_subscriptions.try_emplace(notificationName, std::move(newSnapshotPtr));
       }
     }
+
+    break;
   }
 }
 
