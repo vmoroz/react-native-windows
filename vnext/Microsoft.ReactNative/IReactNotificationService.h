@@ -13,8 +13,8 @@
 
 namespace winrt::Microsoft::ReactNative::implementation {
 
-struct ReactNotificationData : implements<ReactNotificationData, IReactNotificationData> {
-  ReactNotificationData(IReactNotificationSubscription const &subscription, IInspectable const &data) noexcept
+struct ReactNotificationArgs : implements<ReactNotificationArgs, IReactNotificationArgs> {
+  ReactNotificationArgs(IReactNotificationSubscription const &subscription, IInspectable const &data) noexcept
       : m_subscription{subscription}, m_data{data} {}
 
   IReactNotificationSubscription Subscription() const noexcept {
@@ -98,7 +98,7 @@ struct ReactNotificationSubscription : implements<ReactNotificationSubscription,
   IReactPropertyName NotificationName() const noexcept;
   bool IsSubscribed() const noexcept;
   void Unsubscribe() noexcept;
-  void CallHandler(IInspectable const &sender, IReactNotificationData const &notificationData) noexcept;
+  void CallHandler(IInspectable const &sender, IReactNotificationArgs const &args) noexcept;
 
  private:
   weak_ref<ReactNotificationService> m_notificationService;

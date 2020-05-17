@@ -47,16 +47,16 @@ void ReactNotificationSubscription::Unsubscribe() noexcept {
 
 void ReactNotificationSubscription::CallHandler(
     IInspectable const &sender,
-    IReactNotificationData const &notificationData) noexcept {
+    IReactNotificationArgs const &args) noexcept {
   if (IsSubscribed()) {
     if (m_dispatcher) {
-      m_dispatcher.Post([thisPtr = get_strong(), sender, notificationData]() noexcept {
+      m_dispatcher.Post([thisPtr = get_strong(), sender, args]() noexcept {
         if (thisPtr->IsSubscribed()) {
-          thisPtr->m_handler(sender, notificationData);
+          thisPtr->m_handler(sender, args);
         }
       });
     } else {
-      m_handler(sender, notificationData);
+      m_handler(sender, args);
     }
   }
 }
@@ -162,8 +162,8 @@ void ReactNotificationService::SendNotification(
   // Call notification handlers outside of lock.
   if (currentSnapshotPtr) {
     for (auto &subscription : *currentSnapshotPtr) {
-      auto notificationData = make<ReactNotificationData>(subscription, data);
-      get_self<ReactNotificationSubscription>(subscription)->CallHandler(sender, notificationData);
+      auto args = make<ReactNotificationArgs>(subscription, data);
+      get_self<ReactNotificationSubscription>(subscription)->CallHandler(sender, args);
     }
   }
 

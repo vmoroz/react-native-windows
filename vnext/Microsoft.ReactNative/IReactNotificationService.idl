@@ -30,9 +30,9 @@ namespace Microsoft.ReactNative {
     void Unsubscribe();
   }
 
-  // Notification data provided to the notification handler.
+  // Notification args provided to the notification handler.
   [webhosthidden]
-  interface IReactNotificationData
+  interface IReactNotificationArgs
   {
     // The notification subscription that can be used to unsubscribe in the notification handler.
     // It also has the name and dispatcher associated with the notification.
@@ -46,9 +46,9 @@ namespace Microsoft.ReactNative {
 
   // Delegate to handle notifications.
   // The sender parameter is the object that sent the notification. It can be null.
-  // The data contains the notification-specific data including the notification subscription.
+  // The args contain the notification-specific data and the notification subscription.
   [webhosthidden]
-  delegate void ReactNotificationHandler(Object sender, IReactNotificationData data);
+  delegate void ReactNotificationHandler(Object sender, IReactNotificationArgs args);
 
   // The notification service is used to subscribe to notifications and to send notifications.
   [webhosthidden]

@@ -4,10 +4,10 @@
 #include "pch.h"
 
 #include <ReactPropertyBag.h>
+#include <eventWaitHandle/eventWaitHandle.h>
 #include <winrt/Microsoft.ReactNative.h>
 #include <winrt/Windows.Foundation.h>
 #include <string>
-#include <eventWaitHandle/eventWaitHandle.h>
 
 using namespace winrt;
 using namespace Microsoft::ReactNative;
@@ -21,13 +21,13 @@ TEST_CLASS (ReactNotificationServiceTests) {
     auto fooName = ReactPropertyBagHelper::GetName(nullptr, L"Foo");
     IReactNotificationService rnf{ReactNotificationServiceHelper::CreateNotificationService()};
     bool isCalled{false};
-    rnf.Subscribe(nullptr, fooName, [&](IInspectable const &sender, IReactNotificationData const &data) noexcept {
+    rnf.Subscribe(nullptr, fooName, [&](IInspectable const &sender, IReactNotificationArgs const &args) noexcept {
       isCalled = true;
       TestCheck(!sender);
-      TestCheck(!data.Data());
-      TestCheck(!data.Subscription().Dispatcher());
-      TestCheckEqual(fooName, data.Subscription().NotificationName());
-      TestCheck(data.Subscription().IsSubscribed());
+      TestCheck(!args.Data());
+      TestCheck(!args.Subscription().Dispatcher());
+      TestCheckEqual(fooName, args.Subscription().NotificationName());
+      TestCheck(args.Subscription().IsSubscribed());
     });
     rnf.SendNotification(fooName, nullptr, nullptr);
     TestCheck(isCalled);
@@ -38,7 +38,7 @@ TEST_CLASS (ReactNotificationServiceTests) {
     auto fooName = ReactPropertyBagHelper::GetName(nullptr, L"Foo");
     bool isCalled{false};
     auto subscription = rnf.Subscribe(
-        nullptr, fooName, [&](IInspectable const & /*sender*/, IReactNotificationData const & /*data*/) noexcept {
+        nullptr, fooName, [&](IInspectable const & /*sender*/, IReactNotificationArgs const & /*args*/) noexcept {
           isCalled = true;
         });
     rnf.SendNotification(fooName, nullptr, nullptr);
@@ -57,9 +57,9 @@ TEST_CLASS (ReactNotificationServiceTests) {
     auto fooName = ReactPropertyBagHelper::GetName(nullptr, L"Foo");
     bool isCalled{false};
     auto subscription = rnf.Subscribe(
-        nullptr, fooName, [&](IInspectable const & /*sender*/, IReactNotificationData const &data) noexcept {
+        nullptr, fooName, [&](IInspectable const & /*sender*/, IReactNotificationArgs const &args) noexcept {
           isCalled = true;
-          data.Subscription().Unsubscribe();
+          args.Subscription().Unsubscribe();
         });
     rnf.SendNotification(fooName, nullptr, nullptr);
     TestCheck(isCalled);
@@ -75,10 +75,10 @@ TEST_CLASS (ReactNotificationServiceTests) {
     auto mySender = box_value(L"Hello");
     auto myData = box_value(42);
     bool isCalled{false};
-    rnf.Subscribe(nullptr, fooName, [&](IInspectable const &sender, IReactNotificationData const &data) noexcept {
+    rnf.Subscribe(nullptr, fooName, [&](IInspectable const &sender, IReactNotificationArgs const &args) noexcept {
       isCalled = true;
       TestCheckEqual(mySender, sender);
-      TestCheckEqual(myData, data.Data());
+      TestCheckEqual(myData, args.Data());
     });
     rnf.SendNotification(fooName, mySender, myData);
     TestCheck(isCalled);
@@ -90,12 +90,13 @@ TEST_CLASS (ReactNotificationServiceTests) {
     auto fooName = ReactPropertyBagHelper::GetName(nullptr, L"Foo");
     IReactDispatcher dispatcher = ReactDispatcherHelper::CreateSerialDispatcher();
     bool isCalled{false};
-    rnf.Subscribe(dispatcher, fooName, [&](IInspectable const &/*sender*/, IReactNotificationData const &data) noexcept {
-      TestCheckEqual(dispatcher, data.Subscription().Dispatcher());
-      TestCheck(dispatcher.HasThreadAccess());
-      isCalled = true;
-      finishedEvent.Set();
-    });
+    rnf.Subscribe(
+        dispatcher, fooName, [&](IInspectable const & /*sender*/, IReactNotificationArgs const &args) noexcept {
+          TestCheckEqual(dispatcher, args.Subscription().Dispatcher());
+          TestCheck(dispatcher.HasThreadAccess());
+          isCalled = true;
+          finishedEvent.Set();
+        });
     rnf.SendNotification(fooName, nullptr, nullptr);
     finishedEvent.Wait();
     TestCheck(isCalled);
