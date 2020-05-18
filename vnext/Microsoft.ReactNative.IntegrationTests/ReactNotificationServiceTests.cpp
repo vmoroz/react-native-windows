@@ -3,7 +3,7 @@
 
 #include "pch.h"
 
-#include <ReactPropertyBag.h>
+#include <ReactNotificationService.h>
 #include <eventWaitHandle/eventWaitHandle.h>
 #include <winrt/Microsoft.ReactNative.h>
 #include <winrt/Windows.Foundation.h>
