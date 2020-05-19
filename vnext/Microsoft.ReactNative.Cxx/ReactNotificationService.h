@@ -26,15 +26,6 @@ struct ReactNotificationSubscription {
 
   explicit ReactNotificationSubscription(IReactNotificationSubscription const &handle) noexcept : m_handle{handle} {}
 
-  ReactNotificationSubscription(auto_revoke_t, IReactNotificationSubscription const &handle) noexcept
-      : m_handle{handle}, m_autoRevoke{true} {}
-
-  ~ReactNotificationSubscription() noexcept {
-    if (m_autoRevoke) {
-      Unsubscribe();
-    }
-  }
-
   IReactNotificationSubscription const &Handle() const noexcept {
     return m_handle;
   }
@@ -71,7 +62,30 @@ struct ReactNotificationSubscription {
 
  private:
   IReactNotificationSubscription m_handle;
-  bool m_autoRevoke{false};
+};
+
+struct ReactNotificationSubscriptionRevoker : ReactNotificationSubscription {
+  ReactNotificationSubscriptionRevoker(std::nullptr_t = nullptr) noexcept : ReactNotificationSubscription{nullptr} {}
+
+  explicit ReactNotificationSubscriptionRevoker(IReactNotificationSubscription const &handle) noexcept
+      : ReactNotificationSubscription{handle} {}
+
+  ReactNotificationSubscriptionRevoker(ReactNotificationSubscriptionRevoker const &) = delete;
+  ReactNotificationSubscriptionRevoker(ReactNotificationSubscriptionRevoker &&) = default;
+  ReactNotificationSubscriptionRevoker &operator=(ReactNotificationSubscriptionRevoker const &) = delete;
+
+  ReactNotificationSubscriptionRevoker &operator=(ReactNotificationSubscriptionRevoker &&other) noexcept {
+    if (this != &other) {
+      Unsubscribe();
+      ReactNotificationSubscription::operator=(std::move(other));
+    }
+
+    return *this;
+  }
+
+  ~ReactNotificationSubscriptionRevoker() noexcept {
+    Unsubscribe();
+  }
 };
 
 struct ReactNotificationArgsBase {
@@ -130,7 +144,7 @@ struct ReactNotificationService {
   }
 
   template <class TData, class THandler, std::enable_if_t<IsValidHandlerV<THandler, TData>, int> = 0>
-  static ReactNotificationSubscription Subscribe(
+  static ReactNotificationSubscriptionRevoker Subscribe(
       IReactNotificationService const &handle,
       winrt::auto_revoke_t,
       ReactNotificationId<TData> const &notificationId,
@@ -145,11 +159,11 @@ struct ReactNotificationService {
                 handler(sender, ReactNotificationArgs<TData>{args});
               })
         : nullptr;
-    return ReactNotificationSubscription{winrt::auto_revoke, subscription};
+    return ReactNotificationSubscriptionRevoker{subscription};
   }
 
   template <class TData, class THandler, std::enable_if_t<IsValidHandlerV<THandler, TData>, int> = 0>
-  static ReactNotificationSubscription Subscribe(
+  static ReactNotificationSubscriptionRevoker Subscribe(
       IReactNotificationService const &handle,
       winrt::auto_revoke_t,
       ReactNotificationId<TData> const &notificationId,
@@ -224,7 +238,7 @@ struct ReactNotificationService {
   }
 
   template <class TData, class THandler, std::enable_if_t<IsValidHandlerV<THandler, TData>, int> = 0>
-  ReactNotificationSubscription Subscribe(
+  ReactNotificationSubscriptionRevoker Subscribe(
       winrt::auto_revoke_t,
       ReactNotificationId<TData> const &notificationId,
       ReactDispatcher const &dispatcher,
@@ -233,7 +247,7 @@ struct ReactNotificationService {
   }
 
   template <class TData, class THandler, std::enable_if_t<IsValidHandlerV<THandler, TData>, int> = 0>
-  ReactNotificationSubscription
+  ReactNotificationSubscriptionRevoker
   Subscribe(winrt::auto_revoke_t, ReactNotificationId<TData> const &notificationId, THandler &&handler) const noexcept {
     return Subscribe(m_handle, winrt::auto_revoke, notificationId, nullptr, std::forward<THandler>(handler));
   }
@@ -252,7 +266,7 @@ struct ReactNotificationService {
     return Subscribe(m_handle, notificationId, nullptr, std::forward<THandler>(handler));
   }
 
-  template <class TData, class TValue>
+  template <class TData, class TValue, std::enable_if_t<!std::is_void_v<TData>, int> = 0>
   void SendNotification(
       ReactNotificationId<TData> const &notificationId,
       Windows::Foundation::IInspectable const &sender,
@@ -266,9 +280,9 @@ struct ReactNotificationService {
     SendNotification(m_handle, notificationId, sender);
   }
 
-  template <class TData, class TValue>
+  template <class TData, class TValue, std::enable_if_t<!std::is_void_v<TData>, int> = 0>
   void SendNotification(ReactNotificationId<TData> const &notificationId, TValue &&value) const noexcept {
-    SendNotification(m_handle, notificationId, nullptr, std::forward<TValue>(value));
+    SendNotification(m_handle, notificationId, std::forward<TValue>(value));
   }
 
   void SendNotification(ReactNotificationId<void> const &notificationId) const noexcept {

@@ -153,17 +153,29 @@ TEST_CLASS (ReactNotificationServiceTests) {
     TestCheck(!isCalled);
   }
 
-  TEST_METHOD(NotificationWrapper_SenderAndData) {
+  TEST_METHOD(NotificationWrapper_Sender) {
+    ReactNotificationService rns{ReactNotificationServiceHelper::CreateNotificationService()};
+    ReactNotificationId<void> fooNotification{L"Foo"};
+    auto mySender = box_value(L"Hello");
+    bool isCalled{false};
+    rns.Subscribe(fooNotification, [&](IInspectable const &sender, ReactNotificationArgs<void> const &/*args*/) noexcept {
+      isCalled = true;
+      TestCheckEqual(mySender, sender);
+    });
+    rns.SendNotification(fooNotification, mySender);
+    TestCheck(isCalled);
+  }
+
+  TEST_METHOD(NotificationWrapper_Data) {
     ReactNotificationService rns{ReactNotificationServiceHelper::CreateNotificationService()};
     ReactNotificationId<int> fooNotification{L"Foo"};
-    auto mySender = box_value(L"Hello");
     bool isCalled{false};
     rns.Subscribe(fooNotification, [&](IInspectable const &sender, ReactNotificationArgs<int> const &args) noexcept {
       isCalled = true;
-      TestCheckEqual(mySender, sender);
+      TestCheck(!sender);
       TestCheckEqual(42, *args.Data());
     });
-    rns.SendNotification(fooNotification, mySender, 42);
+    rns.SendNotification(fooNotification, 42);
     TestCheck(isCalled);
   }
 
@@ -187,6 +199,50 @@ TEST_CLASS (ReactNotificationServiceTests) {
     rns.SendNotification(fooNotification, "Hello");
     finishedEvent.Wait();
     TestCheck(isCalled);
+  }
+
+  TEST_METHOD(NotificationWrapper_AutoRevoke) {
+    ReactNotificationService rns{ReactNotificationServiceHelper::CreateNotificationService()};
+    ReactNotificationId<void> fooNotification{L"Foo"};
+    bool isCalled{false};
+    auto subscription = rns.Subscribe(
+        winrt::auto_revoke, fooNotification, [&](IInspectable const & /*sender*/, ReactNotificationArgs<void> const & /*args*/) noexcept {
+          isCalled = true;
+        });
+    rns.SendNotification(fooNotification);
+    TestCheck(isCalled);
+
+    subscription = nullptr;
+    TestCheck(!subscription.IsSubscribed());
+
+    isCalled = false;
+    rns.SendNotification(fooNotification);
+    TestCheck(!isCalled);
+  }
+
+  TEST_METHOD(NotificationWrapper_AutoRevoke_InQueue) {
+    ReactNotificationService rns{ReactNotificationServiceHelper::CreateNotificationService()};
+    ReactNotificationId<void> fooNotification{L"Foo"};
+    Mso::ManualResetEvent finishedEvent;
+    ReactDispatcher dispatcher{ReactDispatcher::CreateSerialDispatcher()};
+    ReactNotificationSubscription s;
+    bool isCalled{false};
+    auto subscription = rns.Subscribe(
+        winrt::auto_revoke,
+        fooNotification,
+        dispatcher,
+        [&](IInspectable const & /*sender*/, ReactNotificationArgs<void> const & args) noexcept {
+          isCalled = true;
+          s = args.Subscription();
+          TestCheck(dispatcher.HasThreadAccess());
+          finishedEvent.Set();
+        });
+    rns.SendNotification(fooNotification);
+    finishedEvent.Wait();
+    TestCheck(isCalled);
+
+    subscription = nullptr;
+    TestCheck(!s.IsSubscribed());
   }
 };
 

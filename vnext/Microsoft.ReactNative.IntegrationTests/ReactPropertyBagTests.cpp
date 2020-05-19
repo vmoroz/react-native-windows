@@ -276,8 +276,8 @@ TEST_CLASS (ReactPropertyBagTests) {
     TestCheck(ns2 != ns11);
     TestCheck(ns2 != nullptr);
     TestCheck(nullptr != ns2);
-    TestCheck(ns3 != nullptr);
-    TestCheck(nullptr != ns3);
+    TestCheck(ns3 == nullptr);
+    TestCheck(nullptr == ns3);
   }
 
   TEST_METHOD(PropertyId_ctor_default) {
