@@ -11,12 +11,12 @@ namespace Microsoft.ReactNative {
   [webhosthidden]
   interface IReactNotificationSubscription
   {
+    // Name of the notification.
+    IReactPropertyName NotificationName { get; };
+
     // The IReactDispatcher provided when the notification subscription created.
     // All notifications will be handled using this dispatcher.
     IReactDispatcher Dispatcher { get; };
-
-    // Name of the notification.
-    IReactPropertyName NotificationName { get; };
 
     // True if the subscription is still active.
     // This property is checked before notification handler is invoked.
@@ -55,15 +55,13 @@ namespace Microsoft.ReactNative {
   interface IReactNotificationService
   {
     // Subscribe to a notification.
-    // If the dispatcher is not null, then it is used to call notification handlers.
     // The notificationName as a property name can belong to a specific namespace. It must be not null.
+    // The dispatcher is used to call notification handlers. If it is null, then handler is called synchronously.
     // The handler is a delegate that can be implemented as a lambda to handle notifications.
     // The method returns IReactNotificationSubscription that must be kept alive while the subscription
     // is active. The subscription is removed when the IReactNotificationSubscription is destroyed.
     IReactNotificationSubscription Subscribe(
-      IReactDispatcher dispatcher,
-      IReactPropertyName notificationName,
-      ReactNotificationHandler handler);
+      IReactPropertyName notificationName, IReactDispatcher dispatcher, ReactNotificationHandler handler);
 
     // Send the notification with notificationName.
     // The sender is the object that sends notification. It can be null.

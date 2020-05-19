@@ -36,8 +36,8 @@ struct ReactNotificationService : implements<ReactNotificationService, IReactNot
   ~ReactNotificationService() noexcept;
 
   IReactNotificationSubscription Subscribe(
-      IReactDispatcher const &dispatcher,
       IReactPropertyName const &notificationName,
+      IReactDispatcher const &dispatcher,
       ReactNotificationHandler const &handler) noexcept;
 
   void Unsubscribe(IReactNotificationSubscription const &subscription) noexcept;
@@ -67,8 +67,8 @@ struct ReactNotificationServiceProxy : implements<ReactNotificationServiceProxy,
   ~ReactNotificationServiceProxy() noexcept;
 
   IReactNotificationSubscription Subscribe(
-      IReactDispatcher const &dispatcher,
       IReactPropertyName const &notificationName,
+      IReactDispatcher const &dispatcher,
       ReactNotificationHandler const &handler) noexcept;
 
   void SendNotification(
@@ -89,21 +89,21 @@ struct ReactNotificationServiceHelper {
 struct ReactNotificationSubscription : implements<ReactNotificationSubscription, IReactNotificationSubscription> {
   ReactNotificationSubscription(
       weak_ref<ReactNotificationService> &&notificationService,
-      IReactDispatcher const &dispatcher,
       IReactPropertyName const &notificationName,
+      IReactDispatcher const &dispatcher,
       ReactNotificationHandler const &handler) noexcept;
   ~ReactNotificationSubscription() noexcept;
 
-  IReactDispatcher Dispatcher() const noexcept;
   IReactPropertyName NotificationName() const noexcept;
+  IReactDispatcher Dispatcher() const noexcept;
   bool IsSubscribed() const noexcept;
   void Unsubscribe() noexcept;
   void CallHandler(IInspectable const &sender, IReactNotificationArgs const &args) noexcept;
 
  private:
   weak_ref<ReactNotificationService> m_notificationService;
-  IReactDispatcher m_dispatcher;
   IReactPropertyName m_notificationName;
+  IReactDispatcher m_dispatcher;
   ReactNotificationHandler m_handler;
   std::atomic_bool m_isSubscribed{true};
 };

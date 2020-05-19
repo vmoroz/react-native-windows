@@ -13,12 +13,12 @@ namespace winrt::Microsoft::ReactNative::implementation {
 
 ReactNotificationSubscription::ReactNotificationSubscription(
     weak_ref<ReactNotificationService> &&notificationService,
-    IReactDispatcher const &dispatcher,
     IReactPropertyName const &notificationName,
+    IReactDispatcher const &dispatcher,
     ReactNotificationHandler const &handler) noexcept
     : m_notificationService{std::move(notificationService)},
-      m_dispatcher{dispatcher},
       m_notificationName{notificationName},
+      m_dispatcher{dispatcher},
       m_handler{handler} {}
 
 ReactNotificationSubscription::~ReactNotificationSubscription() noexcept {
@@ -122,10 +122,10 @@ void ReactNotificationService::ModifySubscriptions(
 }
 
 IReactNotificationSubscription ReactNotificationService::Subscribe(
-    IReactDispatcher const &dispatcher,
     IReactPropertyName const &notificationName,
+    IReactDispatcher const &dispatcher,
     ReactNotificationHandler const &handler) noexcept {
-  auto subscription = make<ReactNotificationSubscription>(get_weak(), dispatcher, notificationName, handler);
+  auto subscription = make<ReactNotificationSubscription>(get_weak(), notificationName, dispatcher, handler);
   ModifySubscriptions(
       notificationName, [&subscription](std::vector<IReactNotificationSubscription> const &snapshot) noexcept {
         std::vector<IReactNotificationSubscription> newSnapshot(snapshot);
@@ -183,11 +183,11 @@ ReactNotificationServiceProxy::ReactNotificationServiceProxy(weak_ref<IReactNoti
 ReactNotificationServiceProxy::~ReactNotificationServiceProxy() = default;
 
 IReactNotificationSubscription ReactNotificationServiceProxy::Subscribe(
-    IReactDispatcher const &dispatcher,
     IReactPropertyName const &notificationName,
+    IReactDispatcher const &dispatcher,
     ReactNotificationHandler const &handler) noexcept {
   if (auto service = m_service.get()) {
-    return service.Subscribe(dispatcher, notificationName, handler);
+    return service.Subscribe(notificationName, dispatcher, handler);
   } else {
     return nullptr;
   }
