@@ -7,7 +7,7 @@
 #include <dispatchQueue/dispatchQueue.h>
 #include <winrt/Microsoft.ReactNative.h>
 
-namespace winrt::Microsoft::ReactNative {
+namespace winrt::Microsoft::ReactNative::implementation {
 
 struct ReactDispatcher : implements<ReactDispatcher, IReactDispatcher> {
   ReactDispatcher() = default;
@@ -28,10 +28,6 @@ struct ReactDispatcher : implements<ReactDispatcher, IReactDispatcher> {
  private:
   Mso::DispatchQueue m_queue;
 };
-
-} // namespace winrt::Microsoft::ReactNative
-
-namespace winrt::Microsoft::ReactNative::implementation {
 
 struct ReactDispatcherHelper {
   ReactDispatcherHelper() = default;
