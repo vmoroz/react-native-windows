@@ -36,8 +36,7 @@ struct ReactDispatcher {
     return m_handle ? m_handle.HasThreadAccess() : false;
   }
 
-  static ReactDispatcher CreateSerialDispatcher() noexcept
-  {
+  static ReactDispatcher CreateSerialDispatcher() noexcept {
     return ReactDispatcher{ReactDispatcherHelper::CreateSerialDispatcher()};
   }
 

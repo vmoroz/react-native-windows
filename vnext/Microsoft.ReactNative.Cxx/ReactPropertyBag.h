@@ -69,8 +69,8 @@
 
 #include <winrt/Microsoft.ReactNative.h>
 #include <optional>
-#include "ReactNonAbiValue.h"
 #include "ReactHandleHelper.h"
+#include "ReactNonAbiValue.h"
 
 namespace winrt::Microsoft::ReactNative {
 

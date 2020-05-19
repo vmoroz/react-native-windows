@@ -42,6 +42,8 @@ struct ReactNotificationService : implements<ReactNotificationService, IReactNot
 
   void Unsubscribe(IReactNotificationSubscription const &subscription) noexcept;
 
+  void UnsubscribeAll() noexcept;
+
   void SendNotification(
       IReactPropertyName const &notificationName,
       IInspectable const &sender,
@@ -60,24 +62,6 @@ struct ReactNotificationService : implements<ReactNotificationService, IReactNot
   std::mutex m_mutex;
   std::map<IReactPropertyName, SubscriptionSnapshotPtr> m_subscriptions;
   IReactNotificationService m_parentNotificationService;
-};
-
-struct ReactNotificationServiceProxy : implements<ReactNotificationServiceProxy, IReactNotificationService> {
-  ReactNotificationServiceProxy(weak_ref<IReactNotificationService> &&service) noexcept;
-  ~ReactNotificationServiceProxy() noexcept;
-
-  IReactNotificationSubscription Subscribe(
-      IReactPropertyName const &notificationName,
-      IReactDispatcher const &dispatcher,
-      ReactNotificationHandler const &handler) noexcept;
-
-  void SendNotification(
-      IReactPropertyName const &notificationName,
-      IInspectable const &sender,
-      IInspectable const &data) noexcept;
-
- private:
-  weak_ref<IReactNotificationService> m_service;
 };
 
 struct ReactNotificationServiceHelper {

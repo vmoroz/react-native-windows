@@ -44,6 +44,8 @@ class ReactContext final : public Mso::UnknownObject<IReactContext> {
       winrt::Microsoft::ReactNative::IReactPropertyBag const &properties,
       winrt::Microsoft::ReactNative::IReactNotificationService const &notifications) noexcept;
 
+  void Destroy() noexcept;
+
  public: // IReactContext
   winrt::Microsoft::ReactNative::IReactPropertyBag Properties() noexcept override;
   winrt::Microsoft::ReactNative::IReactNotificationService Notifications() noexcept override;

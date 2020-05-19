@@ -158,10 +158,11 @@ TEST_CLASS (ReactNotificationServiceTests) {
     ReactNotificationId<void> fooNotification{L"Foo"};
     auto mySender = box_value(L"Hello");
     bool isCalled{false};
-    rns.Subscribe(fooNotification, [&](IInspectable const &sender, ReactNotificationArgs<void> const &/*args*/) noexcept {
-      isCalled = true;
-      TestCheckEqual(mySender, sender);
-    });
+    rns.Subscribe(
+        fooNotification, [&](IInspectable const &sender, ReactNotificationArgs<void> const & /*args*/) noexcept {
+          isCalled = true;
+          TestCheckEqual(mySender, sender);
+        });
     rns.SendNotification(fooNotification, mySender);
     TestCheck(isCalled);
   }
@@ -206,7 +207,9 @@ TEST_CLASS (ReactNotificationServiceTests) {
     ReactNotificationId<void> fooNotification{L"Foo"};
     bool isCalled{false};
     auto subscription = rns.Subscribe(
-        winrt::auto_revoke, fooNotification, [&](IInspectable const & /*sender*/, ReactNotificationArgs<void> const & /*args*/) noexcept {
+        winrt::auto_revoke,
+        fooNotification,
+        [&](IInspectable const & /*sender*/, ReactNotificationArgs<void> const & /*args*/) noexcept {
           isCalled = true;
         });
     rns.SendNotification(fooNotification);
@@ -231,7 +234,7 @@ TEST_CLASS (ReactNotificationServiceTests) {
         winrt::auto_revoke,
         fooNotification,
         dispatcher,
-        [&](IInspectable const & /*sender*/, ReactNotificationArgs<void> const & args) noexcept {
+        [&](IInspectable const & /*sender*/, ReactNotificationArgs<void> const &args) noexcept {
           isCalled = true;
           s = args.Subscription();
           TestCheck(dispatcher.HasThreadAccess());

@@ -11,6 +11,7 @@
 #include <Threading/MessageDispatchQueue.h>
 #include "ReactErrorProvider.h"
 
+#include "Microsoft.ReactNative/IReactNotificationService.h"
 #include "Microsoft.ReactNative/Threading/MessageQueueThreadFactory.h"
 
 #include "../../codegen/NativeClipboardSpec.g.h"
@@ -59,6 +60,8 @@ std::shared_ptr<facebook::react::IUIManager> CreateUIManager2(
 
 } // namespace react::uwp
 
+using namespace winrt::Microsoft::ReactNative;
+
 namespace Mso::React {
 
 //=============================================================================================
@@ -67,15 +70,21 @@ namespace Mso::React {
 
 ReactContext::ReactContext(
     Mso::WeakPtr<ReactInstanceWin> &&reactInstance,
-    winrt::Microsoft::ReactNative::IReactPropertyBag const &properties,
-    winrt::Microsoft::ReactNative::IReactNotificationService const &notifications) noexcept
+    IReactPropertyBag const &properties,
+    IReactNotificationService const &notifications) noexcept
     : m_reactInstance{std::move(reactInstance)}, m_properties{properties}, m_notifications{notifications} {}
 
-winrt::Microsoft::ReactNative::IReactPropertyBag ReactContext::Properties() noexcept {
+void ReactContext::Destroy() noexcept {
+  if (auto notificationService = winrt::get_self<implementation::ReactNotificationService>(m_notifications)) {
+    notificationService->UnsubscribeAll();
+  }
+}
+
+IReactPropertyBag ReactContext::Properties() noexcept {
   return m_properties;
 }
 
-winrt::Microsoft::ReactNative::IReactNotificationService ReactContext::Notifications() noexcept {
+IReactNotificationService ReactContext::Notifications() noexcept {
   return m_notifications;
 }
 
@@ -138,7 +147,10 @@ ReactInstanceWin::ReactInstanceWin(
       m_whenCreated{std::move(whenCreated)},
       m_whenLoaded{std::move(whenLoaded)},
       m_updateUI{std::move(updateUI)},
-      m_reactContext{Mso::Make<ReactContext>(this, options.Properties, options.Notifications)},
+      m_reactContext{Mso::Make<ReactContext>(
+          this,
+          options.Properties,
+          winrt::make<implementation::ReactNotificationService>(options.Notifications))},
       m_legacyInstance{std::make_shared<react::uwp::UwpReactInstanceProxy>(
           Mso::WeakPtr<Mso::React::IReactInstance>{this},
           Mso::Copy(options.LegacySettings))} {

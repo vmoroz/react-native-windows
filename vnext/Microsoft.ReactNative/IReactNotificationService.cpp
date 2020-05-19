@@ -50,7 +50,7 @@ void ReactNotificationSubscription::CallHandler(
     IReactNotificationArgs const &args) noexcept {
   if (IsSubscribed()) {
     if (m_dispatcher) {
-      m_dispatcher.Post([thisPtr = get_strong(), sender, args]() noexcept {
+      m_dispatcher.Post([ thisPtr = get_strong(), sender, args ]() noexcept {
         if (thisPtr->IsSubscribed()) {
           thisPtr->m_handler(sender, args);
         }
@@ -70,7 +70,9 @@ ReactNotificationService::ReactNotificationService() = default;
 ReactNotificationService::ReactNotificationService(IReactNotificationService const parentNotificationService) noexcept
     : m_parentNotificationService{parentNotificationService} {}
 
-ReactNotificationService::~ReactNotificationService() = default;
+ReactNotificationService::~ReactNotificationService() noexcept {
+  UnsubscribeAll();
+}
 
 void ReactNotificationService::ModifySubscriptions(
     IReactPropertyName const &notificationName,
@@ -78,7 +80,7 @@ void ReactNotificationService::ModifySubscriptions(
   // Get the current snapshot under the lock
   SubscriptionSnapshotPtr currentSnapshotPtr;
   {
-    std::scoped_lock readLock{m_mutex};
+    std::scoped_lock lock{m_mutex};
     auto it = m_subscriptions.find(notificationName);
     if (it != m_subscriptions.end()) {
       currentSnapshotPtr = it->second;
@@ -92,7 +94,7 @@ void ReactNotificationService::ModifySubscriptions(
 
     // Try to set the new snapshot under the lock
     SubscriptionSnapshotPtr snapshotPtr;
-    std::scoped_lock readLock{m_mutex};
+    std::scoped_lock lock{m_mutex};
     auto it = m_subscriptions.find(notificationName);
     if (it != m_subscriptions.end()) {
       snapshotPtr = it->second;
@@ -148,6 +150,21 @@ void ReactNotificationService::Unsubscribe(IReactNotificationSubscription const 
       });
 }
 
+void ReactNotificationService::UnsubscribeAll() noexcept {
+  std::map<IReactPropertyName, SubscriptionSnapshotPtr> subscriptions;
+  {
+    std::scoped_lock lock{m_mutex};
+    subscriptions = std::move(m_subscriptions);
+  }
+
+  // Unsubscribe outside of lock.
+  for (auto &namedEntry : subscriptions) {
+    for (auto &subscription : *namedEntry.second) {
+      subscription.Unsubscribe();
+    }
+  }
+}
+
 void ReactNotificationService::SendNotification(
     IReactPropertyName const &notificationName,
     IInspectable const &sender,
@@ -155,7 +172,7 @@ void ReactNotificationService::SendNotification(
   SubscriptionSnapshotPtr currentSnapshotPtr;
 
   {
-    std::scoped_lock readLock{m_mutex};
+    std::scoped_lock lock{m_mutex};
     currentSnapshotPtr = m_subscriptions[notificationName];
   }
 
@@ -170,35 +187,6 @@ void ReactNotificationService::SendNotification(
   // Call parent notification service
   if (m_parentNotificationService) {
     m_parentNotificationService.SendNotification(notificationName, sender, data);
-  }
-}
-
-//=============================================================================
-// ReactNotificationServiceProxy implementation
-//=============================================================================
-
-ReactNotificationServiceProxy::ReactNotificationServiceProxy(weak_ref<IReactNotificationService> &&service) noexcept
-    : m_service{std::move(service)} {}
-
-ReactNotificationServiceProxy::~ReactNotificationServiceProxy() = default;
-
-IReactNotificationSubscription ReactNotificationServiceProxy::Subscribe(
-    IReactPropertyName const &notificationName,
-    IReactDispatcher const &dispatcher,
-    ReactNotificationHandler const &handler) noexcept {
-  if (auto service = m_service.get()) {
-    return service.Subscribe(notificationName, dispatcher, handler);
-  } else {
-    return nullptr;
-  }
-}
-
-void ReactNotificationServiceProxy::SendNotification(
-    IReactPropertyName const &notificationName,
-    IInspectable const &sender,
-    IInspectable const &data) noexcept {
-  if (auto service = m_service.get()) {
-    service.SendNotification(notificationName, sender, data);
   }
 }
 
