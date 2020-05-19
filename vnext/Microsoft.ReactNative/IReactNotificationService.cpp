@@ -173,7 +173,10 @@ void ReactNotificationService::SendNotification(
 
   {
     std::scoped_lock lock{m_mutex};
-    currentSnapshotPtr = m_subscriptions[notificationName];
+    auto it = m_subscriptions.find(notificationName);
+    if (it != m_subscriptions.end()) {
+      currentSnapshotPtr = it->second;
+    }
   }
 
   // Call notification handlers outside of lock.
