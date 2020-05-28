@@ -21,6 +21,136 @@ using namespace xaml::Controls;
 
 namespace winrt::Microsoft::ReactNative::implementation {
 
+struct AsyncActionFutureAdapter : implements<AsyncActionFutureAdapter, IAsyncAction, IAsyncInfo> {
+  using AsyncStatus = Windows::Foundation::AsyncStatus;
+  using AsyncCompletedHandler = Windows::Foundation::AsyncActionCompletedHandler;
+
+  AsyncActionFutureAdapter(Mso::Future<void> &&future) noexcept : m_future{std::move(future)} {
+    m_future.Then(Mso::Executors::Inline(), [weakThis = get_weak()](Mso::Maybe<void> &&result) noexcept {
+      if (auto strongThis = weakThis.get()) {
+        AsyncCompletedHandler completed;
+        {
+          slim_lock_guard const guard(strongThis->m_lock);
+          if (strongThis->m_status == AsyncStatus::Started) {
+            if (result.IsValue()) {
+              strongThis->m_status == AsyncStatus::Completed;
+              if (strongThis->m_completedAssigned) {
+                completed = std::move(strongThis->m_completed);
+              }
+            } else {
+              strongThis->m_status == AsyncStatus::Error;
+              strongThis->m_error = result.GetError();
+            }
+          }
+        }
+
+        if (completed) {
+          invoke(completed, *strongThis, status);
+        }
+      }
+    });
+  }
+
+  void Completed(AsyncCompletedHandler const &handler) {
+    AsyncStatus status;
+
+    {
+      slim_lock_guard const guard(m_lock);
+
+      if (m_completedAssigned) {
+        throw hresult_illegal_delegate_assignment();
+      }
+
+      m_completedAssigned = true;
+
+      if (m_status == AsyncStatus::Started) {
+        m_completed = impl::make_agile_delegate(handler);
+        return;
+      }
+
+      status = m_status;
+    }
+
+    if (handler) {
+      invoke(handler, *this, status);
+    }
+  }
+
+  auto Completed() noexcept {
+    slim_lock_guard const guard(m_lock);
+    return m_completed;
+  }
+
+  uint32_t Id() const noexcept {
+    return 1;
+  }
+
+  AsyncStatus Status() noexcept {
+    slim_lock_guard const guard(m_lock);
+    return m_status;
+  }
+
+  hresult ErrorCode() noexcept {
+    try {
+      slim_lock_guard const guard(m_lock);
+      RethrowIfFailed();
+      return 0;
+    } catch (...) {
+      return to_hresult();
+    }
+  }
+
+  void Cancel() noexcept {
+    winrt::delegate<> cancel;
+
+    {
+      slim_lock_guard const guard(m_lock);
+
+      if (m_status == AsyncStatus::Started) {
+        m_status = AsyncStatus::Canceled;
+        m_exception = std::make_exception_ptr(hresult_canceled());
+        cancel = std::move(m_cancel);
+      }
+    }
+
+    if (cancel) {
+      cancel();
+    }
+  }
+
+   void Close() noexcept {
+    m_future = nullptr;
+   }
+
+  void GetResults() {
+    slim_lock_guard const guard(m_lock);
+
+    if (m_status == AsyncStatus::Completed) {
+      return;
+    }
+
+    RethrowIfFailed();
+    VerifyElseCrash(m_status == AsyncStatus::Started);
+    throw hresult_illegal_method_call();
+  }
+
+ private:
+  void RethrowIfFailed() const {
+    if (m_status == AsyncStatus::Error || m_status == AsyncStatus::Canceled) {
+      std::rethrow_exception(m_exception);
+    }
+  }
+
+ private:
+  std::exception_ptr m_exception{};
+  slim_mutex m_lock;
+  AsyncCompletedHandler m_completed;
+  winrt::delegate<> m_cancel;
+  AsyncStatus m_status{AsyncStatus::Started};
+  bool m_completedAssigned{false};
+  Mso::Future<void> m_future;
+};
+
 ReactNativeHost::ReactNativeHost() noexcept : m_reactHost{Mso::React::MakeReactHost()} {
 #if _DEBUG
   facebook::react::InitializeLogging([](facebook::react::RCTLogLevel /*logLevel*/, const char *message) {
@@ -54,7 +184,11 @@ void ReactNativeHost::InstanceSettings(ReactNative::ReactInstanceSettings const 
   m_instanceSettings = value;
 }
 
-void ReactNativeHost::ReloadInstance() noexcept {
+IAsyncAction ReactNativeHost::LoadInstance() noexcept {
+  return ReloadInstance();
+}
+
+IAsyncAction ReactNativeHost::ReloadInstance() noexcept {
 #ifndef CORE_ABI
   auto modulesProvider = std::make_shared<NativeModulesProvider>();
 
@@ -133,6 +267,10 @@ void ReactNativeHost::ReloadInstance() noexcept {
   // Core ABI work needed
   assert(false);
 #endif
+}
+
+IAsyncAction ReactNativeHost::UnloadInstance() noexcept {
+  auto future = m_reactHost->UnloadInstance();
 }
 
 Mso::React::IReactHost *ReactNativeHost::ReactHost() noexcept {

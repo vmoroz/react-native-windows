@@ -25,7 +25,9 @@ struct ReactNativeHost : ReactNativeHostT<ReactNativeHost> {
   ReactNative::ReactInstanceSettings InstanceSettings() noexcept;
   void InstanceSettings(ReactNative::ReactInstanceSettings const &value) noexcept;
 
-  void ReloadInstance() noexcept;
+  Windows::Foundation::IAsyncAction LoadInstance() noexcept;
+  Windows::Foundation::IAsyncAction ReloadInstance() noexcept;
+  Windows::Foundation::IAsyncAction UnloadInstance() noexcept;
 
  public:
   Mso::React::IReactHost *ReactHost() noexcept;

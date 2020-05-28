@@ -17,6 +17,8 @@ namespace Microsoft.ReactNative {
     IVector<IReactPackageProvider> PackageProviders { get; set; };
     ReactInstanceSettings InstanceSettings { get; set; };
 
-    void ReloadInstance();
+    Windows.Foundation.IAsyncAction LoadInstance();
+    Windows.Foundation.IAsyncAction ReloadInstance();
+    Windows.Foundation.IAsyncAction UnloadInstance();
   }
 } // namespace Microsoft.ReactNative
