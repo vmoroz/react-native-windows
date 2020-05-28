@@ -8,6 +8,7 @@
 #include "ReactPackageBuilder.h"
 #include "RedBox.h"
 
+#include <errorCode/hresultErrorProvider.h>
 #include <winrt/Windows.Foundation.Collections.h>
 #include "ReactInstanceSettings.h"
 
@@ -26,26 +27,26 @@ struct AsyncActionFutureAdapter : implements<AsyncActionFutureAdapter, IAsyncAct
   using AsyncCompletedHandler = Windows::Foundation::AsyncActionCompletedHandler;
 
   AsyncActionFutureAdapter(Mso::Future<void> &&future) noexcept : m_future{std::move(future)} {
-    m_future.Then(Mso::Executors::Inline(), [weakThis = get_weak()](Mso::Maybe<void> &&result) noexcept {
+    m_future.Then<Mso::Executors::Inline>([weakThis = get_weak()](Mso::Maybe<void> &&result) noexcept {
       if (auto strongThis = weakThis.get()) {
-        AsyncCompletedHandler completed;
+        AsyncCompletedHandler handler;
         {
           slim_lock_guard const guard(strongThis->m_lock);
           if (strongThis->m_status == AsyncStatus::Started) {
             if (result.IsValue()) {
-              strongThis->m_status == AsyncStatus::Completed;
+              strongThis->m_status = AsyncStatus::Completed;
               if (strongThis->m_completedAssigned) {
-                completed = std::move(strongThis->m_completed);
+                handler = std::move(strongThis->m_completed);
               }
             } else {
-              strongThis->m_status == AsyncStatus::Error;
+              strongThis->m_status = AsyncStatus::Error;
               strongThis->m_error = result.GetError();
             }
           }
         }
 
-        if (completed) {
-          invoke(completed, *strongThis, status);
+        if (handler) {
+          invoke(handler, *strongThis, AsyncStatus::Completed);
         }
       }
     });
@@ -101,26 +102,21 @@ struct AsyncActionFutureAdapter : implements<AsyncActionFutureAdapter, IAsyncAct
   }
 
   void Cancel() noexcept {
-    winrt::delegate<> cancel;
+    slim_lock_guard const guard(m_lock);
 
-    {
-      slim_lock_guard const guard(m_lock);
-
-      if (m_status == AsyncStatus::Started) {
-        m_status = AsyncStatus::Canceled;
-        m_exception = std::make_exception_ptr(hresult_canceled());
-        cancel = std::move(m_cancel);
-      }
-    }
-
-    if (cancel) {
-      cancel();
+    if (m_status == AsyncStatus::Started) {
+      m_status = AsyncStatus::Canceled;
+      m_error = Mso::HResultErrorProvider().MakeErrorCode(winrt::impl::error_canceled);
     }
   }
 
-   void Close() noexcept {
-    m_future = nullptr;
-   }
+  void Close() noexcept {
+    Mso::Future<void> future;
+    {
+      slim_lock_guard const guard(m_lock);
+      future = std::move(future);
+    }
+  }
 
   void GetResults() {
     slim_lock_guard const guard(m_lock);
@@ -137,18 +133,17 @@ struct AsyncActionFutureAdapter : implements<AsyncActionFutureAdapter, IAsyncAct
  private:
   void RethrowIfFailed() const {
     if (m_status == AsyncStatus::Error || m_status == AsyncStatus::Canceled) {
-      std::rethrow_exception(m_exception);
+      m_error.Throw();
     }
   }
 
  private:
-  std::exception_ptr m_exception{};
   slim_mutex m_lock;
-  AsyncCompletedHandler m_completed;
-  winrt::delegate<> m_cancel;
-  AsyncStatus m_status{AsyncStatus::Started};
-  bool m_completedAssigned{false};
   Mso::Future<void> m_future;
+  AsyncStatus m_status{AsyncStatus::Started};
+  Mso::ErrorCode m_error{};
+  AsyncCompletedHandler m_completed;
+  bool m_completedAssigned{false};
 };
 
 ReactNativeHost::ReactNativeHost() noexcept : m_reactHost{Mso::React::MakeReactHost()} {
@@ -262,15 +257,15 @@ IAsyncAction ReactNativeHost::ReloadInstance() noexcept {
 
   reactOptions.Identity = jsBundleFile;
 
-  m_reactHost->ReloadInstanceWithOptions(std::move(reactOptions));
+  return make<AsyncActionFutureAdapter>(m_reactHost->ReloadInstanceWithOptions(std::move(reactOptions)));
 #else
   // Core ABI work needed
-  assert(false);
+  VerifyElseCrash(false);
 #endif
 }
 
 IAsyncAction ReactNativeHost::UnloadInstance() noexcept {
-  auto future = m_reactHost->UnloadInstance();
+  return make<AsyncActionFutureAdapter>(m_reactHost->UnloadInstance());
 }
 
 Mso::React::IReactHost *ReactNativeHost::ReactHost() noexcept {
