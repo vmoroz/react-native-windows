@@ -15,11 +15,14 @@ struct TestHostModule {
     TestHostModule::Instance.set_value(*this);
   }
 
-  REACT_FUNCTION(addValues)
+  REACT_FUNCTION(addValues, L"addValues", L"SampleModuleCpp")
   std::function<void(int a, int b)> addValues;
 
-  REACT_METHOD(returnInt)
-  void returnInt(int value) noexcept {
+  REACT_METHOD(Init, L"init")
+  void Init() noexcept {}
+
+  REACT_METHOD(ReturnInt, L"returnInt")
+  void ReturnInt(int value) noexcept {
     TestHostModule::IntReturnValue.set_value(value);
   }
 
@@ -57,7 +60,12 @@ TEST_CLASS (ReactNativeHostTests) {
       testBinaryPath[std::wstring_view{testBinaryPath}.rfind(L"\\")] = 0;
 
       host.InstanceSettings().BundleRootPath(testBinaryPath);
-      host.InstanceSettings().JavaScriptBundleFile(L"AddValues.bundle");
+      host.InstanceSettings().JavaScriptBundleFile(L"AddValues");
+      host.InstanceSettings().UseDeveloperSupport(false);
+      host.InstanceSettings().UseWebDebugger(false);
+      host.InstanceSettings().UseFastRefresh(false);
+      host.InstanceSettings().UseLiveReload(false);
+      host.InstanceSettings().EnableDeveloperMenu(false);
 
       host.LoadInstance();
     });

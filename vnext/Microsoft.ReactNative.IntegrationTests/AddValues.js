@@ -7,3 +7,6 @@ class SampleModuleCpp {
 }
 
 global.__fbBatchedBridge.registerLazyCallableModule('SampleModuleCpp', () => new SampleModuleCpp());
+
+// Native modules are created on demand from JavaScript code.
+NativeModules.TestHostModule.init();

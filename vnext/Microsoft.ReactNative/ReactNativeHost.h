@@ -19,7 +19,6 @@ struct ReactNativeHost : ReactNativeHostT<ReactNativeHost> {
 
   // property PackageProviders
   Windows::Foundation::Collections::IVector<IReactPackageProvider> PackageProviders() noexcept;
-  void PackageProviders(Windows::Foundation::Collections::IVector<IReactPackageProvider> const &value) noexcept;
 
   // property InstanceSettings
   ReactNative::ReactInstanceSettings InstanceSettings() noexcept;
@@ -36,7 +35,6 @@ struct ReactNativeHost : ReactNativeHostT<ReactNativeHost> {
   Mso::CntPtr<Mso::React::IReactHost> m_reactHost;
 
   ReactNative::ReactInstanceSettings m_instanceSettings{nullptr};
-  Windows::Foundation::Collections::IVector<IReactPackageProvider> m_packageProviders;
   ReactNative::IReactPackageBuilder m_packageBuilder;
 };
 

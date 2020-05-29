@@ -27,7 +27,7 @@ struct AsyncActionFutureAdapter : implements<AsyncActionFutureAdapter, IAsyncAct
   using AsyncCompletedHandler = Windows::Foundation::AsyncActionCompletedHandler;
 
   AsyncActionFutureAdapter(Mso::Future<void> &&future) noexcept : m_future{std::move(future)} {
-    m_future.Then<Mso::Executors::Inline>([weakThis = get_weak()](Mso::Maybe<void> &&result) noexcept {
+    m_future.Then<Mso::Executors::Inline>([weakThis = get_weak()](Mso::Maybe<void> && result) noexcept {
       if (auto strongThis = weakThis.get()) {
         AsyncCompletedHandler handler;
         {
@@ -156,15 +156,7 @@ ReactNativeHost::ReactNativeHost() noexcept : m_reactHost{Mso::React::MakeReactH
 }
 
 IVector<IReactPackageProvider> ReactNativeHost::PackageProviders() noexcept {
-  if (!m_packageProviders) {
-    m_packageProviders = single_threaded_vector<IReactPackageProvider>();
-  }
-
-  return m_packageProviders;
-}
-
-void ReactNativeHost::PackageProviders(IVector<IReactPackageProvider> const &value) noexcept {
-  m_packageProviders = value;
+  return InstanceSettings().PackageProviders();
 }
 
 ReactNative::ReactInstanceSettings ReactNativeHost::InstanceSettings() noexcept {
@@ -192,8 +184,8 @@ IAsyncAction ReactNativeHost::ReloadInstance() noexcept {
   if (!m_packageBuilder) {
     m_packageBuilder = make<ReactPackageBuilder>(modulesProvider, viewManagersProvider);
 
-    if (m_packageProviders) {
-      for (auto const &packageProvider : m_packageProviders) {
+    if (auto packageProviders = InstanceSettings().PackageProviders()) {
+      for (auto const &packageProvider : packageProviders) {
         packageProvider.CreatePackage(m_packageBuilder);
       }
     }

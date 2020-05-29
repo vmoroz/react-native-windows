@@ -28,6 +28,8 @@ struct ReactInstanceSettings : ReactInstanceSettingsT<ReactInstanceSettings> {
 
   IReactNotificationService Notifications() noexcept;
 
+  Windows::Foundation::Collections::IVector<IReactPackageProvider> PackageProviders() noexcept;
+
   bool UseDeveloperSupport() noexcept;
   void UseDeveloperSupport(bool value) noexcept;
 
@@ -94,6 +96,8 @@ struct ReactInstanceSettings : ReactInstanceSettingsT<ReactInstanceSettings> {
  private:
   IReactPropertyBag m_properties{ReactPropertyBagHelper::CreatePropertyBag()};
   IReactNotificationService m_notifications{ReactNotificationServiceHelper::CreateNotificationService()};
+  Windows::Foundation::Collections::IVector<IReactPackageProvider> m_packageProviders{
+      single_threaded_vector<IReactPackageProvider>()};
   bool m_useDeveloperSupport{REACT_DEFAULT_USE_DEVELOPER_SUPPORT};
   hstring m_javaScriptMainModuleName{};
   hstring m_javaScriptBundleFile{};
@@ -136,6 +140,11 @@ inline IReactPropertyBag ReactInstanceSettings::Properties() noexcept {
 
 inline IReactNotificationService ReactInstanceSettings::Notifications() noexcept {
   return m_notifications;
+}
+
+inline Windows::Foundation::Collections::IVector<IReactPackageProvider>
+ReactInstanceSettings::PackageProviders() noexcept {
+  return m_packageProviders;
 }
 
 inline bool ReactInstanceSettings::UseDeveloperSupport() noexcept {
