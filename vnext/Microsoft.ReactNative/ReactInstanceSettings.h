@@ -4,6 +4,8 @@
 #pragma once
 
 #include "ReactInstanceSettings.g.h"
+#include <winrt/Windows.Foundation.h>
+#include <winrt/Windows.Foundation.Collections.h>
 
 #if _DEBUG
 #define REACT_DEFAULT_USE_DEVELOPER_SUPPORT true

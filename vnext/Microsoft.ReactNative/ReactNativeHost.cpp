@@ -13,6 +13,7 @@
 #include "ReactInstanceSettings.h"
 
 using namespace winrt;
+using namespace Windows::Foundation;
 using namespace Windows::Foundation::Collections;
 
 #ifndef CORE_ABI
