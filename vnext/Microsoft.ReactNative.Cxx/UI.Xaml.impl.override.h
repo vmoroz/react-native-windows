@@ -14,7 +14,7 @@
 namespace winrt::impl {
 
 // Override xaml::Application::Current() to return nullptr instead of crashing
-// if Application is not found.
+// when Application is not found.
 #ifndef USE_WINUI3
 template <>
 WINRT_IMPL_AUTO(Windows::UI::Xaml::Application)

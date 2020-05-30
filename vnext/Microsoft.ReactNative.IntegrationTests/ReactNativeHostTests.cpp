@@ -15,11 +15,14 @@ struct TestHostModule {
     TestHostModule::Instance.set_value(*this);
   }
 
-  REACT_FUNCTION(addValues, L"addValues", L"SampleModuleCpp")
+  REACT_FUNCTION(addValues, L"addValues", L"TestHostModuleFunctions")
   std::function<void(int a, int b)> addValues;
 
-  REACT_METHOD(Init, L"init")
-  void Init() noexcept {}
+  REACT_METHOD(Start, L"start")
+  void Start() noexcept {
+    // Native modules are created on-demand.
+    // This method is used to start loading the module from JavaScript.
+  }
 
   REACT_METHOD(ReturnInt, L"returnInt")
   void ReturnInt(int value) noexcept {
