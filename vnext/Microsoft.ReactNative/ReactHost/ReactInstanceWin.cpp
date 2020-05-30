@@ -70,20 +70,6 @@ using namespace winrt::Microsoft::ReactNative;
 
 namespace Mso::React {
 
-bool HasCurrentApplication() noexcept {
-  static const bool hasPackageIdentity = []() noexcept {
-    auto applicationStatics =
-        winrt::get_activation_factory<xaml::IApplicationStatics>(winrt::name_of<xaml::Application>());
-    auto abiApplicationStatics =
-        static_cast<winrt::impl::abi_t<xaml::IApplicationStatics> *>(winrt::get_abi(applicationStatics));
-    winrt::com_ptr<winrt::impl::abi_t<xaml::IApplication>> dummy;
-    return abiApplicationStatics->get_Current(winrt::put_abi(dummy)) == 0;
-  }
-  ();
-
-  return hasPackageIdentity;
-}
-
 //=============================================================================================
 // ReactContext implementation
 //=============================================================================================
@@ -191,16 +177,14 @@ void ReactInstanceWin::Initialize() noexcept {
         // Objects that must be created on the UI thread
         if (auto strongThis = weakThis.GetStrongPtr()) {
           auto const &legacyInstance = strongThis->m_legacyReactInstance;
-          if (HasCurrentApplication()) {
-            strongThis->m_appTheme =
-                std::make_shared<react::uwp::AppTheme>(legacyInstance, strongThis->m_uiMessageThread.LoadWithLock());
-            Microsoft::ReactNative::I18nManager::InitI18nInfo(
-                winrt::Microsoft::ReactNative::ReactPropertyBag(strongThis->Options().Properties));
-            strongThis->m_appearanceListener =
-                Mso::Make<react::uwp::AppearanceChangeListener>(legacyInstance, strongThis->m_uiQueue);
-            Microsoft::ReactNative::DeviceInfoHolder::InitDeviceInfoHolder(
-                winrt::Microsoft::ReactNative::ReactPropertyBag(strongThis->Options().Properties));
-          }
+          strongThis->m_appTheme =
+              std::make_shared<react::uwp::AppTheme>(legacyInstance, strongThis->m_uiMessageThread.LoadWithLock());
+          Microsoft::ReactNative::I18nManager::InitI18nInfo(
+              winrt::Microsoft::ReactNative::ReactPropertyBag(strongThis->Options().Properties));
+          strongThis->m_appearanceListener =
+              Mso::Make<react::uwp::AppearanceChangeListener>(legacyInstance, strongThis->m_uiQueue);
+          Microsoft::ReactNative::DeviceInfoHolder::InitDeviceInfoHolder(
+              winrt::Microsoft::ReactNative::ReactPropertyBag(strongThis->Options().Properties));
         }
       })
       .Then(Queue(), [ this, weakThis = Mso::WeakPtr{this} ]() noexcept {

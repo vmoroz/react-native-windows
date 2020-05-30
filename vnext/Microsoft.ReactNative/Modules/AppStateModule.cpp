@@ -8,27 +8,11 @@
 
 namespace Microsoft::ReactNative {
 
-bool HasCurrentApplication() noexcept {
-  static const bool hasPackageIdentity = []() noexcept {
-    auto applicationStatics =
-        winrt::get_activation_factory<xaml::IApplicationStatics>(winrt::name_of<xaml::Application>());
-    auto abiApplicationStatics =
-        static_cast<winrt::impl::abi_t<xaml::IApplicationStatics> *>(winrt::get_abi(applicationStatics));
-    winrt::com_ptr<winrt::impl::abi_t<xaml::IApplication>> dummy;
-    return abiApplicationStatics->get_Current(winrt::put_abi(dummy)) == 0;
-  }
-  ();
-
-  return hasPackageIdentity;
-}
-
 void AppState::Initialize(winrt::Microsoft::ReactNative::ReactContext const &reactContext) noexcept {
   m_context = reactContext;
   m_active = true;
 
-  if (HasCurrentApplication()) {
-    auto currentApp = xaml::Application::Current();
-
+  if (auto currentApp = xaml::Application::Current()) {
     m_enteredBackgroundRevoker = currentApp.EnteredBackground(
         winrt::auto_revoke,
         [weakThis = weak_from_this()](
