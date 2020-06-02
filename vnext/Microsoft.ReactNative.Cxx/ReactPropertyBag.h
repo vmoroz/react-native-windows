@@ -67,6 +67,29 @@
 //     const React::ReactPropertyId<winrt::hstring> MyAbiSafeStringProperty{L"MyAbiSafeString"};
 //
 
+#include "winrt/base.h"
+#include "winrt/impl/Microsoft.ReactNative.0.h"
+
+namespace winrt::impl {
+
+template <>
+struct consume_Microsoft_ReactNative_IReactPropertyBag<Microsoft::ReactNative::IReactPropertyBag> {
+  Windows::Foundation::IInspectable Get(Microsoft::ReactNative::IReactPropertyName const &name) const;
+  Windows::Foundation::IInspectable
+  GetOrCreate(
+      Microsoft::ReactNative::IReactPropertyName const &name,
+      Microsoft::ReactNative::ReactCreatePropertyValue const &createValue) const;
+  Windows::Foundation::IInspectable
+  Set(Microsoft::ReactNative::IReactPropertyName const &name, Windows::Foundation::IInspectable const &value) const;
+
+  int getX() const {
+    return 5;
+  }
+};
+
+}
+
+
 #include <winrt/Microsoft.ReactNative.h>
 #include <optional>
 #include "ReactHandleHelper.h"

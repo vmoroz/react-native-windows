@@ -115,6 +115,7 @@ TEST_CLASS (ReactPropertyBagTests) {
   TEST_METHOD(GetProperty_DoesNotExist) {
     auto fooName = ReactPropertyBagHelper::GetName(nullptr, L"Foo");
     IReactPropertyBag pb{ReactPropertyBagHelper::CreatePropertyBag()};
+    int x = pb.getX();
     auto value = pb.Get(fooName);
     TestCheck(!value);
   }
