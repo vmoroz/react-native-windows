@@ -1,0 +1,117 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
+namespace Microsoft.ReactNative
+{
+  interface IJsiRuntime;
+
+  delegate void JsiDataHandler(UInt8[] data);
+
+  [webhosthidden]
+  interface IJsiBuffer
+  {
+     UInt32 Size { get; };
+     void GetData(JsiDataHandler handler);
+  };
+
+  enum JsiValueKind
+  {
+     Undefined,
+     Null,
+     Boolean,
+     Number,
+     Symbol,
+     String,
+     Object,
+  };
+
+  [webhosthidden]
+  struct JsiValueData
+  {
+     JsiValueKind Kind;
+     Double SimpleValue;
+  };
+
+  delegate JsiValueData JsiHostFunction(IJsiRuntime runtime, Object thisPtr,
+    JsiValueData[] args, Object[] refArgs, out Object refResult);
+
+  [webhosthidden]
+  interface IJsiHostObject
+  {
+     JsiValueData GetProperty(IJsiRuntime runtime, Object name, out Object refResult);
+     void SetProperty(IJsiRuntime runtime, Object name, JsiValueData value, Object refValue);
+     IVectorView<Object> GetPropertyNames(IJsiRuntime runtime);
+  };
+
+  [webhosthidden]
+  interface IJsiRuntime
+  {
+    JsiValueData EvaluateJavaScript(IJsiBuffer buffer, String sourceUrl, out Object refResult);
+    Object PrepareJavaScript(IJsiBuffer buffer, String sourceUrl);
+    JsiValueData EvaluatePreparedJavaScript(Object js);
+    Object Global { get; };
+    String Description { get; };
+    Boolean IsInspectable { get; };
+
+    Object CloneSymbol(Object symbol);
+    Object CloneString(Object str);
+    Object CloneObject(Object obj);
+    Object ClonePropertyNameId(Object propertyNameId);
+
+    Object CreatePropertyNameIdFromAscii(UInt8[] ascii);
+    Object CreatePropertyNameIdFromUtf8(UInt8[] utf8);
+    Object CreatePropertyNameIdFromString(Object str);
+    void PropertyNameIdToUtf8(Object propertyNameId, JsiDataHandler utf8Handler);
+    Boolean ComparePropertyNameIds(Object left, Object right);
+
+    void SymbolToUtf8(Object symbol, JsiDataHandler utf8Handler);
+
+    Object CreateStringFromAscii(UInt8[] ascii);
+    Object CreateStringFromUtf8(UInt8[] utf8);
+    void StringToUtf8(Object str, JsiDataHandler utf8Handler);
+
+    JsiValueData CreateValueFromJsonUtf8(UInt8[] json, out Object refResult);
+
+    Object CreateObject();
+    Object CreateObject(IJsiHostObject hostObject);
+    IJsiHostObject GetHostObject(Object obj);
+    JsiHostFunction GetHostFunction(Object func);
+
+    JsiValueData GetProperty(Object obj, Object propertyNameId, out Object refResult);
+    JsiValueData GetPropertyWithString(Object obj, Object nameStr, out Object refResult);
+    Boolean HasProperty(Object obj, Object propertyNameId);
+    Boolean HasPropertyWithString(Object obj, Object nameStr);
+    void SetProperty(Object obj, Object propertyNameId, JsiValueData value, Object refValue);
+    void SetPropertyWithString(Object obj, Object nameStr, JsiValueData value, Object refValue);
+
+    Boolean IsArray(Object obj);
+    Boolean IsArrayBuffer(Object obj);
+    Boolean IsFunction(Object obj);
+    Boolean IsHostObject(Object obj);
+    Boolean IsHostFunction(Object obj);
+    Object GetPropertyNameArray(Object obj);
+
+    Object CreateWeakObject(Object obj);
+    Object LockWeakObject(Object weakObject);
+
+    Object CreateArray(UInt32 size);
+    UInt32 GetArraySize(Object arr);
+    UInt32 GetArrayBufferSize(Object arrayBuffer);
+    void ArrayBufferToUtf8(Object arrayBuffer, JsiDataHandler utf8Handler);
+    JsiValueData GetValueAtIndex(Object arr, UInt32 index, out Object refResult);
+    void SetValueAtIndex(Object arr, UInt32 index, JsiValueData value, Object refValue);
+
+    Object CreateFunctionFromHostFunction(Object propNameId, UInt32 paramCount, JsiHostFunction hostFunc);
+    JsiValueData Call(Object func, Object thisPtr, JsiValueData[] args, Object[] refArgs, out Object refResult);
+    Object CallAsConstructor(Object func, JsiValueData[] args, Object[] refArgs);
+
+    UInt64 PushScope();
+    void PopScope(UInt64 scopeState);
+
+    Boolean SymbolStrictEquals(Object left, Object right);
+    Boolean StringStrictEquals(Object left, Object right);
+    Boolean ObjectStrictEquals(Object left, Object right);
+
+    Boolean InstanceOf(Object obj, Object constructor);
+  };
+}

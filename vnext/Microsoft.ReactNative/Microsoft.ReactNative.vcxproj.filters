@@ -728,6 +728,7 @@
     <Midl Include="Views\cppwinrt\ViewPanel.idl">
       <Filter>Views\cppwinrt</Filter>
     </Midl>
+    <Midl Include="JsiApi.idl" />
   </ItemGroup>
   <ItemGroup>
     <None Include="microsoft.reactnative.def" />
