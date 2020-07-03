@@ -14,7 +14,7 @@ namespace Microsoft.ReactNative
     void GetData(JsiDataHandler handler);
   };
 
-  enum JsiValueKind
+  enum JsiValueType
   {
     Undefined,
     Null,
@@ -28,7 +28,7 @@ namespace Microsoft.ReactNative
   [webhosthidden]
   struct JsiValueData
   {
-    JsiValueKind Kind;
+    JsiValueType Kind;
     Double NumberValue;
   };
 

@@ -127,25 +127,25 @@ static Microsoft::ReactNative::JsiValueData ReturnValue(
   switch (value.kind_) {
     case facebook::jsi::Value::UndefinedKind:
       ptrResult = nullptr;
-      return {JsiValueKind::Undefined, 0};
+      return {JsiValueType::Undefined, 0};
     case facebook::jsi::Value::NullKind:
       ptrResult = nullptr;
-      return {JsiValueKind::Null, 0};
+      return {JsiValueType::Null, 0};
     case facebook::jsi::Value::BooleanKind:
       ptrResult = nullptr;
-      return {JsiValueKind::Boolean, value.data_.boolean ? 1.0 : 0};
+      return {JsiValueType::Boolean, value.data_.boolean ? 1.0 : 0};
     case facebook::jsi::Value::NumberKind:
       ptrResult = nullptr;
-      return {JsiValueKind::Number, value.data_.number};
+      return {JsiValueType::Number, value.data_.number};
     case facebook::jsi::Value::SymbolKind:
       ptrResult = MakeJsiPointer(std::move(value.data_.pointer));
-      return {JsiValueKind::Symbol, 0};
+      return {JsiValueType::Symbol, 0};
     case facebook::jsi::Value::StringKind:
       ptrResult = MakeJsiPointer(std::move(value.data_.pointer));
-      return {JsiValueKind::String, 0};
+      return {JsiValueType::String, 0};
     case facebook::jsi::Value::ObjectKind:
       ptrResult = MakeJsiPointer(std::move(value.data_.pointer));
-      return {JsiValueKind::Object, 0};
+      return {JsiValueType::Object, 0};
     default:
       VerifyElseCrashSz(false, "Unexpected JSI value type");
   }
@@ -158,25 +158,25 @@ static Microsoft::ReactNative::JsiValueData ReturnValue(
   switch (value.kind_) {
     case facebook::jsi::Value::UndefinedKind:
       ptrResult = nullptr;
-      return {JsiValueKind::Undefined, 0};
+      return {JsiValueType::Undefined, 0};
     case facebook::jsi::Value::NullKind:
       ptrResult = nullptr;
-      return {JsiValueKind::Null, 0};
+      return {JsiValueType::Null, 0};
     case facebook::jsi::Value::BooleanKind:
       ptrResult = nullptr;
-      return {JsiValueKind::Boolean, value.data_.boolean ? 1.0 : 0};
+      return {JsiValueType::Boolean, value.data_.boolean ? 1.0 : 0};
     case facebook::jsi::Value::NumberKind:
       ptrResult = nullptr;
-      return {JsiValueKind::Number, value.data_.number};
+      return {JsiValueType::Number, value.data_.number};
     case facebook::jsi::Value::SymbolKind:
       ptrResult = MakeJsiPointer(runtime.cloneSymbol(value.data_.pointer.ptr_));
-      return {JsiValueKind::Symbol, 0};
+      return {JsiValueType::Symbol, 0};
     case facebook::jsi::Value::StringKind:
       ptrResult = MakeJsiPointer(runtime.cloneString(value.data_.pointer.ptr_));
-      return {JsiValueKind::String, 0};
+      return {JsiValueType::String, 0};
     case facebook::jsi::Value::ObjectKind:
       ptrResult = MakeJsiPointer(runtime.cloneObject(value.data_.pointer.ptr_));
-      return {JsiValueKind::Object, 0};
+      return {JsiValueType::Object, 0};
     default:
       VerifyElseCrashSz(false, "Unexpected JSI value type");
   }
@@ -186,19 +186,19 @@ static facebook::jsi::Value ReturnJsiValue(
     Microsoft::ReactNative::JsiValueData const &data,
     Microsoft::ReactNative::JsiPointer &&pointer) {
   switch (data.Kind) {
-    case Microsoft::ReactNative::JsiValueKind::Undefined:
+    case Microsoft::ReactNative::JsiValueType::Undefined:
       return facebook::jsi::Value{};
-    case Microsoft::ReactNative::JsiValueKind::Null:
+    case Microsoft::ReactNative::JsiValueType::Null:
       return facebook::jsi::Value{nullptr};
-    case Microsoft::ReactNative::JsiValueKind::Boolean:
+    case Microsoft::ReactNative::JsiValueType::Boolean:
       return facebook::jsi::Value{data.NumberValue != 0};
-    case Microsoft::ReactNative::JsiValueKind::Number:
+    case Microsoft::ReactNative::JsiValueType::Number:
       return facebook::jsi::Value{data.NumberValue};
-    case Microsoft::ReactNative::JsiValueKind::Symbol:
+    case Microsoft::ReactNative::JsiValueType::Symbol:
       return MakePointerValue(facebook::jsi::Value::SymbolKind, std::move(pointer));
-    case Microsoft::ReactNative::JsiValueKind::String:
+    case Microsoft::ReactNative::JsiValueType::String:
       return MakePointerValue(facebook::jsi::Value::StringKind, std::move(pointer));
-    case Microsoft::ReactNative::JsiValueKind::Object:
+    case Microsoft::ReactNative::JsiValueType::Object:
       return MakePointerValue(facebook::jsi::Value::ObjectKind, std::move(pointer));
     default:
       VerifyElseCrashSz(false, "Unexpected JSI value type");
@@ -230,19 +230,19 @@ static ValueRef ReturnJsiValueRef(
     Microsoft::ReactNative::JsiValueData const &data,
     Microsoft::ReactNative::JsiPointer const &pointer) {
   switch (data.Kind) {
-    case Microsoft::ReactNative::JsiValueKind::Undefined:
+    case Microsoft::ReactNative::JsiValueType::Undefined:
       return ValueRef{facebook::jsi::Value{}};
-    case Microsoft::ReactNative::JsiValueKind::Null:
+    case Microsoft::ReactNative::JsiValueType::Null:
       return ValueRef{facebook::jsi::Value{nullptr}};
-    case Microsoft::ReactNative::JsiValueKind::Boolean:
+    case Microsoft::ReactNative::JsiValueType::Boolean:
       return ValueRef{facebook::jsi::Value{data.NumberValue != 0}};
-    case Microsoft::ReactNative::JsiValueKind::Number:
+    case Microsoft::ReactNative::JsiValueType::Number:
       return ValueRef{facebook::jsi::Value{data.NumberValue}};
-    case Microsoft::ReactNative::JsiValueKind::Symbol:
+    case Microsoft::ReactNative::JsiValueType::Symbol:
       return MakePointerValueRef(facebook::jsi::Value::SymbolKind, pointer);
-    case Microsoft::ReactNative::JsiValueKind::String:
+    case Microsoft::ReactNative::JsiValueType::String:
       return MakePointerValueRef(facebook::jsi::Value::StringKind, pointer);
-    case Microsoft::ReactNative::JsiValueKind::Object:
+    case Microsoft::ReactNative::JsiValueType::Object:
       return MakePointerValueRef(facebook::jsi::Value::ObjectKind, pointer);
     default:
       VerifyElseCrashSz(false, "Unexpected JSI value type");
