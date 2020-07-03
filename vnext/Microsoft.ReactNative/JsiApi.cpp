@@ -4,6 +4,7 @@
 #include "pch.h"
 #include "JsiApi.h"
 #include "JsiPointer.g.cpp"
+#include "JsiPreparedJavaScript.g.cpp"
 #include <crash/verifyElseCrash.h>
 
 // facebook::jsi::Runtime hides all methods that we need to call.
@@ -31,6 +32,14 @@ struct JsiPointerRef {
 
  private:
   Microsoft::ReactNative::JsiPointer m_jsiPointer;
+};
+
+struct JsiPreparedJavaScript : JsiPreparedJavaScriptT<JsiPreparedJavaScript> {
+  JsiPreparedJavaScript() = default;
+  JsiPreparedJavaScript(std::shared_ptr<facebook::jsi::PreparedJavaScript const> &&js) noexcept : m_js{std::move(js)} {}
+
+ private:
+  std::shared_ptr<facebook::jsi::PreparedJavaScript const> m_js;
 };
 
 // Wraps up the IJsiHostObject
@@ -363,12 +372,21 @@ Microsoft::ReactNative::JsiValueData JsiRuntime::EvaluateJavaScript(
   return ReturnValue(std::move(result), ptrResult);
 }
 
-Windows::Foundation::IInspectable JsiRuntime::PrepareJavaScript(
+Microsoft::ReactNative::JsiPreparedJavaScript JsiRuntime::PrepareJavaScript(
     Microsoft::ReactNative::IJsiBuffer const &buffer,
-    hstring const &sourceUrl) {}
+    hstring const &sourceUrl) {
+  Microsoft::ReactNative::JsiPreparedJavaScript result{nullptr};
+  buffer.GetData([this, &result, &sourceUrl](array_view<uint8_t const> bytes) {
+    result = make<JsiPreparedJavaScript>(m_runtime.prepareJavaScript(std::make_shared<JsiBufferWrapper>(bytes), to_string(sourceUrl)));
+  });
+  return result;
+}
 
 Microsoft::ReactNative::JsiValueData JsiRuntime::EvaluatePreparedJavaScript(
-    Windows::Foundation::IInspectable const &js) {}
+    Microsoft::ReactNative::JsiPreparedJavaScript const &js,
+    Microsoft::ReactNative::JsiPointer &ptrResult) {
+  return ReturnValue(m_runtime.evaluatePreparedJavaScript(get_self<JsiPreparedJavaScript>(js)->m_js), ptrResult);
+}
 
 Microsoft::ReactNative::JsiPointer JsiRuntime::Global() noexcept {
   return MakeJsiPointer(m_runtime.global());

@@ -4,6 +4,7 @@
 #pragma once
 
 #include "JsiPointer.g.h"
+#include "JsiPreparedJavaScript.g.h"
 #include "winrt/Microsoft.ReactNative.h"
 
 namespace facebook::jsi {
@@ -21,10 +22,12 @@ struct JsiRuntime : implements<JsiRuntime, IJsiRuntime> {
       Microsoft::ReactNative::IJsiBuffer const &buffer,
       hstring const &sourceUrl,
       Microsoft::ReactNative::JsiPointer &ptrResult);
-  Windows::Foundation::IInspectable PrepareJavaScript(
+  Microsoft::ReactNative::JsiPreparedJavaScript PrepareJavaScript(
       Microsoft::ReactNative::IJsiBuffer const &buffer,
       hstring const &sourceUrl);
-  Microsoft::ReactNative::JsiValueData EvaluatePreparedJavaScript(Windows::Foundation::IInspectable const &js);
+  Microsoft::ReactNative::JsiValueData EvaluatePreparedJavaScript(
+      Microsoft::ReactNative::JsiPreparedJavaScript const &js,
+      Microsoft::ReactNative::JsiPointer &ptrResult);
   Microsoft::ReactNative::JsiPointer Global() noexcept;
   hstring Description();
   bool IsInspectable();

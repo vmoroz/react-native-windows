@@ -37,6 +37,11 @@ namespace Microsoft.ReactNative
   {
   };
 
+  [default_interface]
+  runtimeclass JsiPreparedJavaScript
+  {
+  };
+
   delegate JsiValueData JsiHostFunction(IJsiRuntime runtime, JsiValueData thisValue, JsiPointer thisPtr,
     JsiValueData[] args, JsiPointer[] ptrArgs, out JsiPointer ptrResult);
 
@@ -52,8 +57,8 @@ namespace Microsoft.ReactNative
   interface IJsiRuntime
   {
     JsiValueData EvaluateJavaScript(IJsiBuffer buffer, String sourceUrl, out JsiPointer ptrResult);
-    Object PrepareJavaScript(IJsiBuffer buffer, String sourceUrl);
-    JsiValueData EvaluatePreparedJavaScript(Object js);
+    JsiPreparedJavaScript PrepareJavaScript(IJsiBuffer buffer, String sourceUrl);
+    JsiValueData EvaluatePreparedJavaScript(JsiPreparedJavaScript js, out JsiPointer ptrResult);
     JsiPointer Global { get; };
     String Description { get; };
     Boolean IsInspectable { get; };
