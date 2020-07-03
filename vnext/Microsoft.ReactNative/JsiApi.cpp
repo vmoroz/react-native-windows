@@ -25,15 +25,6 @@ struct JsiPointer : JsiPointerT<JsiPointer> {
   facebook::jsi::Pointer m_pointer{nullptr};
 };
 
-// A special JsiPointer holder that avoids deletion of inner facebook::jsi::Pointer
-struct JsiPointerRef {
-  JsiPointerRef(Microsoft::ReactNative::JsiPointer &&jsiPointer);
-  ~JsiPointerRef();
-
- private:
-  Microsoft::ReactNative::JsiPointer m_jsiPointer;
-};
-
 struct JsiPreparedJavaScript : JsiPreparedJavaScriptT<JsiPreparedJavaScript> {
   JsiPreparedJavaScript() = default;
   JsiPreparedJavaScript(std::shared_ptr<facebook::jsi::PreparedJavaScript const> &&js) noexcept : m_js{std::move(js)} {}
@@ -116,10 +107,6 @@ static Microsoft::ReactNative::JsiPointer MakeJsiPointer(facebook::jsi::Runtime:
 
 static Microsoft::ReactNative::JsiPointer MakeJsiPointer(facebook::jsi::Pointer &&pointer) noexcept {
   return make<JsiPointer>(std::exchange(pointer.ptr_, nullptr));
-}
-
-static JsiPointerRef MakeJsiPointerRef(facebook::jsi::Pointer const &pointer) noexcept {
-  return JsiPointerRef{Microsoft::ReactNative::JsiPointer{make<JsiPointer>(pointer.ptr_)}};
 }
 
 static facebook::jsi::Value MakePointerValue(
@@ -312,16 +299,6 @@ JsiPointer::JsiPointer(facebook::jsi::Pointer &&pointer) noexcept : m_pointer{st
 JsiPointer::JsiPointer(facebook::jsi::Runtime::PointerValue *ptr) noexcept : m_pointer{ptr} {}
 
 //===========================================================================
-// JsiPointerRef implementation
-//===========================================================================
-
-JsiPointerRef::JsiPointerRef(Microsoft::ReactNative::JsiPointer &&jsiPointer) : m_jsiPointer{std::move(jsiPointer)} {}
-
-JsiPointerRef::~JsiPointerRef() {
-  get_self<JsiPointer>(m_jsiPointer)->m_pointer.ptr_ = nullptr;
-}
-
-//===========================================================================
 // HostObjectWrapper implementation
 //===========================================================================
 
@@ -330,7 +307,8 @@ HostObjectWrapper::HostObjectWrapper(Microsoft::ReactNative::IJsiHostObject cons
 
 facebook::jsi::Value HostObjectWrapper::get(facebook::jsi::Runtime &runtime, const facebook::jsi::PropNameID &name) {
   Microsoft::ReactNative::JsiPointer ptrResult{nullptr};
-  auto valueData = m_hostObject.GetProperty(make<JsiRuntime>(runtime), MakeJsiPointerRef(name).m_jsiPointer, ptrResult);
+  auto valueData = m_hostObject.GetProperty(
+      make<JsiRuntime>(runtime), MakeJsiPointer(runtime.clonePropNameID(name.ptr_)), ptrResult);
   return ReturnJsiValue(valueData, std::move(ptrResult));
 }
 
@@ -377,7 +355,8 @@ Microsoft::ReactNative::JsiPreparedJavaScript JsiRuntime::PrepareJavaScript(
     hstring const &sourceUrl) {
   Microsoft::ReactNative::JsiPreparedJavaScript result{nullptr};
   buffer.GetData([this, &result, &sourceUrl](array_view<uint8_t const> bytes) {
-    result = make<JsiPreparedJavaScript>(m_runtime.prepareJavaScript(std::make_shared<JsiBufferWrapper>(bytes), to_string(sourceUrl)));
+    result = make<JsiPreparedJavaScript>(
+        m_runtime.prepareJavaScript(std::make_shared<JsiBufferWrapper>(bytes), to_string(sourceUrl)));
   });
   return result;
 }
