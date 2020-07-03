@@ -210,6 +210,9 @@
       <DependentUpon>IReactNotificationService.idl</DependentUpon>
       <SubType>Code</SubType>
     </ClInclude>
+    <ClInclude Include="JsiApi.h">
+      <DependentUpon>JsiApi.idl</DependentUpon>
+    </ClInclude>
     <ClInclude Include="JsiReader.h">
       <DependentUpon>IJSValueReader.idl</DependentUpon>
     </ClInclude>
@@ -404,6 +407,9 @@
     <ClCompile Include="IReactNotificationService.cpp">
       <DependentUpon>IReactNotificationService.idl</DependentUpon>
       <SubType>Code</SubType>
+    </ClCompile>
+    <ClCompile Include="JsiApi.cpp">
+      <DependentUpon>JsiApi.idl</DependentUpon>
     </ClCompile>
     <ClCompile Include="JsiReader.cpp">
       <DependentUpon>IJSValueReader.idl</DependentUpon>
