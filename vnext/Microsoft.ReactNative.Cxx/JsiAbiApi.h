@@ -8,6 +8,7 @@
 #include "jsi/jsi.h"
 #include "winrt/Microsoft.ReactNative.h"
 #include "winrt/base.h"
+#include "Crash.h"
 
 namespace winrt::Microsoft::ReactNative {
 
@@ -51,10 +52,18 @@ struct JsiAbiRuntime : facebook::jsi::Runtime {
     return ToObject(m_runtime.Global());
   }
 
+  std::string description() override{
+    return to_string(m_runtime.Description());
+  }
+
+  bool isInspectable() override {
+    return m_runtime.IsInspectable();
+  }
+
+  facebook::jsi::Instrumentation &instrumentation(){
+    VerifyElseCrash(false);
+  }
 #if 0
-  std::string description() override{}
-  bool isInspectable() override{}
-  Instrumentation &instrumentation(){}
   PointerValue *cloneSymbol(const Runtime::PointerValue *pv) override{}
   PointerValue *cloneString(const Runtime::PointerValue *pv) override{}
   PointerValue *cloneObject(const Runtime::PointerValue *pv) override{}
