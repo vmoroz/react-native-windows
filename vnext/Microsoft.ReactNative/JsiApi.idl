@@ -35,6 +35,7 @@ namespace Microsoft.ReactNative
   [default_interface]
   runtimeclass JsiPointer
   {
+    UInt64 QueryPointerValue();
   };
 
   [default_interface]

@@ -21,8 +21,27 @@ struct JsiPointer : JsiPointerT<JsiPointer> {
   JsiPointer(facebook::jsi::Pointer &&pointer) noexcept;
   JsiPointer(facebook::jsi::Runtime::PointerValue *ptr) noexcept;
 
+  uint64_t QueryPointerValue() noexcept {
+    AddRef();
+    return reinterpret_cast<uint64_t>(static_cast<facebook::jsi::Runtime::PointerValue *>(&m_pointerApi));
+  }
+
+ private:
+  struct PointerValueApi : facebook::jsi::Runtime::PointerValue {
+    PointerValueApi(JsiPointer *pointer) : m_pointer{pointer} {
+    }
+
+    void invalidate() override {
+      m_pointer->Release();
+    }
+
+   private:
+    JsiPointer *m_pointer;
+  };
+
  private:
   facebook::jsi::Pointer m_pointer{nullptr};
+  PointerValueApi m_pointerApi{this};
 };
 
 struct JsiPreparedJavaScript : JsiPreparedJavaScriptT<JsiPreparedJavaScript> {
