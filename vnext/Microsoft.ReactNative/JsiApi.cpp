@@ -3,7 +3,6 @@
 
 #include "pch.h"
 #include "JsiApi.h"
-#include "JsiPointer.g.cpp"
 #include "JsiPreparedJavaScript.g.cpp"
 #include <crash/verifyElseCrash.h>
 
@@ -14,35 +13,6 @@
 #include "jsi/jsi.h"
 
 namespace winrt::Microsoft::ReactNative::implementation {
-
-// Wraps up the facebook::jsi::Pointer
-struct JsiPointer : JsiPointerT<JsiPointer> {
-  JsiPointer() = default;
-  JsiPointer(facebook::jsi::Pointer &&pointer) noexcept;
-  JsiPointer(facebook::jsi::Runtime::PointerValue *ptr) noexcept;
-
-  uint64_t QueryPointerValue() noexcept {
-    AddRef();
-    return reinterpret_cast<uint64_t>(static_cast<facebook::jsi::Runtime::PointerValue *>(&m_pointerApi));
-  }
-
- private:
-  struct PointerValueApi : facebook::jsi::Runtime::PointerValue {
-    PointerValueApi(JsiPointer *pointer) : m_pointer{pointer} {
-    }
-
-    void invalidate() override {
-      m_pointer->Release();
-    }
-
-   private:
-    JsiPointer *m_pointer;
-  };
-
- private:
-  facebook::jsi::Pointer m_pointer{nullptr};
-  PointerValueApi m_pointerApi{this};
-};
 
 struct JsiPreparedJavaScript : JsiPreparedJavaScriptT<JsiPreparedJavaScript> {
   JsiPreparedJavaScript() = default;
@@ -83,185 +53,36 @@ struct JsiBufferWrapper : facebook::jsi::Buffer {
 // Helper methods
 //===========================================================================
 
-static facebook::jsi::Runtime::PointerValue *GetPointerValue(
-    Microsoft::ReactNative::JsiPointer const &pointer) noexcept {
-  return get_self<JsiPointer>(pointer)->m_pointer.ptr_;
+static facebook::jsi::String const *AsString(JsiPointerHandle pointer) noexcept {
+  return reinterpret_cast<facebook::jsi::String const *>(pointer);
 }
 
-static facebook::jsi::String const &AsString(Microsoft::ReactNative::JsiPointer const &pointer) noexcept {
-  return reinterpret_cast<facebook::jsi::String const &>(get_self<JsiPointer>(pointer)->m_pointer);
+static facebook::jsi::PropNameID const *AsPropNameID(JsiPointerHandle pointer) noexcept {
+  return reinterpret_cast<facebook::jsi::PropNameID const *>(pointer);
 }
 
-static facebook::jsi::PropNameID const &AsPropNameID(Microsoft::ReactNative::JsiPointer const &pointer) noexcept {
-  return reinterpret_cast<facebook::jsi::PropNameID const &>(get_self<JsiPointer>(pointer)->m_pointer);
+static facebook::jsi::Symbol const *AsSymbol(JsiPointerHandle pointer) noexcept {
+  return reinterpret_cast<facebook::jsi::Symbol const *>(pointer);
 }
 
-static facebook::jsi::Symbol const &AsSymbol(Microsoft::ReactNative::JsiPointer const &pointer) noexcept {
-  return reinterpret_cast<facebook::jsi::Symbol const &>(get_self<JsiPointer>(pointer)->m_pointer);
+static facebook::jsi::Object const *AsObject(JsiPointerHandle pointer) noexcept {
+  return reinterpret_cast<facebook::jsi::Object const *>(pointer);
 }
 
-static facebook::jsi::Object const &AsObject(Microsoft::ReactNative::JsiPointer const &pointer) noexcept {
-  return reinterpret_cast<facebook::jsi::Object const &>(get_self<JsiPointer>(pointer)->m_pointer);
+static facebook::jsi::WeakObject const *AsWeakObject(JsiPointerHandle pointer) noexcept {
+  return reinterpret_cast<facebook::jsi::WeakObject const *>(pointer);
 }
 
-static facebook::jsi::WeakObject const &AsWeakObject(Microsoft::ReactNative::JsiPointer const &pointer) noexcept {
-  return reinterpret_cast<facebook::jsi::WeakObject const &>(get_self<JsiPointer>(pointer)->m_pointer);
+static facebook::jsi::Function const *AsFunction(JsiPointerHandle pointer) noexcept {
+  return reinterpret_cast<facebook::jsi::Function const *>(pointer);
 }
 
-static facebook::jsi::Function const &AsFunction(Microsoft::ReactNative::JsiPointer const &pointer) noexcept {
-  return reinterpret_cast<facebook::jsi::Function const &>(get_self<JsiPointer>(pointer)->m_pointer);
+static facebook::jsi::Array const *AsArray(JsiPointerHandle pointer) noexcept {
+  return reinterpret_cast<facebook::jsi::Array const *>(pointer);
 }
 
-static facebook::jsi::Array const &AsArray(Microsoft::ReactNative::JsiPointer const &pointer) noexcept {
-  return reinterpret_cast<facebook::jsi::Array const &>(get_self<JsiPointer>(pointer)->m_pointer);
-}
-
-static facebook::jsi::ArrayBuffer const &AsArrayBuffer(Microsoft::ReactNative::JsiPointer const &pointer) noexcept {
-  return reinterpret_cast<facebook::jsi::ArrayBuffer const &>(get_self<JsiPointer>(pointer)->m_pointer);
-}
-
-static Microsoft::ReactNative::JsiPointer MakeJsiPointer(facebook::jsi::Runtime::PointerValue *pointerValue) noexcept {
-  return make<JsiPointer>(pointerValue);
-}
-
-static Microsoft::ReactNative::JsiPointer MakeJsiPointer(facebook::jsi::Pointer &&pointer) noexcept {
-  return make<JsiPointer>(std::exchange(pointer.ptr_, nullptr));
-}
-
-static facebook::jsi::Value MakePointerValue(
-    facebook::jsi::Value::ValueKind valueKind,
-    Microsoft::ReactNative::JsiPointer &&pointer) {
-  facebook::jsi::Value value{valueKind};
-  new (&value.data_.pointer) facebook::jsi::Pointer(std::move(get_self<JsiPointer>(pointer)->m_pointer));
-  return value;
-}
-
-static Microsoft::ReactNative::JsiValueData ToJsiValue(
-    facebook::jsi::Value &&value,
-    Microsoft::ReactNative::JsiPointer &ptrResult) {
-  switch (value.kind_) {
-    case facebook::jsi::Value::UndefinedKind:
-      ptrResult = nullptr;
-      return {JsiValueType::Undefined, 0};
-    case facebook::jsi::Value::NullKind:
-      ptrResult = nullptr;
-      return {JsiValueType::Null, 0};
-    case facebook::jsi::Value::BooleanKind:
-      ptrResult = nullptr;
-      return {JsiValueType::Boolean, value.data_.boolean ? 1.0 : 0};
-    case facebook::jsi::Value::NumberKind:
-      ptrResult = nullptr;
-      return {JsiValueType::Number, value.data_.number};
-    case facebook::jsi::Value::SymbolKind:
-      ptrResult = MakeJsiPointer(std::move(value.data_.pointer));
-      return {JsiValueType::Symbol, 0};
-    case facebook::jsi::Value::StringKind:
-      ptrResult = MakeJsiPointer(std::move(value.data_.pointer));
-      return {JsiValueType::String, 0};
-    case facebook::jsi::Value::ObjectKind:
-      ptrResult = MakeJsiPointer(std::move(value.data_.pointer));
-      return {JsiValueType::Object, 0};
-    default:
-      VerifyElseCrashSz(false, "Unexpected JSI value type");
-  }
-}
-
-static Microsoft::ReactNative::JsiValueData ToJsiValue(
-    facebook::jsi::Runtime &runtime,
-    facebook::jsi::Value const &value,
-    Microsoft::ReactNative::JsiPointer &ptrResult) {
-  switch (value.kind_) {
-    case facebook::jsi::Value::UndefinedKind:
-      ptrResult = nullptr;
-      return {JsiValueType::Undefined, 0};
-    case facebook::jsi::Value::NullKind:
-      ptrResult = nullptr;
-      return {JsiValueType::Null, 0};
-    case facebook::jsi::Value::BooleanKind:
-      ptrResult = nullptr;
-      return {JsiValueType::Boolean, value.data_.boolean ? 1.0 : 0};
-    case facebook::jsi::Value::NumberKind:
-      ptrResult = nullptr;
-      return {JsiValueType::Number, value.data_.number};
-    case facebook::jsi::Value::SymbolKind:
-      ptrResult = MakeJsiPointer(runtime.cloneSymbol(value.data_.pointer.ptr_));
-      return {JsiValueType::Symbol, 0};
-    case facebook::jsi::Value::StringKind:
-      ptrResult = MakeJsiPointer(runtime.cloneString(value.data_.pointer.ptr_));
-      return {JsiValueType::String, 0};
-    case facebook::jsi::Value::ObjectKind:
-      ptrResult = MakeJsiPointer(runtime.cloneObject(value.data_.pointer.ptr_));
-      return {JsiValueType::Object, 0};
-    default:
-      VerifyElseCrashSz(false, "Unexpected JSI value type");
-  }
-}
-
-static facebook::jsi::Value ToValue(
-    Microsoft::ReactNative::JsiValueData const &data,
-    Microsoft::ReactNative::JsiPointer &&pointer) {
-  switch (data.Kind) {
-    case Microsoft::ReactNative::JsiValueType::Undefined:
-      return facebook::jsi::Value{};
-    case Microsoft::ReactNative::JsiValueType::Null:
-      return facebook::jsi::Value{nullptr};
-    case Microsoft::ReactNative::JsiValueType::Boolean:
-      return facebook::jsi::Value{data.NumberValue != 0};
-    case Microsoft::ReactNative::JsiValueType::Number:
-      return facebook::jsi::Value{data.NumberValue};
-    case Microsoft::ReactNative::JsiValueType::Symbol:
-      return MakePointerValue(facebook::jsi::Value::SymbolKind, std::move(pointer));
-    case Microsoft::ReactNative::JsiValueType::String:
-      return MakePointerValue(facebook::jsi::Value::StringKind, std::move(pointer));
-    case Microsoft::ReactNative::JsiValueType::Object:
-      return MakePointerValue(facebook::jsi::Value::ObjectKind, std::move(pointer));
-    default:
-      VerifyElseCrashSz(false, "Unexpected JSI value type");
-  }
-}
-
-struct ValueRef {
-  ValueRef() = default;
-  ValueRef(ValueRef &&) = default;
-  ValueRef &operator=(ValueRef &&) = default;
-  ValueRef(facebook::jsi::Value &&value) : m_value{std::move(value)} {}
-  ~ValueRef() {
-    m_value.data_.pointer.ptr_ = nullptr;
-  }
-
- private:
-  facebook::jsi::Value m_value{};
-};
-
-static ValueRef MakePointerValueRef(
-    facebook::jsi::Value::ValueKind valueKind,
-    Microsoft::ReactNative::JsiPointer const &pointer) {
-  facebook::jsi::Value value{valueKind};
-  new (&value.data_.pointer) facebook::jsi::Pointer(get_self<JsiPointer>(pointer)->m_pointer.ptr_);
-  return ValueRef{std::move(value)};
-}
-
-static ValueRef ToJsiValueRef(
-    Microsoft::ReactNative::JsiValueData const &data,
-    Microsoft::ReactNative::JsiPointer const &pointer) {
-  switch (data.Kind) {
-    case Microsoft::ReactNative::JsiValueType::Undefined:
-      return ValueRef{facebook::jsi::Value{}};
-    case Microsoft::ReactNative::JsiValueType::Null:
-      return ValueRef{facebook::jsi::Value{nullptr}};
-    case Microsoft::ReactNative::JsiValueType::Boolean:
-      return ValueRef{facebook::jsi::Value{data.NumberValue != 0}};
-    case Microsoft::ReactNative::JsiValueType::Number:
-      return ValueRef{facebook::jsi::Value{data.NumberValue}};
-    case Microsoft::ReactNative::JsiValueType::Symbol:
-      return MakePointerValueRef(facebook::jsi::Value::SymbolKind, pointer);
-    case Microsoft::ReactNative::JsiValueType::String:
-      return MakePointerValueRef(facebook::jsi::Value::StringKind, pointer);
-    case Microsoft::ReactNative::JsiValueType::Object:
-      return MakePointerValueRef(facebook::jsi::Value::ObjectKind, pointer);
-    default:
-      VerifyElseCrashSz(false, "Unexpected JSI value type");
-  }
+static facebook::jsi::ArrayBuffer const *AsArrayBuffer(JsiPointerHandle pointer) noexcept {
+  return reinterpret_cast<facebook::jsi::ArrayBuffer const *>(pointer);
 }
 
 static std::shared_ptr<facebook::jsi::HostObject> MakeHostObject(
@@ -269,53 +90,42 @@ static std::shared_ptr<facebook::jsi::HostObject> MakeHostObject(
   return std::make_shared<HostObjectWrapper>(hostObject);
 }
 
-struct JsiValueParts {
-  Microsoft::ReactNative::JsiValueData data;
-  Microsoft::ReactNative::JsiPointer pointer;
-};
+static JsiPointerHandle ToJsiPointerHandle(facebook::jsi::Runtime::PointerValue const *pointerValue) noexcept {
+  return reinterpret_cast<JsiPointerHandle>(pointerValue);
+}
 
-static JsiValueParts GetJsiValueParts(facebook::jsi::Runtime &runtime, facebook::jsi::Value const &value) {
-  Microsoft::ReactNative::JsiPointer resultPtr{nullptr};
-  Microsoft::ReactNative::JsiValueData resultData = ToJsiValue(runtime, value, resultPtr);
-  return JsiValueParts{resultData, std::move(resultPtr)};
+static JsiPointerHandle ToJsiPointerHandle(facebook::jsi::Pointer const &pointer) noexcept {
+  return ToJsiPointerHandle(facebook::jsi::Runtime::getPointerValue(pointer));
+}
+
+static Microsoft::ReactNative::JsiValueData const &ToJsiValueData(facebook::jsi::Value const &value) noexcept {
+  return reinterpret_cast<Microsoft::ReactNative::JsiValueData const &>(value);
+}
+
+static facebook::jsi::Runtime::PointerValue *ToPointerValue(JsiPointerHandle pointerHandle) {
+  return reinterpret_cast<facebook::jsi::Runtime::PointerValue *>(pointerHandle);
+}
+
+static facebook::jsi::Value &&ToValue(Microsoft::ReactNative::JsiValueData &&value) noexcept {
+  return reinterpret_cast<facebook::jsi::Value &&>(value);
+}
+
+static facebook::jsi::Value const &ToValue(Microsoft::ReactNative::JsiValueData const &value) noexcept {
+  return reinterpret_cast<facebook::jsi::Value const &>(value);
 }
 
 static facebook::jsi::HostFunctionType MakeHostFunction(Microsoft::ReactNative::JsiHostFunction const &hostFunc) {
+  // TODO: implement runtime mapping
+  // TODO: implement host function mapping
   return [hostFunc](
              facebook::jsi::Runtime &runtime,
              facebook::jsi::Value const &thisVal,
              facebook::jsi::Value const *args,
              size_t count) -> facebook::jsi::Value {
-    auto [thisData, thisPtr] = GetJsiValueParts(runtime, thisVal);
-    std::vector<Microsoft::ReactNative::JsiValueData> dataArgs;
-    std::vector<Microsoft::ReactNative::JsiPointer> ptrArgs;
-    dataArgs.reserve(count);
-    ptrArgs.reserve(count);
-    for (size_t i = 0; i < count; ++i) {
-      facebook::jsi::Value const *arg = args + i;
-      auto [dataArg, ptrArg] = GetJsiValueParts(runtime, *arg);
-      dataArgs.push_back(dataArg);
-      ptrArgs.push_back(std::move(ptrArg));
-    }
-    Microsoft::ReactNative::JsiPointer ptrResult{nullptr};
-    Microsoft::ReactNative::JsiValueData dataResult = hostFunc(
-        make<JsiRuntime>(runtime),
-        thisData,
-        thisPtr,
-        dataArgs,
-        ptrArgs,
-        /*out*/ ptrResult);
-    return ToValue(dataResult, std::move(ptrResult));
+    auto argsData = reinterpret_cast<JsiValueData const *>(args);
+    return ToValue(hostFunc(make<JsiRuntime>(runtime), ToJsiValueData(thisVal), {argsData, argsData + count}));
   };
 }
-
-//===========================================================================
-// JsiPointer implementation
-//===========================================================================
-
-JsiPointer::JsiPointer(facebook::jsi::Pointer &&pointer) noexcept : m_pointer{std::move(pointer)} {}
-
-JsiPointer::JsiPointer(facebook::jsi::Runtime::PointerValue *ptr) noexcept : m_pointer{ptr} {}
 
 //===========================================================================
 // HostObjectWrapper implementation
@@ -324,31 +134,27 @@ JsiPointer::JsiPointer(facebook::jsi::Runtime::PointerValue *ptr) noexcept : m_p
 HostObjectWrapper::HostObjectWrapper(Microsoft::ReactNative::IJsiHostObject const &hostObject) noexcept
     : m_hostObject{hostObject} {}
 
-facebook::jsi::Value HostObjectWrapper::get(facebook::jsi::Runtime &runtime, const facebook::jsi::PropNameID &name) {
-  Microsoft::ReactNative::JsiPointer ptrResult{nullptr};
-  auto valueData = m_hostObject.GetProperty(
-      make<JsiRuntime>(runtime), MakeJsiPointer(runtime.clonePropNameID(name.ptr_)), ptrResult);
-  return ToValue(valueData, std::move(ptrResult));
+facebook::jsi::Value HostObjectWrapper::get(facebook::jsi::Runtime &runtime, facebook::jsi::PropNameID const &name) {
+  auto valueData =
+      m_hostObject.GetProperty(make<JsiRuntime>(runtime), ToJsiPointerHandle(runtime.clonePropNameID(name.ptr_)));
+  return ToValue(std::move(valueData));
 }
 
 void HostObjectWrapper::set(
     facebook::jsi::Runtime &runtime,
-    const facebook::jsi::PropNameID &name,
-    const facebook::jsi::Value &value) {
-  Microsoft::ReactNative::JsiPointer ptrValue{nullptr};
-  Microsoft::ReactNative::JsiValueData data = ToJsiValue(runtime, value, ptrValue);
-  m_hostObject.SetProperty(
-      make<JsiRuntime>(runtime), MakeJsiPointer(facebook::jsi::PropNameID{runtime, name}), data, ptrValue);
+    facebook::jsi::PropNameID const &name,
+    facebook::jsi::Value const &value) {
+  // TODO: map between JsiRuntime and Runtime
+  m_hostObject.SetProperty(make<JsiRuntime>(runtime), ToJsiPointerHandle(name), ToJsiValueData(value));
 }
 
 std::vector<facebook::jsi::PropNameID> HostObjectWrapper::getPropertyNames(facebook::jsi::Runtime &runtime) noexcept {
   std::vector<facebook::jsi::PropNameID> result;
+  auto *jsiResult = reinterpret_cast<std::vector<JsiPointerHandle> *>(&result);
+  // TODO: map between JsiRuntime and Runtime
   auto vectorView = m_hostObject.GetPropertyNames(make<JsiRuntime>(runtime));
-  result.reserve(vectorView.Size());
-  for (auto const &item : vectorView) {
-    result.emplace_back(runtime, AsPropNameID(item));
-  }
-
+  jsiResult->resize(vectorView.Size());
+  vectorView.GetMany(0, *jsiResult);
   return result;
 }
 
@@ -360,13 +166,12 @@ JsiRuntime::JsiRuntime(facebook::jsi::Runtime &runtime) noexcept : m_runtime{run
 
 Microsoft::ReactNative::JsiValueData JsiRuntime::EvaluateJavaScript(
     Microsoft::ReactNative::IJsiBuffer const &buffer,
-    hstring const &sourceUrl,
-    Microsoft::ReactNative::JsiPointer &ptrResult) {
+    hstring const &sourceUrl) {
   facebook::jsi::Value result;
   buffer.GetData([this, &result, &sourceUrl](array_view<uint8_t const> bytes) {
     result = m_runtime.evaluateJavaScript(std::make_shared<JsiBufferWrapper>(bytes), to_string(sourceUrl));
   });
-  return ToJsiValue(std::move(result), ptrResult);
+  return ToJsiValueData(std::move(result));
 }
 
 Microsoft::ReactNative::JsiPreparedJavaScript JsiRuntime::PrepareJavaScript(
@@ -381,13 +186,12 @@ Microsoft::ReactNative::JsiPreparedJavaScript JsiRuntime::PrepareJavaScript(
 }
 
 Microsoft::ReactNative::JsiValueData JsiRuntime::EvaluatePreparedJavaScript(
-    Microsoft::ReactNative::JsiPreparedJavaScript const &js,
-    Microsoft::ReactNative::JsiPointer &ptrResult) {
-  return ToJsiValue(m_runtime.evaluatePreparedJavaScript(get_self<JsiPreparedJavaScript>(js)->m_js), ptrResult);
+    Microsoft::ReactNative::JsiPreparedJavaScript const &js) {
+  return ToJsiValueData(m_runtime.evaluatePreparedJavaScript(get_self<JsiPreparedJavaScript>(js)->m_js));
 }
 
-Microsoft::ReactNative::JsiPointer JsiRuntime::Global() noexcept {
-  return MakeJsiPointer(m_runtime.global());
+JsiPointerHandle JsiRuntime::Global() noexcept {
+  return ToJsiPointerHandle(m_runtime.global());
 }
 
 hstring JsiRuntime::Description() {
@@ -398,305 +202,231 @@ bool JsiRuntime::IsInspectable() {
   return m_runtime.isInspectable();
 }
 
-Microsoft::ReactNative::JsiPointer JsiRuntime::CloneSymbol(Microsoft::ReactNative::JsiPointer const &symbol) {
-  return MakeJsiPointer(m_runtime.cloneSymbol(GetPointerValue(symbol)));
+JsiPointerHandle JsiRuntime::CloneSymbol(JsiPointerHandle symbol) {
+  return ToJsiPointerHandle(m_runtime.cloneSymbol(ToPointerValue(symbol)));
 }
 
-Microsoft::ReactNative::JsiPointer JsiRuntime::CloneString(Microsoft::ReactNative::JsiPointer const &str) {
-  return MakeJsiPointer(m_runtime.cloneString(GetPointerValue(str)));
+JsiPointerHandle JsiRuntime::CloneString(JsiPointerHandle str) {
+  return ToJsiPointerHandle(m_runtime.cloneString(ToPointerValue(str)));
 }
 
-Microsoft::ReactNative::JsiPointer JsiRuntime::CloneObject(Microsoft::ReactNative::JsiPointer const &obj) {
-  return MakeJsiPointer(m_runtime.cloneObject(GetPointerValue(obj)));
+JsiPointerHandle JsiRuntime::CloneObject(JsiPointerHandle obj) {
+  return ToJsiPointerHandle(m_runtime.cloneObject(ToPointerValue(obj)));
 }
 
-Microsoft::ReactNative::JsiPointer JsiRuntime::ClonePropertyNameId(
-    Microsoft::ReactNative::JsiPointer const &propertyNameId) {
-  return MakeJsiPointer(m_runtime.clonePropNameID(GetPointerValue(propertyNameId)));
+JsiPointerHandle JsiRuntime::ClonePropertyNameId(JsiPointerHandle propertyNameId) {
+  return ToJsiPointerHandle(m_runtime.clonePropNameID(ToPointerValue(propertyNameId)));
 }
 
-Microsoft::ReactNative::JsiPointer JsiRuntime::CreatePropertyNameIdFromAscii(array_view<uint8_t const> ascii) {
-  return MakeJsiPointer(
+JsiPointerHandle JsiRuntime::CreatePropertyNameIdFromAscii(array_view<uint8_t const> ascii) {
+  return ToJsiPointerHandle(
       m_runtime.createPropNameIDFromAscii(reinterpret_cast<char const *>(ascii.data()), ascii.size()));
 }
 
-Microsoft::ReactNative::JsiPointer JsiRuntime::CreatePropertyNameIdFromUtf8(array_view<uint8_t const> utf8) {
-  return MakeJsiPointer(m_runtime.createPropNameIDFromUtf8(utf8.data(), utf8.size()));
+JsiPointerHandle JsiRuntime::CreatePropertyNameIdFromUtf8(array_view<uint8_t const> utf8) {
+  return ToJsiPointerHandle(m_runtime.createPropNameIDFromUtf8(utf8.data(), utf8.size()));
 }
 
-Microsoft::ReactNative::JsiPointer JsiRuntime::CreatePropertyNameIdFromString(
-    Microsoft::ReactNative::JsiPointer const &str) {
-  return MakeJsiPointer(m_runtime.createPropNameIDFromString(AsString(str)));
+JsiPointerHandle JsiRuntime::CreatePropertyNameIdFromString(JsiPointerHandle str) {
+  return ToJsiPointerHandle(m_runtime.createPropNameIDFromString(*AsString(str)));
 }
 
 void JsiRuntime::PropertyNameIdToUtf8(
-    Microsoft::ReactNative::JsiPointer const &propertyNameId,
+    JsiPointerHandle propertyNameId,
     Microsoft::ReactNative::JsiDataHandler const &utf8Handler) {
-  std::string utf8 = m_runtime.utf8(AsPropNameID(propertyNameId));
+  std::string utf8 = m_runtime.utf8(*AsPropNameID(propertyNameId));
   uint8_t const *data = reinterpret_cast<uint8_t const *>(utf8.data());
   utf8Handler({data, data + utf8.size()});
 }
 
-bool JsiRuntime::ComparePropertyNameIds(
-    Microsoft::ReactNative::JsiPointer const &left,
-    Microsoft::ReactNative::JsiPointer const &right) {
-  return m_runtime.compare(AsPropNameID(left), AsPropNameID(right));
+bool JsiRuntime::ComparePropertyNameIds(JsiPointerHandle left, JsiPointerHandle right) {
+  return m_runtime.compare(*AsPropNameID(left), *AsPropNameID(right));
 }
 
-void JsiRuntime::SymbolToUtf8(
-    Microsoft::ReactNative::JsiPointer const &symbol,
-    Microsoft::ReactNative::JsiDataHandler const &utf8Handler) {
-  std::string utf8 = m_runtime.symbolToString(AsSymbol(symbol));
+void JsiRuntime::SymbolToUtf8(JsiPointerHandle symbol, Microsoft::ReactNative::JsiDataHandler const &utf8Handler) {
+  std::string utf8 = m_runtime.symbolToString(*AsSymbol(symbol));
   uint8_t const *data = reinterpret_cast<uint8_t const *>(utf8.data());
   utf8Handler({data, data + utf8.size()});
 }
 
-Microsoft::ReactNative::JsiPointer JsiRuntime::CreateStringFromAscii(array_view<uint8_t const> ascii) {
-  return MakeJsiPointer(m_runtime.createStringFromAscii(reinterpret_cast<char const *>(ascii.data()), ascii.size()));
+JsiPointerHandle JsiRuntime::CreateStringFromAscii(array_view<uint8_t const> ascii) {
+  return ToJsiPointerHandle(
+      m_runtime.createStringFromAscii(reinterpret_cast<char const *>(ascii.data()), ascii.size()));
 }
 
-Microsoft::ReactNative::JsiPointer JsiRuntime::CreateStringFromUtf8(array_view<uint8_t const> utf8) {
-  return MakeJsiPointer(m_runtime.createStringFromUtf8(utf8.data(), utf8.size()));
+JsiPointerHandle JsiRuntime::CreateStringFromUtf8(array_view<uint8_t const> utf8) {
+  return ToJsiPointerHandle(m_runtime.createStringFromUtf8(utf8.data(), utf8.size()));
 }
 
-void JsiRuntime::StringToUtf8(
-    Microsoft::ReactNative::JsiPointer const &str,
-    Microsoft::ReactNative::JsiDataHandler const &utf8Handler) {
-  std::string utf8 = m_runtime.utf8(AsString(str));
+void JsiRuntime::StringToUtf8(JsiPointerHandle str, Microsoft::ReactNative::JsiDataHandler const &utf8Handler) {
+  std::string utf8 = m_runtime.utf8(*AsString(str));
   uint8_t const *data = reinterpret_cast<uint8_t const *>(utf8.data());
   utf8Handler({data, data + utf8.size()});
 }
 
-Microsoft::ReactNative::JsiValueData JsiRuntime::CreateValueFromJsonUtf8(
-    array_view<uint8_t const> json,
-    Microsoft::ReactNative::JsiPointer &ptrResult) {
-  facebook::jsi::Value value = m_runtime.createValueFromJsonUtf8(json.data(), json.size());
-  return ToJsiValue(std::move(value), ptrResult);
+Microsoft::ReactNative::JsiValueData JsiRuntime::CreateValueFromJsonUtf8(array_view<uint8_t const> json) {
+  return ToJsiValueData(m_runtime.createValueFromJsonUtf8(json.data(), json.size()));
 }
 
-Microsoft::ReactNative::JsiPointer JsiRuntime::CreateObject() {
-  return MakeJsiPointer(m_runtime.createObject());
+JsiPointerHandle JsiRuntime::CreateObject() {
+  return ToJsiPointerHandle(m_runtime.createObject());
 }
 
-Microsoft::ReactNative::JsiPointer JsiRuntime::CreateObjectWithHostObject(
-    Microsoft::ReactNative::IJsiHostObject const &hostObject) {
-  return MakeJsiPointer(m_runtime.createObject(MakeHostObject(hostObject)));
+JsiPointerHandle JsiRuntime::CreateObjectWithHostObject(Microsoft::ReactNative::IJsiHostObject const &hostObject) {
+  return ToJsiPointerHandle(m_runtime.createObject(MakeHostObject(hostObject)));
 }
 
-Microsoft::ReactNative::IJsiHostObject JsiRuntime::GetHostObject(Microsoft::ReactNative::JsiPointer const &obj) {
-  auto hostObject = m_runtime.getHostObject(AsObject(obj));
+Microsoft::ReactNative::IJsiHostObject JsiRuntime::GetHostObject(JsiPointerHandle obj) {
+  auto hostObject = m_runtime.getHostObject(*AsObject(obj));
   // TODO: using static_pointer_cast is unsafe here. How to use shared_ptr without RTTI?
   auto wrapper = std::static_pointer_cast<HostObjectWrapper>(hostObject);
   return wrapper ? wrapper->m_hostObject : nullptr;
 }
 
-Microsoft::ReactNative::JsiHostFunction JsiRuntime::GetHostFunction(
-    Microsoft::ReactNative::JsiPointer const & /*func*/) {
+Microsoft::ReactNative::JsiHostFunction JsiRuntime::GetHostFunction(JsiPointerHandle /*func*/) {
   // auto hostFunction = m_runtime.getHostFunction(AsFunction(func));
   // TODO: implement mapping
   return nullptr;
 }
 
-Microsoft::ReactNative::JsiValueData JsiRuntime::GetProperty(
-    Microsoft::ReactNative::JsiPointer const &obj,
-    Microsoft::ReactNative::JsiPointer const &propertyNameId,
-    Microsoft::ReactNative::JsiPointer &ptrResult) {
-  auto value = m_runtime.getProperty(AsObject(obj), AsPropNameID(propertyNameId));
-  return ToJsiValue(std::move(value), ptrResult);
+Microsoft::ReactNative::JsiValueData JsiRuntime::GetProperty(JsiPointerHandle obj, JsiPointerHandle propertyNameId) {
+  return ToJsiValueData(m_runtime.getProperty(*AsObject(obj), *AsPropNameID(propertyNameId)));
 }
 
-Microsoft::ReactNative::JsiValueData JsiRuntime::GetPropertyWithString(
-    Microsoft::ReactNative::JsiPointer const &obj,
-    Microsoft::ReactNative::JsiPointer const &nameStr,
-    Microsoft::ReactNative::JsiPointer &ptrResult) {
-  auto value = m_runtime.getProperty(AsObject(obj), AsString(nameStr));
-  return ToJsiValue(std::move(value), ptrResult);
+Microsoft::ReactNative::JsiValueData JsiRuntime::GetPropertyWithString(JsiPointerHandle obj, JsiPointerHandle nameStr) {
+  return ToJsiValueData(m_runtime.getProperty(*AsObject(obj), *AsString(nameStr)));
 }
 
-bool JsiRuntime::HasProperty(
-    Microsoft::ReactNative::JsiPointer const &obj,
-    Microsoft::ReactNative::JsiPointer const &propertyNameId) {
-  return m_runtime.hasProperty(AsObject(obj), AsPropNameID(propertyNameId));
+bool JsiRuntime::HasProperty(JsiPointerHandle obj, JsiPointerHandle propertyNameId) {
+  return m_runtime.hasProperty(*AsObject(obj), *AsPropNameID(propertyNameId));
 }
 
-bool JsiRuntime::HasPropertyWithString(
-    Microsoft::ReactNative::JsiPointer const &obj,
-    Microsoft::ReactNative::JsiPointer const &nameStr) {
-  return m_runtime.hasProperty(AsObject(obj), AsString(nameStr));
+bool JsiRuntime::HasPropertyWithString(JsiPointerHandle obj, JsiPointerHandle nameStr) {
+  return m_runtime.hasProperty(*AsObject(obj), *AsString(nameStr));
 }
 
 void JsiRuntime::SetProperty(
-    Microsoft::ReactNative::JsiPointer const &obj,
-    Microsoft::ReactNative::JsiPointer const &propertyNameId,
-    Microsoft::ReactNative::JsiValueData const &value,
-    Microsoft::ReactNative::JsiPointer const &ptrValue) {
-  auto valueRef = ToJsiValueRef(value, ptrValue);
+    JsiPointerHandle obj,
+    JsiPointerHandle propertyNameId,
+    Microsoft::ReactNative::JsiValueData const &value) {
   m_runtime.setPropertyValue(
-      const_cast<facebook::jsi::Object &>(AsObject(obj)), AsPropNameID(propertyNameId), valueRef.m_value);
+      const_cast<facebook::jsi::Object &>(*AsObject(obj)), *AsPropNameID(propertyNameId), ToValue(value));
 }
 
 void JsiRuntime::SetPropertyWithString(
-    Microsoft::ReactNative::JsiPointer const &obj,
-    Microsoft::ReactNative::JsiPointer const &nameStr,
-    Microsoft::ReactNative::JsiValueData const &value,
-    Microsoft::ReactNative::JsiPointer const &ptrValue) {
-  auto valueRef = ToJsiValueRef(value, ptrValue);
-  m_runtime.setPropertyValue(const_cast<facebook::jsi::Object &>(AsObject(obj)), AsString(nameStr), valueRef.m_value);
+    JsiPointerHandle obj,
+    JsiPointerHandle nameStr,
+    Microsoft::ReactNative::JsiValueData const &value) {
+  m_runtime.setPropertyValue(const_cast<facebook::jsi::Object &>(*AsObject(obj)), *AsString(nameStr), ToValue(value));
 }
 
-bool JsiRuntime::IsArray(Microsoft::ReactNative::JsiPointer const &obj) {
-  return m_runtime.isArray(AsObject(obj));
+bool JsiRuntime::IsArray(JsiPointerHandle obj) {
+  return m_runtime.isArray(*AsObject(obj));
 }
 
-bool JsiRuntime::IsArrayBuffer(Microsoft::ReactNative::JsiPointer const &obj) {
-  return m_runtime.isArrayBuffer(AsObject(obj));
+bool JsiRuntime::IsArrayBuffer(JsiPointerHandle obj) {
+  return m_runtime.isArrayBuffer(*AsObject(obj));
 }
 
-bool JsiRuntime::IsFunction(Microsoft::ReactNative::JsiPointer const &obj) {
-  return m_runtime.isFunction(AsObject(obj));
+bool JsiRuntime::IsFunction(JsiPointerHandle obj) {
+  return m_runtime.isFunction(*AsObject(obj));
 }
 
-bool JsiRuntime::IsHostObject(Microsoft::ReactNative::JsiPointer const &obj) {
-  return m_runtime.isHostObject(AsObject(obj));
+bool JsiRuntime::IsHostObject(JsiPointerHandle obj) {
+  return m_runtime.isHostObject(*AsObject(obj));
 }
 
-bool JsiRuntime::IsHostFunction(Microsoft::ReactNative::JsiPointer const &obj) {
-  return m_runtime.isHostFunction(AsFunction(obj));
+bool JsiRuntime::IsHostFunction(JsiPointerHandle obj) {
+  return m_runtime.isHostFunction(*AsFunction(obj));
 }
 
-Microsoft::ReactNative::JsiPointer JsiRuntime::GetPropertyNameArray(Microsoft::ReactNative::JsiPointer const &obj) {
-  return MakeJsiPointer(m_runtime.getPropertyNames(AsObject(obj)));
+JsiPointerHandle JsiRuntime::GetPropertyNameArray(JsiPointerHandle obj) {
+  return ToJsiPointerHandle(m_runtime.getPropertyNames(*AsObject(obj)));
 }
 
-Microsoft::ReactNative::JsiPointer JsiRuntime::CreateWeakObject(Microsoft::ReactNative::JsiPointer const &obj) {
-  return MakeJsiPointer(m_runtime.createWeakObject(AsObject(obj)));
+JsiPointerHandle JsiRuntime::CreateWeakObject(JsiPointerHandle obj) {
+  return ToJsiPointerHandle(m_runtime.createWeakObject(*AsObject(obj)));
 }
 
-Microsoft::ReactNative::JsiValueData JsiRuntime::LockWeakObject(
-    Microsoft::ReactNative::JsiPointer const &weakObject,
-    Microsoft::ReactNative::JsiPointer &obj) {
-  auto value = m_runtime.lockWeakObject(AsWeakObject(weakObject));
-  return ToJsiValue(std::move(value), obj);
+Microsoft::ReactNative::JsiValueData JsiRuntime::LockWeakObject(JsiPointerHandle weakObject) {
+  return ToJsiValueData(m_runtime.lockWeakObject(*AsWeakObject(weakObject)));
 }
 
-Microsoft::ReactNative::JsiPointer JsiRuntime::CreateArray(uint32_t size) {
-  return MakeJsiPointer(m_runtime.createArray(size));
+JsiPointerHandle JsiRuntime::CreateArray(uint32_t size) {
+  return ToJsiPointerHandle(m_runtime.createArray(size));
 }
 
-uint32_t JsiRuntime::GetArraySize(Microsoft::ReactNative::JsiPointer const &arr) {
-  return static_cast<uint32_t>(m_runtime.size(AsArray(arr)));
+uint32_t JsiRuntime::GetArraySize(JsiPointerHandle arr) {
+  return static_cast<uint32_t>(m_runtime.size(*AsArray(arr)));
 }
 
-uint32_t JsiRuntime::GetArrayBufferSize(Microsoft::ReactNative::JsiPointer const &arrayBuffer) {
-  return static_cast<uint32_t>(m_runtime.size(AsArrayBuffer(arrayBuffer)));
+uint32_t JsiRuntime::GetArrayBufferSize(JsiPointerHandle arrayBuffer) {
+  return static_cast<uint32_t>(m_runtime.size(*AsArrayBuffer(arrayBuffer)));
 }
 
 void JsiRuntime::ArrayBufferToUtf8(
-    Microsoft::ReactNative::JsiPointer const &arrayBuffer,
+    JsiPointerHandle arrayBuffer,
     Microsoft::ReactNative::JsiDataHandler const &utf8Handler) {
-  auto data = m_runtime.data(AsArrayBuffer(arrayBuffer));
-  return utf8Handler({data, data + m_runtime.size(AsArrayBuffer(arrayBuffer))});
+  auto data = m_runtime.data(*AsArrayBuffer(arrayBuffer));
+  return utf8Handler({data, data + m_runtime.size(*AsArrayBuffer(arrayBuffer))});
 }
 
-Microsoft::ReactNative::JsiValueData JsiRuntime::GetValueAtIndex(
-    Microsoft::ReactNative::JsiPointer const &arr,
-    uint32_t index,
-    Microsoft::ReactNative::JsiPointer &ptrResult) {
-  auto value = AsArray(arr).getValueAtIndex(m_runtime, index);
-  return ToJsiValue(std::move(value), ptrResult);
+Microsoft::ReactNative::JsiValueData JsiRuntime::GetValueAtIndex(JsiPointerHandle arr, uint32_t index) {
+  return ToJsiValueData(AsArray(arr)->getValueAtIndex(m_runtime, index));
 }
 
 void JsiRuntime::SetValueAtIndex(
-    Microsoft::ReactNative::JsiPointer const &arr,
+    JsiPointerHandle arr,
     uint32_t index,
-    Microsoft::ReactNative::JsiValueData const &value,
-    Microsoft::ReactNative::JsiPointer const &ptrValue) {
-  auto valueRef = ToJsiValueRef(value, ptrValue);
-  m_runtime.setValueAtIndexImpl(const_cast<facebook::jsi::Array &>(AsArray(arr)), index, valueRef.m_value);
+    Microsoft::ReactNative::JsiValueData const &value) {
+  m_runtime.setValueAtIndexImpl(const_cast<facebook::jsi::Array &>(*AsArray(arr)), index, ToValue(value));
 }
 
-Microsoft::ReactNative::JsiPointer JsiRuntime::CreateFunctionFromHostFunction(
-    Microsoft::ReactNative::JsiPointer const &propNameId,
+JsiPointerHandle JsiRuntime::CreateFunctionFromHostFunction(
+    JsiPointerHandle propNameId,
     uint32_t paramCount,
     Microsoft::ReactNative::JsiHostFunction const &hostFunc) {
-  return MakeJsiPointer(
-      m_runtime.createFunctionFromHostFunction(AsPropNameID(propNameId), paramCount, MakeHostFunction(hostFunc)));
+  return ToJsiPointerHandle(
+      m_runtime.createFunctionFromHostFunction(*AsPropNameID(propNameId), paramCount, MakeHostFunction(hostFunc)));
 }
 
 Microsoft::ReactNative::JsiValueData JsiRuntime::Call(
-    Microsoft::ReactNative::JsiPointer const &func,
-    Microsoft::ReactNative::JsiValueData const &thisData,
-    Microsoft::ReactNative::JsiPointer const &thisPtr,
-    array_view<Microsoft::ReactNative::JsiValueData const> dataArgs,
-    array_view<Microsoft::ReactNative::JsiPointer const> ptrArgs,
-    Microsoft::ReactNative::JsiPointer &ptrResult) {
-  auto thisValueRef = ToJsiValueRef(thisData, thisPtr);
-  size_t argCount = dataArgs.size();
-  VerifyElseCrash(argCount == ptrArgs.size());
-  std::vector<ValueRef> args;
-  args.reserve(argCount);
-  for (size_t i = 0; i < argCount; ++i) {
-    args.push_back(ToJsiValueRef(dataArgs[static_cast<uint32_t>(i)], ptrArgs[static_cast<uint32_t>(i)]));
-  }
-
-  return ToJsiValue(
-      m_runtime.call(
-          AsFunction(func),
-          thisValueRef.m_value,
-          reinterpret_cast<facebook::jsi::Value const *>(args.data()),
-          argCount),
-      ptrResult);
+    JsiPointerHandle func,
+    Microsoft::ReactNative::JsiValueData const &thisValue,
+    array_view<Microsoft::ReactNative::JsiValueData const> args) {
+  return ToJsiValueData(m_runtime.call(
+      *AsFunction(func), ToValue(thisValue), reinterpret_cast<facebook::jsi::Value const *>(args.data()), args.size()));
 }
 
 Microsoft::ReactNative::JsiValueData JsiRuntime::CallAsConstructor(
-    Microsoft::ReactNative::JsiPointer const &func,
-    array_view<Microsoft::ReactNative::JsiValueData const> dataArgs,
-    array_view<Microsoft::ReactNative::JsiPointer const> ptrArgs,
-    Microsoft::ReactNative::JsiPointer &ptrResult) {
-  size_t argCount = dataArgs.size();
-  VerifyElseCrash(argCount == ptrArgs.size());
-  std::vector<ValueRef> args;
-  args.reserve(argCount);
-  for (size_t i = 0; i < argCount; ++i) {
-    args.push_back(ToJsiValueRef(dataArgs[static_cast<uint32_t>(i)], ptrArgs[static_cast<uint32_t>(i)]));
-  }
-
-  return ToJsiValue(
-      m_runtime.callAsConstructor(
-          AsFunction(func), reinterpret_cast<facebook::jsi::Value const *>(args.data()), argCount),
-      ptrResult);
+    JsiPointerHandle func,
+    array_view<Microsoft::ReactNative::JsiValueData const> args) {
+  return ToJsiValueData(m_runtime.callAsConstructor(
+      *AsFunction(func), reinterpret_cast<facebook::jsi::Value const *>(args.data()), args.size()));
 }
 
-uint64_t JsiRuntime::PushScope() {
-  return reinterpret_cast<uint64_t>(m_runtime.pushScope());
+JsiScopeHandle JsiRuntime::PushScope() {
+  return reinterpret_cast<JsiScopeHandle>(m_runtime.pushScope());
 }
 
-void JsiRuntime::PopScope(uint64_t scopeState) {
+void JsiRuntime::PopScope(JsiScopeHandle scopeState) {
   m_runtime.popScope(reinterpret_cast<facebook::jsi::Runtime::ScopeState *>(scopeState));
 }
 
-bool JsiRuntime::SymbolStrictEquals(
-    Microsoft::ReactNative::JsiPointer const &left,
-    Microsoft::ReactNative::JsiPointer const &right) {
-  return m_runtime.strictEquals(AsSymbol(left), AsSymbol(right));
+bool JsiRuntime::SymbolStrictEquals(JsiPointerHandle left, JsiPointerHandle right) {
+  return m_runtime.strictEquals(*AsSymbol(left), *AsSymbol(right));
 }
 
-bool JsiRuntime::StringStrictEquals(
-    Microsoft::ReactNative::JsiPointer const &left,
-    Microsoft::ReactNative::JsiPointer const &right) {
-  return m_runtime.strictEquals(AsString(left), AsString(right));
+bool JsiRuntime::StringStrictEquals(JsiPointerHandle left, JsiPointerHandle right) {
+  return m_runtime.strictEquals(*AsString(left), *AsString(right));
 }
 
-bool JsiRuntime::ObjectStrictEquals(
-    Microsoft::ReactNative::JsiPointer const &left,
-    Microsoft::ReactNative::JsiPointer const &right) {
-  return m_runtime.strictEquals(AsObject(left), AsObject(right));
+bool JsiRuntime::ObjectStrictEquals(JsiPointerHandle left, JsiPointerHandle right) {
+  return m_runtime.strictEquals(*AsObject(left), *AsObject(right));
 }
 
-bool JsiRuntime::InstanceOf(
-    Microsoft::ReactNative::JsiPointer const &obj,
-    Microsoft::ReactNative::JsiPointer const &constructor) {
-  return m_runtime.instanceOf(AsObject(obj), AsFunction(constructor));
+bool JsiRuntime::InstanceOf(JsiPointerHandle obj, JsiPointerHandle constructor) {
+  return m_runtime.instanceOf(*AsObject(obj), *AsFunction(constructor));
 }
 
 } // namespace winrt::Microsoft::ReactNative::implementation

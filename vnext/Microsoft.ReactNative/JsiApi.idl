@@ -29,13 +29,7 @@ namespace Microsoft.ReactNative
   struct JsiValueData
   {
     JsiValueType Kind;
-    Double NumberValue;
-  };
-
-  [default_interface]
-  runtimeclass JsiPointer
-  {
-    UInt64 QueryPointerValue();
+    UInt64 Value;
   };
 
   [default_interface]
@@ -43,87 +37,85 @@ namespace Microsoft.ReactNative
   {
   };
 
-  delegate JsiValueData JsiHostFunction(IJsiRuntime runtime, JsiValueData thisValue, JsiPointer thisPtr,
-    JsiValueData[] args, JsiPointer[] ptrArgs, out JsiPointer ptrResult);
+  delegate JsiValueData JsiHostFunction(IJsiRuntime runtime, JsiValueData thisValue, JsiValueData[] args);
 
   [webhosthidden]
   interface IJsiHostObject
   {
-    JsiValueData GetProperty(IJsiRuntime runtime, JsiPointer name, out JsiPointer ptrResult);
-    void SetProperty(IJsiRuntime runtime, JsiPointer name, JsiValueData value, JsiPointer ptrValue);
-    IVectorView<JsiPointer> GetPropertyNames(IJsiRuntime runtime);
+    JsiValueData GetProperty(IJsiRuntime runtime, UInt64 name);
+    void SetProperty(IJsiRuntime runtime, UInt64 name, JsiValueData value);
+    IVectorView<UInt64> GetPropertyNames(IJsiRuntime runtime);
   };
 
   [webhosthidden]
   interface IJsiRuntime
   {
-    JsiValueData EvaluateJavaScript(IJsiBuffer buffer, String sourceUrl, out JsiPointer ptrResult);
+    JsiValueData EvaluateJavaScript(IJsiBuffer buffer, String sourceUrl);
     JsiPreparedJavaScript PrepareJavaScript(IJsiBuffer buffer, String sourceUrl);
-    JsiValueData EvaluatePreparedJavaScript(JsiPreparedJavaScript js, out JsiPointer ptrResult);
-    JsiPointer Global { get; };
+    JsiValueData EvaluatePreparedJavaScript(JsiPreparedJavaScript js);
+    UInt64 Global { get; };
     String Description { get; };
     Boolean IsInspectable { get; };
 
-    JsiPointer CloneSymbol(JsiPointer symbol);
-    JsiPointer CloneString(JsiPointer str);
-    JsiPointer CloneObject(JsiPointer obj);
-    JsiPointer ClonePropertyNameId(JsiPointer propertyNameId);
+    UInt64 CloneSymbol(UInt64 symbol);
+    UInt64 CloneString(UInt64 str);
+    UInt64 CloneObject(UInt64 obj);
+    UInt64 ClonePropertyNameId(UInt64 propertyNameId);
 
-    JsiPointer CreatePropertyNameIdFromAscii(UInt8[] ascii);
-    JsiPointer CreatePropertyNameIdFromUtf8(UInt8[] utf8);
-    JsiPointer CreatePropertyNameIdFromString(JsiPointer str);
-    void PropertyNameIdToUtf8(JsiPointer propertyNameId, JsiDataHandler utf8Handler);
-    Boolean ComparePropertyNameIds(JsiPointer left, JsiPointer right);
+    UInt64 CreatePropertyNameIdFromAscii(UInt8[] ascii);
+    UInt64 CreatePropertyNameIdFromUtf8(UInt8[] utf8);
+    UInt64 CreatePropertyNameIdFromString(UInt64 str);
+    void PropertyNameIdToUtf8(UInt64 propertyNameId, JsiDataHandler utf8Handler);
+    Boolean ComparePropertyNameIds(UInt64 left, UInt64 right);
 
-    void SymbolToUtf8(JsiPointer symbol, JsiDataHandler utf8Handler);
+    void SymbolToUtf8(UInt64 symbol, JsiDataHandler utf8Handler);
 
-    JsiPointer CreateStringFromAscii(UInt8[] ascii);
-    JsiPointer CreateStringFromUtf8(UInt8[] utf8);
-    void StringToUtf8(JsiPointer str, JsiDataHandler utf8Handler);
+    UInt64 CreateStringFromAscii(UInt8[] ascii);
+    UInt64 CreateStringFromUtf8(UInt8[] utf8);
+    void StringToUtf8(UInt64 str, JsiDataHandler utf8Handler);
 
-    JsiValueData CreateValueFromJsonUtf8(UInt8[] json, out JsiPointer ptrResult);
+    JsiValueData CreateValueFromJsonUtf8(UInt8[] json);
 
-    JsiPointer CreateObject();
-    JsiPointer CreateObjectWithHostObject(IJsiHostObject hostObject);
-    IJsiHostObject GetHostObject(JsiPointer obj);
-    JsiHostFunction GetHostFunction(JsiPointer func);
+    UInt64 CreateObject();
+    UInt64 CreateObjectWithHostObject(IJsiHostObject hostObject);
+    IJsiHostObject GetHostObject(UInt64 obj);
+    JsiHostFunction GetHostFunction(UInt64 func);
 
-    JsiValueData GetProperty(JsiPointer obj, JsiPointer propertyNameId, out JsiPointer ptrResult);
-    JsiValueData GetPropertyWithString(JsiPointer obj, JsiPointer nameStr, out JsiPointer ptrResult);
-    Boolean HasProperty(JsiPointer obj, JsiPointer propertyNameId);
-    Boolean HasPropertyWithString(JsiPointer obj, JsiPointer nameStr);
-    void SetProperty(JsiPointer obj, JsiPointer propertyNameId, JsiValueData value, JsiPointer ptrValue);
-    void SetPropertyWithString(JsiPointer obj, JsiPointer nameStr, JsiValueData value, JsiPointer ptrValue);
+    JsiValueData GetProperty(UInt64 obj, UInt64 propertyNameId);
+    JsiValueData GetPropertyWithString(UInt64 obj, UInt64 name);
+    Boolean HasProperty(UInt64 obj, UInt64 propertyNameId);
+    Boolean HasPropertyWithString(UInt64 obj, UInt64 name);
+    void SetProperty(UInt64 obj, UInt64 propertyNameId, JsiValueData value);
+    void SetPropertyWithString(UInt64 obj, UInt64 nameStr, JsiValueData value);
 
-    Boolean IsArray(JsiPointer obj);
-    Boolean IsArrayBuffer(JsiPointer obj);
-    Boolean IsFunction(JsiPointer obj);
-    Boolean IsHostObject(JsiPointer obj);
-    Boolean IsHostFunction(JsiPointer obj);
-    JsiPointer GetPropertyNameArray(JsiPointer obj);
+    Boolean IsArray(UInt64 obj);
+    Boolean IsArrayBuffer(UInt64 obj);
+    Boolean IsFunction(UInt64 obj);
+    Boolean IsHostObject(UInt64 obj);
+    Boolean IsHostFunction(UInt64 obj);
+    UInt64 GetPropertyNameArray(UInt64 obj);
 
-    JsiPointer CreateWeakObject(JsiPointer obj);
-    JsiValueData LockWeakObject(JsiPointer weakObject, out JsiPointer obj);
+    UInt64 CreateWeakObject(UInt64 obj);
+    JsiValueData LockWeakObject(UInt64 weakObject);
 
-    JsiPointer CreateArray(UInt32 size);
-    UInt32 GetArraySize(JsiPointer arr);
-    UInt32 GetArrayBufferSize(JsiPointer arrayBuffer);
-    void ArrayBufferToUtf8(JsiPointer arrayBuffer, JsiDataHandler utf8Handler);
-    JsiValueData GetValueAtIndex(JsiPointer arr, UInt32 index, out JsiPointer ptrResult);
-    void SetValueAtIndex(JsiPointer arr, UInt32 index, JsiValueData value, JsiPointer ptrValue);
+    UInt64 CreateArray(UInt32 size);
+    UInt32 GetArraySize(UInt64 arr);
+    UInt32 GetArrayBufferSize(UInt64 arrayBuffer);
+    void ArrayBufferToUtf8(UInt64 arrayBuffer, JsiDataHandler utf8Handler);
+    JsiValueData GetValueAtIndex(UInt64 arr, UInt32 index);
+    void SetValueAtIndex(UInt64 arr, UInt32 index, JsiValueData value);
 
-    JsiPointer CreateFunctionFromHostFunction(JsiPointer propNameId, UInt32 paramCount, JsiHostFunction hostFunc);
-    JsiValueData Call(JsiPointer func, JsiValueData thisData, JsiPointer thisPtr, JsiValueData[] args, JsiPointer[] ptrArgs, out JsiPointer ptrResult);
-    JsiValueData CallAsConstructor(
-        JsiPointer func, JsiValueData[] args, JsiPointer[] ptrArgs, out JsiPointer ptrResult);
+    UInt64 CreateFunctionFromHostFunction(UInt64 propNameId, UInt32 paramCount, JsiHostFunction hostFunc);
+    JsiValueData Call(UInt64 func, JsiValueData thisValue, JsiValueData[] args);
+    JsiValueData CallAsConstructor(UInt64 func, JsiValueData[] args);
 
     UInt64 PushScope();
     void PopScope(UInt64 scopeState);
 
-    Boolean SymbolStrictEquals(JsiPointer left, JsiPointer right);
-    Boolean StringStrictEquals(JsiPointer left, JsiPointer right);
-    Boolean ObjectStrictEquals(JsiPointer left, JsiPointer right);
+    Boolean SymbolStrictEquals(UInt64 left, UInt64 right);
+    Boolean StringStrictEquals(UInt64 left, UInt64 right);
+    Boolean ObjectStrictEquals(UInt64 left, UInt64 right);
 
-    Boolean InstanceOf(JsiPointer obj, JsiPointer constructor);
+    Boolean InstanceOf(UInt64 obj, UInt64 constructor);
   };
 }
