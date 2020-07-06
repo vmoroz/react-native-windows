@@ -5,10 +5,10 @@
 #ifndef MICROSOFT_REACTNATIVE_JSIABIAPI
 #define MICROSOFT_REACTNATIVE_JSIABIAPI
 
+#include "Crash.h"
 #include "jsi/jsi.h"
 #include "winrt/Microsoft.ReactNative.h"
 #include "winrt/base.h"
-#include "Crash.h"
 
 namespace winrt::Microsoft::ReactNative {
 
@@ -31,7 +31,7 @@ struct JsiAbiRuntime : facebook::jsi::Runtime {
     return static_cast<PointerValue *>(reinterpret_cast<void *>(pointer.QueryPointerValue()));
   }
 
-  facebook::jsi::Object ToObject(JsiPointer const& pointer) {
+  facebook::jsi::Object ToObject(JsiPointer const &pointer) {
     return make<facebook::jsi::Object>(ToPointerValue(pointer));
   }
 
@@ -52,7 +52,7 @@ struct JsiAbiRuntime : facebook::jsi::Runtime {
     return ToObject(m_runtime.Global());
   }
 
-  std::string description() override{
+  std::string description() override {
     return to_string(m_runtime.Description());
   }
 
@@ -60,19 +60,47 @@ struct JsiAbiRuntime : facebook::jsi::Runtime {
     return m_runtime.IsInspectable();
   }
 
-  facebook::jsi::Instrumentation &instrumentation(){
+  facebook::jsi::Instrumentation &instrumentation() {
     VerifyElseCrash(false);
   }
+  #if 0
+  PointerValue *cloneSymbol(const Runtime::PointerValue *pv) override {
+    return ToPointerValue(m_runtime->CloneSymbol(pv));
+  }
+
+  PointerValue *cloneString(const Runtime::PointerValue *pv) override {
+    return ToPointerValue(m_runtime->CloneString(pv));
+  }
+
+  PointerValue *cloneObject(const Runtime::PointerValue *pv) override {
+    return ToPointerValue(m_runtime->CloneObject(pv));
+  }
+
+  PointerValue *clonePropNameID(const Runtime::PointerValue *pv) override {
+    return ToPointerValue(m_runtime->ClonePropertyNameId(pv));
+  }
+
+  facebook::jsi::PropNameID createPropNameIDFromAscii(const char *str, size_t length) override {
+    return make<facebook::jsi::PropNameID>(m_runtime->CreatePropertyNameIdFromAscii(length, str));
+  }
+
+  facebook::jsi::PropNameID createPropNameIDFromUtf8(const uint8_t *utf8, size_t length) override {
+    return make<facebook::jsi::PropNameID>(m_runtime->CreatePropertyNameIdFromUtf8(length, utf8));
+  }
+
+  facebook::jsi::PropNameID createPropNameIDFromString(const facebook::jsi::String &str) override {
+    return make<facebook::jsi::PropNameID>(m_runtime->CreatePropertyNameIdFromString(getPointerValue(str)));
+  }
+
+  std::string utf8(const facebook::jsi::PropNameID &propertyNameId) override {
+    std::string result;
+    m_runtime->PropertyNameIdToUtf8(
+        [&result](size_t length, const char *utf8) noexcept { result.assign(utf8, length); });
+    return result;
+  }
+#endif
 #if 0
-  PointerValue *cloneSymbol(const Runtime::PointerValue *pv) override{}
-  PointerValue *cloneString(const Runtime::PointerValue *pv) override{}
-  PointerValue *cloneObject(const Runtime::PointerValue *pv) override{}
-  PointerValue *clonePropNameID(const Runtime::PointerValue *pv) override{}
-  PropNameID createPropNameIDFromAscii(const char *str, size_t length) override{}
-  PropNameID createPropNameIDFromUtf8(const uint8_t *utf8, size_t length) override{}
-  PropNameID createPropNameIDFromString(const String &str) override{}
-  std::string utf8(const PropNameID &) override{}
-  bool compare(const PropNameID &, const PropNameID &) override{}
+  bool compare(const PropNameID &, const PropNameID &) override {}
   std::string symbolToString(const Symbol &) override{}
   String createStringFromAscii(const char *str, size_t length) override{}
   String createStringFromUtf8(const uint8_t *utf8, size_t length) override{}
