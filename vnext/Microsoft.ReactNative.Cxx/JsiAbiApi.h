@@ -5,6 +5,7 @@
 #ifndef MICROSOFT_REACTNATIVE_JSIABIAPI
 #define MICROSOFT_REACTNATIVE_JSIABIAPI
 
+#include <unordered_map>
 #include "Crash.h"
 #include "jsi/jsi.h"
 #include "winrt/Microsoft.ReactNative.h"
@@ -61,6 +62,92 @@ struct JsiHostObject : implements<JsiHostObject, IJsiHostObject> {
   std::shared_ptr<facebook::jsi::HostObject> m_hostObject;
 };
 
+inline facebook::jsi::Value &&ToValue(JsiValueData &&valueData) noexcept {
+  return reinterpret_cast<facebook::jsi::Value &&>(valueData);
+}
+
+inline facebook::jsi::Value const &ToValue(JsiValueData const &valueData) noexcept {
+  return reinterpret_cast<facebook::jsi::Value const &>(valueData);
+}
+
+// The function object that wraps up the facebook::jsi::HostFunctionType
+struct JsiHostFunctionWrapper {
+  JsiHostFunctionWrapper(facebook::jsi::HostFunctionType &&hostFunction, uint32_t functionId) noexcept
+      : m_hostFunction{std::move(hostFunction)}, m_functionId{functionId} {}
+
+  JsiHostFunctionWrapper(JsiHostFunctionWrapper &&other) noexcept
+      : m_hostFunction{std::move(other.m_hostFunction)},
+        m_functionId{std::exchange(other.m_functionId, 0)},
+        m_functionHandle{std::exchange(other.m_functionHandle, 0)} {}
+
+  JsiHostFunctionWrapper &operator=(JsiHostFunctionWrapper &&other) noexcept {
+    if (this != &other) {
+      m_hostFunction = std::move(other.m_hostFunction);
+      m_functionId = std::exchange(other.m_functionId, 0);
+      m_functionHandle = std::exchange(other.m_functionHandle, 0);
+    }
+    return *this;
+  }
+
+  ~JsiHostFunctionWrapper() noexcept {
+    if (m_functionId || m_functionHandle) {
+      std::scoped_lock lock{s_functionMutex};
+      auto it1 = s_functionIdToFunctionWrapper.find(m_functionId);
+      if (it1 != s_functionIdToFunctionWrapper.end()) {
+        s_functionIdToFunctionWrapper.erase(it1);
+      }
+      auto it2 = s_functionHandleToFunctionWrapper.find(m_functionHandle);
+      if (it2 != s_functionHandleToFunctionWrapper.end()) {
+        s_functionHandleToFunctionWrapper.erase(it2);
+      }
+    }
+  }
+
+  JsiHostFunctionWrapper(JsiHostFunctionWrapper const &other) = delete;
+  JsiHostFunctionWrapper &operator=(JsiHostFunctionWrapper const &other) = delete;
+
+  JsiValueData
+  operator()(IJsiRuntime const &runtime, JsiValueData const &thisValue, array_view<JsiValueData const> args);
+
+  static uint32_t GetNextFunctionId() noexcept {
+    return ++s_functionIdGenerator;
+  }
+
+  static void Register(uint32_t functionId, JsiPointerHandle handle) noexcept {
+    std::scoped_lock lock{s_functionMutex};
+    auto it = s_functionIdToFunctionWrapper.find(functionId);
+    VerifyElseCrashSz(it != s_functionIdToFunctionWrapper.end(), "Function Id is not found.");
+    JsiHostFunctionWrapper *functionWrapper = it->second;
+    s_functionHandleToFunctionWrapper[handle] = functionWrapper;
+    functionWrapper->m_functionHandle = handle;
+  }
+
+  static bool IsHostFunction(JsiPointerHandle functionHandle) noexcept {
+    std::scoped_lock lock{s_functionMutex};
+    return s_functionHandleToFunctionWrapper.find(functionHandle) != s_functionHandleToFunctionWrapper.end();
+  }
+
+  static facebook::jsi::HostFunctionType &GetHostFunction(JsiPointerHandle functionHandle) noexcept {
+    std::scoped_lock lock{s_functionMutex};
+    auto it = s_functionHandleToFunctionWrapper.find(functionHandle);
+    if (it != s_functionHandleToFunctionWrapper.end()) {
+      return it->second->m_hostFunction;
+    }
+
+    VerifyElseCrashSz(false, "Function is not a host function");
+  }
+
+ private:
+  facebook::jsi::HostFunctionType m_hostFunction;
+  JsiPointerHandle m_functionHandle{};
+  uint32_t m_functionId{};
+
+  static std::mutex s_functionMutex;
+  static std::atomic<uint32_t> s_functionIdGenerator;
+  static std::unordered_map<uint32_t, JsiHostFunctionWrapper *> s_functionIdToFunctionWrapper;
+  static std::unordered_map<JsiPointerHandle, JsiHostFunctionWrapper *> s_functionHandleToFunctionWrapper;
+};
+
 struct JsiAbiRuntime : facebook::jsi::Runtime {
   JsiAbiRuntime(IJsiRuntime const &runtime) : m_runtime{runtime} {}
 
@@ -106,14 +193,6 @@ struct JsiAbiRuntime : facebook::jsi::Runtime {
 
   static facebook::jsi::Runtime::PointerValue *ToPointerValue(JsiPointerHandle pointerHandle) {
     return reinterpret_cast<facebook::jsi::Runtime::PointerValue *>(pointerHandle);
-  }
-
-  static facebook::jsi::Value &&ToValue(JsiValueData &&valueData) noexcept {
-    return reinterpret_cast<facebook::jsi::Value &&>(valueData);
-  }
-
-  static facebook::jsi::Value const &ToValue(JsiValueData const &valueData) noexcept {
-    return reinterpret_cast<facebook::jsi::Value const &>(valueData);
   }
 
   facebook::jsi::Value evaluateJavaScript(
@@ -231,17 +310,12 @@ struct JsiAbiRuntime : facebook::jsi::Runtime {
 
   std::shared_ptr<facebook::jsi::HostObject> getHostObject(const facebook::jsi::Object &obj) override {
     auto hostObject = m_runtime.GetHostObject(ToJsiPointerHandle(obj));
+    // TODO: get_self is unsafe here. Implement proper mapping.
     return get_self<JsiHostObject>(hostObject)->Get();
   }
 
-  facebook::jsi::HostFunctionType &getHostFunction(const facebook::jsi::Function &) override {
-    // TODO: implement mapping
-    static auto result = std::function<facebook::jsi::Value(
-        facebook::jsi::Runtime & rt,
-        const facebook::jsi::Value &thisVal,
-        const facebook::jsi::Value *args,
-        size_t count)>();
-    return result;
+  facebook::jsi::HostFunctionType &getHostFunction(const facebook::jsi::Function &func) override {
+    return JsiHostFunctionWrapper::GetHostFunction(ToJsiPointerHandle(func));
   }
 
   facebook::jsi::Value getProperty(const facebook::jsi::Object &obj, const facebook::jsi::PropNameID &name) override {
@@ -291,7 +365,7 @@ struct JsiAbiRuntime : facebook::jsi::Runtime {
   }
 
   bool isHostFunction(const facebook::jsi::Function &func) const override {
-    return m_runtime.IsHostFunction(ToJsiPointerHandle(func));
+    return JsiHostFunctionWrapper::IsHostFunction(ToJsiPointerHandle(func));
   }
 
   facebook::jsi::Array getPropertyNames(const facebook::jsi::Object &obj) override {
@@ -338,17 +412,11 @@ struct JsiAbiRuntime : facebook::jsi::Runtime {
       const facebook::jsi::PropNameID &name,
       unsigned int paramCount,
       facebook::jsi::HostFunctionType func) override {
-    // TODO: implement mapping
-    return std::move(*AsFunction(m_runtime.CreateFunctionFromHostFunction(
-        ToJsiPointerHandle(name),
-        paramCount,
-        [func = std::move(func)](
-            IJsiRuntime const &runtime, JsiValueData const &thisValue, array_view<JsiValueData const> args)
-            -> JsiValueData {
-          auto rt{JsiAbiRuntime{runtime}};
-          return ToJsiValueData(
-              func(rt, ToValue(thisValue), reinterpret_cast<facebook::jsi::Value const *>(args.data()), args.size()));
-        })));
+    uint32_t functionId = JsiHostFunctionWrapper::GetNextFunctionId();
+    facebook::jsi::Function result = std::move(*AsFunction(m_runtime.CreateFunctionFromHostFunction(
+        ToJsiPointerHandle(name), paramCount, JsiHostFunctionWrapper(std::move(func), functionId))));
+    JsiHostFunctionWrapper::Register(functionId, ToJsiPointerHandle(result));
+    return result;
   }
 
   facebook::jsi::Value call(
@@ -429,6 +497,19 @@ inline Windows::Foundation::Collections::IVectorView<JsiPointerHandle> JsiHostOb
 
 inline std::shared_ptr<facebook::jsi::HostObject> const &JsiHostObject::Get() const noexcept {
   return m_hostObject;
+}
+
+//===========================================================================
+// JsiHostFunctionWrapper implementation
+//===========================================================================
+
+inline JsiValueData JsiHostFunctionWrapper::operator()(
+    IJsiRuntime const &runtime,
+    JsiValueData const &thisValue,
+    array_view<JsiValueData const> args) {
+  auto rt{JsiAbiRuntime{runtime}};
+  return ToJsiValueData(
+      m_hostFunction(rt, ToValue(thisValue), reinterpret_cast<facebook::jsi::Value const *>(args.data()), args.size()));
 }
 
 } // namespace winrt::Microsoft::ReactNative
