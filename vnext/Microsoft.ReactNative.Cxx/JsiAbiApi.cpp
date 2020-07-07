@@ -100,4 +100,98 @@ Windows::Foundation::Collections::IVectorView<JsiPointerHandle> JsiHostObjectWra
   }
 }
 
+//===========================================================================
+// JsiHostFunctionWrapper implementation
+//===========================================================================
+
+JsiHostFunctionWrapper::JsiHostFunctionWrapper(
+    facebook::jsi::HostFunctionType &&hostFunction,
+    uint32_t functionId) noexcept
+    : m_hostFunction{std::move(hostFunction)}, m_functionId{functionId} {
+  VerifyElseCrashSz(functionId, "Function Id must be not zero");
+  std::scoped_lock lock{s_functionMutex};
+  s_functionIdToFunctionWrapper[functionId] = this;
+}
+
+JsiHostFunctionWrapper::JsiHostFunctionWrapper(JsiHostFunctionWrapper &&other) noexcept
+    : m_hostFunction{std::move(other.m_hostFunction)},
+      m_functionId{std::exchange(other.m_functionId, 0)},
+      m_functionHandle{std::exchange(other.m_functionHandle, 0)} {
+  std::scoped_lock lock{s_functionMutex};
+  if (m_functionId) {
+    s_functionIdToFunctionWrapper[m_functionId] = this;
+  }
+  if (m_functionHandle) {
+    s_functionHandleToFunctionWrapper[m_functionHandle] = this;
+  }
+}
+
+JsiHostFunctionWrapper &JsiHostFunctionWrapper::operator=(JsiHostFunctionWrapper &&other) noexcept {
+  if (this != &other) {
+    m_hostFunction = std::move(other.m_hostFunction);
+    m_functionId = std::exchange(other.m_functionId, 0);
+    m_functionHandle = std::exchange(other.m_functionHandle, 0);
+    std::scoped_lock lock{s_functionMutex};
+    if (m_functionId) {
+      s_functionIdToFunctionWrapper[m_functionId] = this;
+    }
+    if (m_functionHandle) {
+      s_functionHandleToFunctionWrapper[m_functionHandle] = this;
+    }
+  }
+  return *this;
+}
+
+JsiHostFunctionWrapper::~JsiHostFunctionWrapper() noexcept {
+  if (m_functionId || m_functionHandle) {
+    std::scoped_lock lock{s_functionMutex};
+    auto it1 = s_functionIdToFunctionWrapper.find(m_functionId);
+    if (it1 != s_functionIdToFunctionWrapper.end()) {
+      s_functionIdToFunctionWrapper.erase(it1);
+    }
+    auto it2 = s_functionHandleToFunctionWrapper.find(m_functionHandle);
+    if (it2 != s_functionHandleToFunctionWrapper.end()) {
+      s_functionHandleToFunctionWrapper.erase(it2);
+    }
+  }
+}
+
+JsiValueData JsiHostFunctionWrapper::operator()(
+    IJsiRuntime const &runtime,
+    JsiValueData const &thisValue,
+    array_view<JsiValueData const> args) {
+  auto rt{JsiAbiRuntime{runtime}};
+  return ToJsiValueData(
+      m_hostFunction(rt, ToValue(thisValue), reinterpret_cast<facebook::jsi::Value const *>(args.data()), args.size()));
+}
+
+/*static*/ uint32_t JsiHostFunctionWrapper::GetNextFunctionId() noexcept {
+  return ++s_functionIdGenerator;
+}
+
+/*static*/ void JsiHostFunctionWrapper::RegisterHostFunction(uint32_t functionId, JsiPointerHandle handle) noexcept {
+  std::scoped_lock lock{s_functionMutex};
+  auto it = s_functionIdToFunctionWrapper.find(functionId);
+  VerifyElseCrashSz(it != s_functionIdToFunctionWrapper.end(), "Function Id is not found.");
+  JsiHostFunctionWrapper *functionWrapper = it->second;
+  s_functionHandleToFunctionWrapper[handle] = functionWrapper;
+  functionWrapper->m_functionHandle = handle;
+}
+
+/*static*/ bool JsiHostFunctionWrapper::IsHostFunction(JsiPointerHandle functionHandle) noexcept {
+  std::scoped_lock lock{s_functionMutex};
+  return s_functionHandleToFunctionWrapper.find(functionHandle) != s_functionHandleToFunctionWrapper.end();
+}
+
+/*static*/ facebook::jsi::HostFunctionType &JsiHostFunctionWrapper::GetHostFunction(
+    JsiPointerHandle functionHandle) noexcept {
+  std::scoped_lock lock{s_functionMutex};
+  auto it = s_functionHandleToFunctionWrapper.find(functionHandle);
+  if (it != s_functionHandleToFunctionWrapper.end()) {
+    return it->second->m_hostFunction;
+  }
+
+  VerifyElseCrashSz(false, "Function is not a host function");
+}
+
 } // namespace winrt::Microsoft::ReactNative
