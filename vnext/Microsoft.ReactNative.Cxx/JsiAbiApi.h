@@ -50,42 +50,13 @@ static JsiValueData const &ToJsiValueData(facebook::jsi::Value const &value) noe
 }
 
 struct JsiHostObject : implements<JsiHostObject, IJsiHostObject> {
-  JsiHostObject(std::shared_ptr<facebook::jsi::HostObject> &&hostObject) : m_hostObject(std::move(hostObject)) {}
+  JsiHostObject(std::shared_ptr<facebook::jsi::HostObject> &&hostObject) noexcept;
 
-  JsiValueData GetProperty(
-      IJsiRuntime const & /*runtime*/,
-      JsiPointerHandle name) {
-    // TODO: Associate Runtime with ABI runtime
-    facebook::jsi::Runtime *rt{nullptr};
-    return ToJsiValueData(m_hostObject->get(*rt, *reinterpret_cast<facebook::jsi::PropNameID *>(name)));
-  }
+  JsiValueData GetProperty(IJsiRuntime const &runtime, JsiPointerHandle name);
+  void SetProperty(IJsiRuntime const &runtime, JsiPointerHandle name, JsiValueData const &value);
+  Windows::Foundation::Collections::IVectorView<JsiPointerHandle> GetPropertyNames(IJsiRuntime const &runtime);
 
-  void SetProperty(IJsiRuntime const & /*runtime*/, JsiPointerHandle name, JsiValueData const &value) {
-    // TODO: Associate Runtime with ABI runtime
-    facebook::jsi::Runtime *rt{nullptr};
-    m_hostObject->set(
-        *rt,
-        *reinterpret_cast<facebook::jsi::PropNameID *>(name),
-        *reinterpret_cast<facebook::jsi::Value const *>(&value));
-  }
-
-  Windows::Foundation::Collections::IVectorView<JsiPointerHandle> GetPropertyNames(
-      IJsiRuntime const & /*runtime*/) noexcept {
-    // TODO: Associate Runtime with ABI runtime
-    facebook::jsi::Runtime *rt{nullptr};
-    auto names = m_hostObject->getPropertyNames(*rt);
-    std::vector<JsiPointerHandle> result;
-    result.reserve(names.size());
-    for (auto &name : names) {
-      result.push_back(*reinterpret_cast<JsiPointerHandle *>(&name));
-    }
-
-    return winrt::single_threaded_vector<JsiPointerHandle>(std::move(result)).GetView();
-  }
-
-  std::shared_ptr<facebook::jsi::HostObject> const &Get() const noexcept {
-    return m_hostObject;
-  }
+  std::shared_ptr<facebook::jsi::HostObject> const &Get() const noexcept;
 
  private:
   std::shared_ptr<facebook::jsi::HostObject> m_hostObject;
@@ -423,6 +394,43 @@ struct JsiAbiRuntime : facebook::jsi::Runtime {
  private:
   IJsiRuntime m_runtime;
 };
+
+//===========================================================================
+// JsiHostObject implementation
+//===========================================================================
+
+inline JsiHostObject::JsiHostObject(std::shared_ptr<facebook::jsi::HostObject> &&hostObject) noexcept
+    : m_hostObject(std::move(hostObject)) {}
+
+JsiValueData JsiHostObject::GetProperty(IJsiRuntime const &runtime, JsiPointerHandle name) {
+  JsiAbiRuntime rt{runtime};
+  return ToJsiValueData(m_hostObject->get(rt, *reinterpret_cast<facebook::jsi::PropNameID *>(name)));
+}
+
+inline void JsiHostObject::SetProperty(IJsiRuntime const &runtime, JsiPointerHandle name, JsiValueData const &value) {
+  JsiAbiRuntime rt{runtime};
+  m_hostObject->set(
+      rt,
+      *reinterpret_cast<facebook::jsi::PropNameID *>(name),
+      *reinterpret_cast<facebook::jsi::Value const *>(&value));
+}
+
+inline Windows::Foundation::Collections::IVectorView<JsiPointerHandle> JsiHostObject::GetPropertyNames(
+    IJsiRuntime const &runtime) {
+  JsiAbiRuntime rt{runtime};
+  auto names = m_hostObject->getPropertyNames(rt);
+  std::vector<JsiPointerHandle> result;
+  result.reserve(names.size());
+  for (auto &name : names) {
+    result.push_back(*reinterpret_cast<JsiPointerHandle *>(&name));
+  }
+
+  return winrt::single_threaded_vector<JsiPointerHandle>(std::move(result)).GetView();
+}
+
+inline std::shared_ptr<facebook::jsi::HostObject> const &JsiHostObject::Get() const noexcept {
+  return m_hostObject;
+}
 
 } // namespace winrt::Microsoft::ReactNative
 
