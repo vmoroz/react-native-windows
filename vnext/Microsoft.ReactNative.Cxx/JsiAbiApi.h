@@ -54,7 +54,8 @@ struct JsiHostObject : implements<JsiHostObject, IJsiHostObject> {
 
   JsiValueData GetProperty(
       IJsiRuntime const & /*runtime*/,
-      JsiPointerHandle name) { // TODO: Associate Runtime with ABI runtime
+      JsiPointerHandle name) {
+    // TODO: Associate Runtime with ABI runtime
     facebook::jsi::Runtime *rt{nullptr};
     return ToJsiValueData(m_hostObject->get(*rt, *reinterpret_cast<facebook::jsi::PropNameID *>(name)));
   }
@@ -80,6 +81,10 @@ struct JsiHostObject : implements<JsiHostObject, IJsiHostObject> {
     }
 
     return winrt::single_threaded_vector<JsiPointerHandle>(std::move(result)).GetView();
+  }
+
+  std::shared_ptr<facebook::jsi::HostObject> const &Get() const noexcept {
+    return m_hostObject;
   }
 
  private:
@@ -254,9 +259,9 @@ struct JsiAbiRuntime : facebook::jsi::Runtime {
     return std::move(*AsObject(m_runtime.CreateObjectWithHostObject(winrt::make<JsiHostObject>(std::move(ho)))));
   }
 
-  std::shared_ptr<facebook::jsi::HostObject> getHostObject(const facebook::jsi::Object &) override {
-    // TODO: implement mapping
-    return nullptr;
+  std::shared_ptr<facebook::jsi::HostObject> getHostObject(const facebook::jsi::Object &obj) override {
+    auto hostObject = m_runtime.GetHostObject(ToJsiPointerHandle(obj));
+    return get_self<JsiHostObject>(hostObject)->Get();
   }
 
   facebook::jsi::HostFunctionType &getHostFunction(const facebook::jsi::Function &) override {
