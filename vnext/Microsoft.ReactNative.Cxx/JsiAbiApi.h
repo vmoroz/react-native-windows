@@ -12,20 +12,18 @@
 
 namespace winrt::Microsoft::ReactNative {
 
+// Used as an ABI-safe opaque value for pointer values
 using JsiPointerHandle = uint64_t;
 
-struct JsiBuffer : implements<JsiBuffer, IJsiBuffer> {
-  JsiBuffer(std::shared_ptr<const facebook::jsi::Buffer> const &buffer) : m_buffer{buffer} {}
-  uint32_t Size() {
-    return static_cast<uint32_t>(m_buffer->size());
-  }
-
-  void GetData(JsiDataHandler const &handler) {
-    handler(winrt::array_view<uint8_t const>{m_buffer->data(), m_buffer->data() + m_buffer->size()});
-  }
+// An ABI-safe wrapper for facebook::jsi::Buffer
+struct JsiBufferWrapper : implements<JsiBufferWrapper, IJsiBuffer> {
+  JsiBufferWrapper(std::shared_ptr<facebook::jsi::Buffer const> const &buffer) noexcept;
+  ~JsiBufferWrapper() noexcept;
+  uint32_t Size();
+  void GetData(JsiDataHandler const &handler);
 
  private:
-  std::shared_ptr<const facebook::jsi::Buffer> m_buffer;
+  std::shared_ptr<facebook::jsi::Buffer const> m_buffer;
 };
 
 struct JsiPreparedJavaScriptWrapper : facebook::jsi::PreparedJavaScript {
@@ -224,14 +222,14 @@ struct JsiAbiRuntime : facebook::jsi::Runtime {
   facebook::jsi::Value evaluateJavaScript(
       const std::shared_ptr<const facebook::jsi::Buffer> &buffer,
       const std::string &sourceURL) override {
-    return ToValue(m_runtime.EvaluateJavaScript(winrt::make<JsiBuffer>(buffer), to_hstring(sourceURL)));
+    return ToValue(m_runtime.EvaluateJavaScript(winrt::make<JsiBufferWrapper>(buffer), to_hstring(sourceURL)));
   }
 
   std::shared_ptr<const facebook::jsi::PreparedJavaScript> prepareJavaScript(
       const std::shared_ptr<const facebook::jsi::Buffer> &buffer,
       std::string sourceURL) override {
     return std::make_shared<JsiPreparedJavaScriptWrapper>(
-        m_runtime.PrepareJavaScript(winrt::make<JsiBuffer>(std::move(buffer)), to_hstring(sourceURL)));
+        m_runtime.PrepareJavaScript(winrt::make<JsiBufferWrapper>(std::move(buffer)), to_hstring(sourceURL)));
   }
 
   facebook::jsi::Value evaluatePreparedJavaScript(
