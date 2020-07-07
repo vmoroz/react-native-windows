@@ -23,4 +23,17 @@ void JsiBufferWrapper::GetData(JsiDataHandler const &handler) {
   handler(winrt::array_view<uint8_t const>{m_buffer->data(), m_buffer->data() + m_buffer->size()});
 }
 
+//===========================================================================
+// JsiPreparedJavaScriptWrapper implementation
+//===========================================================================
+
+JsiPreparedJavaScriptWrapper::JsiPreparedJavaScriptWrapper(JsiPreparedJavaScript const &preparedScript) noexcept
+    : m_preparedScript{preparedScript} {}
+
+JsiPreparedJavaScriptWrapper::~JsiPreparedJavaScriptWrapper() noexcept = default;
+
+JsiPreparedJavaScript const &JsiPreparedJavaScriptWrapper::Get() const noexcept {
+  return m_preparedScript;
+}
+
 } // namespace winrt::Microsoft::ReactNative

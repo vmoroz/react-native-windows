@@ -26,12 +26,11 @@ struct JsiBufferWrapper : implements<JsiBufferWrapper, IJsiBuffer> {
   std::shared_ptr<facebook::jsi::Buffer const> m_buffer;
 };
 
+// A wrapper for ABI-safe  JsiPreparedJavaScript
 struct JsiPreparedJavaScriptWrapper : facebook::jsi::PreparedJavaScript {
-  JsiPreparedJavaScriptWrapper(JsiPreparedJavaScript const &preparedScript) : m_preparedScript{preparedScript} {}
-
-  JsiPreparedJavaScript const &Get() const noexcept {
-    return m_preparedScript;
-  }
+  JsiPreparedJavaScriptWrapper(JsiPreparedJavaScript const &preparedScript) noexcept;
+  ~JsiPreparedJavaScriptWrapper() noexcept;
+  JsiPreparedJavaScript const &Get() const noexcept;
 
  private:
   JsiPreparedJavaScript m_preparedScript;
