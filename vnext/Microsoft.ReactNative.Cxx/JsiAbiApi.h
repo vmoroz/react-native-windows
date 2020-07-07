@@ -8,7 +8,6 @@
 #include "Crash.h"
 #include "jsi/jsi.h"
 #include "winrt/Microsoft.ReactNative.h"
-#include "winrt/base.h"
 
 namespace winrt::Microsoft::ReactNative {
 
