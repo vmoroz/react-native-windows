@@ -12,10 +12,13 @@
 
 namespace winrt::Microsoft::ReactNative {
 
-// Used as an ABI-safe opaque value for pointer values
+// Forward declare the facebook::jsi::Runtime implementation on top of ABI-safe IJsiRuntime.
+struct JsiAbiRuntime;
+
+// Used as an ABI-safe opaque value for pointer values.
 using JsiPointerHandle = uint64_t;
 
-// An ABI-safe wrapper for facebook::jsi::Buffer
+// An ABI-safe wrapper for facebook::jsi::Buffer.
 struct JsiBufferWrapper : implements<JsiBufferWrapper, IJsiBuffer> {
   JsiBufferWrapper(std::shared_ptr<facebook::jsi::Buffer const> const &buffer) noexcept;
   ~JsiBufferWrapper() noexcept;
@@ -26,7 +29,7 @@ struct JsiBufferWrapper : implements<JsiBufferWrapper, IJsiBuffer> {
   std::shared_ptr<facebook::jsi::Buffer const> m_buffer;
 };
 
-// A wrapper for ABI-safe  JsiPreparedJavaScript
+// A wrapper for ABI-safe JsiPreparedJavaScript.
 struct JsiPreparedJavaScriptWrapper : facebook::jsi::PreparedJavaScript {
   JsiPreparedJavaScriptWrapper(JsiPreparedJavaScript const &preparedScript) noexcept;
   ~JsiPreparedJavaScriptWrapper() noexcept;
@@ -36,16 +39,7 @@ struct JsiPreparedJavaScriptWrapper : facebook::jsi::PreparedJavaScript {
   JsiPreparedJavaScript m_preparedScript;
 };
 
-struct JsiAbiRuntime;
-
-static JsiValueData &&ToJsiValueData(facebook::jsi::Value &&value) noexcept {
-  return reinterpret_cast<JsiValueData &&>(value);
-}
-
-static JsiValueData const &ToJsiValueData(facebook::jsi::Value const &value) noexcept {
-  return reinterpret_cast<JsiValueData const &>(value);
-}
-
+// An ABI-safe wrapper for facebook::jsi::HostObject.
 struct JsiHostObjectWrapper : implements<JsiHostObjectWrapper, IJsiHostObject> {
   JsiHostObjectWrapper(std::shared_ptr<facebook::jsi::HostObject> &&hostObject) noexcept;
   ~JsiHostObjectWrapper() noexcept;
@@ -65,6 +59,14 @@ struct JsiHostObjectWrapper : implements<JsiHostObjectWrapper, IJsiHostObject> {
   static std::mutex s_mutex;
   static std::unordered_map<JsiPointerHandle, JsiHostObjectWrapper *> s_objectHandleToObjectWrapper;
 };
+
+static JsiValueData &&ToJsiValueData(facebook::jsi::Value &&value) noexcept {
+  return reinterpret_cast<JsiValueData &&>(value);
+}
+
+static JsiValueData const &ToJsiValueData(facebook::jsi::Value const &value) noexcept {
+  return reinterpret_cast<JsiValueData const &>(value);
+}
 
 inline facebook::jsi::Value &&ToValue(JsiValueData &&valueData) noexcept {
   return reinterpret_cast<facebook::jsi::Value &&>(valueData);
@@ -486,71 +488,6 @@ struct JsiAbiRuntime : facebook::jsi::Runtime {
  private:
   IJsiRuntime m_runtime;
 };
-
-//===========================================================================
-// JsiHostObject implementation
-//===========================================================================
-
-inline JsiHostObjectWrapper::JsiHostObjectWrapper(std::shared_ptr<facebook::jsi::HostObject> &&hostObject) noexcept
-    : m_hostObject(std::move(hostObject)) {}
-
-inline JsiHostObjectWrapper::~JsiHostObjectWrapper() noexcept {
-  if (m_objectHandle) {
-    std::scoped_lock lock{s_mutex};
-    s_objectHandleToObjectWrapper.erase(m_objectHandle);
-  }
-}
-
-JsiValueData JsiHostObjectWrapper::GetProperty(IJsiRuntime const &runtime, JsiPointerHandle name) {
-  JsiAbiRuntime rt{runtime};
-  return ToJsiValueData(m_hostObject->get(rt, *reinterpret_cast<facebook::jsi::PropNameID *>(name)));
-}
-
-inline void
-JsiHostObjectWrapper::SetProperty(IJsiRuntime const &runtime, JsiPointerHandle name, JsiValueData const &value) {
-  JsiAbiRuntime rt{runtime};
-  m_hostObject->set(
-      rt,
-      *reinterpret_cast<facebook::jsi::PropNameID *>(name),
-      *reinterpret_cast<facebook::jsi::Value const *>(&value));
-}
-
-inline Windows::Foundation::Collections::IVectorView<JsiPointerHandle> JsiHostObjectWrapper::GetPropertyNames(
-    IJsiRuntime const &runtime) {
-  JsiAbiRuntime rt{runtime};
-  auto names = m_hostObject->getPropertyNames(rt);
-  std::vector<JsiPointerHandle> result;
-  result.reserve(names.size());
-  for (auto &name : names) {
-    result.push_back(*reinterpret_cast<JsiPointerHandle *>(&name));
-  }
-
-  return winrt::single_threaded_vector<JsiPointerHandle>(std::move(result)).GetView();
-}
-
-inline /*static*/ void JsiHostObjectWrapper::RegisterHostObject(
-    JsiPointerHandle handle,
-    JsiHostObjectWrapper *hostObject) noexcept {
-  std::scoped_lock lock{s_mutex};
-  s_objectHandleToObjectWrapper[handle] = hostObject;
-  hostObject->m_objectHandle = handle;
-}
-
-inline /*static*/ bool JsiHostObjectWrapper::IsHostObject(JsiPointerHandle handle) noexcept {
-  std::scoped_lock lock{s_mutex};
-  auto it = s_objectHandleToObjectWrapper.find(handle);
-  return it != s_objectHandleToObjectWrapper.end();
-}
-
-inline /*static*/ std::shared_ptr<facebook::jsi::HostObject> JsiHostObjectWrapper::GetHostObject(
-    JsiPointerHandle handle) noexcept {
-  auto it = s_objectHandleToObjectWrapper.find(handle);
-  if (it != s_objectHandleToObjectWrapper.end()) {
-    return it->second->m_hostObject;
-  } else {
-    return nullptr;
-  }
-}
 
 //===========================================================================
 // JsiHostFunctionWrapper implementation
