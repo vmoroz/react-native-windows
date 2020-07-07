@@ -49,17 +49,24 @@ static JsiValueData const &ToJsiValueData(facebook::jsi::Value const &value) noe
   return reinterpret_cast<JsiValueData const &>(value);
 }
 
-struct JsiHostObject : implements<JsiHostObject, IJsiHostObject> {
-  JsiHostObject(std::shared_ptr<facebook::jsi::HostObject> &&hostObject) noexcept;
+struct JsiHostObjectWrapper : implements<JsiHostObjectWrapper, IJsiHostObject> {
+  JsiHostObjectWrapper(std::shared_ptr<facebook::jsi::HostObject> &&hostObject) noexcept;
+  ~JsiHostObjectWrapper() noexcept;
 
   JsiValueData GetProperty(IJsiRuntime const &runtime, JsiPointerHandle name);
   void SetProperty(IJsiRuntime const &runtime, JsiPointerHandle name, JsiValueData const &value);
   Windows::Foundation::Collections::IVectorView<JsiPointerHandle> GetPropertyNames(IJsiRuntime const &runtime);
 
-  std::shared_ptr<facebook::jsi::HostObject> const &Get() const noexcept;
+  static void RegisterHostObject(JsiPointerHandle handle, JsiHostObjectWrapper *hostObject) noexcept;
+  static bool IsHostObject(JsiPointerHandle handle) noexcept;
+  static std::shared_ptr<facebook::jsi::HostObject> GetHostObject(JsiPointerHandle handle) noexcept;
 
  private:
   std::shared_ptr<facebook::jsi::HostObject> m_hostObject;
+  JsiPointerHandle m_objectHandle{};
+
+  static std::mutex s_mutex;
+  static std::unordered_map<JsiPointerHandle, JsiHostObjectWrapper *> s_objectHandleToObjectWrapper;
 };
 
 inline facebook::jsi::Value &&ToValue(JsiValueData &&valueData) noexcept {
@@ -324,13 +331,15 @@ struct JsiAbiRuntime : facebook::jsi::Runtime {
   }
 
   facebook::jsi::Object createObject(std::shared_ptr<facebook::jsi::HostObject> ho) override {
-    return std::move(*AsObject(m_runtime.CreateObjectWithHostObject(winrt::make<JsiHostObject>(std::move(ho)))));
+    auto hostObjectWrapper = winrt::make<JsiHostObjectWrapper>(std::move(ho));
+    facebook::jsi::Object result = std::move(*AsObject(m_runtime.CreateObjectWithHostObject(hostObjectWrapper)));
+    JsiHostObjectWrapper::RegisterHostObject(
+        ToJsiPointerHandle(result), get_self<JsiHostObjectWrapper>(hostObjectWrapper));
+    return result;
   }
 
   std::shared_ptr<facebook::jsi::HostObject> getHostObject(const facebook::jsi::Object &obj) override {
-    auto hostObject = m_runtime.GetHostObject(ToJsiPointerHandle(obj));
-    // TODO: get_self is unsafe here. Implement proper mapping.
-    return get_self<JsiHostObject>(hostObject)->Get();
+    return JsiHostObjectWrapper::GetHostObject(ToJsiPointerHandle(obj));
   }
 
   facebook::jsi::HostFunctionType &getHostFunction(const facebook::jsi::Function &func) override {
@@ -485,15 +494,23 @@ struct JsiAbiRuntime : facebook::jsi::Runtime {
 // JsiHostObject implementation
 //===========================================================================
 
-inline JsiHostObject::JsiHostObject(std::shared_ptr<facebook::jsi::HostObject> &&hostObject) noexcept
+inline JsiHostObjectWrapper::JsiHostObjectWrapper(std::shared_ptr<facebook::jsi::HostObject> &&hostObject) noexcept
     : m_hostObject(std::move(hostObject)) {}
 
-JsiValueData JsiHostObject::GetProperty(IJsiRuntime const &runtime, JsiPointerHandle name) {
+inline JsiHostObjectWrapper::~JsiHostObjectWrapper() noexcept {
+  if (m_objectHandle) {
+    std::scoped_lock lock{s_mutex};
+    s_objectHandleToObjectWrapper.erase(m_objectHandle);
+  }
+}
+
+JsiValueData JsiHostObjectWrapper::GetProperty(IJsiRuntime const &runtime, JsiPointerHandle name) {
   JsiAbiRuntime rt{runtime};
   return ToJsiValueData(m_hostObject->get(rt, *reinterpret_cast<facebook::jsi::PropNameID *>(name)));
 }
 
-inline void JsiHostObject::SetProperty(IJsiRuntime const &runtime, JsiPointerHandle name, JsiValueData const &value) {
+inline void
+JsiHostObjectWrapper::SetProperty(IJsiRuntime const &runtime, JsiPointerHandle name, JsiValueData const &value) {
   JsiAbiRuntime rt{runtime};
   m_hostObject->set(
       rt,
@@ -501,7 +518,7 @@ inline void JsiHostObject::SetProperty(IJsiRuntime const &runtime, JsiPointerHan
       *reinterpret_cast<facebook::jsi::Value const *>(&value));
 }
 
-inline Windows::Foundation::Collections::IVectorView<JsiPointerHandle> JsiHostObject::GetPropertyNames(
+inline Windows::Foundation::Collections::IVectorView<JsiPointerHandle> JsiHostObjectWrapper::GetPropertyNames(
     IJsiRuntime const &runtime) {
   JsiAbiRuntime rt{runtime};
   auto names = m_hostObject->getPropertyNames(rt);
@@ -514,8 +531,28 @@ inline Windows::Foundation::Collections::IVectorView<JsiPointerHandle> JsiHostOb
   return winrt::single_threaded_vector<JsiPointerHandle>(std::move(result)).GetView();
 }
 
-inline std::shared_ptr<facebook::jsi::HostObject> const &JsiHostObject::Get() const noexcept {
-  return m_hostObject;
+inline /*static*/ void JsiHostObjectWrapper::RegisterHostObject(
+    JsiPointerHandle handle,
+    JsiHostObjectWrapper *hostObject) noexcept {
+  std::scoped_lock lock{s_mutex};
+  s_objectHandleToObjectWrapper[handle] = hostObject;
+  hostObject->m_objectHandle = handle;
+}
+
+inline /*static*/ bool JsiHostObjectWrapper::IsHostObject(JsiPointerHandle handle) noexcept {
+  std::scoped_lock lock{s_mutex};
+  auto it = s_objectHandleToObjectWrapper.find(handle);
+  return it != s_objectHandleToObjectWrapper.end();
+}
+
+inline /*static*/ std::shared_ptr<facebook::jsi::HostObject> JsiHostObjectWrapper::GetHostObject(
+    JsiPointerHandle handle) noexcept {
+  auto it = s_objectHandleToObjectWrapper.find(handle);
+  if (it != s_objectHandleToObjectWrapper.end()) {
+    return it->second->m_hostObject;
+  } else {
+    return nullptr;
+  }
 }
 
 //===========================================================================
