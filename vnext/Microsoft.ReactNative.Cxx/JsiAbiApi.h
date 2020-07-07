@@ -73,18 +73,37 @@ inline facebook::jsi::Value const &ToValue(JsiValueData const &valueData) noexce
 // The function object that wraps up the facebook::jsi::HostFunctionType
 struct JsiHostFunctionWrapper {
   JsiHostFunctionWrapper(facebook::jsi::HostFunctionType &&hostFunction, uint32_t functionId) noexcept
-      : m_hostFunction{std::move(hostFunction)}, m_functionId{functionId} {}
+      : m_hostFunction{std::move(hostFunction)}, m_functionId{functionId} {
+    VerifyElseCrashSz(functionId, "Function Id must be not zero");
+    std::scoped_lock lock{s_functionMutex};
+    s_functionIdToFunctionWrapper[functionId] = this;
+  }
 
   JsiHostFunctionWrapper(JsiHostFunctionWrapper &&other) noexcept
       : m_hostFunction{std::move(other.m_hostFunction)},
         m_functionId{std::exchange(other.m_functionId, 0)},
-        m_functionHandle{std::exchange(other.m_functionHandle, 0)} {}
+        m_functionHandle{std::exchange(other.m_functionHandle, 0)} {
+    std::scoped_lock lock{s_functionMutex};
+    if (m_functionId) {
+      s_functionIdToFunctionWrapper[m_functionId] = this;
+    }
+    if (m_functionHandle) {
+      s_functionHandleToFunctionWrapper[m_functionHandle] = this;
+    }
+  }
 
   JsiHostFunctionWrapper &operator=(JsiHostFunctionWrapper &&other) noexcept {
     if (this != &other) {
       m_hostFunction = std::move(other.m_hostFunction);
       m_functionId = std::exchange(other.m_functionId, 0);
       m_functionHandle = std::exchange(other.m_functionHandle, 0);
+      std::scoped_lock lock{s_functionMutex};
+      if (m_functionId) {
+        s_functionIdToFunctionWrapper[m_functionId] = this;
+      }
+      if (m_functionHandle) {
+        s_functionHandleToFunctionWrapper[m_functionHandle] = this;
+      }
     }
     return *this;
   }
