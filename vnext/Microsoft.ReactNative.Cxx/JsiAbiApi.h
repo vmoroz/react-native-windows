@@ -88,333 +88,109 @@ struct JsiHostFunctionWrapper {
   static std::unordered_map<JsiPointerHandle, JsiHostFunctionWrapper *> s_functionHandleToFunctionWrapper;
 };
 
-static JsiValueData &&ToJsiValueData(facebook::jsi::Value &&value) noexcept {
-  return reinterpret_cast<JsiValueData &&>(value);
-}
-
-static JsiValueData const &ToJsiValueData(facebook::jsi::Value const &value) noexcept {
-  return reinterpret_cast<JsiValueData const &>(value);
-}
-
-inline facebook::jsi::Value &&ToValue(JsiValueData &&valueData) noexcept {
-  return reinterpret_cast<facebook::jsi::Value &&>(valueData);
-}
-
-inline facebook::jsi::Value const &ToValue(JsiValueData const &valueData) noexcept {
-  return reinterpret_cast<facebook::jsi::Value const &>(valueData);
-}
-
+// JSI runtime implementation as a wrapper for the ABI-safe IJsiRuntime.
 struct JsiAbiRuntime : facebook::jsi::Runtime {
-  JsiAbiRuntime(IJsiRuntime const &runtime) : m_runtime{runtime} {}
-
-  static facebook::jsi::String *AsString(JsiPointerHandle pointer) noexcept {
-    return reinterpret_cast<facebook::jsi::String *>(pointer);
-  }
-
-  static facebook::jsi::PropNameID *AsPropNameID(JsiPointerHandle pointer) noexcept {
-    return reinterpret_cast<facebook::jsi::PropNameID *>(pointer);
-  }
-
-  static facebook::jsi::Symbol *AsSymbol(JsiPointerHandle pointer) noexcept {
-    return reinterpret_cast<facebook::jsi::Symbol *>(pointer);
-  }
-
-  static facebook::jsi::Object *AsObject(JsiPointerHandle pointer) noexcept {
-    return reinterpret_cast<facebook::jsi::Object *>(pointer);
-  }
-
-  static facebook::jsi::WeakObject *AsWeakObject(JsiPointerHandle pointer) noexcept {
-    return reinterpret_cast<facebook::jsi::WeakObject *>(pointer);
-  }
-
-  static facebook::jsi::Function *AsFunction(JsiPointerHandle pointer) noexcept {
-    return reinterpret_cast<facebook::jsi::Function *>(pointer);
-  }
-
-  static facebook::jsi::Array *AsArray(JsiPointerHandle pointer) noexcept {
-    return reinterpret_cast<facebook::jsi::Array *>(pointer);
-  }
-
-  static facebook::jsi::ArrayBuffer *AsArrayBuffer(JsiPointerHandle pointer) noexcept {
-    return reinterpret_cast<facebook::jsi::ArrayBuffer *>(pointer);
-  }
-
-  static JsiPointerHandle ToJsiPointerHandle(facebook::jsi::Runtime::PointerValue const *pointerValue) noexcept {
-    return reinterpret_cast<JsiPointerHandle>(pointerValue);
-  }
-
-  static JsiPointerHandle ToJsiPointerHandle(facebook::jsi::Pointer const &pointer) noexcept {
-    return ToJsiPointerHandle(facebook::jsi::Runtime::getPointerValue(pointer));
-  }
-
-  static facebook::jsi::Runtime::PointerValue *ToPointerValue(JsiPointerHandle pointerHandle) {
-    return reinterpret_cast<facebook::jsi::Runtime::PointerValue *>(pointerHandle);
-  }
+  JsiAbiRuntime(IJsiRuntime const &runtime) noexcept;
+  ~JsiAbiRuntime() noexcept;
 
   facebook::jsi::Value evaluateJavaScript(
       const std::shared_ptr<const facebook::jsi::Buffer> &buffer,
-      const std::string &sourceURL) override {
-    return ToValue(m_runtime.EvaluateJavaScript(winrt::make<JsiBufferWrapper>(buffer), to_hstring(sourceURL)));
-  }
-
+      const std::string &sourceURL) override;
   std::shared_ptr<const facebook::jsi::PreparedJavaScript> prepareJavaScript(
       const std::shared_ptr<const facebook::jsi::Buffer> &buffer,
-      std::string sourceURL) override {
-    return std::make_shared<JsiPreparedJavaScriptWrapper>(
-        m_runtime.PrepareJavaScript(winrt::make<JsiBufferWrapper>(std::move(buffer)), to_hstring(sourceURL)));
-  }
-
+      std::string sourceURL) override;
   facebook::jsi::Value evaluatePreparedJavaScript(
-      const std::shared_ptr<const facebook::jsi::PreparedJavaScript> &js) override {
-    return ToValue(
-        m_runtime.EvaluatePreparedJavaScript(std::static_pointer_cast<JsiPreparedJavaScriptWrapper const>(js)->Get()));
-  }
+      const std::shared_ptr<const facebook::jsi::PreparedJavaScript> &js) override;
+  facebook::jsi::Object global() override;
+  std::string description() override;
+  bool isInspectable() override;
+  facebook::jsi::Instrumentation &instrumentation() override;
 
-  facebook::jsi::Object global() override {
-    return std::move(*AsObject(m_runtime.Global()));
-  }
+ protected:
+  PointerValue *cloneSymbol(const PointerValue *pv) override;
+  PointerValue *cloneString(const PointerValue *pv) override;
+  PointerValue *cloneObject(const PointerValue *pv) override;
+  PointerValue *clonePropNameID(const PointerValue *pv) override;
 
-  std::string description() override {
-    return to_string(m_runtime.Description());
-  }
+  facebook::jsi::PropNameID createPropNameIDFromAscii(const char *str, size_t length) override;
+  facebook::jsi::PropNameID createPropNameIDFromUtf8(const uint8_t *utf8, size_t length) override;
+  facebook::jsi::PropNameID createPropNameIDFromString(const facebook::jsi::String &str) override;
+  std::string utf8(const facebook::jsi::PropNameID &propertyNameId) override;
+  bool compare(const facebook::jsi::PropNameID &left, const facebook::jsi::PropNameID &right) override;
 
-  bool isInspectable() override {
-    return m_runtime.IsInspectable();
-  }
+  std::string symbolToString(const facebook::jsi::Symbol &symbol) override;
 
-  facebook::jsi::Instrumentation &instrumentation() {
-    VerifyElseCrash(false);
-  }
+  facebook::jsi::String createStringFromAscii(const char *str, size_t length) override;
+  facebook::jsi::String createStringFromUtf8(const uint8_t *utf8, size_t length) override;
+  std::string utf8(const facebook::jsi::String &str) override;
 
-  PointerValue *cloneSymbol(const Runtime::PointerValue *pv) override {
-    return ToPointerValue(m_runtime.CloneSymbol(ToJsiPointerHandle(pv)));
-  }
+  facebook::jsi::Value createValueFromJsonUtf8(const uint8_t *json, size_t length) override;
 
-  PointerValue *cloneString(const Runtime::PointerValue *pv) override {
-    return ToPointerValue(m_runtime.CloneString(ToJsiPointerHandle(pv)));
-  }
-
-  PointerValue *cloneObject(const Runtime::PointerValue *pv) override {
-    return ToPointerValue(m_runtime.CloneObject(ToJsiPointerHandle(pv)));
-  }
-
-  PointerValue *clonePropNameID(const Runtime::PointerValue *pv) override {
-    return ToPointerValue(m_runtime.ClonePropertyNameId(ToJsiPointerHandle(pv)));
-  }
-
-  facebook::jsi::PropNameID createPropNameIDFromAscii(const char *str, size_t length) override {
-    auto data = reinterpret_cast<uint8_t const *>(str);
-    return std::move(*AsPropNameID(m_runtime.CreatePropertyNameIdFromAscii({data, data + length})));
-  }
-
-  facebook::jsi::PropNameID createPropNameIDFromUtf8(const uint8_t *utf8, size_t length) override {
-    return std::move(*AsPropNameID(m_runtime.CreatePropertyNameIdFromUtf8({utf8, utf8 + length})));
-  }
-
-  facebook::jsi::PropNameID createPropNameIDFromString(const facebook::jsi::String &str) override {
-    return std::move(*AsPropNameID(m_runtime.CreatePropertyNameIdFromString(ToJsiPointerHandle(str))));
-  }
-
-  std::string utf8(const facebook::jsi::PropNameID &propertyNameId) override {
-    std::string result;
-    m_runtime.PropertyNameIdToUtf8(ToJsiPointerHandle(propertyNameId), [&result](array_view<uint8_t const> utf8) {
-      result.assign(reinterpret_cast<char const *>(utf8.data()), utf8.size());
-    });
-    return result;
-  }
-
-  bool compare(const facebook::jsi::PropNameID &left, const facebook::jsi::PropNameID &right) override {
-    return m_runtime.ComparePropertyNameIds(ToJsiPointerHandle(left), ToJsiPointerHandle(right));
-  }
-
-  std::string symbolToString(const facebook::jsi::Symbol &symbol) override {
-    std::string result;
-    m_runtime.SymbolToUtf8(ToJsiPointerHandle(symbol), [&result](array_view<uint8_t const> utf8) {
-      result.assign(reinterpret_cast<char const *>(utf8.data()), utf8.size());
-    });
-    return result;
-  }
-
-  facebook::jsi::String createStringFromAscii(const char *str, size_t length) override {
-    auto ascii = reinterpret_cast<uint8_t const *>(str);
-    return std::move(*AsString(m_runtime.CreateStringFromAscii({ascii, ascii + length})));
-  }
-
-  facebook::jsi::String createStringFromUtf8(const uint8_t *utf8, size_t length) override {
-    return std::move(*AsString(m_runtime.CreateStringFromAscii({utf8, utf8 + length})));
-  }
-
-  std::string utf8(const facebook::jsi::String &str) override {
-    std::string result;
-    m_runtime.StringToUtf8(ToJsiPointerHandle(str), [&result](array_view<uint8_t const> utf8) {
-      result.assign(reinterpret_cast<char const *>(utf8.data()), utf8.size());
-    });
-    return result;
-  }
-
-  facebook::jsi::Value createValueFromJsonUtf8(const uint8_t *json, size_t length) {
-    return ToValue(m_runtime.CreateValueFromJsonUtf8({json, json + length}));
-  }
-
-  facebook::jsi::Object createObject() override {
-    return std::move(*AsObject(m_runtime.CreateObject()));
-  }
-
-  facebook::jsi::Object createObject(std::shared_ptr<facebook::jsi::HostObject> ho) override {
-    auto hostObjectWrapper = winrt::make<JsiHostObjectWrapper>(std::move(ho));
-    facebook::jsi::Object result = std::move(*AsObject(m_runtime.CreateObjectWithHostObject(hostObjectWrapper)));
-    JsiHostObjectWrapper::RegisterHostObject(
-        ToJsiPointerHandle(result), get_self<JsiHostObjectWrapper>(hostObjectWrapper));
-    return result;
-  }
-
-  std::shared_ptr<facebook::jsi::HostObject> getHostObject(const facebook::jsi::Object &obj) override {
-    return JsiHostObjectWrapper::GetHostObject(ToJsiPointerHandle(obj));
-  }
-
-  facebook::jsi::HostFunctionType &getHostFunction(const facebook::jsi::Function &func) override {
-    return JsiHostFunctionWrapper::GetHostFunction(ToJsiPointerHandle(func));
-  }
-
-  facebook::jsi::Value getProperty(const facebook::jsi::Object &obj, const facebook::jsi::PropNameID &name) override {
-    return ToValue(m_runtime.GetProperty(ToJsiPointerHandle(obj), ToJsiPointerHandle(name)));
-  }
-
-  facebook::jsi::Value getProperty(const facebook::jsi::Object &obj, const facebook::jsi::String &name) override {
-    return ToValue(m_runtime.GetPropertyWithString(ToJsiPointerHandle(obj), ToJsiPointerHandle(name)));
-  }
-
-  bool hasProperty(const facebook::jsi::Object &obj, const facebook::jsi::PropNameID &name) override {
-    return m_runtime.HasProperty(ToJsiPointerHandle(obj), ToJsiPointerHandle(name));
-  }
-
-  bool hasProperty(const facebook::jsi::Object &obj, const facebook::jsi::String &name) override {
-    return m_runtime.HasPropertyWithString(ToJsiPointerHandle(obj), ToJsiPointerHandle(name));
-  }
-
+  facebook::jsi::Object createObject() override;
+  facebook::jsi::Object createObject(std::shared_ptr<facebook::jsi::HostObject> ho) override;
+  std::shared_ptr<facebook::jsi::HostObject> getHostObject(const facebook::jsi::Object &obj) override;
+  facebook::jsi::HostFunctionType &getHostFunction(const facebook::jsi::Function &func) override;
+  facebook::jsi::Value getProperty(const facebook::jsi::Object &obj, const facebook::jsi::PropNameID &name) override;
+  facebook::jsi::Value getProperty(const facebook::jsi::Object &obj, const facebook::jsi::String &name) override;
+  bool hasProperty(const facebook::jsi::Object &obj, const facebook::jsi::PropNameID &name) override;
+  bool hasProperty(const facebook::jsi::Object &obj, const facebook::jsi::String &name) override;
   void setPropertyValue(
       facebook::jsi::Object &obj,
       const facebook::jsi::PropNameID &name,
-      const facebook::jsi::Value &value) override {
-    m_runtime.SetProperty(ToJsiPointerHandle(obj), ToJsiPointerHandle(name), ToJsiValueData(value));
-  }
-
+      const facebook::jsi::Value &value) override;
   void setPropertyValue(
       facebook::jsi::Object &obj,
       const facebook::jsi::String &name,
-      const facebook::jsi::Value &value) override {
-    m_runtime.SetPropertyWithString(ToJsiPointerHandle(obj), ToJsiPointerHandle(name), ToJsiValueData(value));
-  }
+      const facebook::jsi::Value &value) override;
 
-  bool isArray(const facebook::jsi::Object &obj) const override {
-    return m_runtime.IsArray(ToJsiPointerHandle(obj));
-  }
+  bool isArray(const facebook::jsi::Object &obj) const override;
+  bool isArrayBuffer(const facebook::jsi::Object &obj) const override;
+  bool isFunction(const facebook::jsi::Object &obj) const override;
+  bool isHostObject(const facebook::jsi::Object &obj) const override;
+  bool isHostFunction(const facebook::jsi::Function &func) const override;
+  facebook::jsi::Array getPropertyNames(const facebook::jsi::Object &obj) override;
 
-  bool isArrayBuffer(const facebook::jsi::Object &obj) const override {
-    return m_runtime.IsArrayBuffer(ToJsiPointerHandle(obj));
-  }
+  facebook::jsi::WeakObject createWeakObject(const facebook::jsi::Object &obj) override;
+  facebook::jsi::Value lockWeakObject(const facebook::jsi::WeakObject &weakObj) override;
 
-  bool isFunction(const facebook::jsi::Object &obj) const override {
-    return m_runtime.IsFunction(ToJsiPointerHandle(obj));
-  }
-
-  bool isHostObject(const facebook::jsi::Object &obj) const override {
-    return m_runtime.IsHostObject(ToJsiPointerHandle(obj));
-  }
-
-  bool isHostFunction(const facebook::jsi::Function &func) const override {
-    return JsiHostFunctionWrapper::IsHostFunction(ToJsiPointerHandle(func));
-  }
-
-  facebook::jsi::Array getPropertyNames(const facebook::jsi::Object &obj) override {
-    return std::move(*AsArray(m_runtime.GetPropertyNameArray(ToJsiPointerHandle(obj))));
-  }
-
-  facebook::jsi::WeakObject createWeakObject(const facebook::jsi::Object &obj) override {
-    return std::move(*AsWeakObject(m_runtime.CreateWeakObject(ToJsiPointerHandle(obj))));
-  }
-
-  facebook::jsi::Value lockWeakObject(const facebook::jsi::WeakObject &weakObj) override {
-    return ToValue(m_runtime.LockWeakObject(ToJsiPointerHandle(weakObj)));
-  }
-
-  facebook::jsi::Array createArray(size_t length) override {
-    return std::move(*AsArray(m_runtime.CreateArray(static_cast<uint32_t>(length))));
-  }
-
-  size_t size(const facebook::jsi::Array &arr) override {
-    return m_runtime.GetArraySize(ToJsiPointerHandle(arr));
-  }
-
-  size_t size(const facebook::jsi::ArrayBuffer &arrayBuffer) override {
-    return m_runtime.GetArrayBufferSize(ToJsiPointerHandle(arrayBuffer));
-  }
-
-  uint8_t *data(const facebook::jsi::ArrayBuffer &arrayBuffer) override {
-    uint8_t *result{};
-    m_runtime.ArrayBufferToUtf8(ToJsiPointerHandle(arrayBuffer), [&result](array_view<uint8_t const> dataView) {
-      result = const_cast<uint8_t *>(dataView.data());
-    });
-    return result;
-  }
-
-  facebook::jsi::Value getValueAtIndex(const facebook::jsi::Array &arr, size_t i) override {
-    return ToValue(m_runtime.GetValueAtIndex(ToJsiPointerHandle(arr), static_cast<uint32_t>(i)));
-  }
-
-  void setValueAtIndexImpl(facebook::jsi::Array &arr, size_t i, const facebook::jsi::Value &value) override {
-    m_runtime.SetValueAtIndex(ToJsiPointerHandle(arr), static_cast<uint32_t>(i), ToJsiValueData(value));
-  }
+  facebook::jsi::Array createArray(size_t length) override;
+  size_t size(const facebook::jsi::Array &arr) override;
+  size_t size(const facebook::jsi::ArrayBuffer &arrayBuffer) override;
+  uint8_t *data(const facebook::jsi::ArrayBuffer &arrayBuffer) override;
+  facebook::jsi::Value getValueAtIndex(const facebook::jsi::Array &arr, size_t i) override;
+  void setValueAtIndexImpl(facebook::jsi::Array &arr, size_t i, const facebook::jsi::Value &value) override;
 
   facebook::jsi::Function createFunctionFromHostFunction(
       const facebook::jsi::PropNameID &name,
       unsigned int paramCount,
-      facebook::jsi::HostFunctionType func) override {
-    uint32_t functionId = JsiHostFunctionWrapper::GetNextFunctionId();
-    facebook::jsi::Function result = std::move(*AsFunction(m_runtime.CreateFunctionFromHostFunction(
-        ToJsiPointerHandle(name), paramCount, JsiHostFunctionWrapper(std::move(func), functionId))));
-    JsiHostFunctionWrapper::RegisterHostFunction(functionId, ToJsiPointerHandle(result));
-    return result;
-  }
-
+      facebook::jsi::HostFunctionType func) override;
   facebook::jsi::Value call(
       const facebook::jsi::Function &func,
       const facebook::jsi::Value &jsThis,
       const facebook::jsi::Value *args,
-      size_t count) override {
-    JsiValueData const *argsData = reinterpret_cast<JsiValueData const *>(args);
-    return ToValue(m_runtime.Call(ToJsiPointerHandle(func), ToJsiValueData(jsThis), {argsData, argsData + count}));
-  }
-
+      size_t count) override;
   facebook::jsi::Value
-  callAsConstructor(const facebook::jsi::Function &func, const facebook::jsi::Value *args, size_t count) override {
-    JsiValueData const *argsData = reinterpret_cast<JsiValueData const *>(args);
-    return ToValue(m_runtime.CallAsConstructor(ToJsiPointerHandle(func), {argsData, argsData + count}));
-  }
+  callAsConstructor(const facebook::jsi::Function &func, const facebook::jsi::Value *args, size_t count) override;
 
-  ScopeState *pushScope() {
-    return reinterpret_cast<ScopeState *>(m_runtime.PushScope());
-  }
+  ScopeState *pushScope() override;
+  void popScope(ScopeState *scope) override;
 
-  void popScope(ScopeState *scope) {
-    m_runtime.PopScope(reinterpret_cast<uint64_t>(scope));
-  }
+  bool strictEquals(const facebook::jsi::Symbol &a, const facebook::jsi::Symbol &b) const override;
+  bool strictEquals(const facebook::jsi::String &a, const facebook::jsi::String &b) const override;
+  bool strictEquals(const facebook::jsi::Object &a, const facebook::jsi::Object &b) const override;
+  bool instanceOf(const facebook::jsi::Object &o, const facebook::jsi::Function &f) override;
 
-  bool strictEquals(const facebook::jsi::Symbol &a, const facebook::jsi::Symbol &b) const override {
-    return m_runtime.SymbolStrictEquals(ToJsiPointerHandle(a), ToJsiPointerHandle(b));
-  }
-
-  bool strictEquals(const facebook::jsi::String &a, const facebook::jsi::String &b) const override {
-    return m_runtime.StringStrictEquals(ToJsiPointerHandle(a), ToJsiPointerHandle(b));
-  }
-
-  bool strictEquals(const facebook::jsi::Object &a, const facebook::jsi::Object &b) const override {
-    return m_runtime.ObjectStrictEquals(ToJsiPointerHandle(a), ToJsiPointerHandle(b));
-  }
-
-  bool instanceOf(const facebook::jsi::Object &o, const facebook::jsi::Function &f) override {
-    return m_runtime.InstanceOf(ToJsiPointerHandle(o), ToJsiPointerHandle(f));
-  }
+  static facebook::jsi::String *AsString(JsiPointerHandle pointer) noexcept;
+  static facebook::jsi::PropNameID *AsPropNameID(JsiPointerHandle pointer) noexcept;
+  static facebook::jsi::Symbol *AsSymbol(JsiPointerHandle pointer) noexcept;
+  static facebook::jsi::Object *AsObject(JsiPointerHandle pointer) noexcept;
+  static facebook::jsi::WeakObject *AsWeakObject(JsiPointerHandle pointer) noexcept;
+  static facebook::jsi::Function *AsFunction(JsiPointerHandle pointer) noexcept;
+  static facebook::jsi::Array *AsArray(JsiPointerHandle pointer) noexcept;
+  static facebook::jsi::ArrayBuffer *AsArrayBuffer(JsiPointerHandle pointer) noexcept;
+  static JsiPointerHandle ToJsiPointerHandle(PointerValue const *pointerValue) noexcept;
+  static JsiPointerHandle ToJsiPointerHandle(facebook::jsi::Pointer const &pointer) noexcept;
+  static PointerValue *ToPointerValue(JsiPointerHandle pointerHandle) noexcept;
 
  private:
   IJsiRuntime m_runtime;
