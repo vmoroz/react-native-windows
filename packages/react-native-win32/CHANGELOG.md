@@ -1,8 +1,35 @@
 # Change Log - @office-iss/react-native-win32
 
-This log was last generated on Fri, 26 Jun 2020 23:59:27 GMT and should not be manually modified.
+This log was last generated on Wed, 08 Jul 2020 01:27:37 GMT and should not be manually modified.
 
 <!-- Start content -->
+
+## 0.0.0-canary.29
+
+Wed, 08 Jul 2020 01:27:37 GMT
+
+### Changes
+
+- Add a bunch of deps we are using but not declaring (acoates@microsoft.com)
+
+## 0.0.0-canary.28
+
+Mon, 06 Jul 2020 23:11:46 GMT
+
+### Changes
+
+- Add Support for Binary Overrides to react-native-platform-override (ngerlem@microsoft.com)
+
+## 0.0.0-canary.27
+
+Wed, 01 Jul 2020 05:06:19 GMT
+
+### Changes
+
+- Migrate the local-cli to TypeScript (ngerlem@microsoft.com)
+- Update Alert.(windows|win32).js to enable turbo module (zihanc@microsoft.com)
+- Fix a few more casing typos (dannyvv@microsoft.com)
+- Share eslint and Typescript configs across packages (ngerlem@microsoft.com)
 
 ## 0.0.0-canary.25
 
