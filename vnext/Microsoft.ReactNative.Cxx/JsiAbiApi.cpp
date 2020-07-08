@@ -155,22 +155,6 @@ JsiHostFunctionWrapper::JsiHostFunctionWrapper(JsiHostFunctionWrapper &&other) n
   }
 }
 
-JsiHostFunctionWrapper &JsiHostFunctionWrapper::operator=(JsiHostFunctionWrapper &&other) noexcept {
-  if (this != &other) {
-    m_hostFunction = std::move(other.m_hostFunction);
-    m_functionId = std::exchange(other.m_functionId, 0);
-    m_functionHandle = std::exchange(other.m_functionHandle, 0);
-    std::scoped_lock lock{s_functionMutex};
-    if (m_functionId) {
-      s_functionIdToFunctionWrapper[m_functionId] = this;
-    }
-    if (m_functionHandle) {
-      s_functionHandleToFunctionWrapper[m_functionHandle] = this;
-    }
-  }
-  return *this;
-}
-
 JsiHostFunctionWrapper::~JsiHostFunctionWrapper() noexcept {
   if (m_functionId || m_functionHandle) {
     std::scoped_lock lock{s_functionMutex};

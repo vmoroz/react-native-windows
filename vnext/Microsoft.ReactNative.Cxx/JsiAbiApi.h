@@ -63,12 +63,15 @@ struct JsiHostObjectWrapper : implements<JsiHostObjectWrapper, IJsiHostObject> {
 
 // The function object that wraps up the facebook::jsi::HostFunctionType
 struct JsiHostFunctionWrapper {
+  // We only support new and move constructors.
   JsiHostFunctionWrapper(facebook::jsi::HostFunctionType &&hostFunction, uint32_t functionId) noexcept;
   JsiHostFunctionWrapper(JsiHostFunctionWrapper &&other) noexcept;
-  JsiHostFunctionWrapper &operator=(JsiHostFunctionWrapper &&other) noexcept;
+  ~JsiHostFunctionWrapper() noexcept;
+
+  // Disable other ways to construct or modify the wrapper.
+  JsiHostFunctionWrapper &operator=(JsiHostFunctionWrapper &&other) = delete;
   JsiHostFunctionWrapper(JsiHostFunctionWrapper const &other) = delete;
   JsiHostFunctionWrapper &operator=(JsiHostFunctionWrapper const &other) = delete;
-  ~JsiHostFunctionWrapper() noexcept;
 
   JsiValueData
   operator()(IJsiRuntime const &runtime, JsiValueData const &thisValue, array_view<JsiValueData const> args);
