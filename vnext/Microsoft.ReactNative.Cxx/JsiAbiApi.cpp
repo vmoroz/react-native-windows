@@ -230,36 +230,36 @@ JsiAbiRuntime::JsiAbiRuntime(IJsiRuntime const &runtime) noexcept : m_runtime{ru
 
 JsiAbiRuntime::~JsiAbiRuntime() = default;
 
-/*static*/ String *JsiAbiRuntime::AsString(JsiPointerHandle pointer) noexcept {
-  return reinterpret_cast<String *>(pointer);
+/*static*/ String&& JsiAbiRuntime::AsString(JsiPointerHandle &&pointer) noexcept {
+  return reinterpret_cast<String &&>(pointer);
 }
 
-/*static*/ PropNameID *JsiAbiRuntime::AsPropNameID(JsiPointerHandle pointer) noexcept {
-  return reinterpret_cast<PropNameID *>(pointer);
+/*static*/ PropNameID &&JsiAbiRuntime::AsPropNameID(JsiPointerHandle &&pointer) noexcept {
+  return reinterpret_cast<PropNameID &&>(pointer);
 }
 
-/*static*/ Symbol *JsiAbiRuntime::AsSymbol(JsiPointerHandle pointer) noexcept {
-  return reinterpret_cast<Symbol *>(pointer);
+/*static*/ Symbol &&JsiAbiRuntime::AsSymbol(JsiPointerHandle &&pointer) noexcept {
+  return reinterpret_cast<Symbol &&>(pointer);
 }
 
-/*static*/ Object *JsiAbiRuntime::AsObject(JsiPointerHandle pointer) noexcept {
-  return reinterpret_cast<Object *>(pointer);
+/*static*/ Object &&JsiAbiRuntime::AsObject(JsiPointerHandle &&pointer) noexcept {
+  return reinterpret_cast<Object &&>(pointer);
 }
 
-/*static*/ WeakObject *JsiAbiRuntime::AsWeakObject(JsiPointerHandle pointer) noexcept {
-  return reinterpret_cast<WeakObject *>(pointer);
+/*static*/ WeakObject &&JsiAbiRuntime::AsWeakObject(JsiPointerHandle &&pointer) noexcept {
+  return reinterpret_cast<WeakObject &&>(pointer);
 }
 
-/*static*/ Function *JsiAbiRuntime::AsFunction(JsiPointerHandle pointer) noexcept {
-  return reinterpret_cast<Function *>(pointer);
+/*static*/ Function &&JsiAbiRuntime::AsFunction(JsiPointerHandle &&pointer) noexcept {
+  return reinterpret_cast<Function &&>(pointer);
 }
 
-/*static*/ Array *JsiAbiRuntime::AsArray(JsiPointerHandle pointer) noexcept {
-  return reinterpret_cast<Array *>(pointer);
+/*static*/ Array &&JsiAbiRuntime::AsArray(JsiPointerHandle &&pointer) noexcept {
+  return reinterpret_cast<Array &&>(pointer);
 }
 
-/*static*/ ArrayBuffer *JsiAbiRuntime::AsArrayBuffer(JsiPointerHandle pointer) noexcept {
-  return reinterpret_cast<ArrayBuffer *>(pointer);
+/*static*/ ArrayBuffer &&JsiAbiRuntime::AsArrayBuffer(JsiPointerHandle &&pointer) noexcept {
+  return reinterpret_cast<ArrayBuffer &&>(pointer);
 }
 
 /*static*/ JsiPointerHandle JsiAbiRuntime::ToJsiPointerHandle(Runtime::PointerValue const *pointerValue) noexcept {
@@ -291,7 +291,7 @@ Value JsiAbiRuntime::evaluatePreparedJavaScript(const std::shared_ptr<const Prep
 }
 
 Object JsiAbiRuntime::global() {
-  return std::move(*AsObject(m_runtime.Global()));
+  return AsObject(m_runtime.Global());
 }
 
 std::string JsiAbiRuntime::description() {
@@ -325,15 +325,15 @@ Runtime::PointerValue *JsiAbiRuntime::clonePropNameID(const Runtime::PointerValu
 
 PropNameID JsiAbiRuntime::createPropNameIDFromAscii(const char *str, size_t length) {
   auto data = reinterpret_cast<uint8_t const *>(str);
-  return std::move(*AsPropNameID(m_runtime.CreatePropertyNameIdFromAscii({data, data + length})));
+  return AsPropNameID(m_runtime.CreatePropertyNameIdFromAscii({data, data + length}));
 }
 
 PropNameID JsiAbiRuntime::createPropNameIDFromUtf8(const uint8_t *utf8, size_t length) {
-  return std::move(*AsPropNameID(m_runtime.CreatePropertyNameIdFromUtf8({utf8, utf8 + length})));
+  return AsPropNameID(m_runtime.CreatePropertyNameIdFromUtf8({utf8, utf8 + length}));
 }
 
 PropNameID JsiAbiRuntime::createPropNameIDFromString(const String &str) {
-  return std::move(*AsPropNameID(m_runtime.CreatePropertyNameIdFromString(ToJsiPointerHandle(str))));
+  return AsPropNameID(m_runtime.CreatePropertyNameIdFromString(ToJsiPointerHandle(str)));
 }
 
 std::string JsiAbiRuntime::utf8(const PropNameID &propertyNameId) {
@@ -358,11 +358,11 @@ std::string JsiAbiRuntime::symbolToString(const Symbol &symbol) {
 
 String JsiAbiRuntime::createStringFromAscii(const char *str, size_t length) {
   auto ascii = reinterpret_cast<uint8_t const *>(str);
-  return std::move(*AsString(m_runtime.CreateStringFromAscii({ascii, ascii + length})));
+  return AsString(m_runtime.CreateStringFromAscii({ascii, ascii + length}));
 }
 
 String JsiAbiRuntime::createStringFromUtf8(const uint8_t *utf8, size_t length) {
-  return std::move(*AsString(m_runtime.CreateStringFromAscii({utf8, utf8 + length})));
+  return AsString(m_runtime.CreateStringFromAscii({utf8, utf8 + length}));
 }
 
 std::string JsiAbiRuntime::utf8(const String &str) {
@@ -378,12 +378,12 @@ Value JsiAbiRuntime::createValueFromJsonUtf8(const uint8_t *json, size_t length)
 }
 
 Object JsiAbiRuntime::createObject() {
-  return std::move(*AsObject(m_runtime.CreateObject()));
+  return AsObject(m_runtime.CreateObject());
 }
 
 Object JsiAbiRuntime::createObject(std::shared_ptr<HostObject> ho) {
   auto hostObjectWrapper = winrt::make<JsiHostObjectWrapper>(std::move(ho));
-  Object result = std::move(*AsObject(m_runtime.CreateObjectWithHostObject(hostObjectWrapper)));
+  Object result = AsObject(m_runtime.CreateObjectWithHostObject(hostObjectWrapper));
   JsiHostObjectWrapper::RegisterHostObject(
       ToJsiPointerHandle(result), get_self<JsiHostObjectWrapper>(hostObjectWrapper));
   return result;
@@ -442,11 +442,11 @@ bool JsiAbiRuntime::isHostFunction(const Function &func) const {
 }
 
 Array JsiAbiRuntime::getPropertyNames(const Object &obj) {
-  return std::move(*AsArray(m_runtime.GetPropertyNameArray(ToJsiPointerHandle(obj))));
+  return AsArray(m_runtime.GetPropertyNameArray(ToJsiPointerHandle(obj)));
 }
 
 WeakObject JsiAbiRuntime::createWeakObject(const Object &obj) {
-  return std::move(*AsWeakObject(m_runtime.CreateWeakObject(ToJsiPointerHandle(obj))));
+  return AsWeakObject(m_runtime.CreateWeakObject(ToJsiPointerHandle(obj)));
 }
 
 Value JsiAbiRuntime::lockWeakObject(const WeakObject &weakObj) {
@@ -454,7 +454,7 @@ Value JsiAbiRuntime::lockWeakObject(const WeakObject &weakObj) {
 }
 
 Array JsiAbiRuntime::createArray(size_t length) {
-  return std::move(*AsArray(m_runtime.CreateArray(static_cast<uint32_t>(length))));
+  return AsArray(m_runtime.CreateArray(static_cast<uint32_t>(length)));
 }
 
 size_t JsiAbiRuntime::size(const Array &arr) {
@@ -484,8 +484,8 @@ void JsiAbiRuntime::setValueAtIndexImpl(Array &arr, size_t i, const Value &value
 Function
 JsiAbiRuntime::createFunctionFromHostFunction(const PropNameID &name, unsigned int paramCount, HostFunctionType func) {
   uint32_t functionId = JsiHostFunctionWrapper::GetNextFunctionId();
-  Function result = std::move(*AsFunction(m_runtime.CreateFunctionFromHostFunction(
-      ToJsiPointerHandle(name), paramCount, JsiHostFunctionWrapper(std::move(func), functionId))));
+  Function result = AsFunction(m_runtime.CreateFunctionFromHostFunction(
+      ToJsiPointerHandle(name), paramCount, JsiHostFunctionWrapper(std::move(func), functionId)));
   JsiHostFunctionWrapper::RegisterHostFunction(functionId, ToJsiPointerHandle(result));
   return result;
 }

@@ -180,14 +180,14 @@ struct JsiAbiRuntime : facebook::jsi::Runtime {
   bool strictEquals(const facebook::jsi::Object &a, const facebook::jsi::Object &b) const override;
   bool instanceOf(const facebook::jsi::Object &o, const facebook::jsi::Function &f) override;
 
-  static facebook::jsi::String *AsString(JsiPointerHandle pointer) noexcept;
-  static facebook::jsi::PropNameID *AsPropNameID(JsiPointerHandle pointer) noexcept;
-  static facebook::jsi::Symbol *AsSymbol(JsiPointerHandle pointer) noexcept;
-  static facebook::jsi::Object *AsObject(JsiPointerHandle pointer) noexcept;
-  static facebook::jsi::WeakObject *AsWeakObject(JsiPointerHandle pointer) noexcept;
-  static facebook::jsi::Function *AsFunction(JsiPointerHandle pointer) noexcept;
-  static facebook::jsi::Array *AsArray(JsiPointerHandle pointer) noexcept;
-  static facebook::jsi::ArrayBuffer *AsArrayBuffer(JsiPointerHandle pointer) noexcept;
+  static facebook::jsi::String&& AsString(JsiPointerHandle &&pointer) noexcept;
+  static facebook::jsi::PropNameID &&AsPropNameID(JsiPointerHandle &&pointer) noexcept;
+  static facebook::jsi::Symbol &&AsSymbol(JsiPointerHandle &&pointer) noexcept;
+  static facebook::jsi::Object &&AsObject(JsiPointerHandle &&pointer) noexcept;
+  static facebook::jsi::WeakObject &&AsWeakObject(JsiPointerHandle &&pointer) noexcept;
+  static facebook::jsi::Function &&AsFunction(JsiPointerHandle &&pointer) noexcept;
+  static facebook::jsi::Array &&AsArray(JsiPointerHandle &&pointer) noexcept;
+  static facebook::jsi::ArrayBuffer &&AsArrayBuffer(JsiPointerHandle &&pointer) noexcept;
   static JsiPointerHandle ToJsiPointerHandle(PointerValue const *pointerValue) noexcept;
   static JsiPointerHandle ToJsiPointerHandle(facebook::jsi::Pointer const &pointer) noexcept;
   static PointerValue *ToPointerValue(JsiPointerHandle pointerHandle) noexcept;
