@@ -5,6 +5,7 @@
 #ifndef MICROSOFT_REACTNATIVE_JSIABIAPI
 #define MICROSOFT_REACTNATIVE_JSIABIAPI
 
+#include <mutex>
 #include <unordered_map>
 #include "Crash.h"
 #include "jsi/jsi.h"
