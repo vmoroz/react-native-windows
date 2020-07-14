@@ -1,29 +1,21 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <PropertyGroup Label="Globals">
-    <MSBuildAllProjects>$(MSBuildAllProjects);$(MSBuildThisFileFullPath)</MSBuildAllProjects>
-    <HasSharedItems>true</HasSharedItems>
-    <ItemsProjectGuid>{da8b35b3-da00-4b02-bde6-6a397b3fd46b}</ItemsProjectGuid>
-  </PropertyGroup>
-  <ItemDefinitionGroup>
-    <ClCompile>
-      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);$(MSBuildThisFileDirectory)</AdditionalIncludeDirectories>
-    </ClCompile>
-    <Midl>
-      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);$(MSBuildThisFileDirectory)</AdditionalIncludeDirectories>
-    </Midl>
-  </ItemDefinitionGroup>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ProjectCapability Include="SourceItemsFromImports" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)JSValue.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)JSValueTreeReader.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)JSValueTreeWriter.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)ModuleRegistration.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)ReactPromise.cpp" />
+    <ClCompile Include="$(JSI_SourcePath)\jsi\jsi.cpp">
+      <Filter>JSI</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)JSI\JsiAbiApi.cpp">
+      <Filter>JSI</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="$(JSI_SourcePath)\jsi\instrumentation.h" />
-    <ClInclude Include="$(JSI_SourcePath)\jsi\jsi-inl.h" />
-    <ClInclude Include="$(JSI_SourcePath)\jsi\jsi.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)CppWinRTIncludes.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Crash.h" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)JSI\JsiAbiApi.h" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)JSI\JsiValue.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)ReactHandleHelper.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)JSValue.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)JSValueReader.h" />
@@ -60,16 +52,25 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)UI.Xaml.Media.Media3D.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)UI.Xaml.Navigation.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)UI.Xaml.Shapes.h" />
-  </ItemGroup>
-  <ItemGroup Condition="'$(BuildMSRNCxx)'!='false'">
-    <ClCompile Include="$(JSI_SourcePath)\jsi\jsi.cpp" />
-    <ClCompile Include="$(MSBuildThisFileDirectory)JSValue.cpp" />
-    <ClCompile Include="$(MSBuildThisFileDirectory)JSValueTreeReader.cpp" />
-    <ClCompile Include="$(MSBuildThisFileDirectory)JSValueTreeWriter.cpp" />
-    <ClCompile Include="$(MSBuildThisFileDirectory)ModuleRegistration.cpp" />
-    <ClCompile Include="$(MSBuildThisFileDirectory)ReactPromise.cpp" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)JSI\JsiValue.h">
+      <Filter>JSI</Filter>
+    </ClInclude>
+    <ClInclude Include="$(JSI_SourcePath)\jsi\jsi-inl.h">
+      <Filter>JSI</Filter>
+    </ClInclude>
+    <ClInclude Include="$(JSI_SourcePath)\jsi\instrumentation.h">
+      <Filter>JSI</Filter>
+    </ClInclude>
+    <ClInclude Include="$(JSI_SourcePath)\jsi\jsi.h">
+      <Filter>JSI</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)JSI\JsiAbiApi.h">
+      <Filter>JSI</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="$(MSBuildThisFileDirectory)JSI\JsiAbiApi.cpp" />
+    <Filter Include="JSI">
+      <UniqueIdentifier>{ea50d55f-794e-4abc-ae27-1706003ba3e7}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
 </Project>
