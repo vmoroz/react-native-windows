@@ -194,142 +194,6 @@ JsiAbiRuntime::JsiAbiRuntime(IJsiRuntime const &runtime) noexcept : m_runtime{ru
 
 JsiAbiRuntime::~JsiAbiRuntime() = default;
 
-/*static*/ PropNameID const *JsiAbiRuntime::AsPropNameID(JsiPropertyNameIdData const *data) noexcept {
-  return reinterpret_cast<PropNameID const *>(data);
-}
-
-/*static*/ Value const *JsiAbiRuntime::AsValue(JsiValueData const *data) noexcept {
-  return reinterpret_cast<Value const *>(data);
-}
-
-/*static*/ JsiSymbolData JsiAbiRuntime::AsJsiSymbolData(PointerValue const *pv) noexcept {
-  return {reinterpret_cast<uint64_t>(pv)};
-}
-
-/*static*/ JsiStringData JsiAbiRuntime::AsJsiStringData(PointerValue const *pv) noexcept {
-  return {reinterpret_cast<uint64_t>(pv)};
-}
-
-/*static*/ JsiObjectData JsiAbiRuntime::AsJsiObjectData(PointerValue const *pv) noexcept {
-  return {reinterpret_cast<uint64_t>(pv)};
-}
-
-/*static*/ JsiPropertyNameIdData JsiAbiRuntime::AsJsiPropertyNameIdData(PointerValue const *pv) noexcept {
-  return {reinterpret_cast<uint64_t>(pv)};
-}
-
-Runtime::PointerValue *JsiAbiRuntime::MakeSymbolValue(JsiSymbolData &&symbol) const noexcept {
-  return new SymbolPointerValue{make_weak(m_runtime), std::move(symbol)};
-}
-
-Runtime::PointerValue *JsiAbiRuntime::MakeStringValue(JsiStringData &&str) const noexcept {
-  return new StringPointerValue{make_weak(m_runtime), std::move(str)};
-}
-
-Runtime::PointerValue *JsiAbiRuntime::MakeObjectValue(JsiObjectData &&obj) const noexcept {
-  return new ObjectPointerValue{make_weak(m_runtime), std::move(obj)};
-}
-
-Runtime::PointerValue *JsiAbiRuntime::MakePropNameIDValue(JsiPropertyNameIdData &&propertyId) const noexcept {
-  return new PropNameIDPointerValue{make_weak(m_runtime), std::move(propertyId)};
-}
-
-Symbol JsiAbiRuntime::MakeSymbol(JsiSymbolData &&symbol) const noexcept {
-  return make<Symbol>(MakeSymbolValue(std::move(symbol)));
-}
-
-String JsiAbiRuntime::MakeString(JsiStringData &&str) const noexcept {
-  return make<String>(MakeStringValue(std::move(str)));
-}
-
-Object JsiAbiRuntime::MakeObject(JsiObjectData &&obj) const noexcept {
-  return make<Object>(MakeObjectValue(std::move(obj)));
-}
-
-PropNameID JsiAbiRuntime::MakePropNameID(JsiPropertyNameIdData &&propertyId) const noexcept {
-  return make<PropNameID>(MakePropNameIDValue(std::move(propertyId)));
-}
-
-Array JsiAbiRuntime::MakeArray(JsiArrayData &&arr) noexcept {
-  return MakeObject({arr.Data}).getArray(*this);
-}
-
-WeakObject JsiAbiRuntime::MakeWeakObject(JsiWeakObjectData &&weakObject) const noexcept {
-  return make<WeakObject>(MakeObjectValue({weakObject.Data}));
-}
-
-Function JsiAbiRuntime::MakeFunction(JsiFunctionData &&func) noexcept {
-  return MakeObject({func.Data}).getFunction(*this);
-}
-
-Value JsiAbiRuntime::MakeValue(JsiValueData &&value) const noexcept {
-  switch (value.Kind) {
-    case JsiValueKind::Undefined:
-      return Value();
-    case JsiValueKind::Null:
-      return Value(nullptr);
-    case JsiValueKind::Boolean:
-      return Value(value.Data != 0);
-    case JsiValueKind::Number:
-      return Value(*reinterpret_cast<double *>(&value.Data));
-    case JsiValueKind::Symbol:
-      return Value(MakeSymbol(JsiSymbolData{value.Data}));
-    case JsiValueKind::String:
-      return Value(MakeString(JsiStringData{value.Data}));
-    case JsiValueKind::Object:
-      return Value(MakeObject(JsiObjectData{value.Data}));
-    default:
-      VerifyElseCrashSz(false, "Unexpected JsiValueKind value");
-  }
-}
-
-/*static*/ JsiPropertyNameIdData JsiAbiRuntime::MakeJsiPropertyNameIdData(PropNameID &&propertyId) noexcept {
-  auto ptr = reinterpret_cast<Runtime::PointerValue **>(&propertyId);
-  return {reinterpret_cast<uint64_t>(std::exchange(*ptr, nullptr))};
-}
-
-/*static*/ JsiValueData JsiAbiRuntime::MakeJsiValueData(facebook::jsi::Value &&value) noexcept {
-  auto ptr = reinterpret_cast<JsiValueData **>(&value);
-  return {std::exchange((*ptr)->Kind, JsiValueKind::Undefined), (*ptr)->Data};
-}
-
-/*static*/ JsiSymbolData JsiAbiRuntime::AsJsiSymbolData(Symbol const &str) noexcept {
-  return {reinterpret_cast<uint64_t>(getPointerValue(str))};
-}
-
-/*static*/ JsiStringData JsiAbiRuntime::AsJsiStringData(String const &str) noexcept {
-  return {reinterpret_cast<uint64_t>(getPointerValue(str))};
-}
-
-/*static*/ JsiObjectData JsiAbiRuntime::AsJsiObjectData(Object const &obj) noexcept {
-  return {reinterpret_cast<uint64_t>(getPointerValue(obj))};
-}
-
-/*static*/ JsiPropertyNameIdData JsiAbiRuntime::AsJsiPropertyNameIdData(PropNameID const &propertyId) noexcept {
-  return {reinterpret_cast<uint64_t>(getPointerValue(propertyId))};
-}
-
-/*static*/ JsiFunctionData JsiAbiRuntime::AsJsiFunctionData(Function const &func) noexcept {
-  return {reinterpret_cast<uint64_t>(getPointerValue(func))};
-}
-
-/*static*/ JsiWeakObjectData JsiAbiRuntime::AsJsiWeakObjectData(WeakObject const &weakObject) noexcept {
-  return {reinterpret_cast<uint64_t>(getPointerValue(weakObject))};
-}
-
-/*static*/ JsiArrayData JsiAbiRuntime::AsJsiArrayData(facebook::jsi::Array const &arr) noexcept {
-  return {reinterpret_cast<uint64_t>(getPointerValue(arr))};
-}
-
-/*static*/ JsiArrayBufferData JsiAbiRuntime::AsJsiArrayBufferData(
-    facebook::jsi::ArrayBuffer const &arrayBuffer) noexcept {
-  return {reinterpret_cast<uint64_t>(getPointerValue(arrayBuffer))};
-}
-
-/*static*/ JsiValueData const &JsiAbiRuntime::AsJsiValueData(Value const &value) noexcept {
-  return reinterpret_cast<JsiValueData const &>(value);
-}
-
 Value JsiAbiRuntime::evaluateJavaScript(const std::shared_ptr<const Buffer> &buffer, const std::string &sourceURL) {
   return MakeValue(m_runtime.EvaluateJavaScript(winrt::make<JsiBufferWrapper>(buffer), to_hstring(sourceURL)));
 }
@@ -577,6 +441,142 @@ bool JsiAbiRuntime::strictEquals(const Object &a, const Object &b) const {
 
 bool JsiAbiRuntime::instanceOf(const Object &o, const Function &f) {
   return m_runtime.InstanceOf(AsJsiObjectData(o), AsJsiFunctionData(f));
+}
+
+/*static*/ JsiSymbolData JsiAbiRuntime::AsJsiSymbolData(PointerValue const *pv) noexcept {
+  return {reinterpret_cast<uint64_t>(pv)};
+}
+
+/*static*/ JsiStringData JsiAbiRuntime::AsJsiStringData(PointerValue const *pv) noexcept {
+  return {reinterpret_cast<uint64_t>(pv)};
+}
+
+/*static*/ JsiObjectData JsiAbiRuntime::AsJsiObjectData(PointerValue const *pv) noexcept {
+  return {reinterpret_cast<uint64_t>(pv)};
+}
+
+/*static*/ JsiPropertyNameIdData JsiAbiRuntime::AsJsiPropertyNameIdData(PointerValue const *pv) noexcept {
+  return {reinterpret_cast<uint64_t>(pv)};
+}
+
+/*static*/ JsiSymbolData JsiAbiRuntime::AsJsiSymbolData(Symbol const &str) noexcept {
+  return {reinterpret_cast<uint64_t>(getPointerValue(str))};
+}
+
+/*static*/ JsiStringData JsiAbiRuntime::AsJsiStringData(String const &str) noexcept {
+  return {reinterpret_cast<uint64_t>(getPointerValue(str))};
+}
+
+/*static*/ JsiObjectData JsiAbiRuntime::AsJsiObjectData(Object const &obj) noexcept {
+  return {reinterpret_cast<uint64_t>(getPointerValue(obj))};
+}
+
+/*static*/ JsiPropertyNameIdData JsiAbiRuntime::AsJsiPropertyNameIdData(PropNameID const &propertyId) noexcept {
+  return {reinterpret_cast<uint64_t>(getPointerValue(propertyId))};
+}
+
+/*static*/ JsiFunctionData JsiAbiRuntime::AsJsiFunctionData(Function const &func) noexcept {
+  return {reinterpret_cast<uint64_t>(getPointerValue(func))};
+}
+
+/*static*/ JsiWeakObjectData JsiAbiRuntime::AsJsiWeakObjectData(WeakObject const &weakObject) noexcept {
+  return {reinterpret_cast<uint64_t>(getPointerValue(weakObject))};
+}
+
+/*static*/ JsiArrayData JsiAbiRuntime::AsJsiArrayData(facebook::jsi::Array const &arr) noexcept {
+  return {reinterpret_cast<uint64_t>(getPointerValue(arr))};
+}
+
+/*static*/ JsiArrayBufferData JsiAbiRuntime::AsJsiArrayBufferData(
+    facebook::jsi::ArrayBuffer const &arrayBuffer) noexcept {
+  return {reinterpret_cast<uint64_t>(getPointerValue(arrayBuffer))};
+}
+
+/*static*/ JsiValueData const &JsiAbiRuntime::AsJsiValueData(Value const &value) noexcept {
+  return reinterpret_cast<JsiValueData const &>(value);
+}
+
+/*static*/ JsiPropertyNameIdData JsiAbiRuntime::MakeJsiPropertyNameIdData(PropNameID &&propertyId) noexcept {
+  auto ptr = reinterpret_cast<Runtime::PointerValue **>(&propertyId);
+  return {reinterpret_cast<uint64_t>(std::exchange(*ptr, nullptr))};
+}
+
+/*static*/ JsiValueData JsiAbiRuntime::MakeJsiValueData(facebook::jsi::Value &&value) noexcept {
+  auto ptr = reinterpret_cast<JsiValueData **>(&value);
+  return {std::exchange((*ptr)->Kind, JsiValueKind::Undefined), (*ptr)->Data};
+}
+
+/*static*/ PropNameID const *JsiAbiRuntime::AsPropNameID(JsiPropertyNameIdData const *data) noexcept {
+  return reinterpret_cast<PropNameID const *>(data);
+}
+
+/*static*/ Value const *JsiAbiRuntime::AsValue(JsiValueData const *data) noexcept {
+  return reinterpret_cast<Value const *>(data);
+}
+
+Runtime::PointerValue *JsiAbiRuntime::MakeSymbolValue(JsiSymbolData &&symbol) const noexcept {
+  return new SymbolPointerValue{make_weak(m_runtime), std::move(symbol)};
+}
+
+Runtime::PointerValue *JsiAbiRuntime::MakeStringValue(JsiStringData &&str) const noexcept {
+  return new StringPointerValue{make_weak(m_runtime), std::move(str)};
+}
+
+Runtime::PointerValue *JsiAbiRuntime::MakeObjectValue(JsiObjectData &&obj) const noexcept {
+  return new ObjectPointerValue{make_weak(m_runtime), std::move(obj)};
+}
+
+Runtime::PointerValue *JsiAbiRuntime::MakePropNameIDValue(JsiPropertyNameIdData &&propertyId) const noexcept {
+  return new PropNameIDPointerValue{make_weak(m_runtime), std::move(propertyId)};
+}
+
+Symbol JsiAbiRuntime::MakeSymbol(JsiSymbolData &&symbol) const noexcept {
+  return make<Symbol>(MakeSymbolValue(std::move(symbol)));
+}
+
+String JsiAbiRuntime::MakeString(JsiStringData &&str) const noexcept {
+  return make<String>(MakeStringValue(std::move(str)));
+}
+
+Object JsiAbiRuntime::MakeObject(JsiObjectData &&obj) const noexcept {
+  return make<Object>(MakeObjectValue(std::move(obj)));
+}
+
+PropNameID JsiAbiRuntime::MakePropNameID(JsiPropertyNameIdData &&propertyId) const noexcept {
+  return make<PropNameID>(MakePropNameIDValue(std::move(propertyId)));
+}
+
+Array JsiAbiRuntime::MakeArray(JsiArrayData &&arr) noexcept {
+  return MakeObject({arr.Data}).getArray(*this);
+}
+
+WeakObject JsiAbiRuntime::MakeWeakObject(JsiWeakObjectData &&weakObject) const noexcept {
+  return make<WeakObject>(MakeObjectValue({weakObject.Data}));
+}
+
+Function JsiAbiRuntime::MakeFunction(JsiFunctionData &&func) noexcept {
+  return MakeObject({func.Data}).getFunction(*this);
+}
+
+Value JsiAbiRuntime::MakeValue(JsiValueData &&value) const noexcept {
+  switch (value.Kind) {
+    case JsiValueKind::Undefined:
+      return Value();
+    case JsiValueKind::Null:
+      return Value(nullptr);
+    case JsiValueKind::Boolean:
+      return Value(value.Data != 0);
+    case JsiValueKind::Number:
+      return Value(*reinterpret_cast<double *>(&value.Data));
+    case JsiValueKind::Symbol:
+      return Value(MakeSymbol(JsiSymbolData{value.Data}));
+    case JsiValueKind::String:
+      return Value(MakeString(JsiStringData{value.Data}));
+    case JsiValueKind::Object:
+      return Value(MakeObject(JsiObjectData{value.Data}));
+    default:
+      VerifyElseCrashSz(false, "Unexpected JsiValueKind value");
+  }
 }
 
 } // namespace winrt::Microsoft::ReactNative

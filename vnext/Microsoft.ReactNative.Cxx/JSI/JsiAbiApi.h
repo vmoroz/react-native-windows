@@ -42,11 +42,11 @@ struct JsiHostObjectWrapper : implements<JsiHostObjectWrapper, IJsiHostObject> {
   JsiHostObjectWrapper(std::shared_ptr<facebook::jsi::HostObject> &&hostObject) noexcept;
   ~JsiHostObjectWrapper() noexcept;
 
-  JsiValueData GetProperty(IJsiRuntime const &runtime, JsiPropertyNameIdData const& name);
-  void SetProperty(IJsiRuntime const &runtime, JsiPropertyNameIdData const&name, JsiValueData const &value);
+  JsiValueData GetProperty(IJsiRuntime const &runtime, JsiPropertyNameIdData const &name);
+  void SetProperty(IJsiRuntime const &runtime, JsiPropertyNameIdData const &name, JsiValueData const &value);
   Windows::Foundation::Collections::IVector<JsiPropertyNameIdData> GetPropertyNames(IJsiRuntime const &runtime);
 
-  static void RegisterHostObject(JsiObjectData const&objectData, JsiHostObjectWrapper *hostObject) noexcept;
+  static void RegisterHostObject(JsiObjectData const &objectData, JsiHostObjectWrapper *hostObject) noexcept;
   static bool IsHostObject(JsiObjectData const &objectData) noexcept;
   static std::shared_ptr<facebook::jsi::HostObject> GetHostObject(JsiObjectData const &objectData) noexcept;
 
@@ -181,6 +181,7 @@ struct JsiAbiRuntime : facebook::jsi::Runtime {
   bool strictEquals(const facebook::jsi::Object &a, const facebook::jsi::Object &b) const override;
   bool instanceOf(const facebook::jsi::Object &o, const facebook::jsi::Function &f) override;
 
+ private: // Convert JSI to ABI-safe JSI values
   static JsiSymbolData AsJsiSymbolData(PointerValue const *pv) noexcept;
   static JsiStringData AsJsiStringData(PointerValue const *pv) noexcept;
   static JsiObjectData AsJsiObjectData(PointerValue const *pv) noexcept;
@@ -199,6 +200,7 @@ struct JsiAbiRuntime : facebook::jsi::Runtime {
   static JsiPropertyNameIdData MakeJsiPropertyNameIdData(facebook::jsi::PropNameID &&propertyId) noexcept;
   static JsiValueData MakeJsiValueData(facebook::jsi::Value &&value) noexcept;
 
+ private: // Convert ABI-safe JSI to JSI values
   static facebook::jsi::PropNameID const *AsPropNameID(JsiPropertyNameIdData const *data) noexcept;
   static facebook::jsi::Value const *AsValue(JsiValueData const *data) noexcept;
 
@@ -206,6 +208,7 @@ struct JsiAbiRuntime : facebook::jsi::Runtime {
   PointerValue *MakeStringValue(JsiStringData &&str) const noexcept;
   PointerValue *MakeObjectValue(JsiObjectData &&obj) const noexcept;
   PointerValue *MakePropNameIDValue(JsiPropertyNameIdData &&propertyId) const noexcept;
+
   facebook::jsi::Symbol MakeSymbol(JsiSymbolData &&symbol) const noexcept;
   facebook::jsi::String MakeString(JsiStringData &&str) const noexcept;
   facebook::jsi::Object MakeObject(JsiObjectData &&obj) const noexcept;
@@ -215,10 +218,11 @@ struct JsiAbiRuntime : facebook::jsi::Runtime {
   facebook::jsi::Function MakeFunction(JsiFunctionData &&func) noexcept;
   facebook::jsi::Value MakeValue(JsiValueData &&value) const noexcept;
 
+  // Allow access to the helper function
   friend struct JsiHostObjectWrapper;
   friend struct JsiHostFunctionWrapper;
 
- private:
+ private: // PointerValue structures
   struct SymbolPointerValue : PointerValue {
     SymbolPointerValue(winrt::weak_ref<IJsiRuntime> &&weakRuntime, JsiSymbolData &&symbol)
         : m_weakRuntime{std::move(weakRuntime)}, m_symbol{std::move(symbol)} {}
