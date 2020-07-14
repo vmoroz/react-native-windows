@@ -22,7 +22,6 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)JSValueTreeWriter.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)JSValueWriter.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)ModuleRegistration.h" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)NamespaceRedirect.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)NativeModules.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)ReactDispatcher.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)ReactNonAbiValue.h" />
@@ -32,12 +31,6 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)ReactError.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)ReactPromise.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)StructInfo.h" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)JSI\JsiAbiApi.h">
-      <Filter>JSI</Filter>
-    </ClInclude>
-    <ClInclude Include="$(MSBuildThisFileDirectory)JSI\JsiValue.h">
-      <Filter>JSI</Filter>
-    </ClInclude>
     <ClInclude Include="$(JSI_SourcePath)\jsi\jsi.h">
       <Filter>JSI</Filter>
     </ClInclude>
@@ -106,6 +99,15 @@
     </ClInclude>
     <ClInclude Include="$(MSBuildThisFileDirectory)CppWinRTIncludes.h">
       <Filter>UI</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)NamespaceRedirect.h">
+      <Filter>UI</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)JSI\JsiValue.h">
+      <Filter>JSI</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)JSI\JsiAbiApi.h">
+      <Filter>JSI</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
