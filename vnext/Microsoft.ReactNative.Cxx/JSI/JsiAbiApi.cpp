@@ -9,26 +9,6 @@ using namespace facebook::jsi;
 namespace winrt::Microsoft::ReactNative {
 
 //===========================================================================
-// Helper functions
-//===========================================================================
-
-namespace {
-
-JsiValueData &&ToJsiValueData(Value &&value) noexcept {
-  return reinterpret_cast<JsiValueData &&>(value);
-}
-
-JsiValueData const &ToJsiValueData(Value const &value) noexcept {
-  return reinterpret_cast<JsiValueData const &>(value);
-}
-
-Value const &ToValue(JsiValueData const &valueData) noexcept {
-  return reinterpret_cast<Value const &>(valueData);
-}
-
-} // namespace
-
-//===========================================================================
 // JsiBufferWrapper implementation
 //===========================================================================
 
@@ -76,7 +56,7 @@ JsiHostObjectWrapper::~JsiHostObjectWrapper() noexcept {
 
 JsiValueData JsiHostObjectWrapper::GetProperty(IJsiRuntime const &runtime, JsiPropertyNameIdData const &name) {
   JsiAbiRuntime rt{runtime};
-  return ToJsiValueData(m_hostObject->get(rt, *JsiAbiRuntime::AsPropNameID(&name)));
+  return JsiAbiRuntime::MakeJsiValueData(m_hostObject->get(rt, *JsiAbiRuntime::AsPropNameID(&name)));
 }
 
 void JsiHostObjectWrapper::SetProperty(
@@ -172,8 +152,8 @@ JsiValueData JsiHostFunctionWrapper::operator()(
     JsiValueData const &thisValue,
     array_view<JsiValueData const> args) {
   auto rt{JsiAbiRuntime{runtime}};
-  return ToJsiValueData(
-      m_hostFunction(rt, ToValue(thisValue), reinterpret_cast<Value const *>(args.data()), args.size()));
+  return JsiAbiRuntime::MakeJsiValueData(
+      m_hostFunction(rt, *JsiAbiRuntime::AsValue(&thisValue), JsiAbiRuntime::AsValue(args.data()), args.size()));
 }
 
 /*static*/ uint32_t JsiHostFunctionWrapper::GetNextFunctionId() noexcept {
@@ -216,6 +196,10 @@ JsiAbiRuntime::~JsiAbiRuntime() = default;
 
 /*static*/ PropNameID const *JsiAbiRuntime::AsPropNameID(JsiPropertyNameIdData const *data) noexcept {
   return reinterpret_cast<PropNameID const *>(data);
+}
+
+/*static*/ Value const *JsiAbiRuntime::AsValue(JsiValueData const *data) noexcept {
+  return reinterpret_cast<Value const *>(data);
 }
 
 /*static*/ JsiSymbolData JsiAbiRuntime::AsJsiSymbolData(PointerValue const *pv) noexcept {
@@ -302,6 +286,11 @@ Value JsiAbiRuntime::MakeValue(JsiValueData &&value) const noexcept {
 /*static*/ JsiPropertyNameIdData JsiAbiRuntime::MakeJsiPropertyNameIdData(PropNameID &&propertyId) noexcept {
   auto ptr = reinterpret_cast<Runtime::PointerValue **>(&propertyId);
   return {reinterpret_cast<uint64_t>(std::exchange(*ptr, nullptr))};
+}
+
+/*static*/ JsiValueData JsiAbiRuntime::MakeJsiValueData(facebook::jsi::Value &&value) noexcept {
+  auto ptr = reinterpret_cast<JsiValueData **>(&value);
+  return {std::exchange((*ptr)->Kind, JsiValueKind::Undefined), (*ptr)->Data};
 }
 
 /*static*/ JsiSymbolData JsiAbiRuntime::AsJsiSymbolData(Symbol const &str) noexcept {

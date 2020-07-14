@@ -107,8 +107,6 @@ struct JsiAbiRuntime : facebook::jsi::Runtime {
   bool isInspectable() override;
   facebook::jsi::Instrumentation &instrumentation() override;
 
-  static JsiPropertyNameIdData MakeJsiPropertyNameIdData(facebook::jsi::PropNameID &&propertyId) noexcept;
-
  protected:
   PointerValue *cloneSymbol(const PointerValue *pv) override;
   PointerValue *cloneString(const PointerValue *pv) override;
@@ -198,7 +196,11 @@ struct JsiAbiRuntime : facebook::jsi::Runtime {
   static JsiArrayBufferData AsJsiArrayBufferData(facebook::jsi::ArrayBuffer const &arrayBuffer) noexcept;
   static JsiValueData const &AsJsiValueData(facebook::jsi::Value const &value) noexcept;
 
+  static JsiPropertyNameIdData MakeJsiPropertyNameIdData(facebook::jsi::PropNameID &&propertyId) noexcept;
+  static JsiValueData MakeJsiValueData(facebook::jsi::Value &&value) noexcept;
+
   static facebook::jsi::PropNameID const *AsPropNameID(JsiPropertyNameIdData const *data) noexcept;
+  static facebook::jsi::Value const *AsValue(JsiValueData const *data) noexcept;
 
   PointerValue *MakeSymbolValue(JsiSymbolData &&symbol) const noexcept;
   PointerValue *MakeStringValue(JsiStringData &&str) const noexcept;
