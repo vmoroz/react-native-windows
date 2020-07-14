@@ -147,10 +147,8 @@ JsiHostFunctionWrapper::~JsiHostFunctionWrapper() noexcept {
   }
 }
 
-JsiValueData JsiHostFunctionWrapper::operator()(
-    IJsiRuntime const &runtime,
-    JsiValueData const &thisValue,
-    array_view<JsiValueData const> args) {
+JsiValueData JsiHostFunctionWrapper::
+operator()(IJsiRuntime const &runtime, JsiValueData const &thisValue, array_view<JsiValueData const> args) {
   auto rt{JsiAbiRuntime{runtime}};
   return JsiAbiRuntime::MakeJsiValueData(
       m_hostFunction(rt, *JsiAbiRuntime::AsValue(&thisValue), JsiAbiRuntime::AsValue(args.data()), args.size()));

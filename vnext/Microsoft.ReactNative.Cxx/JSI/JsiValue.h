@@ -26,8 +26,8 @@ struct JsiValue {
 
   ~JsiValue() noexcept;
 
-  JsiValue(JsiValue const& other) = delete;
-  JsiValue& operator=(JsiValue const &other) = delete;
+  JsiValue(JsiValue const &other) = delete;
+  JsiValue &operator=(JsiValue const &other) = delete;
 
   JsiValue Clone();
 
@@ -48,7 +48,7 @@ struct JsiValue {
   JsiValue Call(winrt::array_view<JsiValue> args);
   JsiValue Construct(winrt::array_view<JsiValue> args);
   JsiValue InvokeMethod(std::string_view methodName, winrt::array_view<JsiValue> args);
-  JsiValue InvokeMethod(JsiValue const& methodName, winrt::array_view<JsiValue> args);
+  JsiValue InvokeMethod(JsiValue const &methodName, winrt::array_view<JsiValue> args);
 
   void DefineProperty(std::string_view propertyName, JsiValue const &descriptor);
   void DefineProperty(JsiValue const &propertyName, JsiValue const &descriptor);
@@ -58,20 +58,19 @@ struct JsiValue {
   bool DeleteProperty(JsiValue const &propertyName);
   JsiValue GetProperty(std::string_view propertyName);
   JsiValue GetProperty(JsiValue const &propertyName);
-  void SetProperty(std::string_view propertyName, JsiValue const& value);
+  void SetProperty(std::string_view propertyName, JsiValue const &value);
   void SetProperty(JsiValue const &propertyName, JsiValue const &value);
   JsiValue GetArrayItem(uint32_t index);
-  void SetArrayItem(uint32_t index, JsiValue const& value);
+  void SetArrayItem(uint32_t index, JsiValue const &value);
 
   IJsiRuntime Runtime();
 
-  //TODO: add operator []
+  // TODO: add operator []
 
  private:
   JsiValueKind m_kind{JsiValueKind::Undefined};
   IJsiRuntime m_runtime;
-  union
-  {
+  union {
     bool m_boolValue;
     double m_numberValue;
     void *m_ptrValue;
