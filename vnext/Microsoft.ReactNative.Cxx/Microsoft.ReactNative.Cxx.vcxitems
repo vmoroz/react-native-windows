@@ -22,7 +22,8 @@
     <ClInclude Include="$(JSI_SourcePath)\jsi\jsi.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)CppWinRTIncludes.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Crash.h" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)JsiAbiApi.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)JSI\JsiAbiApi.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)JSI\JsiValue.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)ReactHandleHelper.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)JSValue.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)JSValueReader.h" />
@@ -67,6 +68,8 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)JSValueTreeWriter.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)ModuleRegistration.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)ReactPromise.cpp" />
-    <ClCompile Include="$(MSBuildThisFileDirectory)JsiAbiApi.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="$(MSBuildThisFileDirectory)JSI\JsiAbiApi.cpp" />
   </ItemGroup>
 </Project>
