@@ -5,6 +5,9 @@
 #ifndef MICROSOFT_REACTNATIVE_JSIVALUE
 #define MICROSOFT_REACTNATIVE_JSIVALUE
 
+// This is a new experimental implementation of JsiValue.
+// It is work in progress - no implementation yet.
+
 #include <winrt/Microsoft.ReactNative.h>
 #include "Crash.h"
 
@@ -63,8 +66,6 @@ struct JsiValue {
   IJsiRuntime Runtime();
 
   //TODO: add operator []
-
-
 
  private:
   JsiValueKind m_kind{JsiValueKind::Undefined};
