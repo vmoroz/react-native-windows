@@ -224,15 +224,8 @@ struct JsiAbiRuntime : facebook::jsi::Runtime {
 
  private: // PointerValue structures
   struct SymbolPointerValue : PointerValue {
-    SymbolPointerValue(winrt::weak_ref<IJsiRuntime> &&weakRuntime, JsiSymbolData &&symbol)
-        : m_weakRuntime{std::move(weakRuntime)}, m_symbol{std::move(symbol)} {}
-
-    void invalidate() override {
-      if (auto runtime = m_weakRuntime.get()) {
-        m_weakRuntime = nullptr;
-        runtime.ReleaseSymbol(m_symbol);
-      }
-    }
+    SymbolPointerValue(winrt::weak_ref<IJsiRuntime> &&weakRuntime, JsiSymbolData &&symbol) noexcept;
+    void invalidate() override;
 
    private:
     JsiSymbolData m_symbol;
@@ -240,15 +233,8 @@ struct JsiAbiRuntime : facebook::jsi::Runtime {
   };
 
   struct StringPointerValue : PointerValue {
-    StringPointerValue(winrt::weak_ref<IJsiRuntime> &&weakRuntime, JsiStringData &&str)
-        : m_weakRuntime{std::move(weakRuntime)}, m_string{std::move(str)} {}
-
-    void invalidate() override {
-      if (auto runtime = m_weakRuntime.get()) {
-        m_weakRuntime = nullptr;
-        runtime.ReleaseString(m_string);
-      }
-    }
+    StringPointerValue(winrt::weak_ref<IJsiRuntime> &&weakRuntime, JsiStringData &&str) noexcept;
+    void invalidate() override;
 
    private:
     JsiStringData m_string;
@@ -256,15 +242,8 @@ struct JsiAbiRuntime : facebook::jsi::Runtime {
   };
 
   struct ObjectPointerValue : PointerValue {
-    ObjectPointerValue(winrt::weak_ref<IJsiRuntime> &&weakRuntime, JsiObjectData &&obj)
-        : m_weakRuntime{std::move(weakRuntime)}, m_object{std::move(obj)} {}
-
-    void invalidate() override {
-      if (auto runtime = m_weakRuntime.get()) {
-        m_weakRuntime = nullptr;
-        runtime.ReleaseObject(m_object);
-      }
-    }
+    ObjectPointerValue(winrt::weak_ref<IJsiRuntime> &&weakRuntime, JsiObjectData &&obj) noexcept;
+    void invalidate() override;
 
    private:
     JsiObjectData m_object;
@@ -272,15 +251,8 @@ struct JsiAbiRuntime : facebook::jsi::Runtime {
   };
 
   struct PropNameIDPointerValue : PointerValue {
-    PropNameIDPointerValue(winrt::weak_ref<IJsiRuntime> &&weakRuntime, JsiPropertyNameIdData &&propertyId)
-        : m_weakRuntime{std::move(weakRuntime)}, m_propertyId{std::move(propertyId)} {}
-
-    void invalidate() override {
-      if (auto runtime = m_weakRuntime.get()) {
-        m_weakRuntime = nullptr;
-        runtime.ReleasePropertyNameId(m_propertyId);
-      }
-    }
+    PropNameIDPointerValue(winrt::weak_ref<IJsiRuntime> &&weakRuntime, JsiPropertyNameIdData &&propertyId) noexcept;
+    void invalidate() override;
 
    private:
     JsiPropertyNameIdData m_propertyId;

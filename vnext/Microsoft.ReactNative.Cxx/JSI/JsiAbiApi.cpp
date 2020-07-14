@@ -579,4 +579,52 @@ Value JsiAbiRuntime::MakeValue(JsiValueData &&value) const noexcept {
   }
 }
 
+JsiAbiRuntime::SymbolPointerValue::SymbolPointerValue(
+    winrt::weak_ref<IJsiRuntime> &&weakRuntime,
+    JsiSymbolData &&symbol) noexcept
+    : m_weakRuntime{std::move(weakRuntime)}, m_symbol{std::move(symbol)} {}
+
+void JsiAbiRuntime::SymbolPointerValue::invalidate() {
+  if (auto runtime = m_weakRuntime.get()) {
+    m_weakRuntime = nullptr;
+    runtime.ReleaseSymbol(m_symbol);
+  }
+}
+
+JsiAbiRuntime::StringPointerValue::StringPointerValue(
+    winrt::weak_ref<IJsiRuntime> &&weakRuntime,
+    JsiStringData &&str) noexcept
+    : m_weakRuntime{std::move(weakRuntime)}, m_string{std::move(str)} {}
+
+void JsiAbiRuntime::StringPointerValue::invalidate() {
+  if (auto runtime = m_weakRuntime.get()) {
+    m_weakRuntime = nullptr;
+    runtime.ReleaseString(m_string);
+  }
+}
+
+JsiAbiRuntime::ObjectPointerValue::ObjectPointerValue(
+    winrt::weak_ref<IJsiRuntime> &&weakRuntime,
+    JsiObjectData &&obj) noexcept
+    : m_weakRuntime{std::move(weakRuntime)}, m_object{std::move(obj)} {}
+
+void JsiAbiRuntime::ObjectPointerValue::invalidate() {
+  if (auto runtime = m_weakRuntime.get()) {
+    m_weakRuntime = nullptr;
+    runtime.ReleaseObject(m_object);
+  }
+}
+
+JsiAbiRuntime::PropNameIDPointerValue::PropNameIDPointerValue(
+    winrt::weak_ref<IJsiRuntime> &&weakRuntime,
+    JsiPropertyNameIdData &&propertyId) noexcept
+    : m_weakRuntime{std::move(weakRuntime)}, m_propertyId{std::move(propertyId)} {}
+
+void JsiAbiRuntime::PropNameIDPointerValue::invalidate() {
+  if (auto runtime = m_weakRuntime.get()) {
+    m_weakRuntime = nullptr;
+    runtime.ReleasePropertyNameId(m_propertyId);
+  }
+}
+
 } // namespace winrt::Microsoft::ReactNative
