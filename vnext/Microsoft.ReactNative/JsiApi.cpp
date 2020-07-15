@@ -242,7 +242,9 @@ JsiValueData JsiRuntime::EvaluateJavaScript(IJsiByteBuffer const &buffer, hstrin
   return MakeJsiValueData(std::move(result));
 }
 
-ReactNative::JsiPreparedJavaScript JsiRuntime::PrepareJavaScript(IJsiByteBuffer const &buffer, hstring const &sourceUrl) {
+ReactNative::JsiPreparedJavaScript JsiRuntime::PrepareJavaScript(
+    IJsiByteBuffer const &buffer,
+    hstring const &sourceUrl) {
   ReactNative::JsiPreparedJavaScript result{nullptr};
   buffer.GetData([this, &result, &sourceUrl](array_view<uint8_t const> bytes) {
     result = make<JsiPreparedJavaScript>(
