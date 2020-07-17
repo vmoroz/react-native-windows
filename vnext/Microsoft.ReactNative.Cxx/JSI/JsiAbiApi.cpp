@@ -441,56 +441,57 @@ bool JsiAbiRuntime::instanceOf(const Object &o, const Function &f) {
   return m_runtime.InstanceOf(AsJsiObjectData(o), AsJsiFunctionData(f));
 }
 
-/*static*/ JsiSymbolData JsiAbiRuntime::AsJsiSymbolData(PointerValue const *pv) noexcept {
-  return {reinterpret_cast<uint64_t>(pv)};
+/*static*/ JsiSymbolData const &JsiAbiRuntime::AsJsiSymbolData(PointerValue const *pv) noexcept {
+  return SymbolPointerValue::GetData(pv);
 }
 
-/*static*/ JsiStringData JsiAbiRuntime::AsJsiStringData(PointerValue const *pv) noexcept {
-  return {reinterpret_cast<uint64_t>(pv)};
+/*static*/ JsiStringData const &JsiAbiRuntime::AsJsiStringData(PointerValue const *pv) noexcept {
+  return StringPointerValue::GetData(pv);
 }
 
-/*static*/ JsiObjectData JsiAbiRuntime::AsJsiObjectData(PointerValue const *pv) noexcept {
-  return {reinterpret_cast<uint64_t>(pv)};
+/*static*/ JsiObjectData const &JsiAbiRuntime::AsJsiObjectData(PointerValue const *pv) noexcept {
+  return ObjectPointerValue::GetData(pv);
 }
 
-/*static*/ JsiPropertyNameIdData JsiAbiRuntime::AsJsiPropertyNameIdData(PointerValue const *pv) noexcept {
-  return {reinterpret_cast<uint64_t>(pv)};
+/*static*/ JsiPropertyNameIdData const &JsiAbiRuntime::AsJsiPropertyNameIdData(PointerValue const *pv) noexcept {
+  return PropNameIDPointerValue::GetData(pv);
 }
 
-/*static*/ JsiSymbolData JsiAbiRuntime::AsJsiSymbolData(Symbol const &str) noexcept {
-  return {reinterpret_cast<uint64_t>(getPointerValue(str))};
+/*static*/ JsiSymbolData const &JsiAbiRuntime::AsJsiSymbolData(Symbol const &symbol) noexcept {
+  return SymbolPointerValue::GetData(getPointerValue(symbol));
 }
 
-/*static*/ JsiStringData JsiAbiRuntime::AsJsiStringData(String const &str) noexcept {
-  return {reinterpret_cast<uint64_t>(getPointerValue(str))};
+/*static*/ JsiStringData const &JsiAbiRuntime::AsJsiStringData(String const &str) noexcept {
+  return StringPointerValue::GetData(getPointerValue(str));
 }
 
-/*static*/ JsiObjectData JsiAbiRuntime::AsJsiObjectData(Object const &obj) noexcept {
-  return {reinterpret_cast<uint64_t>(getPointerValue(obj))};
+/*static*/ JsiObjectData const &JsiAbiRuntime::AsJsiObjectData(Object const &obj) noexcept {
+  return ObjectPointerValue::GetData(getPointerValue(obj));
 }
 
-/*static*/ JsiPropertyNameIdData JsiAbiRuntime::AsJsiPropertyNameIdData(PropNameID const &propertyId) noexcept {
-  return {reinterpret_cast<uint64_t>(getPointerValue(propertyId))};
+/*static*/ JsiPropertyNameIdData const &JsiAbiRuntime::AsJsiPropertyNameIdData(PropNameID const &propertyId) noexcept {
+  return PropNameIDPointerValue::GetData(getPointerValue(propertyId));
 }
 
-/*static*/ JsiFunctionData JsiAbiRuntime::AsJsiFunctionData(Function const &func) noexcept {
-  return {reinterpret_cast<uint64_t>(getPointerValue(func))};
+/*static*/ JsiFunctionData const &JsiAbiRuntime::AsJsiFunctionData(Function const &func) noexcept {
+  return reinterpret_cast<JsiFunctionData const &>(ObjectPointerValue::GetData(getPointerValue(func)));
 }
 
-/*static*/ JsiWeakObjectData JsiAbiRuntime::AsJsiWeakObjectData(WeakObject const &weakObject) noexcept {
-  return {reinterpret_cast<uint64_t>(getPointerValue(weakObject))};
+/*static*/ JsiWeakObjectData const &JsiAbiRuntime::AsJsiWeakObjectData(WeakObject const &weakObject) noexcept {
+  return reinterpret_cast<JsiWeakObjectData const &>(ObjectPointerValue::GetData(getPointerValue(weakObject)));
 }
 
-/*static*/ JsiArrayData JsiAbiRuntime::AsJsiArrayData(facebook::jsi::Array const &arr) noexcept {
-  return {reinterpret_cast<uint64_t>(getPointerValue(arr))};
+/*static*/ JsiArrayData const &JsiAbiRuntime::AsJsiArrayData(facebook::jsi::Array const &arr) noexcept {
+  return reinterpret_cast<JsiArrayData const &>(ObjectPointerValue::GetData(getPointerValue(arr)));
 }
 
-/*static*/ JsiArrayBufferData JsiAbiRuntime::AsJsiArrayBufferData(
+/*static*/ JsiArrayBufferData const &JsiAbiRuntime::AsJsiArrayBufferData(
     facebook::jsi::ArrayBuffer const &arrayBuffer) noexcept {
-  return {reinterpret_cast<uint64_t>(getPointerValue(arrayBuffer))};
+  return reinterpret_cast<JsiArrayBufferData const &>(ObjectPointerValue::GetData(getPointerValue(arrayBuffer)));
 }
 
 /*static*/ JsiValueData const &JsiAbiRuntime::AsJsiValueData(Value const &value) noexcept {
+  // TODO: fix for 32 version
   return reinterpret_cast<JsiValueData const &>(value);
 }
 
@@ -589,6 +590,10 @@ void JsiAbiRuntime::SymbolPointerValue::invalidate() {
   }
 }
 
+/*static*/ JsiSymbolData const &JsiAbiRuntime::SymbolPointerValue::GetData(PointerValue const *pv) noexcept {
+  return static_cast<SymbolPointerValue const *>(pv)->m_symbol;
+}
+
 JsiAbiRuntime::StringPointerValue::StringPointerValue(
     winrt::weak_ref<IJsiRuntime> &&weakRuntime,
     JsiStringData &&str) noexcept
@@ -599,6 +604,10 @@ void JsiAbiRuntime::StringPointerValue::invalidate() {
     m_weakRuntime = nullptr;
     runtime.ReleaseString(m_string);
   }
+}
+
+/*static*/ JsiStringData const &JsiAbiRuntime::StringPointerValue::GetData(PointerValue const *pv) noexcept {
+  return static_cast<StringPointerValue const *>(pv)->m_string;
 }
 
 JsiAbiRuntime::ObjectPointerValue::ObjectPointerValue(
@@ -613,6 +622,10 @@ void JsiAbiRuntime::ObjectPointerValue::invalidate() {
   }
 }
 
+/*static*/ JsiObjectData const &JsiAbiRuntime::ObjectPointerValue::GetData(PointerValue const *pv) noexcept {
+  return static_cast<ObjectPointerValue const *>(pv)->m_object;
+}
+
 JsiAbiRuntime::PropNameIDPointerValue::PropNameIDPointerValue(
     winrt::weak_ref<IJsiRuntime> &&weakRuntime,
     JsiPropertyNameIdData &&propertyId) noexcept
@@ -625,4 +638,8 @@ void JsiAbiRuntime::PropNameIDPointerValue::invalidate() {
   }
 }
 
+/*static*/ JsiPropertyNameIdData const &JsiAbiRuntime::PropNameIDPointerValue::GetData(
+    PointerValue const *pv) noexcept {
+  return static_cast<PropNameIDPointerValue const *>(pv)->m_propertyId;
+}
 } // namespace winrt::Microsoft::ReactNative

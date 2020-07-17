@@ -182,19 +182,19 @@ struct JsiAbiRuntime : facebook::jsi::Runtime {
   bool instanceOf(const facebook::jsi::Object &o, const facebook::jsi::Function &f) override;
 
  private: // Convert JSI to ABI-safe JSI values
-  static JsiSymbolData AsJsiSymbolData(PointerValue const *pv) noexcept;
-  static JsiStringData AsJsiStringData(PointerValue const *pv) noexcept;
-  static JsiObjectData AsJsiObjectData(PointerValue const *pv) noexcept;
-  static JsiPropertyNameIdData AsJsiPropertyNameIdData(PointerValue const *pv) noexcept;
+  static JsiSymbolData const &AsJsiSymbolData(PointerValue const *pv) noexcept;
+  static JsiStringData const &AsJsiStringData(PointerValue const *pv) noexcept;
+  static JsiObjectData const &AsJsiObjectData(PointerValue const *pv) noexcept;
+  static JsiPropertyNameIdData const &AsJsiPropertyNameIdData(PointerValue const *pv) noexcept;
 
-  static JsiSymbolData AsJsiSymbolData(facebook::jsi::Symbol const &symbol) noexcept;
-  static JsiStringData AsJsiStringData(facebook::jsi::String const &str) noexcept;
-  static JsiObjectData AsJsiObjectData(facebook::jsi::Object const &obj) noexcept;
-  static JsiPropertyNameIdData AsJsiPropertyNameIdData(facebook::jsi::PropNameID const &propertyId) noexcept;
-  static JsiFunctionData AsJsiFunctionData(facebook::jsi::Function const &func) noexcept;
-  static JsiWeakObjectData AsJsiWeakObjectData(facebook::jsi::WeakObject const &weakObject) noexcept;
-  static JsiArrayData AsJsiArrayData(facebook::jsi::Array const &arr) noexcept;
-  static JsiArrayBufferData AsJsiArrayBufferData(facebook::jsi::ArrayBuffer const &arrayBuffer) noexcept;
+  static JsiSymbolData const &AsJsiSymbolData(facebook::jsi::Symbol const &symbol) noexcept;
+  static JsiStringData const &AsJsiStringData(facebook::jsi::String const &str) noexcept;
+  static JsiObjectData const &AsJsiObjectData(facebook::jsi::Object const &obj) noexcept;
+  static JsiPropertyNameIdData const &AsJsiPropertyNameIdData(facebook::jsi::PropNameID const &propertyId) noexcept;
+  static JsiFunctionData const &AsJsiFunctionData(facebook::jsi::Function const &func) noexcept;
+  static JsiWeakObjectData const &AsJsiWeakObjectData(facebook::jsi::WeakObject const &weakObject) noexcept;
+  static JsiArrayData const &AsJsiArrayData(facebook::jsi::Array const &arr) noexcept;
+  static JsiArrayBufferData const &AsJsiArrayBufferData(facebook::jsi::ArrayBuffer const &arrayBuffer) noexcept;
   static JsiValueData const &AsJsiValueData(facebook::jsi::Value const &value) noexcept;
 
   static JsiPropertyNameIdData MakeJsiPropertyNameIdData(facebook::jsi::PropNameID &&propertyId) noexcept;
@@ -226,6 +226,7 @@ struct JsiAbiRuntime : facebook::jsi::Runtime {
   struct SymbolPointerValue : PointerValue {
     SymbolPointerValue(winrt::weak_ref<IJsiRuntime> &&weakRuntime, JsiSymbolData &&symbol) noexcept;
     void invalidate() override;
+    static JsiSymbolData const &GetData(PointerValue const *pv) noexcept;
 
    private:
     JsiSymbolData m_symbol;
@@ -235,6 +236,7 @@ struct JsiAbiRuntime : facebook::jsi::Runtime {
   struct StringPointerValue : PointerValue {
     StringPointerValue(winrt::weak_ref<IJsiRuntime> &&weakRuntime, JsiStringData &&str) noexcept;
     void invalidate() override;
+    static JsiStringData const &GetData(PointerValue const *pv) noexcept;
 
    private:
     JsiStringData m_string;
@@ -244,6 +246,7 @@ struct JsiAbiRuntime : facebook::jsi::Runtime {
   struct ObjectPointerValue : PointerValue {
     ObjectPointerValue(winrt::weak_ref<IJsiRuntime> &&weakRuntime, JsiObjectData &&obj) noexcept;
     void invalidate() override;
+    static JsiObjectData const &GetData(PointerValue const *pv) noexcept;
 
    private:
     JsiObjectData m_object;
@@ -253,6 +256,7 @@ struct JsiAbiRuntime : facebook::jsi::Runtime {
   struct PropNameIDPointerValue : PointerValue {
     PropNameIDPointerValue(winrt::weak_ref<IJsiRuntime> &&weakRuntime, JsiPropertyNameIdData &&propertyId) noexcept;
     void invalidate() override;
+    static JsiPropertyNameIdData const &GetData(PointerValue const *pv) noexcept;
 
    private:
     JsiPropertyNameIdData m_propertyId;
