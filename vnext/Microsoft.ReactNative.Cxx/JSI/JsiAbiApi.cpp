@@ -501,8 +501,22 @@ bool JsiAbiRuntime::instanceOf(const Object &o, const Function &f) {
 }
 
 /*static*/ JsiValueData JsiAbiRuntime::MakeJsiValueData(facebook::jsi::Value &&value) noexcept {
-  auto ptr = reinterpret_cast<JsiValueData **>(&value);
-  return {std::exchange((*ptr)->Kind, JsiValueKind::Undefined), (*ptr)->Data};
+  // Here we should move data from Value to JsiValueData.
+  // For Pointer types it means that we should allow running the Pointer
+  // destructor, but it must not call the Release method to keep the underlying
+  // data alive. Thus, we must detach the value.
+  // We assume that JsiValueData and Value have the same layout.
+  auto valuePtr = reinterpret_cast<JsiValueData *>(&value);
+  switch (valuePtr->Kind) {
+    case JsiValueKind::Symbol:
+      return {valuePtr->Kind, SymbolPointerValue::Detach(getPointerValue(value)).Data};
+    case JsiValueKind::String:
+      return {valuePtr->Kind, StringPointerValue::Detach(getPointerValue(value)).Data};
+    case JsiValueKind::Object:
+      return {valuePtr->Kind, ObjectPointerValue::Detach(getPointerValue(value)).Data};
+    default: // return a copy for other cases.
+      return *valuePtr;
+  }
 }
 
 /*static*/ PropNameID const *JsiAbiRuntime::AsPropNameID(JsiPropertyNameIdData const *data) noexcept {
@@ -594,6 +608,10 @@ void JsiAbiRuntime::SymbolPointerValue::invalidate() {
   return static_cast<SymbolPointerValue const *>(pv)->m_symbol;
 }
 
+/*static*/ JsiSymbolData JsiAbiRuntime::SymbolPointerValue::Detach(PointerValue const *pv) noexcept {
+  return std::exchange(static_cast<SymbolPointerValue *>(const_cast<PointerValue *>(pv))->m_symbol, {0});
+}
+
 JsiAbiRuntime::StringPointerValue::StringPointerValue(
     winrt::weak_ref<IJsiRuntime> &&weakRuntime,
     JsiStringData &&str) noexcept
@@ -610,20 +628,30 @@ void JsiAbiRuntime::StringPointerValue::invalidate() {
   return static_cast<StringPointerValue const *>(pv)->m_string;
 }
 
+/*static*/ JsiStringData JsiAbiRuntime::StringPointerValue::Detach(PointerValue const *pv) noexcept {
+  return std::exchange(static_cast<StringPointerValue *>(const_cast<PointerValue *>(pv))->m_string, {0});
+}
+
 JsiAbiRuntime::ObjectPointerValue::ObjectPointerValue(
     winrt::weak_ref<IJsiRuntime> &&weakRuntime,
     JsiObjectData &&obj) noexcept
     : m_weakRuntime{std::move(weakRuntime)}, m_object{std::move(obj)} {}
 
 void JsiAbiRuntime::ObjectPointerValue::invalidate() {
-  if (auto runtime = m_weakRuntime.get()) {
-    m_weakRuntime = nullptr;
-    runtime.ReleaseObject(m_object);
+  if (m_object.Data) {
+    if (auto runtime = m_weakRuntime.get()) {
+      m_weakRuntime = nullptr;
+      runtime.ReleaseObject(m_object);
+    }
   }
 }
 
 /*static*/ JsiObjectData const &JsiAbiRuntime::ObjectPointerValue::GetData(PointerValue const *pv) noexcept {
   return static_cast<ObjectPointerValue const *>(pv)->m_object;
+}
+
+/*static*/ JsiObjectData JsiAbiRuntime::ObjectPointerValue::Detach(PointerValue const *pv) noexcept {
+  return std::exchange(static_cast<ObjectPointerValue *>(const_cast<PointerValue *>(pv))->m_object, {0});
 }
 
 JsiAbiRuntime::PropNameIDPointerValue::PropNameIDPointerValue(

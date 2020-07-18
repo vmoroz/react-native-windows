@@ -227,6 +227,7 @@ struct JsiAbiRuntime : facebook::jsi::Runtime {
     SymbolPointerValue(winrt::weak_ref<IJsiRuntime> &&weakRuntime, JsiSymbolData &&symbol) noexcept;
     void invalidate() override;
     static JsiSymbolData const &GetData(PointerValue const *pv) noexcept;
+    static JsiSymbolData Detach(PointerValue const *pv) noexcept;
 
    private:
     JsiSymbolData m_symbol;
@@ -237,6 +238,7 @@ struct JsiAbiRuntime : facebook::jsi::Runtime {
     StringPointerValue(winrt::weak_ref<IJsiRuntime> &&weakRuntime, JsiStringData &&str) noexcept;
     void invalidate() override;
     static JsiStringData const &GetData(PointerValue const *pv) noexcept;
+    static JsiStringData Detach(PointerValue const *pv) noexcept;
 
    private:
     JsiStringData m_string;
@@ -247,6 +249,7 @@ struct JsiAbiRuntime : facebook::jsi::Runtime {
     ObjectPointerValue(winrt::weak_ref<IJsiRuntime> &&weakRuntime, JsiObjectData &&obj) noexcept;
     void invalidate() override;
     static JsiObjectData const &GetData(PointerValue const *pv) noexcept;
+    static JsiObjectData Detach(PointerValue const *pv) noexcept;
 
    private:
     JsiObjectData m_object;
