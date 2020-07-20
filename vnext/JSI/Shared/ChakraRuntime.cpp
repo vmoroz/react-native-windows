@@ -253,24 +253,13 @@ bool ChakraRuntime::compare(const facebook::jsi::PropNameID &lhs, const facebook
 }
 
 std::string ChakraRuntime::symbolToString(const facebook::jsi::Symbol &s) {
-  JsPropertyIdRef propertyId;
-  VerifyJsErrorElseThrow(JsGetPropertyIdFromSymbol(GetChakraObjectRef(s), &propertyId));
-  ChakraObjectRef propertyIdHolder{propertyId};
-
-  wchar_t const *symbolName;
-  VerifyJsErrorElseThrow(JsGetPropertyNameFromId(propertyId, &symbolName));
-  return Common::Unicode::Utf16ToUtf8(symbolName);
-  //// Get Chakra symbol representation
-  //ChakraObjectRef const &chakraSymbol = GetChakraObjectRef(s);
-
-  //// Handle to the Symbol.toString() method.
-  //ChakraObjectRef symbolToString = GetProperty(chakraSymbol, "toString");
-
-  //JsValueRef args = chakraSymbol;
-
-  //JsValueRef result;
-  //VerifyJsErrorElseThrow(JsCallFunction(symbolToString, &args, 1, &result));
-  //return ToStdString(ToJsString(ChakraObjectRef{propertyId}));
+  facebook::jsi::Value result = global()
+                                    .getPropertyAsFunction(*this, "eval")
+                                    .call(*this, "(function(sym){ return sym.toString(); })")
+                                    .getObject(*this)
+                                    .getFunction(*this)
+                                    .call(*this, s);
+  return result.getString(*this).utf8(*this);
 }
 
 facebook::jsi::String ChakraRuntime::createStringFromAscii(const char *str, size_t length) {
