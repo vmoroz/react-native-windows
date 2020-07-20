@@ -217,9 +217,6 @@ struct JsiAbiRuntime : facebook::jsi::Runtime {
   facebook::jsi::Function MakeFunction(JsiFunctionData &&func) noexcept;
   facebook::jsi::Value MakeValue(JsiValueData &&value) const noexcept;
 
-  struct PropNameIDRef;
-  PropNameIDRef MakePropNameIDRef(JsiPropertyNameIdData const &propertyId) const noexcept;
-
   // Allow access to the helper function
   friend struct JsiHostObjectWrapper;
   friend struct JsiHostFunctionWrapper;
@@ -275,8 +272,8 @@ struct JsiAbiRuntime : facebook::jsi::Runtime {
     static void InitValueRef(JsiValueData const &data, facebook::jsi::Value *value, StoreType *store) noexcept;
 
    private:
-    facebook::jsi::Value m_value;
-    StoreType m_pointerStore;
+    facebook::jsi::Value m_value{};
+    StoreType m_pointerStore{};
   };
 
   struct ValueRefArray {
@@ -285,45 +282,21 @@ struct JsiAbiRuntime : facebook::jsi::Runtime {
     size_t Size() const noexcept;
 
    private:
-    std::array<facebook::jsi::Value, MaxCallArgCount> m_valueArray;
-    std::array<ValueRef::StoreType, MaxCallArgCount> m_pointerStoreArray;
-    size_t m_size;
-  };
-
-  struct SymbolRef {
-    SymbolRef(facebook::jsi::Symbol &&symbol) noexcept;
-    ~SymbolRef() noexcept;
-    operator facebook::jsi::Symbol const &() const noexcept;
-
-   private:
-    facebook::jsi::Symbol m_symbol;
-  };
-
-  struct StringRef {
-    StringRef(facebook::jsi::String &&str) noexcept;
-    ~StringRef() noexcept;
-    operator facebook::jsi::String const &() const noexcept;
-
-   private:
-    facebook::jsi::String m_string;
-  };
-
-  struct ObjectRef {
-    ObjectRef(facebook::jsi::Object &&obj) noexcept;
-    ~ObjectRef() noexcept;
-    operator facebook::jsi::Object const &() const noexcept;
-
-   private:
-    facebook::jsi::Object m_object;
+    std::array<facebook::jsi::Value, MaxCallArgCount> m_valueArray{};
+    std::array<ValueRef::StoreType, MaxCallArgCount> m_pointerStoreArray{};
+    size_t m_size{};
   };
 
   struct PropNameIDRef {
-    PropNameIDRef(facebook::jsi::PropNameID &&propertyId) noexcept;
+    PropNameIDRef(JsiPropertyNameIdData const &data) noexcept;
     ~PropNameIDRef() noexcept;
     operator facebook::jsi::PropNameID const &() const noexcept;
 
+    using StoreType = std::aligned_storage<sizeof(DataPointerValue)>;
+
    private:
     facebook::jsi::PropNameID m_propertyId;
+    StoreType m_pointerStore{};
   };
 
  private:

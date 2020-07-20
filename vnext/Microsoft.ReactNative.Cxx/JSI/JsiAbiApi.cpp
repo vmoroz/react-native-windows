@@ -57,7 +57,7 @@ JsiHostObjectWrapper::~JsiHostObjectWrapper() noexcept {
 
 JsiValueData JsiHostObjectWrapper::GetProperty(IJsiRuntime const &runtime, JsiPropertyNameIdData const &name) {
   JsiAbiRuntime rt{runtime};
-  return JsiAbiRuntime::MakeJsiValueData(m_hostObject->get(rt, rt.MakePropNameIDRef(name)));
+  return JsiAbiRuntime::MakeJsiValueData(m_hostObject->get(rt, JsiAbiRuntime::PropNameIDRef{name}));
 }
 
 void JsiHostObjectWrapper::SetProperty(
@@ -65,7 +65,7 @@ void JsiHostObjectWrapper::SetProperty(
     JsiPropertyNameIdData const &name,
     JsiValueData const &value) {
   JsiAbiRuntime rt{runtime};
-  m_hostObject->set(rt, rt.MakePropNameIDRef(name), JsiAbiRuntime::ValueRef(value));
+  m_hostObject->set(rt, JsiAbiRuntime::PropNameIDRef{name}, JsiAbiRuntime::ValueRef(value));
 }
 
 Windows::Foundation::Collections::IVector<JsiPropertyNameIdData> JsiHostObjectWrapper::GetPropertyNames(
@@ -454,6 +454,10 @@ bool JsiAbiRuntime::instanceOf(const Object &o, const Function &f) {
   return m_runtime.InstanceOf(AsJsiObjectData(o), AsJsiFunctionData(f));
 }
 
+//===========================================================================
+// JsiAbiRuntime utility functions implementation
+//===========================================================================
+
 /*static*/ JsiSymbolData const &JsiAbiRuntime::AsJsiSymbolData(PointerValue const *pv) noexcept {
   return SymbolPointerValue::GetData(pv);
 }
@@ -608,9 +612,9 @@ Value JsiAbiRuntime::MakeValue(JsiValueData &&value) const noexcept {
   }
 }
 
-JsiAbiRuntime::PropNameIDRef JsiAbiRuntime::MakePropNameIDRef(JsiPropertyNameIdData const &propertyId) const noexcept {
-  return PropNameIDRef{MakePropNameID(std::move(const_cast<JsiPropertyNameIdData &>(propertyId)))};
-}
+//===========================================================================
+// JsiAbiRuntime::DataPointerValue implementation
+//===========================================================================
 
 JsiAbiRuntime::DataPointerValue::DataPointerValue(winrt::weak_ref<IJsiRuntime> &&weakRuntime, uint64_t data) noexcept
     : m_data{data}, m_weakRuntime{std::move(weakRuntime)} {}
@@ -618,6 +622,10 @@ JsiAbiRuntime::DataPointerValue::DataPointerValue(winrt::weak_ref<IJsiRuntime> &
 JsiAbiRuntime::DataPointerValue::DataPointerValue(uint64_t data) noexcept : m_data{data} {}
 
 void JsiAbiRuntime::DataPointerValue::invalidate() {}
+
+//===========================================================================
+// JsiAbiRuntime::SymbolPointerValue implementation
+//===========================================================================
 
 JsiAbiRuntime::SymbolPointerValue::SymbolPointerValue(
     winrt::weak_ref<IJsiRuntime> &&weakRuntime,
@@ -641,6 +649,10 @@ void JsiAbiRuntime::SymbolPointerValue::invalidate() {
   return {std::exchange(static_cast<DataPointerValue *>(const_cast<PointerValue *>(pv))->m_data, 0)};
 }
 
+//===========================================================================
+// JsiAbiRuntime::StringPointerValue implementation
+//===========================================================================
+
 JsiAbiRuntime::StringPointerValue::StringPointerValue(
     winrt::weak_ref<IJsiRuntime> &&weakRuntime,
     JsiStringData &&str) noexcept
@@ -663,6 +675,10 @@ void JsiAbiRuntime::StringPointerValue::invalidate() {
   return {std::exchange(static_cast<DataPointerValue *>(const_cast<PointerValue *>(pv))->m_data, 0)};
 }
 
+//===========================================================================
+// JsiAbiRuntime::ObjectPointerValue implementation
+//===========================================================================
+
 JsiAbiRuntime::ObjectPointerValue::ObjectPointerValue(
     winrt::weak_ref<IJsiRuntime> &&weakRuntime,
     JsiObjectData &&obj) noexcept
@@ -684,6 +700,10 @@ void JsiAbiRuntime::ObjectPointerValue::invalidate() {
 /*static*/ JsiObjectData JsiAbiRuntime::ObjectPointerValue::Detach(PointerValue const *pv) noexcept {
   return {std::exchange(static_cast<DataPointerValue *>(const_cast<PointerValue *>(pv))->m_data, 0)};
 }
+
+//===========================================================================
+// JsiAbiRuntime::PropNameIDPointerValue implementation
+//===========================================================================
 
 JsiAbiRuntime::PropNameIDPointerValue::PropNameIDPointerValue(
     winrt::weak_ref<IJsiRuntime> &&weakRuntime,
@@ -708,6 +728,10 @@ void JsiAbiRuntime::PropNameIDPointerValue::invalidate() {
   return {std::exchange(static_cast<DataPointerValue *>(const_cast<PointerValue *>(pv))->m_data, 0)};
 }
 
+//===========================================================================
+// JsiAbiRuntime::ValueRef implementation
+//===========================================================================
+
 JsiAbiRuntime::ValueRef::ValueRef(JsiValueData const &data) noexcept {
   InitValueRef(data, &m_value, std::addressof(m_pointerStore));
 }
@@ -727,6 +751,7 @@ JsiAbiRuntime::ValueRef::InitValueRef(JsiValueData const &data, Value *value, St
     case JsiValueKind::Symbol:
     case JsiValueKind::String:
     case JsiValueKind::Object:
+      // Do in-place initialization in 'store'
       valueAsDataPtr->Data = reinterpret_cast<uint64_t>(new (store) DataPointerValue(data.Data));
       break;
     default:
@@ -734,6 +759,10 @@ JsiAbiRuntime::ValueRef::InitValueRef(JsiValueData const &data, Value *value, St
       break;
   }
 }
+
+//===========================================================================
+// JsiAbiRuntime::ValueRefArray implementation
+//===========================================================================
 
 JsiAbiRuntime::ValueRefArray::ValueRefArray(array_view<JsiValueData const> args) noexcept : m_size{args.size()} {
   VerifyElseCrashSz(m_size <= MaxCallArgCount, "Argument count must not exceed the MaxCallArgCount");
@@ -750,42 +779,14 @@ size_t JsiAbiRuntime::ValueRefArray::Size() const noexcept {
   return m_size;
 }
 
-JsiAbiRuntime::SymbolRef::SymbolRef(facebook::jsi::Symbol &&symbol) noexcept : m_symbol{std::move(symbol)} {}
+//===========================================================================
+// JsiAbiRuntime::PropNameIDRef implementation
+//===========================================================================
 
-JsiAbiRuntime::SymbolRef::~SymbolRef() noexcept {
-  SymbolPointerValue::Detach(getPointerValue(m_symbol));
-}
+JsiAbiRuntime::PropNameIDRef::PropNameIDRef(JsiPropertyNameIdData const &data) noexcept
+    : m_propertyId{make<PropNameID>(new (std::addressof(m_pointerStore)) DataPointerValue(data.Data))} {}
 
-JsiAbiRuntime::SymbolRef::operator facebook::jsi::Symbol const &() const noexcept {
-  return m_symbol;
-}
-
-JsiAbiRuntime::StringRef::StringRef(facebook::jsi::String &&str) noexcept : m_string{std::move(str)} {}
-
-JsiAbiRuntime::StringRef::~StringRef() noexcept {
-  StringPointerValue::Detach(getPointerValue(m_string));
-}
-
-JsiAbiRuntime::StringRef::operator facebook::jsi::String const &() const noexcept {
-  return m_string;
-}
-
-JsiAbiRuntime::ObjectRef::ObjectRef(facebook::jsi::Object &&obj) noexcept : m_object{std::move(obj)} {}
-
-JsiAbiRuntime::ObjectRef::~ObjectRef() noexcept {
-  ObjectPointerValue::Detach(getPointerValue(m_object));
-}
-
-JsiAbiRuntime::ObjectRef::operator facebook::jsi::Object const &() const noexcept {
-  return m_object;
-}
-
-JsiAbiRuntime::PropNameIDRef::PropNameIDRef(facebook::jsi::PropNameID &&propertyId) noexcept
-    : m_propertyId{std::move(propertyId)} {}
-
-JsiAbiRuntime::PropNameIDRef::~PropNameIDRef() noexcept {
-  PropNameIDPointerValue::Detach(getPointerValue(m_propertyId));
-}
+JsiAbiRuntime::PropNameIDRef::~PropNameIDRef() noexcept {}
 
 JsiAbiRuntime::PropNameIDRef::operator facebook::jsi::PropNameID const &() const noexcept {
   return m_propertyId;
