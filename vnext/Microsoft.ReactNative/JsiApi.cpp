@@ -95,7 +95,7 @@ static facebook::jsi::ArrayBuffer const &AsArrayBuffer(facebook::jsi::Runtime::P
 }
 
 static facebook::jsi::Value const *AsValue(JsiValueData const &data) noexcept {
-  return reinterpret_cast<facebook::jsi::Value const *>(data.Data);
+  return reinterpret_cast<facebook::jsi::Value const *>(&data);
 }
 
 static JsiValueData ToJsiValueData(facebook::jsi::Value const &value) noexcept {
