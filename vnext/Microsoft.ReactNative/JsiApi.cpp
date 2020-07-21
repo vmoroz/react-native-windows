@@ -310,8 +310,8 @@ JsiPropertyNameIdData JsiRuntime::CreatePropertyNameIdFromString(JsiStringData s
 }
 
 void JsiRuntime::PropertyNameIdToUtf8(JsiPropertyNameIdData propertyNameId, JsiByteArrayUser const &useUtf8String) {
-  auto ptr = reinterpret_cast<facebook::jsi::Runtime::PointerValue *>(propertyNameId.Data);
-  std::string utf8 = m_runtime->utf8(*reinterpret_cast<facebook::jsi::String *>(ptr));
+  auto ptr = AsPointerValue(propertyNameId);
+  std::string utf8 = m_runtime->utf8(AsPropNameID(&ptr));
   uint8_t const *data = reinterpret_cast<uint8_t const *>(utf8.data());
   useUtf8String({data, data + utf8.size()});
 }
