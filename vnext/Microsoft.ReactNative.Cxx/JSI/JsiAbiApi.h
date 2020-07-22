@@ -185,6 +185,8 @@ struct JsiAbiRuntime : facebook::jsi::Runtime {
   bool strictEquals(const facebook::jsi::Object &a, const facebook::jsi::Object &b) const override;
   bool instanceOf(const facebook::jsi::Object &o, const facebook::jsi::Function &f) override;
 
+  void RethrowJsiError(hresult_error const &error) const;
+
  private: // Convert JSI to ABI-safe JSI values
   static JsiSymbolData const &AsJsiSymbolData(PointerValue const *pv) noexcept;
   static JsiStringData const &AsJsiStringData(PointerValue const *pv) noexcept;

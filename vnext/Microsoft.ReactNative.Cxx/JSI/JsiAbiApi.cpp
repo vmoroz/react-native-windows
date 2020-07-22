@@ -213,237 +213,371 @@ JsiAbiRuntime::~JsiAbiRuntime() {
   }
 }
 
-Value JsiAbiRuntime::evaluateJavaScript(const std::shared_ptr<const Buffer> &buffer, const std::string &sourceURL) {
+Value JsiAbiRuntime::evaluateJavaScript(const std::shared_ptr<const Buffer> &buffer, const std::string &sourceURL) try {
   return MakeValue(m_runtime.EvaluateJavaScript(winrt::make<JsiByteBufferWrapper>(buffer), to_hstring(sourceURL)));
+} catch (hresult_error const &error) {
+  RethrowJsiError(error);
+  throw;
 }
 
 std::shared_ptr<const PreparedJavaScript> JsiAbiRuntime::prepareJavaScript(
     const std::shared_ptr<const Buffer> &buffer,
-    std::string sourceURL) {
+    std::string sourceURL) try {
   return std::make_shared<JsiPreparedJavaScriptWrapper>(
       m_runtime.PrepareJavaScript(winrt::make<JsiByteBufferWrapper>(std::move(buffer)), to_hstring(sourceURL)));
+} catch (hresult_error const &error) {
+  RethrowJsiError(error);
+  throw;
 }
 
-Value JsiAbiRuntime::evaluatePreparedJavaScript(const std::shared_ptr<const PreparedJavaScript> &js) {
+Value JsiAbiRuntime::evaluatePreparedJavaScript(const std::shared_ptr<const PreparedJavaScript> &js) try {
   return MakeValue(
       m_runtime.EvaluatePreparedJavaScript(std::static_pointer_cast<JsiPreparedJavaScriptWrapper const>(js)->Get()));
+} catch (hresult_error const &error) {
+  RethrowJsiError(error);
+  throw;
 }
 
-Object JsiAbiRuntime::global() {
-  return MakeObject(m_runtime.Global());
+Object JsiAbiRuntime::global() try { return MakeObject(m_runtime.Global()); } catch (hresult_error const &error) {
+  RethrowJsiError(error);
+  throw;
 }
 
-std::string JsiAbiRuntime::description() {
+std::string JsiAbiRuntime::description() try {
   return to_string(m_runtime.Description());
+} catch (hresult_error const &error) {
+  RethrowJsiError(error);
+  throw;
 }
 
-bool JsiAbiRuntime::isInspectable() {
-  return m_runtime.IsInspectable();
+bool JsiAbiRuntime::isInspectable() try { return m_runtime.IsInspectable(); } catch (hresult_error const &error) {
+  RethrowJsiError(error);
+  throw;
 }
-
-Instrumentation &JsiAbiRuntime::instrumentation() {
+Instrumentation &JsiAbiRuntime::instrumentation() try {
   // TODO: implement
   VerifyElseCrash(false);
+} catch (hresult_error const &error) {
+  RethrowJsiError(error);
+  throw;
 }
 
-Runtime::PointerValue *JsiAbiRuntime::cloneSymbol(const Runtime::PointerValue *pv) {
+Runtime::PointerValue *JsiAbiRuntime::cloneSymbol(const Runtime::PointerValue *pv) try {
   return new SymbolPointerValue{make_weak(m_runtime), m_runtime.CloneSymbol(AsJsiSymbolData(pv))};
+} catch (hresult_error const &error) {
+  RethrowJsiError(error);
+  throw;
 }
 
-Runtime::PointerValue *JsiAbiRuntime::cloneString(const Runtime::PointerValue *pv) {
+Runtime::PointerValue *JsiAbiRuntime::cloneString(const Runtime::PointerValue *pv) try {
   return new StringPointerValue{make_weak(m_runtime), m_runtime.CloneString(AsJsiStringData(pv))};
+} catch (hresult_error const &error) {
+  RethrowJsiError(error);
+  throw;
 }
 
-Runtime::PointerValue *JsiAbiRuntime::cloneObject(const Runtime::PointerValue *pv) {
+Runtime::PointerValue *JsiAbiRuntime::cloneObject(const Runtime::PointerValue *pv) try {
   return new ObjectPointerValue{make_weak(m_runtime), m_runtime.CloneObject(AsJsiObjectData(pv))};
+} catch (hresult_error const &error) {
+  RethrowJsiError(error);
+  throw;
 }
 
-Runtime::PointerValue *JsiAbiRuntime::clonePropNameID(const Runtime::PointerValue *pv) {
+Runtime::PointerValue *JsiAbiRuntime::clonePropNameID(const Runtime::PointerValue *pv) try {
   return new PropNameIDPointerValue{make_weak(m_runtime), m_runtime.ClonePropertyNameId(AsJsiPropertyNameIdData(pv))};
+} catch (hresult_error const &error) {
+  RethrowJsiError(error);
+  throw;
 }
 
-PropNameID JsiAbiRuntime::createPropNameIDFromAscii(const char *str, size_t length) {
+PropNameID JsiAbiRuntime::createPropNameIDFromAscii(const char *str, size_t length) try {
   auto data = reinterpret_cast<uint8_t const *>(str);
   return MakePropNameID(m_runtime.CreatePropertyNameIdFromAscii({data, data + length}));
+} catch (hresult_error const &error) {
+  RethrowJsiError(error);
+  throw;
 }
 
-PropNameID JsiAbiRuntime::createPropNameIDFromUtf8(const uint8_t *utf8, size_t length) {
+PropNameID JsiAbiRuntime::createPropNameIDFromUtf8(const uint8_t *utf8, size_t length) try {
   return MakePropNameID(m_runtime.CreatePropertyNameIdFromUtf8({utf8, utf8 + length}));
+} catch (hresult_error const &error) {
+  RethrowJsiError(error);
+  throw;
 }
 
-PropNameID JsiAbiRuntime::createPropNameIDFromString(const String &str) {
+PropNameID JsiAbiRuntime::createPropNameIDFromString(const String &str) try {
   return MakePropNameID(m_runtime.CreatePropertyNameIdFromString(AsJsiStringData(str)));
+} catch (hresult_error const &error) {
+  RethrowJsiError(error);
+  throw;
 }
 
-std::string JsiAbiRuntime::utf8(const PropNameID &propertyNameId) {
+std::string JsiAbiRuntime::utf8(const PropNameID &propertyNameId) try {
   std::string result;
   m_runtime.PropertyNameIdToUtf8(AsJsiPropertyNameIdData(propertyNameId), [&result](array_view<uint8_t const> utf8) {
     result.assign(reinterpret_cast<char const *>(utf8.data()), utf8.size());
   });
   return result;
+} catch (hresult_error const &error) {
+  RethrowJsiError(error);
+  throw;
 }
 
-bool JsiAbiRuntime::compare(const PropNameID &left, const PropNameID &right) {
+bool JsiAbiRuntime::compare(const PropNameID &left, const PropNameID &right) try {
   return m_runtime.PropertyNameIdEquals(AsJsiPropertyNameIdData(left), AsJsiPropertyNameIdData(right));
+} catch (hresult_error const &error) {
+  RethrowJsiError(error);
+  throw;
 }
 
-std::string JsiAbiRuntime::symbolToString(const Symbol &symbol) {
+std::string JsiAbiRuntime::symbolToString(const Symbol &symbol) try {
   std::string result;
   m_runtime.SymbolToUtf8(AsJsiSymbolData(symbol), [&result](array_view<uint8_t const> utf8) {
     result.assign(reinterpret_cast<char const *>(utf8.data()), utf8.size());
   });
   return result;
+} catch (hresult_error const &error) {
+  RethrowJsiError(error);
+  throw;
 }
 
-String JsiAbiRuntime::createStringFromAscii(const char *str, size_t length) {
+String JsiAbiRuntime::createStringFromAscii(const char *str, size_t length) try {
   auto ascii = reinterpret_cast<uint8_t const *>(str);
   return MakeString(m_runtime.CreateStringFromAscii({ascii, ascii + length}));
+} catch (hresult_error const &error) {
+  RethrowJsiError(error);
+  throw;
 }
 
-String JsiAbiRuntime::createStringFromUtf8(const uint8_t *utf8, size_t length) {
+String JsiAbiRuntime::createStringFromUtf8(const uint8_t *utf8, size_t length) try {
   return MakeString(m_runtime.CreateStringFromAscii({utf8, utf8 + length}));
+} catch (hresult_error const &error) {
+  RethrowJsiError(error);
+  throw;
 }
 
-std::string JsiAbiRuntime::utf8(const String &str) {
+std::string JsiAbiRuntime::utf8(const String &str) try {
   std::string result;
   m_runtime.StringToUtf8(AsJsiStringData(str), [&result](array_view<uint8_t const> utf8) {
     result.assign(reinterpret_cast<char const *>(utf8.data()), utf8.size());
   });
   return result;
+} catch (hresult_error const &error) {
+  RethrowJsiError(error);
+  throw;
 }
 
-Value JsiAbiRuntime::createValueFromJsonUtf8(const uint8_t *json, size_t length) {
+Value JsiAbiRuntime::createValueFromJsonUtf8(const uint8_t *json, size_t length) try {
   return MakeValue(m_runtime.CreateValueFromJsonUtf8({json, json + length}));
+} catch (hresult_error const &error) {
+  RethrowJsiError(error);
+  throw;
 }
 
-Object JsiAbiRuntime::createObject() {
+Object JsiAbiRuntime::createObject() try {
   return MakeObject(m_runtime.CreateObject());
+} catch (hresult_error const &error) {
+  RethrowJsiError(error);
+  throw;
 }
 
-Object JsiAbiRuntime::createObject(std::shared_ptr<HostObject> ho) {
+Object JsiAbiRuntime::createObject(std::shared_ptr<HostObject> ho) try {
   auto hostObjectWrapper = winrt::make<JsiHostObjectWrapper>(std::move(ho));
   Object result = MakeObject(m_runtime.CreateObjectWithHostObject(hostObjectWrapper));
   JsiHostObjectWrapper::RegisterHostObject(AsJsiObjectData(result), get_self<JsiHostObjectWrapper>(hostObjectWrapper));
   return result;
+} catch (hresult_error const &error) {
+  RethrowJsiError(error);
+  throw;
 }
 
-std::shared_ptr<HostObject> JsiAbiRuntime::getHostObject(const Object &obj) {
+std::shared_ptr<HostObject> JsiAbiRuntime::getHostObject(const Object &obj) try {
   return JsiHostObjectWrapper::GetHostObject(AsJsiObjectData(obj));
+} catch (hresult_error const &error) {
+  RethrowJsiError(error);
+  throw;
 }
 
-HostFunctionType &JsiAbiRuntime::getHostFunction(const Function &func) {
+HostFunctionType &JsiAbiRuntime::getHostFunction(const Function &func) try {
   return JsiHostFunctionWrapper::GetHostFunction(AsJsiFunctionData(func));
+} catch (hresult_error const &error) {
+  RethrowJsiError(error);
+  throw;
 }
 
-Value JsiAbiRuntime::getProperty(const Object &obj, const PropNameID &name) {
+Value JsiAbiRuntime::getProperty(const Object &obj, const PropNameID &name) try {
   return MakeValue(m_runtime.GetPropertyById(AsJsiObjectData(obj), AsJsiPropertyNameIdData(name)));
+} catch (hresult_error const &error) {
+  RethrowJsiError(error);
+  throw;
 }
 
-Value JsiAbiRuntime::getProperty(const Object &obj, const String &name) {
+Value JsiAbiRuntime::getProperty(const Object &obj, const String &name) try {
   return MakeValue(m_runtime.GetPropertyByName(AsJsiObjectData(obj), AsJsiStringData(name)));
+} catch (hresult_error const &error) {
+  RethrowJsiError(error);
+  throw;
 }
 
-bool JsiAbiRuntime::hasProperty(const Object &obj, const PropNameID &name) {
+bool JsiAbiRuntime::hasProperty(const Object &obj, const PropNameID &name) try {
   return m_runtime.HasPropertyById(AsJsiObjectData(obj), AsJsiPropertyNameIdData(name));
+} catch (hresult_error const &error) {
+  RethrowJsiError(error);
+  throw;
 }
 
-bool JsiAbiRuntime::hasProperty(const Object &obj, const String &name) {
+bool JsiAbiRuntime::hasProperty(const Object &obj, const String &name) try {
   return m_runtime.HasPropertyByName(AsJsiObjectData(obj), AsJsiStringData(name));
+} catch (hresult_error const &error) {
+  RethrowJsiError(error);
+  throw;
 }
 
-void JsiAbiRuntime::setPropertyValue(Object &obj, const PropNameID &name, const Value &value) {
+void JsiAbiRuntime::setPropertyValue(Object &obj, const PropNameID &name, const Value &value) try {
   m_runtime.SetPropertyById(AsJsiObjectData(obj), AsJsiPropertyNameIdData(name), AsJsiValueData(value));
+} catch (hresult_error const &error) {
+  RethrowJsiError(error);
+  throw;
 }
 
-void JsiAbiRuntime::setPropertyValue(Object &obj, const String &name, const Value &value) {
+void JsiAbiRuntime::setPropertyValue(Object &obj, const String &name, const Value &value) try {
   m_runtime.SetPropertyByName(AsJsiObjectData(obj), AsJsiStringData(name), AsJsiValueData(value));
+} catch (hresult_error const &error) {
+  RethrowJsiError(error);
+  throw;
 }
 
-bool JsiAbiRuntime::isArray(const Object &obj) const {
+bool JsiAbiRuntime::isArray(const Object &obj) const try {
   return m_runtime.IsArray(AsJsiObjectData(obj));
+} catch (hresult_error const &error) {
+  RethrowJsiError(error);
+  throw;
 }
 
-bool JsiAbiRuntime::isArrayBuffer(const Object &obj) const {
+bool JsiAbiRuntime::isArrayBuffer(const Object &obj) const try {
   return m_runtime.IsArrayBuffer(AsJsiObjectData(obj));
+} catch (hresult_error const &error) {
+  RethrowJsiError(error);
+  throw;
 }
 
-bool JsiAbiRuntime::isFunction(const Object &obj) const {
+bool JsiAbiRuntime::isFunction(const Object &obj) const try {
   return m_runtime.IsFunction(AsJsiObjectData(obj));
+} catch (hresult_error const &error) {
+  RethrowJsiError(error);
+  throw;
 }
 
-bool JsiAbiRuntime::isHostObject(const Object &obj) const {
+bool JsiAbiRuntime::isHostObject(const Object &obj) const try {
   return m_runtime.IsHostObject(AsJsiObjectData(obj));
+} catch (hresult_error const &error) {
+  RethrowJsiError(error);
+  throw;
 }
 
-bool JsiAbiRuntime::isHostFunction(const Function &func) const {
+bool JsiAbiRuntime::isHostFunction(const Function &func) const try {
   return JsiHostFunctionWrapper::IsHostFunction(AsJsiFunctionData(func));
+} catch (hresult_error const &error) {
+  RethrowJsiError(error);
+  throw;
 }
 
-Array JsiAbiRuntime::getPropertyNames(const Object &obj) {
+Array JsiAbiRuntime::getPropertyNames(const Object &obj) try {
   return MakeArray(m_runtime.GetPropertyNames(AsJsiObjectData(obj)));
+} catch (hresult_error const &error) {
+  RethrowJsiError(error);
+  throw;
 }
 
-WeakObject JsiAbiRuntime::createWeakObject(const Object &obj) {
+WeakObject JsiAbiRuntime::createWeakObject(const Object &obj) try {
   return MakeWeakObject(m_runtime.CreateWeakObject(AsJsiObjectData(obj)));
+} catch (hresult_error const &error) {
+  RethrowJsiError(error);
+  throw;
 }
 
-Value JsiAbiRuntime::lockWeakObject(const WeakObject &weakObj) {
+Value JsiAbiRuntime::lockWeakObject(const WeakObject &weakObj) try {
   return MakeValue(m_runtime.LockWeakObject(AsJsiWeakObjectData(weakObj)));
+} catch (hresult_error const &error) {
+  RethrowJsiError(error);
+  throw;
 }
 
-Array JsiAbiRuntime::createArray(size_t length) {
+Array JsiAbiRuntime::createArray(size_t length) try {
   return MakeArray(m_runtime.CreateArray(static_cast<uint32_t>(length)));
+} catch (hresult_error const &error) {
+  RethrowJsiError(error);
+  throw;
 }
 
-size_t JsiAbiRuntime::size(const Array &arr) {
+size_t JsiAbiRuntime::size(const Array &arr) try {
   return m_runtime.GetArraySize(AsJsiArrayData(arr));
+} catch (hresult_error const &error) {
+  RethrowJsiError(error);
+  throw;
 }
 
-size_t JsiAbiRuntime::size(const ArrayBuffer &arrayBuffer) {
+size_t JsiAbiRuntime::size(const ArrayBuffer &arrayBuffer) try {
   return m_runtime.GetArrayBufferSize(AsJsiArrayBufferData(arrayBuffer));
+} catch (hresult_error const &error) {
+  RethrowJsiError(error);
+  throw;
 }
 
-uint8_t *JsiAbiRuntime::data(const ArrayBuffer &arrayBuffer) {
+uint8_t *JsiAbiRuntime::data(const ArrayBuffer &arrayBuffer) try {
   uint8_t *result{};
   m_runtime.GetArrayBufferData(AsJsiArrayBufferData(arrayBuffer), [&result](array_view<uint8_t const> dataView) {
     result = const_cast<uint8_t *>(dataView.data());
   });
   return result;
+} catch (hresult_error const &error) {
+  RethrowJsiError(error);
+  throw;
 }
 
-Value JsiAbiRuntime::getValueAtIndex(const Array &arr, size_t i) {
+Value JsiAbiRuntime::getValueAtIndex(const Array &arr, size_t i) try {
   return MakeValue(m_runtime.GetValueAtIndex(AsJsiArrayData(arr), static_cast<uint32_t>(i)));
+} catch (hresult_error const &error) {
+  RethrowJsiError(error);
+  throw;
 }
 
-void JsiAbiRuntime::setValueAtIndexImpl(Array &arr, size_t i, const Value &value) {
+void JsiAbiRuntime::setValueAtIndexImpl(Array &arr, size_t i, const Value &value) try {
   m_runtime.SetValueAtIndex(AsJsiArrayData(arr), static_cast<uint32_t>(i), AsJsiValueData(value));
+} catch (hresult_error const &error) {
+  RethrowJsiError(error);
+  throw;
 }
 
-Function
-JsiAbiRuntime::createFunctionFromHostFunction(const PropNameID &name, unsigned int paramCount, HostFunctionType func) {
+Function JsiAbiRuntime::createFunctionFromHostFunction(
+    const PropNameID &name,
+    unsigned int paramCount,
+    HostFunctionType func) try {
   uint32_t functionId = JsiHostFunctionWrapper::GetNextFunctionId();
   Function result = MakeFunction(m_runtime.CreateFunctionFromHostFunction(
       AsJsiPropertyNameIdData(name), paramCount, JsiHostFunctionWrapper(std::move(func), functionId)));
   JsiHostFunctionWrapper::RegisterHostFunction(functionId, AsJsiFunctionData(result));
   return result;
+} catch (hresult_error const &error) {
+  RethrowJsiError(error);
+  throw;
 }
 
-Value JsiAbiRuntime::call(const Function &func, const Value &jsThis, const Value *args, size_t count) {
+Value JsiAbiRuntime::call(const Function &func, const Value &jsThis, const Value *args, size_t count) try {
   VerifyElseCrashSz(count <= MaxCallArgCount, "Argument count must not exceed the supported max arg count.");
   std::array<JsiValueData, MaxCallArgCount> argsData;
   for (size_t i = 0; i < count; ++i) {
     argsData[i] = AsJsiValueData(*(args + i));
   }
 
-  try {
-    return MakeValue(
-        m_runtime.Call(AsJsiFunctionData(func), AsJsiValueData(jsThis), {argsData.data(), argsData.data() + count}));
-  } catch (...) {
-    throw JSError(*this, "An error");
-  }
+  return MakeValue(
+      m_runtime.Call(AsJsiFunctionData(func), AsJsiValueData(jsThis), {argsData.data(), argsData.data() + count}));
+} catch (hresult_error const &error) {
+  RethrowJsiError(error);
+  throw;
 }
 
-Value JsiAbiRuntime::callAsConstructor(const Function &func, const Value *args, size_t count) {
+Value JsiAbiRuntime::callAsConstructor(const Function &func, const Value *args, size_t count) try {
   VerifyElseCrashSz(count <= MaxCallArgCount, "Argument count must not exceed the supported max arg count.");
   std::array<JsiValueData, MaxCallArgCount> argsData;
   for (size_t i = 0; i < count; ++i) {
@@ -451,30 +585,58 @@ Value JsiAbiRuntime::callAsConstructor(const Function &func, const Value *args, 
   }
 
   return MakeValue(m_runtime.CallAsConstructor(AsJsiFunctionData(func), {argsData.data(), argsData.data() + count}));
+} catch (hresult_error const &error) {
+  RethrowJsiError(error);
+  throw;
 }
 
-Runtime::ScopeState *JsiAbiRuntime::pushScope() {
+Runtime::ScopeState *JsiAbiRuntime::pushScope() try {
   return reinterpret_cast<ScopeState *>(m_runtime.PushScope().Data);
+} catch (hresult_error const &error) {
+  RethrowJsiError(error);
+  throw;
 }
 
-void JsiAbiRuntime::popScope(ScopeState *scope) {
+void JsiAbiRuntime::popScope(ScopeState *scope) try {
   m_runtime.PopScope({reinterpret_cast<uint64_t>(scope)});
+} catch (hresult_error const &error) {
+  RethrowJsiError(error);
+  throw;
 }
 
-bool JsiAbiRuntime::strictEquals(const Symbol &a, const Symbol &b) const {
+bool JsiAbiRuntime::strictEquals(const Symbol &a, const Symbol &b) const try {
   return m_runtime.SymbolStrictEquals(AsJsiSymbolData(a), AsJsiSymbolData(b));
+} catch (hresult_error const &error) {
+  RethrowJsiError(error);
+  throw;
 }
 
-bool JsiAbiRuntime::strictEquals(const String &a, const String &b) const {
+bool JsiAbiRuntime::strictEquals(const String &a, const String &b) const try {
   return m_runtime.StringStrictEquals(AsJsiStringData(a), AsJsiStringData(b));
+} catch (hresult_error const &error) {
+  RethrowJsiError(error);
+  throw;
 }
 
-bool JsiAbiRuntime::strictEquals(const Object &a, const Object &b) const {
+bool JsiAbiRuntime::strictEquals(const Object &a, const Object &b) const try {
   return m_runtime.ObjectStrictEquals(AsJsiObjectData(a), AsJsiObjectData(b));
+} catch (hresult_error const &error) {
+  RethrowJsiError(error);
+  throw;
 }
 
-bool JsiAbiRuntime::instanceOf(const Object &o, const Function &f) {
+bool JsiAbiRuntime::instanceOf(const Object &o, const Function &f) try {
   return m_runtime.InstanceOf(AsJsiObjectData(o), AsJsiFunctionData(f));
+} catch (hresult_error const &error) {
+  RethrowJsiError(error);
+  throw;
+}
+
+void JsiAbiRuntime::RethrowJsiError(hresult_error const & /*error*/) const {
+  // TODO: implement
+  // if ((JsiErrorInfo errorInfo = m_runtime.GetAndRemoveErrorInfo())) {
+
+  //}
 }
 
 //===========================================================================
