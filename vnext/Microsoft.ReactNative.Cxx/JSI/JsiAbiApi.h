@@ -187,6 +187,9 @@ struct JsiAbiRuntime : facebook::jsi::Runtime {
 
   void RethrowJsiError() const;
 
+  void SetJsiError(facebook::jsi::JSError const &jsError) noexcept;
+  void SetJsiError(std::exception const &nativeException) noexcept;
+
  private: // Convert JSI to ABI-safe JSI values
   static JsiSymbolData const &AsJsiSymbolData(PointerValue const *pv) noexcept;
   static JsiStringData const &AsJsiStringData(PointerValue const *pv) noexcept;

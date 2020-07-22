@@ -9,6 +9,18 @@ using namespace facebook::jsi;
 
 namespace winrt::Microsoft::ReactNative {
 
+// The macro to simplify recording JSI exceptions.
+// It looks strange to keep the normal structure of the try/catch in code.
+#define JSI_RUNTIME_SET_ERROR(runtime)                            \
+facebook::jsi::JSError const &jsError) {                          \
+    JsiAbiRuntime::FromJsiRuntime(runtime)->SetJsiError(jsError); \
+    throw;                                                        \
+  }                                                               \
+  catch (std::exception const &ex) {                              \
+    JsiAbiRuntime::FromJsiRuntime(runtime)->SetJsiError(ex);      \
+    throw;                                                        \
+  } catch (...
+
 //===========================================================================
 // AbiJSError implementation
 //===========================================================================
@@ -81,22 +93,26 @@ JsiHostObjectWrapper::~JsiHostObjectWrapper() noexcept {
   }
 }
 
-JsiValueData JsiHostObjectWrapper::GetProperty(JsiRuntime const &runtime, JsiPropertyNameIdData const &name) {
+JsiValueData JsiHostObjectWrapper::GetProperty(JsiRuntime const &runtime, JsiPropertyNameIdData const &name) try {
   JsiAbiRuntime *rt = JsiAbiRuntime::FromJsiRuntime(runtime);
   JsiAbiRuntime::PropNameIDRef nameRef{name};
   return JsiAbiRuntime::MakeJsiValueData(m_hostObject->get(*rt, nameRef));
+} catch (JSI_RUNTIME_SET_ERROR(runtime)) {
+  throw;
 }
 
 void JsiHostObjectWrapper::SetProperty(
     JsiRuntime const &runtime,
     JsiPropertyNameIdData const &name,
-    JsiValueData const &value) {
+    JsiValueData const &value) try {
   JsiAbiRuntime *rt = JsiAbiRuntime::FromJsiRuntime(runtime);
   m_hostObject->set(*rt, JsiAbiRuntime::PropNameIDRef{name}, JsiAbiRuntime::ValueRef(value));
+} catch (JSI_RUNTIME_SET_ERROR(runtime)) {
+  throw;
 }
 
 Windows::Foundation::Collections::IVector<JsiPropertyNameIdData> JsiHostObjectWrapper::GetPropertyNames(
-    JsiRuntime const &runtime) {
+    JsiRuntime const &runtime) try {
   JsiAbiRuntime *rt = JsiAbiRuntime::FromJsiRuntime(runtime);
   auto names = m_hostObject->getPropertyNames(*rt);
   std::vector<JsiPropertyNameIdData> result;
@@ -106,6 +122,8 @@ Windows::Foundation::Collections::IVector<JsiPropertyNameIdData> JsiHostObjectWr
   }
 
   return winrt::single_threaded_vector<JsiPropertyNameIdData>(std::move(result));
+} catch (JSI_RUNTIME_SET_ERROR(runtime)) {
+  throw;
 }
 
 /*static*/ void JsiHostObjectWrapper::RegisterHostObject(
@@ -667,6 +685,17 @@ void JsiAbiRuntime::RethrowJsiError() const {
   } else {
     throw AbiJSINativeException{std::move(jsiError)};
   }
+}
+
+void JsiAbiRuntime::SetJsiError(facebook::jsi::JSError const &jsError) noexcept {
+  m_runtime.SetError(JsiErrorType::JSError, to_hstring(jsError.what()), AsJsiValueData(jsError.value()));
+}
+
+void JsiAbiRuntime::SetJsiError(std::exception const &nativeException) noexcept {
+  m_runtime.SetError(
+      JsiErrorType::NativeException,
+      to_hstring(nativeException.what()),
+      AsJsiValueData(facebook::jsi::Value::undefined()));
 }
 
 //===========================================================================

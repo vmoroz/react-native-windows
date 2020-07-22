@@ -211,5 +211,6 @@ namespace Microsoft.ReactNative
     void ReleasePropertyNameId(JsiPropertyNameIdData propertyNameId);
 
     JsiError GetAndRemoveError();
+    void SetError(JsiErrorType errorType, String what, JsiValueData value);
   };
 }

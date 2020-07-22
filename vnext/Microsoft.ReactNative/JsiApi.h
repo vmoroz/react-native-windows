@@ -38,6 +38,8 @@ struct JsiError : JsiErrorT<JsiError> {
   hstring Stack() noexcept;
   JsiValueData Value() noexcept;
 
+  void RethrowError();
+
  private:
   JsiErrorType const m_errorType;
   std::optional<facebook::jsi::JSError> const m_jsError;
@@ -118,6 +120,8 @@ struct JsiRuntime : JsiRuntimeT<JsiRuntime> {
   void ReleasePropertyNameId(JsiPropertyNameIdData const &propertyNameId);
 
   ReactNative::JsiError GetAndRemoveError() noexcept;
+  void SetError(JsiErrorType errorType, hstring const& what, JsiValueData const & value) noexcept;
+  static void RethrowJsiError(facebook::jsi::Runtime& runtime);
 
  private:
   void SetError(facebook::jsi::JSError const &jsError) noexcept;

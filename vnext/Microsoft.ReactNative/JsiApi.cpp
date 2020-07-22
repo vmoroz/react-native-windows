@@ -29,7 +29,7 @@ struct HostObjectWrapper : facebook::jsi::HostObject {
 
   facebook::jsi::Value get(facebook::jsi::Runtime &runtime, const facebook::jsi::PropNameID &name) override;
   void set(facebook::jsi::Runtime &, const facebook::jsi::PropNameID &name, const facebook::jsi::Value &value) override;
-  std::vector<facebook::jsi::PropNameID> getPropertyNames(facebook::jsi::Runtime &runtime) noexcept override;
+  std::vector<facebook::jsi::PropNameID> getPropertyNames(facebook::jsi::Runtime &runtime) override;
 
   Microsoft::ReactNative::IJsiHostObject const &Get() const noexcept {
     return m_hostObject;
@@ -193,20 +193,26 @@ static facebook::jsi::HostFunctionType MakeHostFunction(Microsoft::ReactNative::
 HostObjectWrapper::HostObjectWrapper(Microsoft::ReactNative::IJsiHostObject const &hostObject) noexcept
     : m_hostObject{hostObject} {}
 
-facebook::jsi::Value HostObjectWrapper::get(facebook::jsi::Runtime &runtime, facebook::jsi::PropNameID const &name) {
+facebook::jsi::Value HostObjectWrapper::get(facebook::jsi::Runtime &runtime, facebook::jsi::PropNameID const &name) try {
   ReactNative::JsiRuntime jsiRuntime = JsiRuntime::FromRuntime(runtime);
   return ToValue(m_hostObject.GetProperty(jsiRuntime, ToJsiPropertyNameIdData(name)));
+} catch (hresult_error const &) {
+  JsiRuntime::RethrowJsiError(runtime);
+  throw;
 }
 
 void HostObjectWrapper::set(
     facebook::jsi::Runtime &runtime,
     facebook::jsi::PropNameID const &name,
-    facebook::jsi::Value const &value) {
+    facebook::jsi::Value const &value) try {
   ReactNative::JsiRuntime jsiRuntime = JsiRuntime::FromRuntime(runtime);
   m_hostObject.SetProperty(jsiRuntime, ToJsiPropertyNameIdData(name), ToJsiValueData(value));
+} catch (hresult_error const &) {
+  JsiRuntime::RethrowJsiError(runtime);
+  throw;
 }
 
-std::vector<facebook::jsi::PropNameID> HostObjectWrapper::getPropertyNames(facebook::jsi::Runtime &runtime) noexcept {
+std::vector<facebook::jsi::PropNameID> HostObjectWrapper::getPropertyNames(facebook::jsi::Runtime &runtime) try {
   std::vector<facebook::jsi::PropNameID> result;
   ReactNative::JsiRuntime jsiRuntime = JsiRuntime::FromRuntime(runtime);
   auto names = m_hostObject.GetPropertyNames(jsiRuntime);
@@ -223,7 +229,11 @@ std::vector<facebook::jsi::PropNameID> HostObjectWrapper::getPropertyNames(faceb
   }
 
   return result;
+} catch (hresult_error const &) {
+  JsiRuntime::RethrowJsiError(runtime);
+  throw;
 }
+
 
 //===========================================================================
 // JsiError implementation
@@ -268,6 +278,14 @@ JsiValueData JsiError::Value() noexcept {
     return ToJsiValueData(m_jsError->value());
   } else {
     return {JsiValueKind::Undefined, 0};
+  }
+}
+
+void JsiError::RethrowError() {
+  if (m_errorType == JsiErrorType::JSError) {
+    throw *m_jsError;
+  } else {
+    throw *m_nativeException;
   }
 }
 
@@ -742,6 +760,16 @@ ReactNative::JsiError JsiRuntime::GetAndRemoveError() noexcept {
   return result;
 }
 
+void JsiRuntime::SetError(JsiErrorType errorType, hstring const &what, JsiValueData const &value) noexcept {
+  std::scoped_lock lock{m_mutex};
+  if (errorType == JsiErrorType::JSError) {
+    m_error = make<JsiError>(
+        facebook::jsi::JSError{to_string(what), *m_runtime, facebook::jsi::Value{*m_runtime, *AsValue(value)}});
+  } else {
+    m_error = make<JsiError>(facebook::jsi::JSINativeException{to_string(what)});
+  }
+}
+
 void JsiRuntime::SetError(facebook::jsi::JSError const &jsError) noexcept {
   std::scoped_lock lock{m_mutex};
   m_error = make<JsiError>(Mso::Copy(jsError));
@@ -750,6 +778,13 @@ void JsiRuntime::SetError(facebook::jsi::JSError const &jsError) noexcept {
 void JsiRuntime::SetError(facebook::jsi::JSINativeException const &nativeException) noexcept {
   std::scoped_lock lock{m_mutex};
   m_error = make<JsiError>(Mso::Copy(nativeException));
+}
+
+/*static*/ void JsiRuntime::RethrowJsiError(facebook::jsi::Runtime &runtime) {
+  ReactNative::JsiRuntime jsiRuntime = JsiRuntime::FromRuntime(runtime);
+  if (auto abiError = jsiRuntime.GetAndRemoveError()) {
+    get_self<JsiError>(abiError)->RethrowError();
+  }
 }
 
 } // namespace winrt::Microsoft::ReactNative::implementation
