@@ -185,7 +185,7 @@ struct JsiAbiRuntime : facebook::jsi::Runtime {
   bool strictEquals(const facebook::jsi::Object &a, const facebook::jsi::Object &b) const override;
   bool instanceOf(const facebook::jsi::Object &o, const facebook::jsi::Function &f) override;
 
-  void RethrowJsiError(hresult_error const &error) const;
+  void RethrowJsiError() const;
 
  private: // Convert JSI to ABI-safe JSI values
   static JsiSymbolData const &AsJsiSymbolData(PointerValue const *pv) noexcept;
@@ -224,6 +224,8 @@ struct JsiAbiRuntime : facebook::jsi::Runtime {
   // Allow access to the helper function
   friend struct JsiHostObjectWrapper;
   friend struct JsiHostFunctionWrapper;
+  friend struct AbiJSError;
+  friend struct AbiJSINativeException;
 
  private: // PointerValue structures
   struct DataPointerValue : PointerValue {

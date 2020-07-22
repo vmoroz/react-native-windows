@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "JsiError.g.h"
 #include "JsiPreparedJavaScript.g.h"
 #include "JsiRuntime.g.h"
 #include <unordered_map>
@@ -24,6 +25,24 @@ class Pointer;
 } // namespace facebook::jsi
 
 namespace winrt::Microsoft::ReactNative::implementation {
+
+struct JsiError : JsiErrorT<JsiError> {
+  JsiError() = default;
+
+  JsiError(facebook::jsi::JSError &&jsError) noexcept;
+  JsiError(facebook::jsi::JSINativeException &&nativeException) noexcept;
+
+  JsiErrorType ErrorType() noexcept;
+  hstring What() noexcept;
+  hstring Message() noexcept;
+  hstring Stack() noexcept;
+  JsiValueData Value() noexcept;
+
+ private:
+  JsiErrorType const m_errorType;
+  std::optional<facebook::jsi::JSError> const m_jsError;
+  std::optional<facebook::jsi::JSINativeException> const m_nativeException;
+};
 
 struct JsiRuntime : JsiRuntimeT<JsiRuntime> {
   JsiRuntime(
@@ -98,9 +117,17 @@ struct JsiRuntime : JsiRuntimeT<JsiRuntime> {
   void ReleaseObject(JsiObjectData const &obj);
   void ReleasePropertyNameId(JsiPropertyNameIdData const &propertyNameId);
 
+  ReactNative::JsiError GetAndRemoveError() noexcept;
+
+ private:
+  void SetError(facebook::jsi::JSError const &jsError) noexcept;
+  void SetError(facebook::jsi::JSINativeException const &nativeException) noexcept;
+
  private:
   std::shared_ptr<::Microsoft::JSI::ChakraRuntimeHolder> m_runtimeHolder;
   std::shared_ptr<facebook::jsi::Runtime> m_runtime;
+  std::mutex m_mutex;
+  ReactNative::JsiError m_error{nullptr};
 
   static std::mutex s_mutex;
   static std::map<uintptr_t, winrt::weak_ref<ReactNative::JsiRuntime>> s_jsiRuntimeMap;
