@@ -908,8 +908,8 @@ facebook::jsi::Value ChakraRuntime::HostObjectOwnKeysTrap(
   auto ownKeys = hostObject->getPropertyNames(chakraRuntime);
 
   std::set<std::string> dedupedOwnKeys{};
-  for (size_t i = 0; i < ownKeys.size(); ++i) {
-    dedupedOwnKeys.insert(ownKeys[i].utf8(chakraRuntime));
+  for (const auto &ownKey : ownKeys) {
+    dedupedOwnKeys.insert(ownKey.utf8(chakraRuntime));
   }
 
   size_t numKeys = dedupedOwnKeys.size();
@@ -917,8 +917,7 @@ facebook::jsi::Value ChakraRuntime::HostObjectOwnKeysTrap(
 
   size_t index = 0;
   for (const std::string &key : dedupedOwnKeys) {
-    result.setValueAtIndex(chakraRuntime, index, facebook::jsi::String::createFromUtf8(chakraRuntime, key));
-    ++index;
+    result.setValueAtIndex(chakraRuntime, index++, facebook::jsi::String::createFromUtf8(chakraRuntime, key));
   }
 
   return result;

@@ -206,8 +206,8 @@ struct JsiAbiRuntime : facebook::jsi::Runtime {
   static JsiArrayBufferData const &AsJsiArrayBufferData(facebook::jsi::ArrayBuffer const &arrayBuffer) noexcept;
   static JsiValueData AsJsiValueData(facebook::jsi::Value const &value) noexcept;
 
-  static JsiPropertyNameIdData MakeJsiPropertyNameIdData(facebook::jsi::PropNameID &&propertyId) noexcept;
-  static JsiValueData MakeJsiValueData(facebook::jsi::Value &&value) noexcept;
+  static JsiPropertyNameIdData DetachJsiPropertyNameIdData(facebook::jsi::PropNameID &&propertyId) noexcept;
+  static JsiValueData DetachJsiValueData(facebook::jsi::Value &&value) noexcept;
 
  private: // Convert ABI-safe JSI to JSI values
   PointerValue *MakeSymbolValue(JsiSymbolData &&symbol) const noexcept;

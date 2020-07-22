@@ -120,8 +120,8 @@ struct JsiRuntime : JsiRuntimeT<JsiRuntime> {
   void ReleasePropertyNameId(JsiPropertyNameIdData const &propertyNameId);
 
   ReactNative::JsiError GetAndRemoveError() noexcept;
-  void SetError(JsiErrorType errorType, hstring const& what, JsiValueData const & value) noexcept;
-  static void RethrowJsiError(facebook::jsi::Runtime& runtime);
+  void SetError(JsiErrorType errorType, hstring const &what, JsiValueData const &value) noexcept;
+  static void RethrowJsiError(facebook::jsi::Runtime &runtime);
 
  private:
   void SetError(facebook::jsi::JSError const &jsError) noexcept;

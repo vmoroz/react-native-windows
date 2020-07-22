@@ -100,9 +100,8 @@ static facebook::jsi::Value const *AsValue(JsiValueData const &data) noexcept {
 }
 
 static JsiValueData ToJsiValueData(facebook::jsi::Value const &value) noexcept {
-  return {
-      static_cast<JsiValueKind>(static_cast<int32_t>(value.kind_)),
-      *reinterpret_cast<uint64_t const *>(&value.data_.number)};
+  return {static_cast<JsiValueKind>(static_cast<int32_t>(value.kind_)),
+          *reinterpret_cast<uint64_t const *>(&value.data_.number)};
 }
 
 static JsiPropertyNameIdData ToJsiPropertyNameIdData(facebook::jsi::PropNameID const &propNameId) noexcept {
@@ -193,7 +192,9 @@ static facebook::jsi::HostFunctionType MakeHostFunction(Microsoft::ReactNative::
 HostObjectWrapper::HostObjectWrapper(Microsoft::ReactNative::IJsiHostObject const &hostObject) noexcept
     : m_hostObject{hostObject} {}
 
-facebook::jsi::Value HostObjectWrapper::get(facebook::jsi::Runtime &runtime, facebook::jsi::PropNameID const &name) try {
+facebook::jsi::Value HostObjectWrapper::get(
+    facebook::jsi::Runtime &runtime,
+    facebook::jsi::PropNameID const &name) try {
   ReactNative::JsiRuntime jsiRuntime = JsiRuntime::FromRuntime(runtime);
   return ToValue(m_hostObject.GetProperty(jsiRuntime, ToJsiPropertyNameIdData(name)));
 } catch (hresult_error const &) {
@@ -233,7 +234,6 @@ std::vector<facebook::jsi::PropNameID> HostObjectWrapper::getPropertyNames(faceb
   JsiRuntime::RethrowJsiError(runtime);
   throw;
 }
-
 
 //===========================================================================
 // JsiError implementation

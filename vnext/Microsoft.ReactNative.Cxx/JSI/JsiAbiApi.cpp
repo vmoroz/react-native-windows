@@ -27,8 +27,9 @@ facebook::jsi::JSError const &jsError) {                          \
 
 struct AbiJSError : facebook::jsi::JSError {
   AbiJSError(JsiAbiRuntime &rt, JsiError &&jsiError) noexcept
-      : facebook::jsi::
-            JSError{to_string(jsiError.What()), rt, facebook::jsi::Value(rt, JsiAbiRuntime::ValueRef(jsiError.Value()))},
+      : facebook::jsi::JSError{to_string(jsiError.What()),
+                               rt,
+                               facebook::jsi::Value(rt, JsiAbiRuntime::ValueRef(jsiError.Value()))},
         m_jsiError{std::move(jsiError)} {}
 
  private:
@@ -96,7 +97,7 @@ JsiHostObjectWrapper::~JsiHostObjectWrapper() noexcept {
 JsiValueData JsiHostObjectWrapper::GetProperty(JsiRuntime const &runtime, JsiPropertyNameIdData const &name) try {
   JsiAbiRuntime *rt = JsiAbiRuntime::FromJsiRuntime(runtime);
   JsiAbiRuntime::PropNameIDRef nameRef{name};
-  return JsiAbiRuntime::MakeJsiValueData(m_hostObject->get(*rt, nameRef));
+  return JsiAbiRuntime::DetachJsiValueData(m_hostObject->get(*rt, nameRef));
 } catch (JSI_RUNTIME_SET_ERROR(runtime)) {
   throw;
 }
@@ -118,7 +119,7 @@ Windows::Foundation::Collections::IVector<JsiPropertyNameIdData> JsiHostObjectWr
   std::vector<JsiPropertyNameIdData> result;
   result.reserve(names.size());
   for (auto &name : names) {
-    result.push_back(JsiAbiRuntime::MakeJsiPropertyNameIdData(std::move(name)));
+    result.push_back(JsiAbiRuntime::DetachJsiPropertyNameIdData(std::move(name)));
   }
 
   return winrt::single_threaded_vector<JsiPropertyNameIdData>(std::move(result));
@@ -192,13 +193,11 @@ JsiHostFunctionWrapper::~JsiHostFunctionWrapper() noexcept {
   }
 }
 
-JsiValueData JsiHostFunctionWrapper::operator()(
-    JsiRuntime const &runtime,
-    JsiValueData const &thisArg,
-    array_view<JsiValueData const> args) {
+JsiValueData JsiHostFunctionWrapper::
+operator()(JsiRuntime const &runtime, JsiValueData const &thisArg, array_view<JsiValueData const> args) {
   JsiAbiRuntime *rt = JsiAbiRuntime::FromJsiRuntime(runtime);
   JsiAbiRuntime::ValueRefArray valueRefArgs{args};
-  return JsiAbiRuntime::MakeJsiValueData(
+  return JsiAbiRuntime::DetachJsiValueData(
       m_hostFunction(*rt, JsiAbiRuntime::ValueRef{thisArg}, valueRefArgs.Data(), valueRefArgs.Size()));
 }
 
@@ -767,14 +766,15 @@ void JsiAbiRuntime::SetJsiError(std::exception const &nativeException) noexcept 
   }
 }
 
-/*static*/ JsiPropertyNameIdData JsiAbiRuntime::MakeJsiPropertyNameIdData(PropNameID &&propertyId) noexcept {
-  auto ptr = reinterpret_cast<Runtime::PointerValue **>(&propertyId);
-  return {reinterpret_cast<uint64_t>(std::exchange(*ptr, nullptr))};
+/*static*/ JsiPropertyNameIdData JsiAbiRuntime::DetachJsiPropertyNameIdData(PropNameID &&propertyId) noexcept {
+  // This method detaches JsiPropertyNameIdData from the PropNameID.
+  // It lets the PropNameIDPointerValue destructor run, but it must not destroy the underlying JS engine object.
+  return PropNameIDPointerValue::Detach(getPointerValue(propertyId));
 }
 
-/*static*/ JsiValueData JsiAbiRuntime::MakeJsiValueData(facebook::jsi::Value &&value) noexcept {
+/*static*/ JsiValueData JsiAbiRuntime::DetachJsiValueData(facebook::jsi::Value &&value) noexcept {
   // Here we should move data from Value to JsiValueData.
-  // For Pointer types it means that we should allow running the Pointer
+  // For Pointer types it means that we should allow running the PointerValue
   // destructor, but it must not call the Release method to keep the underlying
   // data alive. Thus, we must detach the value.
   // We assume that the JsiValueData and Value have the same layout.
@@ -842,7 +842,7 @@ Value JsiAbiRuntime::MakeValue(JsiValueData &&value) const noexcept {
     case JsiValueKind::Null:
       return Value(nullptr);
     case JsiValueKind::Boolean:
-      return Value(value.Data != 0);
+      return Value(reinterpret_cast<Value *>(&value)->getBool());
     case JsiValueKind::Number:
       return Value(*reinterpret_cast<double *>(&value.Data));
     case JsiValueKind::Symbol:
@@ -909,6 +909,8 @@ void JsiAbiRuntime::StringPointerValue::invalidate() {
       runtime.ReleaseString({m_data});
     }
   }
+
+  delete this;
 }
 
 /*static*/ JsiStringData const &JsiAbiRuntime::StringPointerValue::GetData(PointerValue const *pv) noexcept {
@@ -935,6 +937,8 @@ void JsiAbiRuntime::ObjectPointerValue::invalidate() {
       runtime.ReleaseObject({m_data});
     }
   }
+
+  delete this;
 }
 
 /*static*/ JsiObjectData const &JsiAbiRuntime::ObjectPointerValue::GetData(PointerValue const *pv) noexcept {
@@ -961,6 +965,8 @@ void JsiAbiRuntime::PropNameIDPointerValue::invalidate() {
       runtime.ReleasePropertyNameId({m_data});
     }
   }
+
+  delete this;
 }
 
 /*static*/ JsiPropertyNameIdData const &JsiAbiRuntime::PropNameIDPointerValue::GetData(
