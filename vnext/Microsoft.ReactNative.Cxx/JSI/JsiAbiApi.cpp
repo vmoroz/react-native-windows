@@ -43,7 +43,7 @@ JsiPreparedJavaScript const &JsiPreparedJavaScriptWrapper::Get() const noexcept 
 //===========================================================================
 
 /*static*/ std::mutex JsiHostObjectWrapper::s_mutex;
-/*static*/ std::unordered_map<uint64_t, JsiHostObjectWrapper *> JsiHostObjectWrapper::s_objectDataToObjectWrapper;
+/*static*/ std::map<uint64_t, JsiHostObjectWrapper *> JsiHostObjectWrapper::s_objectDataToObjectWrapper;
 
 JsiHostObjectWrapper::JsiHostObjectWrapper(std::shared_ptr<HostObject> &&hostObject) noexcept
     : m_hostObject(std::move(hostObject)) {}
@@ -55,23 +55,24 @@ JsiHostObjectWrapper::~JsiHostObjectWrapper() noexcept {
   }
 }
 
-JsiValueData JsiHostObjectWrapper::GetProperty(IJsiRuntime const &runtime, JsiPropertyNameIdData const &name) {
-  JsiAbiRuntime rt{runtime};
-  return JsiAbiRuntime::MakeJsiValueData(m_hostObject->get(rt, JsiAbiRuntime::PropNameIDRef{name}));
+JsiValueData JsiHostObjectWrapper::GetProperty(JsiRuntime const &runtime, JsiPropertyNameIdData const &name) {
+  JsiAbiRuntime *rt = JsiAbiRuntime::FromJsiRuntime(runtime);
+  JsiAbiRuntime::PropNameIDRef nameRef{name};
+  return JsiAbiRuntime::MakeJsiValueData(m_hostObject->get(*rt, nameRef));
 }
 
 void JsiHostObjectWrapper::SetProperty(
-    IJsiRuntime const &runtime,
+    JsiRuntime const &runtime,
     JsiPropertyNameIdData const &name,
     JsiValueData const &value) {
-  JsiAbiRuntime rt{runtime};
-  m_hostObject->set(rt, JsiAbiRuntime::PropNameIDRef{name}, JsiAbiRuntime::ValueRef(value));
+  JsiAbiRuntime *rt = JsiAbiRuntime::FromJsiRuntime(runtime);
+  m_hostObject->set(*rt, JsiAbiRuntime::PropNameIDRef{name}, JsiAbiRuntime::ValueRef(value));
 }
 
 Windows::Foundation::Collections::IVector<JsiPropertyNameIdData> JsiHostObjectWrapper::GetPropertyNames(
-    IJsiRuntime const &runtime) {
-  JsiAbiRuntime rt{runtime};
-  auto names = m_hostObject->getPropertyNames(rt);
+    JsiRuntime const &runtime) {
+  JsiAbiRuntime *rt = JsiAbiRuntime::FromJsiRuntime(runtime);
+  auto names = m_hostObject->getPropertyNames(*rt);
   std::vector<JsiPropertyNameIdData> result;
   result.reserve(names.size());
   for (auto &name : names) {
@@ -110,9 +111,8 @@ Windows::Foundation::Collections::IVector<JsiPropertyNameIdData> JsiHostObjectWr
 
 /*static*/ std::mutex JsiHostFunctionWrapper::s_functionMutex;
 /*static*/ std::atomic<uint32_t> JsiHostFunctionWrapper::s_functionIdGenerator;
-/*static*/ std::unordered_map<uint32_t, JsiHostFunctionWrapper *> JsiHostFunctionWrapper::s_functionIdToFunctionWrapper;
-/*static*/ std::unordered_map<uint64_t, JsiHostFunctionWrapper *>
-    JsiHostFunctionWrapper::s_functionDataToFunctionWrapper;
+/*static*/ std::map<uint32_t, JsiHostFunctionWrapper *> JsiHostFunctionWrapper::s_functionIdToFunctionWrapper;
+/*static*/ std::map<uint64_t, JsiHostFunctionWrapper *> JsiHostFunctionWrapper::s_functionDataToFunctionWrapper;
 
 JsiHostFunctionWrapper::JsiHostFunctionWrapper(HostFunctionType &&hostFunction, uint32_t functionId) noexcept
     : m_hostFunction{std::move(hostFunction)}, m_functionId{functionId} {
@@ -149,11 +149,11 @@ JsiHostFunctionWrapper::~JsiHostFunctionWrapper() noexcept {
 }
 
 JsiValueData JsiHostFunctionWrapper::
-operator()(IJsiRuntime const &runtime, JsiValueData const &thisArg, array_view<JsiValueData const> args) {
-  auto rt{JsiAbiRuntime{runtime}};
+operator()(JsiRuntime const &runtime, JsiValueData const &thisArg, array_view<JsiValueData const> args) {
+  JsiAbiRuntime *rt = JsiAbiRuntime::FromJsiRuntime(runtime);
   JsiAbiRuntime::ValueRefArray valueRefArgs{args};
   return JsiAbiRuntime::MakeJsiValueData(
-      m_hostFunction(rt, JsiAbiRuntime::ValueRef{thisArg}, valueRefArgs.Data(), valueRefArgs.Size()));
+      m_hostFunction(*rt, JsiAbiRuntime::ValueRef{thisArg}, valueRefArgs.Data(), valueRefArgs.Size()));
 }
 
 /*static*/ uint32_t JsiHostFunctionWrapper::GetNextFunctionId() noexcept {
@@ -190,9 +190,28 @@ operator()(IJsiRuntime const &runtime, JsiValueData const &thisArg, array_view<J
 // JsiAbiRuntime implementation
 //===========================================================================
 
-JsiAbiRuntime::JsiAbiRuntime(IJsiRuntime const &runtime) noexcept : m_runtime{runtime} {}
+/*static*/ std::mutex JsiAbiRuntime::s_mutex;
+/*static*/ std::map<void *, JsiAbiRuntime *> JsiAbiRuntime::s_jsiAbiRuntimeMap;
 
-JsiAbiRuntime::~JsiAbiRuntime() = default;
+JsiAbiRuntime::JsiAbiRuntime(JsiRuntime const &runtime) noexcept : m_runtime{runtime} {
+  std::scoped_lock lock{s_mutex};
+  s_jsiAbiRuntimeMap.try_emplace(get_abi(runtime), this);
+}
+
+JsiAbiRuntime::~JsiAbiRuntime() {
+  std::scoped_lock lock{s_mutex};
+  s_jsiAbiRuntimeMap.erase(get_abi(m_runtime));
+}
+
+/*static*/ JsiAbiRuntime *JsiAbiRuntime::FromJsiRuntime(JsiRuntime const &jsiRuntime) noexcept {
+  std::scoped_lock lock{s_mutex};
+  auto it = s_jsiAbiRuntimeMap.find(get_abi(jsiRuntime));
+  if (it != s_jsiAbiRuntimeMap.end()) {
+    return it->second;
+  } else {
+    return nullptr;
+  }
+}
 
 Value JsiAbiRuntime::evaluateJavaScript(const std::shared_ptr<const Buffer> &buffer, const std::string &sourceURL) {
   return MakeValue(m_runtime.EvaluateJavaScript(winrt::make<JsiByteBufferWrapper>(buffer), to_hstring(sourceURL)));
@@ -416,8 +435,12 @@ Value JsiAbiRuntime::call(const Function &func, const Value &jsThis, const Value
     argsData[i] = AsJsiValueData(*(args + i));
   }
 
-  return MakeValue(
-      m_runtime.Call(AsJsiFunctionData(func), AsJsiValueData(jsThis), {argsData.data(), argsData.data() + count}));
+  try {
+    return MakeValue(
+        m_runtime.Call(AsJsiFunctionData(func), AsJsiValueData(jsThis), {argsData.data(), argsData.data() + count}));
+  } catch (...) {
+    throw JSError(*this, "An error");
+  }
 }
 
 Value JsiAbiRuntime::callAsConstructor(const Function &func, const Value *args, size_t count) {
@@ -616,7 +639,7 @@ Value JsiAbiRuntime::MakeValue(JsiValueData &&value) const noexcept {
 // JsiAbiRuntime::DataPointerValue implementation
 //===========================================================================
 
-JsiAbiRuntime::DataPointerValue::DataPointerValue(winrt::weak_ref<IJsiRuntime> &&weakRuntime, uint64_t data) noexcept
+JsiAbiRuntime::DataPointerValue::DataPointerValue(winrt::weak_ref<JsiRuntime> &&weakRuntime, uint64_t data) noexcept
     : m_data{data}, m_weakRuntime{std::move(weakRuntime)} {}
 
 JsiAbiRuntime::DataPointerValue::DataPointerValue(uint64_t data) noexcept : m_data{data} {}
@@ -628,7 +651,7 @@ void JsiAbiRuntime::DataPointerValue::invalidate() {}
 //===========================================================================
 
 JsiAbiRuntime::SymbolPointerValue::SymbolPointerValue(
-    winrt::weak_ref<IJsiRuntime> &&weakRuntime,
+    winrt::weak_ref<JsiRuntime> &&weakRuntime,
     JsiSymbolData &&symbol) noexcept
     : DataPointerValue{std::move(weakRuntime), std::exchange(symbol.Data, 0)} {}
 
@@ -654,7 +677,7 @@ void JsiAbiRuntime::SymbolPointerValue::invalidate() {
 //===========================================================================
 
 JsiAbiRuntime::StringPointerValue::StringPointerValue(
-    winrt::weak_ref<IJsiRuntime> &&weakRuntime,
+    winrt::weak_ref<JsiRuntime> &&weakRuntime,
     JsiStringData &&str) noexcept
     : DataPointerValue{std::move(weakRuntime), std::exchange(str.Data, 0)} {}
 
@@ -680,7 +703,7 @@ void JsiAbiRuntime::StringPointerValue::invalidate() {
 //===========================================================================
 
 JsiAbiRuntime::ObjectPointerValue::ObjectPointerValue(
-    winrt::weak_ref<IJsiRuntime> &&weakRuntime,
+    winrt::weak_ref<JsiRuntime> &&weakRuntime,
     JsiObjectData &&obj) noexcept
     : DataPointerValue{std::move(weakRuntime), std::exchange(obj.Data, 0)} {}
 
@@ -706,7 +729,7 @@ void JsiAbiRuntime::ObjectPointerValue::invalidate() {
 //===========================================================================
 
 JsiAbiRuntime::PropNameIDPointerValue::PropNameIDPointerValue(
-    winrt::weak_ref<IJsiRuntime> &&weakRuntime,
+    winrt::weak_ref<JsiRuntime> &&weakRuntime,
     JsiPropertyNameIdData &&propertyId) noexcept
     : DataPointerValue{std::move(weakRuntime), std::exchange(propertyId.Data, 0)} {}
 

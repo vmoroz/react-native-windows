@@ -5,6 +5,7 @@
 
 #include "JsiPreparedJavaScript.g.h"
 #include "JsiRuntime.g.h"
+#include <unordered_map>
 #include "winrt/Microsoft.ReactNative.h"
 
 // facebook::jsi::Runtime hides all methods that we need to call.
@@ -28,6 +29,9 @@ struct JsiRuntime : JsiRuntimeT<JsiRuntime> {
   JsiRuntime(
       std::shared_ptr<::Microsoft::JSI::ChakraRuntimeHolder> runtimeHolder,
       std::shared_ptr<facebook::jsi::Runtime> runtime) noexcept;
+  ~JsiRuntime() noexcept;
+
+  static ReactNative::JsiRuntime FromRuntime(facebook::jsi::Runtime &runtime) noexcept;
 
  public: // JsiRuntime
   static Microsoft::ReactNative::JsiRuntime MakeChakraRuntime();
@@ -97,6 +101,9 @@ struct JsiRuntime : JsiRuntimeT<JsiRuntime> {
  private:
   std::shared_ptr<::Microsoft::JSI::ChakraRuntimeHolder> m_runtimeHolder;
   std::shared_ptr<facebook::jsi::Runtime> m_runtime;
+
+  static std::mutex s_mutex;
+  static std::map<uintptr_t, winrt::weak_ref<ReactNative::JsiRuntime>> s_jsiRuntimeMap;
 };
 
 } // namespace winrt::Microsoft::ReactNative::implementation

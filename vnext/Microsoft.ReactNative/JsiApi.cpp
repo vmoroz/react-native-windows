@@ -192,41 +192,53 @@ HostObjectWrapper::HostObjectWrapper(Microsoft::ReactNative::IJsiHostObject cons
     : m_hostObject{hostObject} {}
 
 facebook::jsi::Value HostObjectWrapper::get(facebook::jsi::Runtime &runtime, facebook::jsi::PropNameID const &name) {
-  // TODO: map between JsiRuntime and Runtime
-  return facebook::jsi::Value();
-  // ToValue(      m_hostObject.GetProperty(make<JsiRuntime>(runtime), ToJsiPropertyNameIdData(name)));
+  ReactNative::JsiRuntime jsiRuntime = JsiRuntime::FromRuntime(runtime);
+  return ToValue(m_hostObject.GetProperty(jsiRuntime, ToJsiPropertyNameIdData(name)));
 }
 
 void HostObjectWrapper::set(
     facebook::jsi::Runtime &runtime,
     facebook::jsi::PropNameID const &name,
     facebook::jsi::Value const &value) {
-  // TODO: map between JsiRuntime and Runtime
-  // m_hostObject.SetProperty(make<JsiRuntime>(runtime), ToJsiPropertyNameIdData(name), ToJsiValueData(value));
+  ReactNative::JsiRuntime jsiRuntime = JsiRuntime::FromRuntime(runtime);
+  m_hostObject.SetProperty(jsiRuntime, ToJsiPropertyNameIdData(name), ToJsiValueData(value));
 }
 
 std::vector<facebook::jsi::PropNameID> HostObjectWrapper::getPropertyNames(facebook::jsi::Runtime &runtime) noexcept {
   std::vector<facebook::jsi::PropNameID> result;
-  // TODO: map between JsiRuntime and Runtime
-  // auto names = m_hostObject.GetPropertyNames(make<JsiRuntime>(runtime));
-  // result.reserve(names.Size());
-  // constexpr uint32_t bufferSize = 200;
-  // JsiPropertyNameIdData nameBuffer[bufferSize];
-  // for (uint32_t startIndex = 0; startIndex < names.Size(); startIndex += bufferSize) {
-  //  names.GetMany(startIndex, nameBuffer);
-  //  size_t bufferLength = std::min(bufferSize, names.Size() - startIndex);
-  //  for (size_t i = 0; i < bufferLength; ++i) {
-  //    result.emplace_back(reinterpret_cast<facebook::jsi::Runtime::PointerValue *>(nameBuffer[i].Data));
-  //  }
-  //}
+  ReactNative::JsiRuntime jsiRuntime = JsiRuntime::FromRuntime(runtime);
+  auto names = m_hostObject.GetPropertyNames(jsiRuntime);
+  result.reserve(names.Size());
+  constexpr uint32_t bufferSize = 200;
+  JsiPropertyNameIdData nameBuffer[bufferSize];
+  for (uint32_t startIndex = 0; startIndex < names.Size(); startIndex += bufferSize) {
+    names.GetMany(startIndex, nameBuffer);
+    size_t bufferLength = std::min(bufferSize, names.Size() - startIndex);
+    for (size_t i = 0; i < bufferLength; ++i) {
+      auto ptr = reinterpret_cast<facebook::jsi::Runtime::PointerValue *>(nameBuffer[i].Data);
+      result.emplace_back(std::move(*reinterpret_cast<facebook::jsi::PropNameID *>(&ptr)));
+    }
+  }
 
-  // return result;
-  return {};
+  return result;
 }
 
 //===========================================================================
 // JsiRuntime implementation
 //===========================================================================
+
+/*static*/ std::mutex JsiRuntime::s_mutex;
+/*static*/ std::map<uintptr_t, weak_ref<ReactNative::JsiRuntime>> JsiRuntime::s_jsiRuntimeMap;
+
+/*static*/ ReactNative::JsiRuntime JsiRuntime::FromRuntime(facebook::jsi::Runtime &runtime) noexcept {
+  std::scoped_lock lock{s_mutex};
+  auto it = s_jsiRuntimeMap.find(reinterpret_cast<uintptr_t>(&runtime));
+  if (it != s_jsiRuntimeMap.end()) {
+    return it->second.get();
+  } else {
+    return nullptr;
+  }
+}
 
 ReactNative::JsiRuntime JsiRuntime::MakeChakraRuntime() {
   auto jsDispatchQueue = Mso::DispatchQueue::MakeLooperQueue();
@@ -236,13 +248,21 @@ ReactNative::JsiRuntime JsiRuntime::MakeChakraRuntime() {
   auto runtimeHolder = std::make_shared<::Microsoft::JSI::ChakraRuntimeHolder>(
       std::move(devSettings), std::move(jsThread), nullptr, nullptr);
   auto runtime = runtimeHolder->getRuntime();
-  return make<JsiRuntime>(std::move(runtimeHolder), std::move(runtime));
+  ReactNative::JsiRuntime result{make<JsiRuntime>(std::move(runtimeHolder), runtime)};
+  std::scoped_lock lock{s_mutex};
+  s_jsiRuntimeMap.try_emplace(reinterpret_cast<uintptr_t>(runtime.get()), result);
+  return result;
 }
 
 JsiRuntime::JsiRuntime(
     std::shared_ptr<::Microsoft::JSI::ChakraRuntimeHolder> runtimeHolder,
     std::shared_ptr<facebook::jsi::Runtime> runtime) noexcept
     : m_runtimeHolder{std::move(runtimeHolder)}, m_runtime{std::move(runtime)} {}
+
+JsiRuntime::~JsiRuntime() noexcept {
+  std::scoped_lock lock{s_mutex};
+  s_jsiRuntimeMap.erase(reinterpret_cast<uintptr_t>(m_runtime.get()));
+}
 
 JsiValueData JsiRuntime::EvaluateJavaScript(IJsiByteBuffer const &buffer, hstring const &sourceUrl) {
   facebook::jsi::Value result;
