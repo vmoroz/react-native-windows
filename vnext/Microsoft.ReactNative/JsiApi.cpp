@@ -349,7 +349,11 @@ JsiRuntime::~JsiRuntime() noexcept {
 JsiValueData JsiRuntime::EvaluateJavaScript(IJsiByteBuffer const &buffer, hstring const &sourceUrl) try {
   facebook::jsi::Value result;
   buffer.GetData([this, &result, &sourceUrl](array_view<uint8_t const> bytes) {
-    result = m_runtime->evaluateJavaScript(std::make_shared<JsiBufferWrapper>(bytes), to_string(sourceUrl));
+    try {
+      result = m_runtime->evaluateJavaScript(std::make_shared<JsiBufferWrapper>(bytes), to_string(sourceUrl));
+    } catch (JSI_SET_ERROR) {
+      throw;
+    }
   });
   return MakeJsiValueData(std::move(result));
 } catch (JSI_SET_ERROR) {
@@ -361,8 +365,12 @@ ReactNative::JsiPreparedJavaScript JsiRuntime::PrepareJavaScript(
     hstring const &sourceUrl) try {
   ReactNative::JsiPreparedJavaScript result{nullptr};
   buffer.GetData([this, &result, &sourceUrl](array_view<uint8_t const> bytes) {
-    result = make<JsiPreparedJavaScript>(
-        m_runtime->prepareJavaScript(std::make_shared<JsiBufferWrapper>(bytes), to_string(sourceUrl)));
+    try {
+      result = make<JsiPreparedJavaScript>(
+          m_runtime->prepareJavaScript(std::make_shared<JsiBufferWrapper>(bytes), to_string(sourceUrl)));
+    } catch (JSI_SET_ERROR) {
+      throw;
+    }
   });
   return result;
 } catch (JSI_SET_ERROR) {

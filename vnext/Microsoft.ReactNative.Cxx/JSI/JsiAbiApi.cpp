@@ -52,16 +52,23 @@ struct AbiJSINativeException : facebook::jsi::JSINativeException {
 // JsiBufferWrapper implementation
 //===========================================================================
 
-JsiByteBufferWrapper::JsiByteBufferWrapper(std::shared_ptr<Buffer const> const &buffer) noexcept : m_buffer{buffer} {}
+JsiByteBufferWrapper::JsiByteBufferWrapper(
+    JsiRuntime const &runtime,
+    std::shared_ptr<Buffer const> const &buffer) noexcept
+    : m_runtime{runtime}, m_buffer{buffer} {}
 
 JsiByteBufferWrapper::~JsiByteBufferWrapper() = default;
 
-uint32_t JsiByteBufferWrapper::Size() {
+uint32_t JsiByteBufferWrapper::Size() try {
   return static_cast<uint32_t>(m_buffer->size());
+} catch (JSI_RUNTIME_SET_ERROR(m_runtime)) {
+  throw;
 }
 
-void JsiByteBufferWrapper::GetData(JsiByteArrayUser const &useBytes) {
+void JsiByteBufferWrapper::GetData(JsiByteArrayUser const &useBytes) try {
   useBytes(winrt::array_view<uint8_t const>{m_buffer->data(), m_buffer->data() + m_buffer->size()});
+} catch (JSI_RUNTIME_SET_ERROR(m_runtime)) {
+  throw;
 }
 
 //===========================================================================
@@ -261,7 +268,8 @@ JsiAbiRuntime::~JsiAbiRuntime() {
 }
 
 Value JsiAbiRuntime::evaluateJavaScript(const std::shared_ptr<const Buffer> &buffer, const std::string &sourceURL) try {
-  return MakeValue(m_runtime.EvaluateJavaScript(winrt::make<JsiByteBufferWrapper>(buffer), to_hstring(sourceURL)));
+  return MakeValue(
+      m_runtime.EvaluateJavaScript(winrt::make<JsiByteBufferWrapper>(m_runtime, buffer), to_hstring(sourceURL)));
 } catch (hresult_error const &) {
   RethrowJsiError();
   throw;
@@ -270,8 +278,8 @@ Value JsiAbiRuntime::evaluateJavaScript(const std::shared_ptr<const Buffer> &buf
 std::shared_ptr<const PreparedJavaScript> JsiAbiRuntime::prepareJavaScript(
     const std::shared_ptr<const Buffer> &buffer,
     std::string sourceURL) try {
-  return std::make_shared<JsiPreparedJavaScriptWrapper>(
-      m_runtime.PrepareJavaScript(winrt::make<JsiByteBufferWrapper>(std::move(buffer)), to_hstring(sourceURL)));
+  return std::make_shared<JsiPreparedJavaScriptWrapper>(m_runtime.PrepareJavaScript(
+      winrt::make<JsiByteBufferWrapper>(m_runtime, std::move(buffer)), to_hstring(sourceURL)));
 } catch (hresult_error const &) {
   RethrowJsiError();
   throw;

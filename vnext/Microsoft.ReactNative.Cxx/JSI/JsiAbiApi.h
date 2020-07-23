@@ -20,12 +20,13 @@ struct JsiAbiRuntime;
 
 // An ABI-safe wrapper for facebook::jsi::Buffer.
 struct JsiByteBufferWrapper : implements<JsiByteBufferWrapper, IJsiByteBuffer> {
-  JsiByteBufferWrapper(std::shared_ptr<facebook::jsi::Buffer const> const &buffer) noexcept;
+  JsiByteBufferWrapper(JsiRuntime const &runtime, std::shared_ptr<facebook::jsi::Buffer const> const &buffer) noexcept;
   ~JsiByteBufferWrapper() noexcept;
   uint32_t Size();
   void GetData(JsiByteArrayUser const &useBytes);
 
  private:
+  JsiRuntime m_runtime;
   std::shared_ptr<facebook::jsi::Buffer const> m_buffer;
 };
 
@@ -225,6 +226,7 @@ struct JsiAbiRuntime : facebook::jsi::Runtime {
   facebook::jsi::Value MakeValue(JsiValueData &&value) const noexcept;
 
   // Allow access to the helper function
+  friend struct JsiByteBufferWrapper;
   friend struct JsiHostObjectWrapper;
   friend struct JsiHostFunctionWrapper;
   friend struct AbiJSError;
