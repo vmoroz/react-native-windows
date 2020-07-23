@@ -194,11 +194,13 @@ JsiHostFunctionWrapper::~JsiHostFunctionWrapper() noexcept {
 }
 
 JsiValueData JsiHostFunctionWrapper::
-operator()(JsiRuntime const &runtime, JsiValueData const &thisArg, array_view<JsiValueData const> args) {
+operator()(JsiRuntime const &runtime, JsiValueData const &thisArg, array_view<JsiValueData const> args) try {
   JsiAbiRuntime *rt = JsiAbiRuntime::FromJsiRuntime(runtime);
   JsiAbiRuntime::ValueRefArray valueRefArgs{args};
   return JsiAbiRuntime::DetachJsiValueData(
       m_hostFunction(*rt, JsiAbiRuntime::ValueRef{thisArg}, valueRefArgs.Data(), valueRefArgs.Size()));
+} catch (JSI_RUNTIME_SET_ERROR(runtime)) {
+  throw;
 }
 
 /*static*/ uint32_t JsiHostFunctionWrapper::GetNextFunctionId() noexcept {

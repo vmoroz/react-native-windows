@@ -172,16 +172,20 @@ static facebook::jsi::Value &&ToValue(JsiValueData &&value) noexcept {
 }
 
 static facebook::jsi::HostFunctionType MakeHostFunction(Microsoft::ReactNative::JsiHostFunction const &hostFunc) {
-  // TODO: implement runtime mapping
   // TODO: implement host function mapping
   return [hostFunc](
              facebook::jsi::Runtime &runtime,
              facebook::jsi::Value const &thisVal,
              facebook::jsi::Value const *args,
              size_t count) -> facebook::jsi::Value {
-    auto argsData = reinterpret_cast<JsiValueData const *>(args);
-    return facebook::jsi::Value();
-    // ToValue(hostFunc(make<JsiRuntime>(runtime), *AsJsiValueData(&thisVal), {argsData, argsData + count}));
+    try {
+      ReactNative::JsiRuntime jsiRuntime = JsiRuntime::FromRuntime(runtime);
+      auto argsData = reinterpret_cast<JsiValueData const *>(args);
+      return ToValue(hostFunc(jsiRuntime, ToJsiValueData(thisVal), {argsData, argsData + count}));
+    } catch (hresult_error const &) {
+      JsiRuntime::RethrowJsiError(runtime);
+      throw;
+    }
   };
 }
 
@@ -503,7 +507,8 @@ IJsiHostObject JsiRuntime::GetHostObject(JsiObjectData obj) try {
   throw;
 }
 
-JsiHostFunction JsiRuntime::GetHostFunction(JsiFunctionData /*func*/) try {
+JsiHostFunction JsiRuntime::GetHostFunction(JsiFunctionData func) try {
+  auto funcPtr = AsPointerValue(func);
   // auto hostFunction = m_runtime->getHostFunction(AsFunction(func));
   // TODO: implement mapping
   return nullptr;

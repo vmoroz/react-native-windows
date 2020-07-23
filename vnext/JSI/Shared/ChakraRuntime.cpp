@@ -516,7 +516,7 @@ void ChakraRuntime::setValueAtIndexImpl(facebook::jsi::Array &arr, size_t index,
 
 facebook::jsi::Function ChakraRuntime::createFunctionFromHostFunction(
     const facebook::jsi::PropNameID &name,
-    unsigned int /*paramCount*/,
+    unsigned int paramCount,
     facebook::jsi::HostFunctionType func) {
   std::unique_ptr<HostFunctionProxy> hostFuncProxyWrapper = std::make_unique<HostFunctionProxy>(std::move(func), *this);
 
@@ -541,6 +541,19 @@ facebook::jsi::Function ChakraRuntime::createFunctionFromHostFunction(
   // JsSetObjectBeforeCollectCallback fails and an exception is thrown,
   // the HostFunctionProxy that hostFuncProxyWrapper used to own will be leaked.
   hostFuncProxyWrapper.release();
+
+  // Set the function length
+  JsPropertyIdRef lengthPropertyId;
+  VerifyJsErrorElseThrow(JsGetPropertyIdFromName(L"length", &lengthPropertyId));
+  JsValueRef lengthPropertyDescriptor;
+  VerifyJsErrorElseThrow(JsCreateObject(&lengthPropertyDescriptor));
+  JsPropertyIdRef valuePropertyId;
+  VerifyJsErrorElseThrow(JsGetPropertyIdFromName(L"value", &valuePropertyId));
+  JsValueRef lengthValue;
+  VerifyJsErrorElseThrow(JsIntToNumber(paramCount, &lengthValue));
+  VerifyJsErrorElseThrow(JsSetProperty(lengthPropertyDescriptor, valuePropertyId, lengthValue, true));
+  bool result;
+  VerifyJsErrorElseThrow(JsDefineProperty(funcRef, lengthPropertyId, lengthPropertyDescriptor, &result));
 
   facebook::jsi::Object hostFuncObj = MakePointer<facebook::jsi::Object>(funcRef);
 
