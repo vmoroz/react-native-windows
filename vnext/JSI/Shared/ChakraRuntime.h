@@ -154,6 +154,7 @@ class ChakraRuntime : public facebook::jsi::Runtime {
   }
 
  private:
+  void RewriteErrorMessage(JsValueRef jsError);
   void VerifyJsErrorElseThrow(JsErrorCode error);
 
   // ChakraPointerValue is needed for working with Facebook's jsi::Pointer class

@@ -632,6 +632,28 @@ bool ChakraRuntime::instanceOf(const facebook::jsi::Object &obj, const facebook:
 
 #pragma endregion Functions_inherited_from_Runtime
 
+// Rewrite some error messages
+void ChakraRuntime::RewriteErrorMessage(JsValueRef jsError) {
+  JsPropertyIdRef messagePropertyId;
+  VerifyChakraErrorElseThrow(JsGetPropertyIdFromName(L"message", &messagePropertyId));
+  JsValueRef message;
+  VerifyChakraErrorElseThrow(JsGetProperty(jsError, messagePropertyId, &message));
+  JsValueType valueType;
+  VerifyChakraErrorElseThrow(JsGetValueType(message, &valueType));
+  if (valueType == JsValueType::JsString) {
+    wchar_t const *messageStr;
+    size_t messageLength;
+    VerifyChakraErrorElseThrow(JsStringToPointer(message, &messageStr, &messageLength));
+    // JSI unit tests expect V8 or JSC like message on stack overflow.
+    if (std::wstring_view{L"Out of stack space"} == std::wstring_view{messageStr, messageLength}) {
+      JsValueRef newMessage;
+      std::wstring_view newMessageView{L"RangeError : Maximum call stack size exceeded"};
+      VerifyChakraErrorElseThrow(JsPointerToString(newMessageView.data(), newMessageView.size(), &newMessage));
+      VerifyChakraErrorElseThrow(JsSetProperty(jsError, messagePropertyId, newMessage, true));
+    }
+  }
+}
+
 void ChakraRuntime::VerifyJsErrorElseThrow(JsErrorCode error) {
   switch (error) {
     case JsNoError: {
@@ -642,6 +664,7 @@ void ChakraRuntime::VerifyJsErrorElseThrow(JsErrorCode error) {
     case JsErrorScriptException: {
       JsValueRef jsError;
       VerifyChakraErrorElseThrow(JsGetAndClearException(&jsError));
+      RewriteErrorMessage(jsError);
       throw facebook::jsi::JSError("", *this, ToJsiValue(ChakraObjectRef(jsError)));
       break;
     }
