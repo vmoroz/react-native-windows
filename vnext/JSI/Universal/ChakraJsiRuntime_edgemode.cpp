@@ -81,7 +81,7 @@ bool ChakraRuntime::evaluateSerializedScript(
   } else if (ret == JsErrorBadSerializedScript) {
     return false;
   } else {
-    VerifyChakraErrorElseThrow(ret);
+    VerifyJsErrorElseThrow(ret);
     return true;
   }
 }
