@@ -101,7 +101,7 @@
   <ItemGroup>
     <ClCompile Include="$(ReactNativeWindowsDir)JSI\Universal\ChakraJsiRuntime_edgemode.cpp" />
     <ClCompile Include="ChakraEdgeRuntimeTests.cpp" />
-    <ClCompile Include="Main.cpp" />
+    <ClCompile Include="TestMain.cpp" />
     <ClCompile Include="$(JSI_SourcePath)\jsi\jsi.cpp" />
     <ClCompile Include="$(JSI_SourcePath)\jsi\test\testlib.cpp" />
     <ClCompile Include="$(ReactNativeWindowsDir)Common\Unicode.cpp" />
@@ -110,9 +110,7 @@
     <ClInclude Include="$(JSI_SourcePath)\jsi\jsi.h" />
     <ClInclude Include="$(JSI_SourcePath)\jsi\jsi-inl.h" />
     <ClInclude Include="$(JSI_SourcePath)\jsi\test\testlib.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="packages.config" />
+    <ClInclude Include="$(ReactNativeWindowsDir)Common\Unicode.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
