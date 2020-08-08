@@ -29,60 +29,20 @@ inline void VerifyChakraErrorElseCrash(JsErrorCode error) {
 void VerifyChakraErrorElseThrow(JsErrorCode error);
 
 /**
- * @brief An shared_ptr like RAII Wrapper for JsRefs.
- *
- * JsRefs are references to objects owned by the garbage collector and include
- * JsContextRef, JsValueRef, and JsPropertyIdRef, etc. ChakraObjectRef ensures
- * that JsAddRef and JsRelease are called upon initialization and invalidation,
- * respectively. It also allows users to implicitly convert it into a JsRef. A
- * ChakraObjectRef must only be initialized once and invalidated once.
- */
-class ChakraObjectRef {
- public:
-  ChakraObjectRef() noexcept {}
-  inline explicit ChakraObjectRef(JsRef ref) {
-    Initialize(ref);
-  }
-
-  ChakraObjectRef(const ChakraObjectRef &original) noexcept;
-  ChakraObjectRef(ChakraObjectRef &&original) noexcept;
-
-  ChakraObjectRef &operator=(const ChakraObjectRef &rhs) noexcept;
-  ChakraObjectRef &operator=(ChakraObjectRef &&rhs) noexcept;
-
-  ~ChakraObjectRef() noexcept;
-
-  void Initialize(JsRef ref);
-  void Invalidate();
-
-  inline operator JsRef() const noexcept {
-    return m_ref;
-  }
-
- private:
-  void Swap(ChakraObjectRef &other);
-
-  enum class State { Uninitialized, Initialized, Invalidated };
-
-  JsRef m_ref = JS_INVALID_REFERENCE;
-  State m_state = State::Uninitialized;
-};
-
-/**
  * @param jsValue A ChakraObjectRef managing a JsValueRef.
  */
-JsValueType GetValueType(const ChakraObjectRef &jsValue);
+JsValueType GetValueType(JsValueRef value);
 
 /**
  * @param jsPropId A ChakraObjectRef managing a JsPropertyIdRef.
  */
-JsPropertyIdType GetPropertyIdType(const ChakraObjectRef &jsPropId);
+JsPropertyIdType GetPropertyIdType(JsPropertyIdRef propertyId);
 
 /**
  * @param jsPropId A ChakraObjectRef managing a JsPropertyIdRef of type
  * JsPropertyIdTypeString.
  */
-std::wstring GetPropertyName(const ChakraObjectRef &jsPropId);
+std::wstring GetPropertyName(JsPropertyIdRef propertyId);
 
 /**
  * @param jsPropId A ChakraObjectRef managing a JsPropertyIdRef of type
@@ -90,21 +50,22 @@ std::wstring GetPropertyName(const ChakraObjectRef &jsPropId);
  *
  * @returns A ChakraObjectRef managing a JS Symbol.
  */
-ChakraObjectRef GetPropertySymbol(const ChakraObjectRef &jsPropId);
+JsValueRef GetPropertySymbol(JsPropertyIdRef propertyId);
 
 /**
  * @param utf8 A std::string_view to a UTF-8 encoded char array.
  *
  * @returns A ChakraObjectRef managing a JsPropertyIdRef.
  */
-ChakraObjectRef GetPropertyId(const std::string_view &utf8);
+JsPropertyIdRef GetPropertyId(std::string_view utf8);
 
 /**
  * @param utf16 A UTF-16 encoded std::wstring.
  *
  * @returns A ChakraObjectRef managing a JsPropertyIdRef.
  */
-ChakraObjectRef GetPropertyId(const std::wstring &utf16);
+//TODO: Should we remove it?
+JsPropertyIdRef GetPropertyId(std::wstring const &utf16);
 
 /**
  * @param jsString A ChakraObjectRef managing a JS string.
@@ -115,7 +76,8 @@ ChakraObjectRef GetPropertyId(const std::wstring &utf16);
  * std::string. When using Chakra instead of ChakraCore, this function incurs
  * a UTF-16 to UTF-8 conversion.
  */
-std::string ToStdString(const ChakraObjectRef &jsString);
+//TODO: Do we need it?
+std::string ToStdString(JsValueRef jsString);
 
 /**
  * @param jsString A ChakraObjectRef managing a JS string.
@@ -125,7 +87,8 @@ std::string ToStdString(const ChakraObjectRef &jsString);
  * @remarks This functions copies the JS string buffer into the returned
  * std::wstring.
  */
-std::wstring ToStdWstring(const ChakraObjectRef &jsString);
+// TODO: Do we need it?
+std::wstring ToStdWstring(JsValueRef jsString);
 
 /**
  * @param utf8 A std::string_view to a UTF-8 encoded char array.
@@ -136,7 +99,8 @@ std::wstring ToStdWstring(const ChakraObjectRef &jsString);
  * using Chakra instead of ChakraCore, this function incurs a UTF-8 to UTF-16
  * conversion.
  */
-ChakraObjectRef ToJsString(const std::string_view &utf8);
+// TODO: Rename
+JsValueRef ToJsString(std::string_view utf8);
 
 /**
  * @param utf16 A std::wstring_view to a UTF-16 encoded wchar_t array.
@@ -145,7 +109,8 @@ ChakraObjectRef ToJsString(const std::string_view &utf8);
  *
  * @remarks The content of utf16 is copied into JS engine owned memory.
  */
-ChakraObjectRef ToJsString(const std::wstring_view &utf16);
+// TODO: Rename
+JsValueRef ToJsString(std::wstring_view utf16);
 
 /**
  * @param jsValue A ChakraObjectRef managing a JsValueRef.
@@ -153,19 +118,22 @@ ChakraObjectRef ToJsString(const std::wstring_view &utf16);
  * @returns A ChakraObjectRef managing the return value of the JS .toString
  * function.
  */
-ChakraObjectRef ToJsString(const ChakraObjectRef &jsValue);
+//TODO: Rename
+JsValueRef ToJsString(JsValueRef jsValue);
 
 /**
  * @param jsNumber A ChakraObjectRef managing a JS number.
  *
  * @returns The value of jsNumber converted to an integer.
  */
-int ToInteger(const ChakraObjectRef &jsNumber);
+//TODO: Rename
+int ToInteger(JsValueRef jsNumber);
 
 /**
  * @returns A ChakraObjectRef managing a JS number.
  */
-ChakraObjectRef ToJsNumber(int num);
+// TODO: Rename
+JsValueRef ToJsNumber(int num);
 
 /**
  * @returns A ChakraObjectRef managing a JS ArrayBuffer.
@@ -173,7 +141,8 @@ ChakraObjectRef ToJsNumber(int num);
  * @remarks The returned ArrayBuffer is backed by buffer and keeps buffer alive
  * till the garbage collector finalizes it.
  */
-ChakraObjectRef ToJsArrayBuffer(const std::shared_ptr<const facebook::jsi::Buffer> &buffer);
+// TODO: Is it used?
+JsValueRef ToJsArrayBuffer(const std::shared_ptr<const facebook::jsi::Buffer> &buffer);
 
 /**
  * @returns A ChakraObjectRef managing a JS Object.
@@ -181,8 +150,9 @@ ChakraObjectRef ToJsArrayBuffer(const std::shared_ptr<const facebook::jsi::Buffe
  * @remarks The returned Object is backed by data and keeps data alive till the
  * garbage collector finalizes it.
  */
+//TODO: Remove - replace with the external object functionality
 template <typename T>
-ChakraObjectRef ToJsObject(const std::shared_ptr<T> &data) {
+JsValueRef ToJsObject(const std::shared_ptr<T> &data) {
   if (!data) {
     throw facebook::jsi::JSINativeException("Cannot create an external JS Object without backing data.");
   }
@@ -206,7 +176,7 @@ ChakraObjectRef ToJsObject(const std::shared_ptr<T> &data) {
   // Otherwise, when JsCreateExternalObject fails and an exception is thrown,
   // the memory that dataWrapper used to own will be leaked.
   dataWrapper.release();
-  return ChakraObjectRef(obj);
+  return obj;
 }
 
 /**
@@ -214,8 +184,9 @@ ChakraObjectRef ToJsObject(const std::shared_ptr<T> &data) {
  *
  * @returns The backing external data for object.
  */
+//TODO: simplify - make it non-template
 template <typename T>
-const std::shared_ptr<T> &GetExternalData(const ChakraObjectRef &object) {
+const std::shared_ptr<T> &GetExternalData(JsValueRef object) {
   void *data;
   VerifyChakraErrorElseThrow(JsGetExternalData(object, &data));
   return *static_cast<std::shared_ptr<T> *>(data);
@@ -228,7 +199,8 @@ const std::shared_ptr<T> &GetExternalData(const ChakraObjectRef &object) {
  * @returns A boolean indicating whether jsValue1 and jsValue2 are strictly
  * equal.
  */
-bool CompareJsValues(const ChakraObjectRef &jsValue1, const ChakraObjectRef &jsValue2);
+//TODO: rename to equals
+bool CompareJsValues(JsValueRef jsValue1, JsValueRef jsValue2);
 
 /**
  * @param jsPropId1 A ChakraObjectRef managing a JsPropertyIdRef.
@@ -237,13 +209,15 @@ bool CompareJsValues(const ChakraObjectRef &jsValue1, const ChakraObjectRef &jsV
  * @returns A boolean indicating whether jsPropId1 and jsPropId2 are strictly
  * equal.
  */
-bool CompareJsPropertyIds(const ChakraObjectRef &jsPropId1, const ChakraObjectRef &jsPropId2);
+// TODO: rename to equals
+bool CompareJsPropertyIds(JsValueRef jsPropId1, JsValueRef jsPropId2);
 
 /**
  * @brief Cause a JS Error to be thrown in the engine's current context.
  *
  * @param message The message of the JS Error thrown.
  */
+// TODO: review
 void ThrowJsException(const std::string_view &message);
 
 } // namespace Microsoft::JSI
