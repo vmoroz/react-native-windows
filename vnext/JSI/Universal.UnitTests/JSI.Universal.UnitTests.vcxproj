@@ -42,6 +42,9 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
   </ImportGroup>
+  <ImportGroup Label="Shared">
+    <Import Project="..\Shared\JSI.Shared.vcxitems" Label="Shared" />
+  </ImportGroup>
   <ImportGroup Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
@@ -51,10 +54,21 @@
       <WarningLevel>Level4</WarningLevel>
       <ConformanceMode>true</ConformanceMode>
       <CallingConvention>Cdecl</CallingConvention>
+      <AdditionalIncludeDirectories>
+        $(JSI_SourcePath);
+        $(ReactNativeDir)\ReactCommon;
+        $(ReactNativeWindowsDir);
+        $(ReactNativeWindowsDir)Common;
+        $(ReactNativeWindowsDir)Shared;
+        %(AdditionalIncludeDirectories)
+      </AdditionalIncludeDirectories>
+      <!-- Required by JSI unit tests -->
+      <RuntimeTypeInfo>true</RuntimeTypeInfo>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateWindowsMetadata>false</GenerateWindowsMetadata>
+      <AdditionalDependencies>ChakraRT.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)'=='Debug'">
@@ -85,7 +99,17 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="$(ReactNativeWindowsDir)JSI\Universal\ChakraJsiRuntime_edgemode.cpp" />
+    <ClCompile Include="ChakraEdgeRuntimeTests.cpp" />
     <ClCompile Include="Main.cpp" />
+    <ClCompile Include="$(JSI_SourcePath)\jsi\jsi.cpp" />
+    <ClCompile Include="$(JSI_SourcePath)\jsi\test\testlib.cpp" />
+    <ClCompile Include="$(ReactNativeWindowsDir)Common\Unicode.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="$(JSI_SourcePath)\jsi\jsi.h" />
+    <ClInclude Include="$(JSI_SourcePath)\jsi\jsi-inl.h" />
+    <ClInclude Include="$(JSI_SourcePath)\jsi\test\testlib.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
