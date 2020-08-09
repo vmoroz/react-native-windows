@@ -168,8 +168,22 @@ class ChakraRuntime : public facebook::jsi::Runtime {
   //     make<Pointer>(new ChakraPointerValue(...));
   //
   // or you can use the helper function MakePointer(), as defined below.
-  struct ChakraPointerValue : PointerValue {
-    ChakraPointerValue(JsRef ref) noexcept : m_ref{ref} {
+
+  struct ChakraPointerValueView : PointerValue {
+    ChakraPointerValueView(JsRef ref) noexcept : m_ref{ref} {}
+
+    void invalidate() noexcept override {}
+
+    JsRef GetRef() const noexcept {
+      return m_ref;
+    }
+
+   private:
+    JsRef m_ref;
+  };
+
+  struct ChakraPointerValue final : ChakraPointerValueView {
+    ChakraPointerValue(JsRef ref) noexcept : ChakraPointerValueView{ref} {
       if (ref) {
         VerifyChakraErrorElseThrow(JsAddRef(ref, nullptr));
       }
@@ -179,17 +193,14 @@ class ChakraRuntime : public facebook::jsi::Runtime {
       delete this;
     }
 
-    JsRef GetRef() const noexcept {
-      return m_ref;
-    }
-
    private:
     // ~ChakraPointerValue() should only be invoked by invalidate().
     // Hence we make it private.
-    ~ChakraPointerValue() noexcept = default;
-
-   private:
-    JsRef m_ref;
+    ~ChakraPointerValue() noexcept override {
+      if (JsRef ref = GetRef()) {
+        VerifyChakraErrorElseThrow(JsRelease(ref, nullptr));
+      }
+    }
   };
 
   template <typename T, std::enable_if_t<std::is_base_of_v<facebook::jsi::Pointer, T>, int> = 0>
@@ -310,7 +321,7 @@ class ChakraRuntime : public facebook::jsi::Runtime {
   ChakraRuntimeArgs m_args;
 
   JsRuntimeHandle m_runtime;
-  JsContextRef m_context; //TODO: add a smart pointer
+  JsContextRef m_context; // TODO: add a smart pointer
 
   // Note: For simplicity, We are pinning the script and serialized script
   // buffers in the facebook::jsi::Runtime instance assuming as these buffers
