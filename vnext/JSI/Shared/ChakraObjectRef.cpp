@@ -50,7 +50,7 @@ JsValueRef GetPropertySymbol(JsPropertyIdRef propertyId) {
   return symbol;
 }
 
-JsPropertyIdRef GetPropertyId(const std::string_view &utf8) {
+JsPropertyIdRef GetPropertyId(std::string_view utf8) {
   if (!utf8.data()) {
     throw facebook::jsi::JSINativeException("Property name cannot be a nullptr.");
   }

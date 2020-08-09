@@ -59,7 +59,7 @@ facebook::jsi::Value ChakraRuntime::evaluateJavaScriptSimple(
   VerifyJsErrorElseThrow(
       JsRunScript(script16.c_str(), JS_SOURCE_CONTEXT_NONE /*sourceContext*/, url16.c_str(), &result));
 
-  return ToJsiValue(ChakraObjectRef(result));
+  return ToJsiValue(result);
 }
 
 // TODO :: Return result

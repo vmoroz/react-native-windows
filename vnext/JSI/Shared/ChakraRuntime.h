@@ -168,59 +168,32 @@ class ChakraRuntime : public facebook::jsi::Runtime {
   //     make<Pointer>(new ChakraPointerValue(...));
   //
   // or you can use the helper function MakePointer(), as defined below.
-  template <typename T>
-  struct ChakraPointerValueTemplate : PointerValue {
-   public:
-    ChakraPointerValueTemplate(const T &ref) noexcept : m_ref{ref} {
-      static_assert(
-          std::is_same<T, ChakraObjectRef>::value ||
-              // Since only ChakraCore offers the JsWeakRef type alias, we
-              // cannot use it here; so void* is the best alternative we can use
-              // here.
-              std::is_same<T, void *>::value,
-          "ChakraPointerValueTemplate should only be instantiated for "
-          "ChakraObjectRef and JsWeakRef.");
+  struct ChakraPointerValue : PointerValue {
+    ChakraPointerValue(JsRef ref) noexcept : m_ref{ref} {
+      if (ref) {
+        VerifyChakraErrorElseThrow(JsAddRef(ref, nullptr));
+      }
     }
 
-    ChakraPointerValueTemplate(T &&ref) noexcept : m_ref{std::move(ref)} {}
-
-    // Declaring ~ChakraPointerValueTemplate() private prevents the compiler
-    // from implicitly generating the following functions, so we have to tell
-    // the compiler to do so.
-    ChakraPointerValueTemplate(const ChakraPointerValueTemplate &other) noexcept = default;
-    ChakraPointerValueTemplate(ChakraPointerValueTemplate &&other) noexcept = default;
-    ChakraPointerValueTemplate &operator=(const ChakraPointerValueTemplate &rhs) noexcept = default;
-    ChakraPointerValueTemplate &operator=(ChakraPointerValueTemplate &&rhs) noexcept = default;
-
-    inline void invalidate() noexcept override {
+    void invalidate() noexcept override {
       delete this;
     }
 
-    inline const T &GetRef() const noexcept {
+    JsRef GetRef() const noexcept {
       return m_ref;
     }
 
    private:
-    // ~ChakraPointerValueTemplate() should only be invoked by invalidate().
+    // ~ChakraPointerValue() should only be invoked by invalidate().
     // Hence we make it private.
-    ~ChakraPointerValueTemplate() noexcept = default;
+    ~ChakraPointerValue() noexcept = default;
 
-    T m_ref;
+   private:
+    JsRef m_ref;
   };
 
-  using ChakraPointerValue = ChakraPointerValueTemplate<ChakraObjectRef>;
-
-  template <typename T>
-  inline T MakePointer(JsValueRef ref) {
-    return MakePointer<T>(ChakraObjectRef(ref));
-  }
-
-  template <typename T>
-  inline T MakePointer(ChakraObjectRef &&ref) {
-    static_assert(
-        std::is_base_of<facebook::jsi::Pointer, T>::value,
-        "MakePointer should only be instantiated for classes derived from "
-        "facebook::jsi::Pointer.");
+  template <typename T, std::enable_if_t<std::is_base_of_v<facebook::jsi::Pointer, T>, int> = 0>
+  inline T MakePointer(JsRef ref) {
     return make<T>(new ChakraPointerValue(std::move(ref)));
   }
 
@@ -230,31 +203,31 @@ class ChakraRuntime : public facebook::jsi::Runtime {
   }
 
   // The jsi::Pointer passed to this function must hold a ChakraPointerValue.
-  inline static const ChakraObjectRef &GetChakraObjectRef(const facebook::jsi::Pointer &p) {
+  inline static JsRef GetChakraObjectRef(const facebook::jsi::Pointer &p) {
     return static_cast<const ChakraPointerValue *>(getPointerValue(p))->GetRef();
   }
 
   // These three functions only performs shallow copies.
-  facebook::jsi::Value ToJsiValue(ChakraObjectRef &&ref);
-  ChakraObjectRef ToChakraObjectRef(const facebook::jsi::Value &value);
-  std::vector<ChakraObjectRef> ToChakraObjectRefs(const facebook::jsi::Value *value, size_t count);
+  facebook::jsi::Value ToJsiValue(JsValueRef ref);
+  JsValueRef ToChakraObjectRef(const facebook::jsi::Value &value);
+  std::vector<JsValueRef> ToChakraObjectRefs(const facebook::jsi::Value *value, size_t count);
 
   // Convenience functions for property access.
-  ChakraObjectRef GetProperty(const ChakraObjectRef &obj, const ChakraObjectRef &id);
+  JsValueRef GetProperty(JsValueRef obj, JsPropertyIdRef id);
 
-  inline ChakraObjectRef GetProperty(const ChakraObjectRef &obj, const char *const name) {
+  inline JsValueRef GetProperty(JsValueRef obj, const char *const name) {
     return GetProperty(obj, GetChakraObjectRef(createPropNameIDFromAscii(name, strlen(name))));
   }
 
   // Since the function
   //   Object::getProperty(Runtime& runtime, const char* name)
-  // causes mulitple copies of name, we do not want to use it when implementing
+  // causes multiple copies of name, we do not want to use it when implementing
   // ChakraRuntime methods. This function does the same thing as
   // Object::getProperty, but without the extra overhead. This function is
   // declared as const so that it can be used when implementing
   // isHostFunction and isHostObject.
   inline facebook::jsi::Value GetProperty(const facebook::jsi::Object &obj, const char *const name) const {
-    // We have to use const_casts here because ToJsiValue and GetProperty cannnot
+    // We have to use const_casts here because ToJsiValue and GetProperty cannot
     // be marked as const.
     return const_cast<ChakraRuntime *>(this)->ToJsiValue(
         const_cast<ChakraRuntime *>(this)->GetProperty(GetChakraObjectRef(obj), name));
@@ -337,7 +310,7 @@ class ChakraRuntime : public facebook::jsi::Runtime {
   ChakraRuntimeArgs m_args;
 
   JsRuntimeHandle m_runtime;
-  ChakraObjectRef m_context;
+  JsContextRef m_context; //TODO: add a smart pointer
 
   // Note: For simplicity, We are pinning the script and serialized script
   // buffers in the facebook::jsi::Runtime instance assuming as these buffers
