@@ -12,6 +12,49 @@
 
 namespace Microsoft::JSI {
 
+ChakraObjectRef::ChakraObjectRef(ChakraObjectRef const &other) noexcept : m_ref{other.m_ref} {
+  if (m_ref) {
+    VerifyChakraErrorElseThrow(JsAddRef(m_ref, nullptr));
+  }
+}
+
+ChakraObjectRef::ChakraObjectRef(ChakraObjectRef &&other) noexcept : m_ref{std::exchange(other.m_ref, nullptr)} {}
+
+ChakraObjectRef &ChakraObjectRef::operator=(ChakraObjectRef const &other) noexcept {
+  if (this != &other) {
+    ChakraObjectRef temp{std::move(*this)};
+    m_ref = other.m_ref;
+    if (m_ref) {
+      VerifyChakraErrorElseThrow(JsAddRef(m_ref, nullptr));
+    }
+  }
+
+  return *this;
+}
+
+ChakraObjectRef &ChakraObjectRef::operator=(ChakraObjectRef &&other) noexcept {
+  if (this != &other) {
+    ChakraObjectRef temp{std::move(*this)};
+    m_ref = std::exchange(other.m_ref, JS_INVALID_REFERENCE);
+  }
+
+  return *this;
+}
+
+ChakraObjectRef::~ChakraObjectRef() noexcept {
+  if (m_ref) {
+    // Clear m_ref before calling JsRelease on it to make sure that we always hold a valid m_ref.
+    VerifyChakraErrorElseThrow(JsRelease(std::exchange(m_ref, JS_INVALID_REFERENCE), nullptr));
+  }
+}
+
+
+JsContextRef CreateContext(JsRuntimeHandle runtime) {
+  JsContextRef context{JS_INVALID_REFERENCE};
+  VerifyChakraErrorElseThrow(JsCreateContext(runtime, &context));
+  return context;
+}
+
 void VerifyChakraErrorElseThrow(JsErrorCode error) {
   if (error != JsNoError) {
     std::ostringstream errorString;
@@ -54,7 +97,7 @@ JsPropertyIdRef GetPropertyId(std::string_view utf8) {
   if (!utf8.data()) {
     throw facebook::jsi::JSINativeException("Property name cannot be a nullptr.");
   }
-  //TODO: Avoid ifdef
+  // TODO: Avoid ifdef
 
   // We use a #ifdef here because we can avoid a UTF-8 to UTF-16 conversion
   // using ChakraCore's JsCreatePropertyId API.
@@ -64,7 +107,7 @@ JsPropertyIdRef GetPropertyId(std::string_view utf8) {
   return id;
 
 #else
-  //TODO: avoid extra memory allocation by using call stack memory buffer
+  // TODO: avoid extra memory allocation by using call stack memory buffer
   std::wstring utf16 = Common::Unicode::Utf8ToUtf16(utf8.data(), utf8.length());
   return GetPropertyId(utf16);
 #endif

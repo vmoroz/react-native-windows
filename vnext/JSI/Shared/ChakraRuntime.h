@@ -321,7 +321,7 @@ class ChakraRuntime : public facebook::jsi::Runtime {
   ChakraRuntimeArgs m_args;
 
   JsRuntimeHandle m_runtime;
-  JsContextRef m_context; // TODO: add a smart pointer
+  ChakraObjectRef m_context;
 
   // Note: For simplicity, We are pinning the script and serialized script
   // buffers in the facebook::jsi::Runtime instance assuming as these buffers

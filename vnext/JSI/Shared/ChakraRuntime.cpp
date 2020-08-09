@@ -78,9 +78,7 @@ ChakraRuntime::ChakraRuntime(ChakraRuntimeArgs &&args) noexcept : m_args{std::mo
 
   setupMemoryTracker();
 
-  JsContextRef context = JS_INVALID_REFERENCE;
-  VerifyChakraErrorElseThrow(JsCreateContext(m_runtime, &context));
-  m_context = context;
+  m_context = ChakraObjectRef(CreateContext(m_runtime));
 
   // Note :: We currently assume that the runtime will be created and
   // exclusively used in a single thread.
@@ -100,7 +98,7 @@ ChakraRuntime::~ChakraRuntime() noexcept {
   stopDebuggingIfNeeded();
 
   VerifyChakraErrorElseThrow(JsSetCurrentContext(JS_INVALID_REFERENCE));
-  //TODO: m_context.Invalidate();
+  m_context = {};
 
   JsSetRuntimeMemoryAllocationCallback(m_runtime, nullptr, nullptr);
 

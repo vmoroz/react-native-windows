@@ -29,6 +29,40 @@ inline void VerifyChakraErrorElseCrash(JsErrorCode error) {
 void VerifyChakraErrorElseThrow(JsErrorCode error);
 
 /**
+ * @brief A smart pointer for JsRefs.
+ *
+ * JsRefs are references to objects owned by the garbage collector and include
+ * JsContextRef, JsValueRef, and JsPropertyIdRef, etc. ChakraObjectRef ensures
+ * that JsAddRef and JsRelease are called upon initialization and invalidation,
+ * respectively. It also allows users to implicitly convert it into a JsRef.
+ */
+struct ChakraObjectRef {
+  ChakraObjectRef(std::nullptr_t = nullptr) noexcept {}
+  explicit ChakraObjectRef(JsRef ref) noexcept : m_ref{ref} {
+    if (m_ref) {
+      VerifyChakraErrorElseThrow(JsAddRef(m_ref, nullptr));
+    }
+  }
+
+  ChakraObjectRef(ChakraObjectRef const &other) noexcept;
+  ChakraObjectRef(ChakraObjectRef &&other) noexcept;
+
+  ChakraObjectRef &operator=(ChakraObjectRef const &other) noexcept;
+  ChakraObjectRef &operator=(ChakraObjectRef &&other) noexcept;
+
+  ~ChakraObjectRef() noexcept;
+
+  operator JsRef() const noexcept {
+    return m_ref;
+  }
+
+ private:
+  JsRef m_ref{JS_INVALID_REFERENCE};
+};
+
+JsContextRef CreateContext(JsRuntimeHandle runtime);
+
+/**
  * @param jsValue A ChakraObjectRef managing a JsValueRef.
  */
 JsValueType GetValueType(JsValueRef value);
@@ -64,7 +98,7 @@ JsPropertyIdRef GetPropertyId(std::string_view utf8);
  *
  * @returns A ChakraObjectRef managing a JsPropertyIdRef.
  */
-//TODO: Should we remove it?
+// TODO: Should we remove it?
 JsPropertyIdRef GetPropertyId(std::wstring const &utf16);
 
 /**
@@ -76,7 +110,7 @@ JsPropertyIdRef GetPropertyId(std::wstring const &utf16);
  * std::string. When using Chakra instead of ChakraCore, this function incurs
  * a UTF-16 to UTF-8 conversion.
  */
-//TODO: Do we need it?
+// TODO: Do we need it?
 std::string ToStdString(JsValueRef jsString);
 
 /**
@@ -118,7 +152,7 @@ JsValueRef ToJsString(std::wstring_view utf16);
  * @returns A ChakraObjectRef managing the return value of the JS .toString
  * function.
  */
-//TODO: Rename
+// TODO: Rename
 JsValueRef ToJsString(JsValueRef jsValue);
 
 /**
@@ -126,7 +160,7 @@ JsValueRef ToJsString(JsValueRef jsValue);
  *
  * @returns The value of jsNumber converted to an integer.
  */
-//TODO: Rename
+// TODO: Rename
 int ToInteger(JsValueRef jsNumber);
 
 /**
@@ -150,7 +184,7 @@ JsValueRef ToJsArrayBuffer(const std::shared_ptr<const facebook::jsi::Buffer> &b
  * @remarks The returned Object is backed by data and keeps data alive till the
  * garbage collector finalizes it.
  */
-//TODO: Remove - replace with the external object functionality
+// TODO: Remove - replace with the external object functionality
 template <typename T>
 JsValueRef ToJsObject(const std::shared_ptr<T> &data) {
   if (!data) {
@@ -184,7 +218,7 @@ JsValueRef ToJsObject(const std::shared_ptr<T> &data) {
  *
  * @returns The backing external data for object.
  */
-//TODO: simplify - make it non-template
+// TODO: simplify - make it non-template
 template <typename T>
 const std::shared_ptr<T> &GetExternalData(JsValueRef object) {
   void *data;
@@ -199,7 +233,7 @@ const std::shared_ptr<T> &GetExternalData(JsValueRef object) {
  * @returns A boolean indicating whether jsValue1 and jsValue2 are strictly
  * equal.
  */
-//TODO: rename to equals
+// TODO: rename to equals
 bool CompareJsValues(JsValueRef jsValue1, JsValueRef jsValue2);
 
 /**
