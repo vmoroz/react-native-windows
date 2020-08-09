@@ -61,7 +61,7 @@ JsPropertyIdRef GetPropertyId(std::string_view utf8) {
 #ifdef CHAKRACORE
   JsPropertyIdRef id = JS_INVALID_REFERENCE;
   VerifyChakraErrorElseThrow(JsCreatePropertyId(utf8.data(), utf8.length(), &id));
-  return ChakraObjectRef(id);
+  return id;
 
 #else
   //TODO: avoid extra memory allocation by using call stack memory buffer
@@ -122,7 +122,7 @@ JsValueRef ToJsString(std::string_view utf8) {
 #ifdef CHAKRACORE
   JsValueRef result = JS_INVALID_REFERENCE;
   VerifyChakraErrorElseThrow(JsCreateString(utf8.data(), utf8.length(), &result));
-  return ChakraObjectRef(result);
+  return result;
 
 #else
   std::wstring utf16 = Common::Unicode::Utf8ToUtf16(utf8.data(), utf8.length());

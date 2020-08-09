@@ -80,7 +80,7 @@ void ChakraRuntime::PromiseRejectionTracker(JsValueRef /*promise*/, JsValueRef r
         JsValueRef stackStrValue;
         error = JsConvertValueToString(stack, &stackStrValue);
         if (error == JsNoError) {
-          errorStream << ToStdString(ChakraObjectRef(stackStrValue));
+          errorStream << ToStdString(stackStrValue);
         }
       }
     }
@@ -90,7 +90,7 @@ void ChakraRuntime::PromiseRejectionTracker(JsValueRef /*promise*/, JsValueRef r
       JsValueRef strValue;
       error = JsConvertValueToString(reason, &strValue);
       if (error == JsNoError) {
-        errorStream << ToStdString(ChakraObjectRef(strValue));
+        errorStream << ToStdString(strValue);
       }
     }
 
@@ -272,7 +272,7 @@ facebook::jsi::Value ChakraRuntime::evaluateJavaScriptSimple(
   VerifyJsErrorElseThrow(
       JsRun(sourceRef, 0, sourceURLRef, JsParseScriptAttributes::JsParseScriptAttributeNone, &result));
 
-  return ToJsiValue(ChakraObjectRef(result));
+  return ToJsiValue(result);
 }
 
 // TODO :: Return result
