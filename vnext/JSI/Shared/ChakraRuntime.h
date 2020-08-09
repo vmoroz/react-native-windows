@@ -314,6 +314,26 @@ class ChakraRuntime : public facebook::jsi::Runtime {
       const facebook::jsi::Buffer &serializedScriptBuffer,
       const std::string &sourceURL);
 
+ private:
+  // Property ID cache to improve execution speed
+  struct PropertyId {
+    ChakraObjectRef Object;
+    ChakraObjectRef Proxy;
+    ChakraObjectRef byteLength;
+    ChakraObjectRef configurable;
+    ChakraObjectRef enumerable;
+    ChakraObjectRef get;
+    ChakraObjectRef hostFunctionSymbol;
+    ChakraObjectRef hostObjectSymbol;
+    ChakraObjectRef length;
+    ChakraObjectRef ownKeys;
+    ChakraObjectRef propertyIsEnumerable;
+    ChakraObjectRef prototype;
+    ChakraObjectRef set;
+    ChakraObjectRef value;
+    ChakraObjectRef writable;
+  } m_propertyId;
+
   static std::once_flag s_runtimeVersionInitFlag;
   static uint64_t s_runtimeVersion;
 

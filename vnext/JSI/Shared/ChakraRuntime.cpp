@@ -92,9 +92,27 @@ ChakraRuntime::ChakraRuntime(ChakraRuntimeArgs &&args) noexcept : m_args{std::mo
 
   static facebook::jsi::StringBuffer bootstrapBundleSourceBuffer{g_bootstrapBundleSource};
   evaluateJavaScriptSimple(bootstrapBundleSourceBuffer, "ChakraRuntime_bootstrap.bundle");
+
+  m_propertyId.Object = ChakraObjectRef(GetPropertyId(L"Object"));
+  m_propertyId.Proxy = ChakraObjectRef(GetPropertyId(L"Proxy"));
+  m_propertyId.byteLength = ChakraObjectRef(GetPropertyId(L"byteLength"));
+  m_propertyId.configurable = ChakraObjectRef(GetPropertyId(L"configurable"));
+  m_propertyId.enumerable = ChakraObjectRef(GetPropertyId(L"enumerable"));
+  m_propertyId.get = ChakraObjectRef(GetPropertyId(L"get"));
+  m_propertyId.hostFunctionSymbol = ChakraObjectRef(GetSymbolPropertyId(L"hostFunctionSymbol"));
+  m_propertyId.hostObjectSymbol = ChakraObjectRef(GetSymbolPropertyId(L"hostObjectSymbol"));
+  m_propertyId.length = ChakraObjectRef(GetPropertyId(L"length"));
+  m_propertyId.ownKeys = ChakraObjectRef(GetPropertyId(L"ownKeys"));
+  m_propertyId.propertyIsEnumerable = ChakraObjectRef(GetPropertyId(L"propertyIsEnumerable"));
+  m_propertyId.prototype = ChakraObjectRef(GetPropertyId(L"prototype"));
+  m_propertyId.set = ChakraObjectRef(GetPropertyId(L"set"));
+  m_propertyId.value = ChakraObjectRef(GetPropertyId(L"value"));
+  m_propertyId.writable = ChakraObjectRef(GetPropertyId(L"writable"));
 }
 
 ChakraRuntime::~ChakraRuntime() noexcept {
+  m_propertyId = {};
+
   stopDebuggingIfNeeded();
 
   VerifyChakraErrorElseThrow(JsSetCurrentContext(JS_INVALID_REFERENCE));

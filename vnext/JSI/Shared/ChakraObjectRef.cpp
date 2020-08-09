@@ -113,10 +113,33 @@ JsPropertyIdRef GetPropertyId(std::string_view utf8) {
 #endif
 }
 
-JsValueRef GetPropertyId(const std::wstring &utf16) {
+JsPropertyIdRef GetPropertyId(std::wstring_view name) {
   JsPropertyIdRef propertyId;
-  VerifyChakraErrorElseThrow(JsGetPropertyIdFromName(utf16.c_str(), &propertyId));
+  VerifyChakraErrorElseThrow(JsGetPropertyIdFromName(name.data(), &propertyId));
   return propertyId;
+}
+
+JsPropertyIdRef GetSymbolPropertyId(std::wstring_view symbolDescription) {
+  JsPropertyIdRef propertyId;
+  VerifyChakraErrorElseThrow(JsGetPropertyIdFromSymbol(CreateSymbol(symbolDescription), &propertyId));
+  return propertyId;
+}
+
+
+JsValueRef CreateSymbol(std::wstring_view symbolDescription) {
+  return CreateSymbol(CreateString(symbolDescription));
+}
+
+JsValueRef CreateSymbol(JsValueRef symbolDescription) {
+  JsValueRef symbol;
+  VerifyChakraErrorElseThrow(JsCreateSymbol(symbolDescription, &symbol));
+  return symbol;
+}
+
+JsValueRef CreateString(std::wstring_view strView) {
+  JsValueRef str;
+  VerifyChakraErrorElseThrow(JsPointerToString(strView.data(), strView.size(), &str));
+  return str;
 }
 
 std::string ToStdString(JsValueRef jsString) {

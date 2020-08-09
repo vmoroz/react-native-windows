@@ -61,6 +61,10 @@ struct ChakraObjectRef {
 };
 
 JsContextRef CreateContext(JsRuntimeHandle runtime);
+JsPropertyIdRef GetSymbolPropertyId(std::wstring_view symbolDescription);
+JsValueRef CreateSymbol(std::wstring_view symbolDescription);
+JsValueRef CreateSymbol(JsValueRef symbolDescription);
+JsValueRef CreateString(std::wstring_view strView);
 
 /**
  * @param jsValue A ChakraObjectRef managing a JsValueRef.
@@ -98,8 +102,7 @@ JsPropertyIdRef GetPropertyId(std::string_view utf8);
  *
  * @returns A ChakraObjectRef managing a JsPropertyIdRef.
  */
-// TODO: Should we remove it?
-JsPropertyIdRef GetPropertyId(std::wstring const &utf16);
+JsPropertyIdRef GetPropertyId(std::wstring_view utf16);
 
 /**
  * @param jsString A ChakraObjectRef managing a JS string.
