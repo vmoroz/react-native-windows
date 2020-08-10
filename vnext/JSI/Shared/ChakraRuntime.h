@@ -18,10 +18,10 @@
 #include "jsrt.h"
 #endif
 
+#include <array>
 #include <memory>
 #include <mutex>
 #include <sstream>
-#include <array>
 
 #if !defined(CHAKRACORE)
 class DebugProtocolHandler {};
@@ -246,6 +246,7 @@ class ChakraRuntime : public facebook::jsi::Runtime {
   }
 
   JsValueRef CallFunction(JsValueRef function, std::initializer_list<JsValueRef> args);
+  JsValueRef ConstructObject(JsValueRef function, std::initializer_list<JsValueRef> args);
 
   JsValueRef CreateExternalFunction(
       JsPropertyIdRef name,
@@ -280,7 +281,7 @@ class ChakraRuntime : public facebook::jsi::Runtime {
       JsValueRef *argumentsIncThis,
       unsigned short argumentCountIncThis,
       void *callbackState) noexcept;
-  facebook::jsi::Object createHostObjectProxyHandler() noexcept;
+  JsValueRef GetHostObjectProxyHandler();
 
   // Evaluate code and catch any exceptions
   template <typename TCode>
@@ -300,7 +301,6 @@ class ChakraRuntime : public facebook::jsi::Runtime {
 
     return m_undefinedValue;
   }
-
 
   // Promise Helpers
   static void CALLBACK PromiseContinuationCallback(JsValueRef funcRef, void *callbackState) noexcept;
@@ -387,7 +387,7 @@ class ChakraRuntime : public facebook::jsi::Runtime {
   // This class helps to use stack storage for passing arguments that must be temporary converted from
   // JsValueRef to facebook::jsi::Value.
   struct JsiValueViewArray {
-    JsiValueViewArray(JsValueRef* args, size_t argCount) noexcept;
+    JsiValueViewArray(JsValueRef *args, size_t argCount) noexcept;
     facebook::jsi::Value const *Data() const noexcept;
     size_t Size() const noexcept;
 
@@ -434,6 +434,7 @@ class ChakraRuntime : public facebook::jsi::Runtime {
   } m_propertyId;
 
   ChakraObjectRef m_undefinedValue;
+  ChakraObjectRef m_hostObjectProxyHandler;
 
   static std::once_flag s_runtimeVersionInitFlag;
   static uint64_t s_runtimeVersion;

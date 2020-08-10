@@ -199,7 +199,7 @@ std::wstring_view StringToPointer(JsValueRef value) {
   return {utf16, length};
 }
 
-JsPropertyIdRef GetPropertyIdFromName(wchar_t const* name) {
+JsPropertyIdRef GetPropertyIdFromName(wchar_t const *name) {
   JsPropertyIdRef propertyId{JS_INVALID_REFERENCE};
   VerifyChakraErrorElseThrow(JsGetPropertyIdFromName(name, &propertyId));
   return propertyId;
