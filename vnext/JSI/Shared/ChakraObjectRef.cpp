@@ -192,28 +192,21 @@ JsValueRef BoolToBoolean(bool value) {
   return booleanValue;
 }
 
+JsValueRef GetGlobalObject() {
+  JsValueRef globalObject;
+  VerifyChakraErrorElseThrow(JsGetGlobalObject(&globalObject));
+  return globalObject;
+}
+
 std::string ToStdString(JsValueRef jsString) {
   if (GetValueType(jsString) != JsString) {
     throw facebook::jsi::JSINativeException("Cannot convert a non JS string ChakraObjectRef to a std::string.");
   }
 
-  // We use a #ifdef here because we can avoid a UTF-8 to UTF-16 conversion
-  // using ChakraCore's JsCopyString API.
-#ifdef CHAKRACORE
-  size_t length = 0;
-  VerifyChakraErrorElseThrow(JsCopyString(jsString, nullptr, 0, &length));
-
-  std::string result(length, 'a');
-  VerifyChakraErrorElseThrow(JsCopyString(jsString, result.data(), result.length(), &length));
-
-  if (length != result.length()) {
-    throw facebook::jsi::JSINativeException("Failed to convert a JS string to a std::string.");
-  }
-  return result;
-
-#else
-  return Common::Unicode::Utf16ToUtf8(ToStdWstring(jsString));
-#endif
+  wchar_t const *utf16{nullptr};
+  size_t length{0};
+  VerifyChakraErrorElseThrow(JsStringToPointer(jsString, &utf16, &length));
+  return Common::Unicode::Utf16ToUtf8(std::wstring_view{utf16, length});
 }
 
 std::wstring ToStdWstring(JsValueRef jsString) {

@@ -74,6 +74,7 @@ JsValueRef CreateExternalObject(void *data, JsFinalizeCallback finalizeCallback)
 void *GetExternalData(JsValueRef object);
 wchar_t const *GetPropertyNameFromId(JsPropertyIdRef propertyId);
 JsValueRef PropertyIdToString(JsPropertyIdRef propertyId);
+JsValueRef GetGlobalObject();
 
 template <typename T>
 JsValueRef CreateExternalObject(std::unique_ptr<T> &&data) {

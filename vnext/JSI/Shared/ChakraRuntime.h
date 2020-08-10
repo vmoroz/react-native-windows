@@ -226,7 +226,7 @@ class ChakraRuntime : public facebook::jsi::Runtime {
   // Convenience functions for property access.
   JsValueRef GetProperty(JsValueRef obj, JsPropertyIdRef id);
 
-  inline JsValueRef GetProperty(JsValueRef obj, const char *const name) {
+  JsValueRef GetProperty(JsValueRef obj, const char *const name) {
     return GetProperty(obj, GetChakraObjectRef(createPropNameIDFromAscii(name, strlen(name))));
   }
 
@@ -243,6 +243,8 @@ class ChakraRuntime : public facebook::jsi::Runtime {
     return const_cast<ChakraRuntime *>(this)->ToJsiValue(
         const_cast<ChakraRuntime *>(this)->GetProperty(GetChakraObjectRef(obj), name));
   }
+
+  JsValueRef CallFunction(JsValueRef function, std::initializer_list<JsValueRef> args);
 
   // Host function helper
   static JsValueRef CALLBACK HostFunctionCall(
@@ -339,6 +341,7 @@ class ChakraRuntime : public facebook::jsi::Runtime {
   struct PropertyId {
     ChakraObjectRef Object;
     ChakraObjectRef Proxy;
+    ChakraObjectRef Symbol;
     ChakraObjectRef byteLength;
     ChakraObjectRef configurable;
     ChakraObjectRef enumerable;
@@ -350,6 +353,7 @@ class ChakraRuntime : public facebook::jsi::Runtime {
     ChakraObjectRef propertyIsEnumerable;
     ChakraObjectRef prototype;
     ChakraObjectRef set;
+    ChakraObjectRef toString;
     ChakraObjectRef value;
     ChakraObjectRef writable;
   } m_propertyId;

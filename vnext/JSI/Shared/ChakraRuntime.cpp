@@ -91,6 +91,7 @@ ChakraRuntime::ChakraRuntime(ChakraRuntimeArgs &&args) noexcept : m_args{std::mo
 
   m_propertyId.Object = ChakraObjectRef(GetPropertyId(L"Object"));
   m_propertyId.Proxy = ChakraObjectRef(GetPropertyId(L"Proxy"));
+  m_propertyId.Symbol = ChakraObjectRef(GetPropertyId(L"Symbol"));
   m_propertyId.byteLength = ChakraObjectRef(GetPropertyId(L"byteLength"));
   m_propertyId.configurable = ChakraObjectRef(GetPropertyId(L"configurable"));
   m_propertyId.enumerable = ChakraObjectRef(GetPropertyId(L"enumerable"));
@@ -102,6 +103,7 @@ ChakraRuntime::ChakraRuntime(ChakraRuntimeArgs &&args) noexcept : m_args{std::mo
   m_propertyId.propertyIsEnumerable = ChakraObjectRef(GetPropertyId(L"propertyIsEnumerable"));
   m_propertyId.prototype = ChakraObjectRef(GetPropertyId(L"prototype"));
   m_propertyId.set = ChakraObjectRef(GetPropertyId(L"set"));
+  m_propertyId.toString = ChakraObjectRef(GetPropertyId(L"toString"));
   m_propertyId.value = ChakraObjectRef(GetPropertyId(L"value"));
   m_propertyId.writable = ChakraObjectRef(GetPropertyId(L"writable"));
 }
@@ -283,7 +285,12 @@ bool ChakraRuntime::compare(const facebook::jsi::PropNameID &lhs, const facebook
 }
 
 std::string ChakraRuntime::symbolToString(const facebook::jsi::Symbol &s) {
-  return ToStdString(ToJsString(GetChakraObjectRef(s)));
+  JsValueRef symbol = GetChakraObjectRef(s);
+  JsValueRef symbolCtor = GetProperty(GetGlobalObject(), m_propertyId.Symbol);
+  JsValueRef symbolPrototype = GetProperty(symbolCtor, m_propertyId.prototype);
+  JsValueRef symbolToString = GetProperty(symbolPrototype, m_propertyId.toString);
+  JsValueRef jsString = CallFunction(symbolToString, {symbol});
+  return ToStdString(jsString);
 }
 
 facebook::jsi::String ChakraRuntime::createStringFromAscii(const char *str, size_t length) {
@@ -757,6 +764,12 @@ std::vector<JsValueRef> ChakraRuntime::ToChakraObjectRefs(const facebook::jsi::V
 JsValueRef ChakraRuntime::GetProperty(JsValueRef obj, JsPropertyIdRef id) {
   JsValueRef result = JS_INVALID_REFERENCE;
   VerifyJsErrorElseThrow(JsGetProperty(obj, id, &result));
+  return result;
+}
+
+JsValueRef ChakraRuntime::CallFunction(JsValueRef function, std::initializer_list<JsValueRef> args) {
+  JsValueRef result{JS_INVALID_REFERENCE};
+  VerifyJsErrorElseThrow(JsCallFunction(function, const_cast<JsValueRef *>(args.begin()), args.size(), &result));
   return result;
 }
 
