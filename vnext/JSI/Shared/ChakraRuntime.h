@@ -214,8 +214,8 @@ class ChakraRuntime : public facebook::jsi::Runtime {
   }
 
   // The jsi::Pointer passed to this function must hold a ChakraPointerValue.
-  inline static JsRef GetChakraObjectRef(const facebook::jsi::Pointer &p) {
-    return static_cast<const ChakraPointerValue *>(getPointerValue(p))->GetRef();
+  static JsRef GetChakraObjectRef(const facebook::jsi::Pointer &p) {
+    return static_cast<const ChakraPointerValueView *>(getPointerValue(p))->GetRef();
   }
 
   // These three functions only performs shallow copies.
@@ -313,6 +313,26 @@ class ChakraRuntime : public facebook::jsi::Runtime {
       const facebook::jsi::Buffer &scriptBuffer,
       const facebook::jsi::Buffer &serializedScriptBuffer,
       const std::string &sourceURL);
+
+  enum class PropertyAttibutes {
+    None = 0,
+    ReadOnly = 1 << 1,
+    DontEnum = 1 << 2,
+    DontDelete = 1 << 3,
+    Frozen = ReadOnly | DontDelete,
+    DontEnumAndFrozen = DontEnum | Frozen,
+  };
+
+  friend constexpr PropertyAttibutes operator&(PropertyAttibutes left, PropertyAttibutes right) {
+    return (PropertyAttibutes)((int)left & (int)right);
+  }
+
+  friend constexpr bool operator!(PropertyAttibutes attrs) {
+    return attrs == PropertyAttibutes::None;
+  }
+
+  JsValueRef CreatePropertyDescriptor(JsValueRef value, PropertyAttibutes attrs);
+  void SetProperty(JsValueRef object, JsPropertyIdRef propertyId, JsValueRef value);
 
  private:
   // Property ID cache to improve execution speed

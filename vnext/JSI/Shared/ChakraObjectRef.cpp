@@ -48,7 +48,6 @@ ChakraObjectRef::~ChakraObjectRef() noexcept {
   }
 }
 
-
 JsContextRef CreateContext(JsRuntimeHandle runtime) {
   JsContextRef context{JS_INVALID_REFERENCE};
   VerifyChakraErrorElseThrow(JsCreateContext(runtime, &context));
@@ -119,12 +118,27 @@ JsPropertyIdRef GetPropertyId(std::wstring_view name) {
   return propertyId;
 }
 
+wchar_t const *GetPropertyNameFromId(JsPropertyIdRef propertyId) {
+  wchar_t const *name;
+  VerifyChakraErrorElseThrow(JsGetPropertyNameFromId(propertyId, &name));
+  return name;
+}
+
+JsValueRef PropertyIdToString(JsPropertyIdRef propertyId) {
+  return CreateString(GetPropertyNameFromId(propertyId));
+}
+
 JsPropertyIdRef GetSymbolPropertyId(std::wstring_view symbolDescription) {
   JsPropertyIdRef propertyId;
   VerifyChakraErrorElseThrow(JsGetPropertyIdFromSymbol(CreateSymbol(symbolDescription), &propertyId));
   return propertyId;
 }
 
+JsValueRef CreateNamedFunction(JsValueRef name, JsNativeFunction nativeFunction, void *callbackState) {
+  JsValueRef function;
+  VerifyChakraErrorElseThrow(JsCreateNamedFunction(name, nativeFunction, callbackState, &function));
+  return function;
+}
 
 JsValueRef CreateSymbol(std::wstring_view symbolDescription) {
   return CreateSymbol(CreateString(symbolDescription));
@@ -140,6 +154,42 @@ JsValueRef CreateString(std::wstring_view strView) {
   JsValueRef str;
   VerifyChakraErrorElseThrow(JsPointerToString(strView.data(), strView.size(), &str));
   return str;
+}
+
+bool DefineProperty(JsValueRef object, JsPropertyIdRef propertyId, JsValueRef propertyDescriptor) {
+  bool isSucceeded;
+  VerifyChakraErrorElseThrow(JsDefineProperty(object, propertyId, propertyDescriptor, &isSucceeded));
+  return isSucceeded;
+}
+
+JsValueRef IntToNumber(int32_t value) {
+  JsValueRef numberValue;
+  VerifyChakraErrorElseThrow(JsIntToNumber(value, &numberValue));
+  return numberValue;
+}
+
+JsValueRef CreateObject() {
+  JsValueRef object;
+  VerifyChakraErrorElseThrow(JsCreateObject(&object));
+  return object;
+}
+
+JsValueRef CreateExternalObject(void *data, JsFinalizeCallback finalizeCallback) {
+  JsValueRef object;
+  VerifyChakraErrorElseThrow(JsCreateExternalObject(data, finalizeCallback, &object));
+  return object;
+}
+
+void *GetExternalData(JsValueRef object) {
+  void *data;
+  VerifyChakraErrorElseThrow(JsGetExternalData(object, &data));
+  return data;
+}
+
+JsValueRef BoolToBoolean(bool value) {
+  JsValueRef booleanValue;
+  VerifyChakraErrorElseThrow(JsBoolToBoolean(value, &booleanValue));
+  return booleanValue;
 }
 
 std::string ToStdString(JsValueRef jsString) {

@@ -65,6 +65,29 @@ JsPropertyIdRef GetSymbolPropertyId(std::wstring_view symbolDescription);
 JsValueRef CreateSymbol(std::wstring_view symbolDescription);
 JsValueRef CreateSymbol(JsValueRef symbolDescription);
 JsValueRef CreateString(std::wstring_view strView);
+JsValueRef CreateNamedFunction(JsValueRef name, JsNativeFunction nativeFunction, void *callbackState);
+bool DefineProperty(JsValueRef object, JsPropertyIdRef propertyId, JsValueRef propertyDescriptor);
+JsValueRef IntToNumber(int32_t value);
+JsValueRef CreateObject();
+JsValueRef BoolToBoolean(bool value);
+JsValueRef CreateExternalObject(void *data, JsFinalizeCallback finalizeCallback);
+void *GetExternalData(JsValueRef object);
+wchar_t const *GetPropertyNameFromId(JsPropertyIdRef propertyId);
+JsValueRef PropertyIdToString(JsPropertyIdRef propertyId);
+
+template <typename T>
+JsValueRef CreateExternalObject(std::unique_ptr<T> &&data) {
+  JsValueRef object = CreateExternalObject(data.get(), [](void *dataToDestroy) {
+    // We wrap dataToDestroy in a unique_ptr to avoid calling delete explicitly.
+    std::unique_ptr<T> wrapper{static_cast<T *>(dataToDestroy)};
+  });
+
+  // We only call data.release() after the CreateExternalObject succeeds.
+  // Otherwise, when CreateExternalObject fails and an exception is thrown,
+  // the memory that data used to own will be leaked.
+  data.release();
+  return object;
+}
 
 /**
  * @param jsValue A ChakraObjectRef managing a JsValueRef.
