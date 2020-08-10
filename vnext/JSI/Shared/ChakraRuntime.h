@@ -21,6 +21,7 @@
 #include <memory>
 #include <mutex>
 #include <sstream>
+#include <array>
 
 #if !defined(CHAKRACORE)
 class DebugProtocolHandler {};
@@ -246,6 +247,12 @@ class ChakraRuntime : public facebook::jsi::Runtime {
 
   JsValueRef CallFunction(JsValueRef function, std::initializer_list<JsValueRef> args);
 
+  JsValueRef CreateExternalFunction(
+      JsPropertyIdRef name,
+      int32_t paramCount,
+      JsNativeFunction nativeFunction,
+      void *callbackState);
+
   // Host function helper
   static JsValueRef CALLBACK HostFunctionCall(
       JsValueRef callee,
@@ -255,22 +262,45 @@ class ChakraRuntime : public facebook::jsi::Runtime {
       void *callbackState);
 
   // Host object helpers; runtime must be referring to a ChakraRuntime.
-  static facebook::jsi::Value HostObjectGetTrap(
-      Runtime &runtime,
-      const facebook::jsi::Value & /*thisVal*/,
-      const facebook::jsi::Value *args,
-      size_t count);
-  static facebook::jsi::Value HostObjectSetTrap(
-      Runtime &runtime,
-      const facebook::jsi::Value & /*thisVal*/,
-      const facebook::jsi::Value *args,
-      size_t count);
-  static facebook::jsi::Value HostObjectOwnKeysTrap(
-      Runtime &runtime,
-      const facebook::jsi::Value & /*thisVal*/,
-      const facebook::jsi::Value *args,
-      size_t count);
+  static JsValueRef CALLBACK HostObjectGetTrap(
+      JsValueRef callee,
+      bool isConstructCall,
+      JsValueRef *argumentsIncThis,
+      unsigned short argumentCountIncThis,
+      void *callbackState) noexcept;
+  static JsValueRef CALLBACK HostObjectSetTrap(
+      JsValueRef callee,
+      bool isConstructCall,
+      JsValueRef *argumentsIncThis,
+      unsigned short argumentCountIncThis,
+      void *callbackState) noexcept;
+  static JsValueRef CALLBACK HostObjectOwnKeysTrap(
+      JsValueRef callee,
+      bool isConstructCall,
+      JsValueRef *argumentsIncThis,
+      unsigned short argumentCountIncThis,
+      void *callbackState) noexcept;
   facebook::jsi::Object createHostObjectProxyHandler() noexcept;
+
+  // Evaluate code and catch any exceptions
+  template <typename TCode>
+  JsValueRef HandleCallbackExceptions(TCode &&code) noexcept {
+    try {
+      try {
+        return code();
+      } catch (facebook::jsi::JSError const &jsError) {
+        // This block may throw exceptions
+        SetException(ToChakraObjectRef(jsError.value()));
+      }
+    } catch (std::exception const &ex) {
+      SetException(ex.what());
+    } catch (...) {
+      SetException(L"Unexpected error");
+    }
+
+    return m_undefinedValue;
+  }
+
 
   // Promise Helpers
   static void CALLBACK PromiseContinuationCallback(JsValueRef funcRef, void *callbackState) noexcept;
@@ -336,6 +366,51 @@ class ChakraRuntime : public facebook::jsi::Runtime {
   JsValueRef CreatePropertyDescriptor(JsValueRef value, PropertyAttibutes attrs);
   void SetProperty(JsValueRef object, JsPropertyIdRef propertyId, JsValueRef value);
 
+  // This type represents a view to Value based on JsValueRef.
+  // It avoids extra memory allocation by using an in-place storage.
+  // It uses ChakraPointerValueView that does nothing in the invalidate() method.
+  struct JsiValueView {
+    JsiValueView(JsValueRef jsValue) noexcept;
+    ~JsiValueView() noexcept;
+    operator facebook::jsi::Value const &() const noexcept;
+
+    using StoreType = std::aligned_storage_t<sizeof(ChakraPointerValueView)>;
+    static facebook::jsi::Value InitValue(JsValueRef jsValue, StoreType *store) noexcept;
+
+   private:
+    StoreType m_pointerStore{};
+    facebook::jsi::Value m_value{};
+  };
+
+  constexpr static size_t MaxCallArgCount = 32;
+
+  // This class helps to use stack storage for passing arguments that must be temporary converted from
+  // JsValueRef to facebook::jsi::Value.
+  struct JsiValueViewArray {
+    JsiValueViewArray(JsValueRef* args, size_t argCount) noexcept;
+    facebook::jsi::Value const *Data() const noexcept;
+    size_t Size() const noexcept;
+
+   private:
+    std::array<JsiValueView::StoreType, MaxCallArgCount> m_pointerStoreArray{};
+    std::array<facebook::jsi::Value, MaxCallArgCount> m_valueArray{};
+    size_t m_size{};
+  };
+
+  // PropNameIDView helps to use the stack storage for temporary conversion from
+  // JsPropertyIdRef to facebook::jsi::PropNameID.
+  struct PropNameIDView {
+    PropNameIDView(JsPropertyIdRef propertyId) noexcept;
+    ~PropNameIDView() noexcept;
+    operator facebook::jsi::PropNameID const &() const noexcept;
+
+    using StoreType = std::aligned_storage_t<sizeof(ChakraPointerValueView)>;
+
+   private:
+    StoreType m_pointerStore{};
+    facebook::jsi::PropNameID m_propertyId;
+  };
+
  private:
   // Property ID cache to improve execution speed
   struct PropertyId {
@@ -357,6 +432,8 @@ class ChakraRuntime : public facebook::jsi::Runtime {
     ChakraObjectRef value;
     ChakraObjectRef writable;
   } m_propertyId;
+
+  ChakraObjectRef m_undefinedValue;
 
   static std::once_flag s_runtimeVersionInitFlag;
   static uint64_t s_runtimeVersion;

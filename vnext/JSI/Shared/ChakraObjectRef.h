@@ -74,7 +74,19 @@ JsValueRef CreateExternalObject(void *data, JsFinalizeCallback finalizeCallback)
 void *GetExternalData(JsValueRef object);
 wchar_t const *GetPropertyNameFromId(JsPropertyIdRef propertyId);
 JsValueRef PropertyIdToString(JsPropertyIdRef propertyId);
+std::wstring_view StringToPointer(JsValueRef string);
+JsPropertyIdRef GetPropertyIdFromName(wchar_t const *name);
+JsPropertyIdRef GetPropertyIdFromSymbol(JsValueRef symbol);
 JsValueRef GetGlobalObject();
+JsValueRef GetUndefinedValue();
+JsValueRef GetNullValue();
+double NumberToDouble(JsValueRef value);
+bool BooleanToBool(JsValueRef value);
+JsValueRef CreateArray(size_t length);
+void SetIndexedProperty(JsValueRef object, size_t index, JsValueRef value);
+void SetException(std::string_view message) noexcept;
+void SetException(std::wstring_view message) noexcept;
+void SetException(JsValueRef error) noexcept;
 
 template <typename T>
 JsValueRef CreateExternalObject(std::unique_ptr<T> &&data) {

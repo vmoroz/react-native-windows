@@ -192,10 +192,84 @@ JsValueRef BoolToBoolean(bool value) {
   return booleanValue;
 }
 
+std::wstring_view StringToPointer(JsValueRef value) {
+  wchar_t const *utf16{nullptr};
+  size_t length{0};
+  VerifyChakraErrorElseThrow(JsStringToPointer(value, &utf16, &length));
+  return {utf16, length};
+}
+
+JsPropertyIdRef GetPropertyIdFromName(wchar_t const* name) {
+  JsPropertyIdRef propertyId{JS_INVALID_REFERENCE};
+  VerifyChakraErrorElseThrow(JsGetPropertyIdFromName(name, &propertyId));
+  return propertyId;
+}
+
+JsPropertyIdRef GetPropertyIdFromSymbol(JsValueRef symbol) {
+  JsPropertyIdRef propertyId{JS_INVALID_REFERENCE};
+  VerifyChakraErrorElseThrow(JsGetPropertyIdFromSymbol(symbol, &propertyId));
+  return propertyId;
+}
+
 JsValueRef GetGlobalObject() {
   JsValueRef globalObject;
   VerifyChakraErrorElseThrow(JsGetGlobalObject(&globalObject));
   return globalObject;
+}
+
+JsValueRef GetNullValue() {
+  JsValueRef nullValue;
+  VerifyChakraErrorElseThrow(JsGetNullValue(&nullValue));
+  return nullValue;
+}
+
+JsValueRef GetUndefinedValue() {
+  JsValueRef undefinedValue;
+  VerifyChakraErrorElseThrow(JsGetUndefinedValue(&undefinedValue));
+  return undefinedValue;
+}
+
+double NumberToDouble(JsValueRef value) {
+  double doubleValue;
+  VerifyChakraErrorElseThrow(JsNumberToDouble(value, &doubleValue));
+  return doubleValue;
+}
+
+bool BooleanToBool(JsValueRef value) {
+  bool boolValue;
+  VerifyChakraErrorElseThrow(JsBooleanToBool(value, &boolValue));
+  return boolValue;
+}
+
+JsValueRef CreateArray(size_t length) {
+  JsValueRef result;
+  VerifyChakraErrorElseThrow(JsCreateArray(static_cast<unsigned int>(length), &result));
+  return result;
+}
+
+void SetIndexedProperty(JsValueRef object, size_t index, JsValueRef value) {
+  VerifyChakraErrorElseThrow(JsSetIndexedProperty(object, IntToNumber(static_cast<int32_t>(index)), value));
+}
+
+void SetException(std::string_view message) noexcept try {
+  JsValueRef error{JS_INVALID_REFERENCE};
+  VerifyChakraErrorElseThrow(JsCreateError(ToJsString(message), &error));
+  SetException(error);
+} catch (...) {
+  // Ignore exceptions. We cannot rethrow them.
+}
+
+void SetException(std::wstring_view message) noexcept try {
+  JsValueRef error{JS_INVALID_REFERENCE};
+  VerifyChakraErrorElseThrow(JsCreateError(ToJsString(message), &error));
+  SetException(error);
+} catch (...) {
+  // Ignore exceptions. We cannot rethrow them.
+}
+
+void SetException(JsValueRef error) noexcept {
+  // Ignore returned error code. We cannot rethrow it.
+  JsSetException(error);
 }
 
 std::string ToStdString(JsValueRef jsString) {
