@@ -619,6 +619,9 @@ void ChakraRuntime::VerifyJsErrorElseThrow(JsErrorCode error) {
       VerifyChakraErrorElseThrow(error);
     }
   }
+
+  // We must never get here.
+  throw facebook::jsi::JSINativeException("Did not handle the JsErrorCode");
 }
 
 facebook::jsi::Value ChakraRuntime::ToJsiValue(JsValueRef ref) {
