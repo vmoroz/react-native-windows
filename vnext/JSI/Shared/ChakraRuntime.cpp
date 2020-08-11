@@ -583,9 +583,7 @@ bool ChakraRuntime::strictEquals(const facebook::jsi::Object &a, const facebook:
 }
 
 bool ChakraRuntime::instanceOf(const facebook::jsi::Object &obj, const facebook::jsi::Function &func) {
-  bool result;
-  VerifyJsErrorElseThrow(JsInstanceOf(GetChakraObjectRef(obj), GetChakraObjectRef(func), &result));
-  return result;
+  return InstanceOf(GetChakraObjectRef(obj), GetChakraObjectRef(func));
 }
 
 #pragma endregion Functions_inherited_from_Runtime
@@ -658,18 +656,6 @@ JsValueRef ChakraRuntime::ToChakraObjectRef(const facebook::jsi::Value &value) {
 JsValueRef ChakraRuntime::GetProperty(JsValueRef obj, JsPropertyIdRef id) {
   JsValueRef result{JS_INVALID_REFERENCE};
   VerifyJsErrorElseThrow(JsGetProperty(obj, id, &result));
-  return result;
-}
-
-JsValueRef ChakraRuntime::CallFunction(JsValueRef function, JsValueRefSpan args) {
-  JsValueRef result{JS_INVALID_REFERENCE};
-  VerifyJsErrorElseThrow(JsCallFunction(function, args.begin(), args.size(), &result));
-  return result;
-}
-
-JsValueRef ChakraRuntime::ConstructObject(JsValueRef function, JsValueRefSpan args) {
-  JsValueRef result{JS_INVALID_REFERENCE};
-  VerifyJsErrorElseThrow(JsConstructObject(function, args.begin(), args.size(), &result));
   return result;
 }
 

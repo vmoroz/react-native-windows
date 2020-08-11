@@ -81,9 +81,22 @@ struct ChakraApi {
   [[noreturn]] virtual void ThrowJsException(JsErrorCode errorCode, JsValueRef exception);
 
   /**
+   * @brief Throws an exception with the provided errorMessage.
+   *
+   * The base implementation throws the generic std::exception.
+   * The method can be overridden in derived class to provide more specific exceptions.
+   */
+  [[noreturn]] virtual void ThrowNativeException(char const *errorMessage);
+
+  /**
    * @brief Calls ThrowJsException in case if error is not JsNoError.
    */
   void VerifyJsErrorElseThrow(JsErrorCode errorCode);
+
+  /**
+   * @brief Calls ThrowNativeException in case if condition is false.
+   */
+  void VerifyElseThrow(bool condition, char const *errorMessage);
 
   /**
    * @brief Adds a reference to a garbage collected object.
@@ -119,6 +132,11 @@ struct ChakraApi {
    * @brief Gets the string associated with the property ID.
    */
   JsValueRef GetPropertyStringFromId(JsPropertyIdRef propertyId);
+
+  /**
+   * @brief Gets the symbol associated with the property ID.
+   */
+  JsValueRef GetSymbolFromPropertyId(JsPropertyIdRef propertyId);
 
   /**
    * @brief Gets the type of property.
@@ -281,7 +299,7 @@ struct ChakraApi {
   /**
    * @brief Determines whether an object has a property.
    */
-  JsValueRef HasProperty(JsValueRef object, JsPropertyIdRef propertyId);
+  bool HasProperty(JsValueRef object, JsPropertyIdRef propertyId);
 
   /**
    * @brief Defines a new object's own property from a property descriptor.
@@ -301,7 +319,7 @@ struct ChakraApi {
   /**
    * @brief Compare two JavaScript values for strict equality.
    */
-  bool StrictEquals(JsValueRef jsValue1, JsValueRef jsValue2);
+  bool StrictEquals(JsValueRef object1, JsValueRef object2);
 
   /**
    * @brief Retrieves the data from an external object.
