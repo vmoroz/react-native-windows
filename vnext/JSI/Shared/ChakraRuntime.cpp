@@ -300,7 +300,7 @@ facebook::jsi::Object ChakraRuntime::createObject(std::shared_ptr<facebook::jsi:
 std::shared_ptr<facebook::jsi::HostObject> ChakraRuntime::getHostObject(const facebook::jsi::Object &obj) {
   JsValueRef hostObject = GetProperty(GetChakraObjectRef(obj), m_propertyId.hostObjectSymbol);
   if (GetValueType(hostObject) == JsValueType::JsObject) {
-    return GetExternalData<facebook::jsi::HostObject>(hostObject);
+    return *static_cast<std::shared_ptr<facebook::jsi::HostObject>*>(GetExternalData(hostObject));
   } else {
     throw facebook::jsi::JSINativeException("getHostObject() can only be called with HostObjects.");
   }
@@ -772,7 +772,7 @@ JsValueRef CALLBACK ChakraRuntime::HostFunctionCall(
     JsValueRef target = args[1];
     JsValueRef propertyName = args[2];
     if (GetValueType(propertyName) == JsValueType::JsString) {
-      const std::shared_ptr<facebook::jsi::HostObject> &hostObject = GetExternalData<facebook::jsi::HostObject>(target);
+      auto const &hostObject = *static_cast<std::shared_ptr<facebook::jsi::HostObject>*>(GetExternalData(target));
       PropNameIDView propertyId{GetPropertyIdFromName(StringToPointer(propertyName).data())};
       return chakraRuntime->ToChakraObjectRef(hostObject->get(*chakraRuntime, propertyId));
     } else if (
@@ -806,7 +806,7 @@ JsValueRef CALLBACK ChakraRuntime::HostFunctionCall(
     JsValueRef target = args[1];
     JsValueRef propertyName = args[2];
     if (GetValueType(propertyName) == JsValueType::JsString) {
-      const std::shared_ptr<facebook::jsi::HostObject> &hostObject = GetExternalData<facebook::jsi::HostObject>(target);
+      auto const &hostObject = *static_cast<std::shared_ptr<facebook::jsi::HostObject> *>(GetExternalData(target));
       PropNameIDView propertyId{GetPropertyIdFromName(StringToPointer(propertyName).data())};
       JsiValueView value{args[3]};
       hostObject->set(*chakraRuntime, propertyId, value);
@@ -830,7 +830,7 @@ JsValueRef CALLBACK ChakraRuntime::HostFunctionCall(
     // args[1] - the Proxy target object.
     ChakraVerifyElseThrow(argCount == 2, "HostObjectOwnKeysTrap() requires 2 arguments.");
     JsValueRef target = args[1];
-    const std::shared_ptr<facebook::jsi::HostObject> &hostObject = GetExternalData<facebook::jsi::HostObject>(target);
+    auto const &hostObject = *static_cast<std::shared_ptr<facebook::jsi::HostObject> *>(GetExternalData(target));
 
     auto ownKeys = hostObject->getPropertyNames(*chakraRuntime);
 

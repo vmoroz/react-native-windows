@@ -146,19 +146,7 @@ JsPropertyIdRef GetPropertyId(std::wstring_view utf16);
  * std::string. When using Chakra instead of ChakraCore, this function incurs
  * a UTF-16 to UTF-8 conversion.
  */
-// TODO: Do we need it?
 std::string ToStdString(JsValueRef jsString);
-
-/**
- * @param jsString A ChakraObjectRef managing a JS string.
- *
- * @returns A std::wstring that is UTF-16 encoded.
- *
- * @remarks This functions copies the JS string buffer into the returned
- * std::wstring.
- */
-// TODO: Do we need it?
-std::wstring ToStdWstring(JsValueRef jsString);
 
 /**
  * @param utf8 A std::string_view to a UTF-8 encoded char array.
@@ -250,26 +238,12 @@ JsValueRef ToJsObject(const std::shared_ptr<T> &data) {
 }
 
 /**
- * @param object A ChakraObjectRef returned by ToJsObject.
- *
- * @returns The backing external data for object.
- */
-// TODO: simplify - make it non-template
-template <typename T>
-const std::shared_ptr<T> &GetExternalData(JsValueRef object) {
-  void *data;
-  VerifyChakraErrorElseThrow(JsGetExternalData(object, &data));
-  return *static_cast<std::shared_ptr<T> *>(data);
-}
-
-/**
  * @param jsValue1 A ChakraObjectRef managing a JsValueRef.
  * @param jsValue2 A ChakraObjectRef managing a JsValueRef.
  *
  * @returns A boolean indicating whether jsValue1 and jsValue2 are strictly
  * equal.
  */
-// TODO: rename to equals
 bool StrictEquals(JsValueRef jsValue1, JsValueRef jsValue2);
 
 /**

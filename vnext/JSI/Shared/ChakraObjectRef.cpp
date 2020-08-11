@@ -87,7 +87,6 @@ JsPropertyIdRef GetPropertyId(std::string_view utf8) {
   if (!utf8.data()) {
     throw facebook::jsi::JSINativeException("Property name cannot be a nullptr.");
   }
-  // TODO: Avoid ifdef
 
   // We use a #ifdef here because we can avoid a UTF-8 to UTF-16 conversion
   // using ChakraCore's JsCreatePropertyId API.
@@ -97,7 +96,6 @@ JsPropertyIdRef GetPropertyId(std::string_view utf8) {
   return id;
 
 #else
-  // TODO: avoid extra memory allocation by using call stack memory buffer
   std::wstring utf16 = Common::Unicode::Utf8ToUtf16(utf8.data(), utf8.length());
   return GetPropertyId(utf16);
 #endif
@@ -284,19 +282,23 @@ std::string ToStdString(JsValueRef jsString) {
     throw facebook::jsi::JSINativeException("Cannot convert a non JS string ChakraObjectRef to a std::string.");
   }
 
-  return Common::Unicode::Utf16ToUtf8(StringToPointer(jsString));
-}
+  // We use a #ifdef here because we can avoid a UTF-8 to UTF-16 conversion
+  // using ChakraCore's JsCopyString API.
+#ifdef CHAKRACORE
+  size_t length = 0;
+  VerifyChakraErrorElseThrow(JsCopyString(jsString, nullptr, 0, &length));
 
-std::wstring ToStdWstring(JsValueRef jsString) {
-  if (GetValueType(jsString) != JsString) {
-    throw facebook::jsi::JSINativeException("Cannot convert a non JS string ChakraObjectRef to a std::wstring.");
+  std::string result(length, 'a');
+  VerifyChakraErrorElseThrow(JsCopyString(jsString, result.data(), result.length(), &length));
+
+  if (length != result.length()) {
+    throw facebook::jsi::JSINativeException("Failed to convert a JS string to a std::string.");
   }
 
-  const wchar_t *utf16 = nullptr;
-  size_t length = 0;
-  VerifyChakraErrorElseThrow(JsStringToPointer(jsString, &utf16, &length));
-
-  return std::wstring(utf16, length);
+  return result;
+#else
+  return Common::Unicode::Utf16ToUtf8(StringToPointer(jsString));
+#endif
 }
 
 JsValueRef ToJsString(std::string_view utf8) {
