@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "ChakraObjectRef.h"
+#include "ChakraApi.h"
 #include "ChakraRuntimeArgs.h"
 
 #include <jsi/jsi.h>
@@ -19,7 +19,6 @@
 #endif
 
 #include <array>
-#include <memory>
 #include <mutex>
 #include <sstream>
 
@@ -30,7 +29,7 @@ class DebugService {};
 
 namespace Microsoft::JSI {
 
-class ChakraRuntime : public facebook::jsi::Runtime {
+class ChakraRuntime : public facebook::jsi::Runtime, ChakraApi {
  public:
   ChakraRuntime(ChakraRuntimeArgs &&args) noexcept;
   ~ChakraRuntime() noexcept;
@@ -244,31 +243,6 @@ class ChakraRuntime : public facebook::jsi::Runtime {
         const_cast<ChakraRuntime *>(this)->GetProperty(GetChakraObjectRef(obj), name));
   }
 
-  struct JsValueRefSpan {
-    constexpr JsValueRefSpan(std::initializer_list<JsValueRef> il) noexcept
-        : m_data{const_cast<JsValueRef *>(il.begin())}, m_size{il.size()} {}
-    constexpr JsValueRefSpan(JsValueRef *data, size_t size) noexcept : m_data{data}, m_size{size} {}
-
-    [[nodiscard]] constexpr JsValueRef *begin() const noexcept {
-      return m_data;
-    }
-
-    [[nodiscard]] constexpr JsValueRef *end() const noexcept {
-      return m_data + m_size;
-    }
-
-    [[nodiscard]] constexpr size_t size() const noexcept {
-      return m_size;
-    }
-
-   private:
-    JsValueRef *m_data;
-    size_t m_size;
-  };
-
-  JsValueRef CallFunction(JsValueRef function, JsValueRefSpan args);
-  JsValueRef ConstructObject(JsValueRef function, JsValueRefSpan args);
-
   JsValueRef CreateExternalFunction(
       JsPropertyIdRef name,
       int32_t paramCount,
@@ -435,23 +409,23 @@ class ChakraRuntime : public facebook::jsi::Runtime {
  private:
   // Property ID cache to improve execution speed
   struct PropertyId {
-    ChakraObjectRef Object;
-    ChakraObjectRef Proxy;
-    ChakraObjectRef Symbol;
-    ChakraObjectRef byteLength;
-    ChakraObjectRef configurable;
-    ChakraObjectRef enumerable;
-    ChakraObjectRef get;
-    ChakraObjectRef hostFunctionSymbol;
-    ChakraObjectRef hostObjectSymbol;
-    ChakraObjectRef length;
-    ChakraObjectRef ownKeys;
-    ChakraObjectRef propertyIsEnumerable;
-    ChakraObjectRef prototype;
-    ChakraObjectRef set;
-    ChakraObjectRef toString;
-    ChakraObjectRef value;
-    ChakraObjectRef writable;
+    ChakraJsRefHolder Object;
+    ChakraJsRefHolder Proxy;
+    ChakraJsRefHolder Symbol;
+    ChakraJsRefHolder byteLength;
+    ChakraJsRefHolder configurable;
+    ChakraJsRefHolder enumerable;
+    ChakraJsRefHolder get;
+    ChakraJsRefHolder hostFunctionSymbol;
+    ChakraJsRefHolder hostObjectSymbol;
+    ChakraJsRefHolder length;
+    ChakraJsRefHolder ownKeys;
+    ChakraJsRefHolder propertyIsEnumerable;
+    ChakraJsRefHolder prototype;
+    ChakraJsRefHolder set;
+    ChakraJsRefHolder toString;
+    ChakraJsRefHolder value;
+    ChakraJsRefHolder writable;
   } m_propertyId;
 
   ChakraObjectRef m_undefinedValue;
