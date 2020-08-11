@@ -653,12 +653,6 @@ JsValueRef ChakraRuntime::ToChakraObjectRef(const facebook::jsi::Value &value) {
   }
 }
 
-JsValueRef ChakraRuntime::GetProperty(JsValueRef obj, JsPropertyIdRef id) {
-  JsValueRef result{JS_INVALID_REFERENCE};
-  VerifyJsErrorElseThrow(JsGetProperty(obj, id, &result));
-  return result;
-}
-
 JsValueRef ChakraRuntime::CreateExternalFunction(
     JsPropertyIdRef name,
     int32_t paramCount,

@@ -29,6 +29,7 @@ class DebugService {};
 
 namespace Microsoft::JSI {
 
+// Implementation of Chakra JSI Runtime
 class ChakraRuntime : public facebook::jsi::Runtime, ChakraApi {
  public:
   ChakraRuntime(ChakraRuntimeArgs &&args) noexcept;
@@ -59,8 +60,8 @@ class ChakraRuntime : public facebook::jsi::Runtime, ChakraApi {
  private:
   // Despite the name "clone" suggesting a deep copy, a return value of these
   // functions points to a new heap allocated ChakraPointerValue whose memeber
-  // ChakraObjectRef refers to the same JavaScript object as the member
-  // ChakraObjectRef of *pointerValue. This behavior is consistent with that of
+  // JsRefHolder refers to the same JavaScript object as the member
+  // JsRefHolder of *pointerValue. This behavior is consistent with that of
   // HermesRuntime and JSCRuntime. Also, Like all ChakraPointerValues, the
   // return value must only be used as an argument to the constructor of
   // jsi::Pointer or one of its derived classes.
@@ -221,13 +222,6 @@ class ChakraRuntime : public facebook::jsi::Runtime, ChakraApi {
   // These three functions only performs shallow copies.
   facebook::jsi::Value ToJsiValue(JsValueRef ref);
   JsValueRef ToChakraObjectRef(const facebook::jsi::Value &value);
-
-  // Convenience functions for property access.
-  JsValueRef GetProperty(JsValueRef obj, JsPropertyIdRef id);
-
-  JsValueRef GetProperty(JsValueRef obj, const char *const name) {
-    return GetProperty(obj, GetChakraObjectRef(createPropNameIDFromAscii(name, strlen(name))));
-  }
 
   // Since the function
   //   Object::getProperty(Runtime& runtime, const char* name)
@@ -409,27 +403,27 @@ class ChakraRuntime : public facebook::jsi::Runtime, ChakraApi {
  private:
   // Property ID cache to improve execution speed
   struct PropertyId {
-    ChakraJsRefHolder Object;
-    ChakraJsRefHolder Proxy;
-    ChakraJsRefHolder Symbol;
-    ChakraJsRefHolder byteLength;
-    ChakraJsRefHolder configurable;
-    ChakraJsRefHolder enumerable;
-    ChakraJsRefHolder get;
-    ChakraJsRefHolder hostFunctionSymbol;
-    ChakraJsRefHolder hostObjectSymbol;
-    ChakraJsRefHolder length;
-    ChakraJsRefHolder ownKeys;
-    ChakraJsRefHolder propertyIsEnumerable;
-    ChakraJsRefHolder prototype;
-    ChakraJsRefHolder set;
-    ChakraJsRefHolder toString;
-    ChakraJsRefHolder value;
-    ChakraJsRefHolder writable;
+    JsRefHolder Object;
+    JsRefHolder Proxy;
+    JsRefHolder Symbol;
+    JsRefHolder byteLength;
+    JsRefHolder configurable;
+    JsRefHolder enumerable;
+    JsRefHolder get;
+    JsRefHolder hostFunctionSymbol;
+    JsRefHolder hostObjectSymbol;
+    JsRefHolder length;
+    JsRefHolder ownKeys;
+    JsRefHolder propertyIsEnumerable;
+    JsRefHolder prototype;
+    JsRefHolder set;
+    JsRefHolder toString;
+    JsRefHolder value;
+    JsRefHolder writable;
   } m_propertyId;
 
-  ChakraObjectRef m_undefinedValue;
-  ChakraObjectRef m_hostObjectProxyHandler;
+  JsRefHolder m_undefinedValue;
+  JsRefHolder m_hostObjectProxyHandler;
 
   static std::once_flag s_runtimeVersionInitFlag;
   static uint64_t s_runtimeVersion;
@@ -438,7 +432,7 @@ class ChakraRuntime : public facebook::jsi::Runtime, ChakraApi {
   ChakraRuntimeArgs m_args;
 
   JsRuntimeHandle m_runtime;
-  ChakraObjectRef m_context;
+  JsRefHolder m_context;
 
   // Note: For simplicity, We are pinning the script and serialized script
   // buffers in the facebook::jsi::Runtime instance assuming as these buffers
