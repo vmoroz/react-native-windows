@@ -279,28 +279,28 @@ class ChakraRuntime : public facebook::jsi::Runtime {
   static JsValueRef CALLBACK HostFunctionCall(
       JsValueRef callee,
       bool isConstructCall,
-      JsValueRef *argumentsIncThis,
-      unsigned short argumentCountIncThis,
+      JsValueRef *args,
+      unsigned short argCount,
       void *callbackState);
 
   // Host object helpers; runtime must be referring to a ChakraRuntime.
   static JsValueRef CALLBACK HostObjectGetTrap(
       JsValueRef callee,
       bool isConstructCall,
-      JsValueRef *argumentsIncThis,
-      unsigned short argumentCountIncThis,
+      JsValueRef *args,
+      unsigned short argCount,
       void *callbackState) noexcept;
   static JsValueRef CALLBACK HostObjectSetTrap(
       JsValueRef callee,
       bool isConstructCall,
-      JsValueRef *argumentsIncThis,
-      unsigned short argumentCountIncThis,
+      JsValueRef *args,
+      unsigned short argCount,
       void *callbackState) noexcept;
   static JsValueRef CALLBACK HostObjectOwnKeysTrap(
       JsValueRef callee,
       bool isConstructCall,
-      JsValueRef *argumentsIncThis,
-      unsigned short argumentCountIncThis,
+      JsValueRef *args,
+      unsigned short argCount,
       void *callbackState) noexcept;
   JsValueRef GetHostObjectProxyHandler();
 

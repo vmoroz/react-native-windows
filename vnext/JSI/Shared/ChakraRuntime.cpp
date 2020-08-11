@@ -687,55 +687,24 @@ JsValueRef ChakraRuntime::CreateExternalFunction(
   return function;
 }
 
-// TODO: change
 JsValueRef CALLBACK ChakraRuntime::HostFunctionCall(
     JsValueRef /*callee*/,
-    bool /*isConstructCall*/,
-    JsValueRef *argumentsIncThis,
-    unsigned short argumentCountIncThis,
+    bool isConstructCall,
+    JsValueRef *args,
+    unsigned short argCount,
     void *callbackState) {
   HostFunctionWrapper *hostFuncWraper = static_cast<HostFunctionWrapper *>(callbackState);
-  ChakraRuntime &runtime = hostFuncWraper->GetRuntime();
-  const facebook::jsi::HostFunctionType &hostFunc = hostFuncWraper->GetHostFunction();
+  ChakraRuntime &chakraRuntime = hostFuncWraper->GetRuntime();
+  return chakraRuntime.HandleCallbackExceptions([&]() {
+    ChakraVerifyElseThrow(!isConstructCall, "Constructor call for HostObjectGetTrap() is not supported.");
 
-  constexpr uint32_t maxStackArgCount = 8;
-  facebook::jsi::Value stackArgs[maxStackArgCount];
-  std::unique_ptr<facebook::jsi::Value[]> heapArgs = nullptr;
-  facebook::jsi::Value *args = nullptr;
+    ChakraVerifyElseThrow(argCount > 0, "There must be at least 'this' argument.");
+    JsiValueView jsiThisArg{*args};
+    JsiValueViewArray jsiArgs{args + 1, argCount - 1u};
 
-  // Accounting for 'this' object at 0
-  unsigned short argumentCount = argumentCountIncThis - 1;
-
-  if (argumentCount > maxStackArgCount) {
-    heapArgs = std::make_unique<facebook::jsi::Value[]>(argumentCount);
-    for (size_t i = 1; i < argumentCountIncThis; i++) {
-      heapArgs[i - 1] = runtime.ToJsiValue(argumentsIncThis[i]);
-    }
-    args = heapArgs.get();
-
-  } else {
-    for (size_t i = 1; i < argumentCountIncThis; i++) {
-      stackArgs[i - 1] = runtime.ToJsiValue(argumentsIncThis[i]);
-    }
-    args = stackArgs;
-  }
-  // TODO: avoid memory allocation for jsi::Value - use stack variables.
-  JsValueRef result{JS_INVALID_REFERENCE};
-  facebook::jsi::Value thisVal = runtime.ToJsiValue(argumentsIncThis[0]);
-
-  try {
-    result = runtime.ToChakraObjectRef(hostFunc(runtime, thisVal, args, argumentCount));
-  } catch (const facebook::jsi::JSError &error) {
-    runtime.VerifyJsErrorElseThrow(JsSetException(runtime.ToChakraObjectRef(error.value())));
-  } catch (const std::exception &ex) {
-    std::string message = "Exception in HostFunction: ";
-    message += ex.what();
-    ThrowJsException(message);
-  } catch (...) {
-    ThrowJsException("Exception in HostFunction: <unknown>");
-  }
-
-  return result;
+    const facebook::jsi::HostFunctionType &hostFunc = hostFuncWraper->GetHostFunction();
+    return chakraRuntime.ToChakraObjectRef(hostFunc(chakraRuntime, jsiThisArg, jsiArgs.Data(), jsiArgs.Size()));
+  });
 }
 
 /*static*/ JsValueRef CALLBACK ChakraRuntime::HostObjectGetTrap(
@@ -927,7 +896,7 @@ ChakraRuntime::JsiValueView::operator facebook::jsi::Value const &() const noexc
 //===========================================================================
 
 ChakraRuntime::JsiValueViewArray::JsiValueViewArray(JsValueRef *args, size_t argCount) noexcept : m_size{argCount} {
-  // TODO: VerifyElseCrashSz(m_size <= MaxCallArgCount, "Argument count must not exceed the MaxCallArgCount");
+  ChakraVerifyElseThrow(m_size <= MaxCallArgCount, "Argument count must not exceed the MaxCallArgCount");
   for (uint32_t i = 0; i < m_size; ++i) {
     m_valueArray[i] = JsiValueView::InitValue(args[i], std::addressof(m_pointerStoreArray[i]));
   }
