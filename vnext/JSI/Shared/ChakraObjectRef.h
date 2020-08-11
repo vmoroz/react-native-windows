@@ -75,12 +75,15 @@ void *GetExternalData(JsValueRef object);
 wchar_t const *GetPropertyNameFromId(JsPropertyIdRef propertyId);
 JsValueRef PropertyIdToString(JsPropertyIdRef propertyId);
 std::wstring_view StringToPointer(JsValueRef string);
+JsValueRef PointerToString(std::wstring_view value);
+JsValueRef PointerToString(std::string_view value);
 JsPropertyIdRef GetPropertyIdFromName(wchar_t const *name);
 JsPropertyIdRef GetPropertyIdFromSymbol(JsValueRef symbol);
 JsValueRef GetGlobalObject();
 JsValueRef GetUndefinedValue();
 JsValueRef GetNullValue();
 double NumberToDouble(JsValueRef value);
+JsValueRef DoubleToNumber(double value);
 bool BooleanToBool(JsValueRef value);
 JsValueRef CreateArray(size_t length);
 void SetIndexedProperty(JsValueRef object, size_t index, JsValueRef value);
@@ -111,12 +114,6 @@ JsValueType GetValueType(JsValueRef value);
  * @param jsPropId A ChakraObjectRef managing a JsPropertyIdRef.
  */
 JsPropertyIdType GetPropertyIdType(JsPropertyIdRef propertyId);
-
-/**
- * @param jsPropId A ChakraObjectRef managing a JsPropertyIdRef of type
- * JsPropertyIdTypeString.
- */
-std::wstring GetPropertyName(JsPropertyIdRef propertyId);
 
 /**
  * @param jsPropId A ChakraObjectRef managing a JsPropertyIdRef of type
@@ -273,17 +270,7 @@ const std::shared_ptr<T> &GetExternalData(JsValueRef object) {
  * equal.
  */
 // TODO: rename to equals
-bool CompareJsValues(JsValueRef jsValue1, JsValueRef jsValue2);
-
-/**
- * @param jsPropId1 A ChakraObjectRef managing a JsPropertyIdRef.
- * @param jsPropId2 A ChakraObjectRef managing a JsPropertyIdRef.
- *
- * @returns A boolean indicating whether jsPropId1 and jsPropId2 are strictly
- * equal.
- */
-// TODO: rename to equals
-bool CompareJsPropertyIds(JsValueRef jsPropId1, JsValueRef jsPropId2);
+bool StrictEquals(JsValueRef jsValue1, JsValueRef jsValue2);
 
 /**
  * @brief Cause a JS Error to be thrown in the engine's current context.

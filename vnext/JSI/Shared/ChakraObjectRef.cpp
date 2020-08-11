@@ -74,15 +74,6 @@ JsPropertyIdType GetPropertyIdType(JsPropertyIdRef propertyId) {
   return type;
 }
 
-std::wstring GetPropertyName(JsPropertyIdRef propertyId) {
-  if (GetPropertyIdType(propertyId) != JsPropertyIdTypeString) {
-    throw facebook::jsi::JSINativeException("It is illegal to retrieve the name of a property symbol.");
-  }
-  const wchar_t *propertyName = nullptr;
-  VerifyChakraErrorElseThrow(JsGetPropertyNameFromId(propertyId, &propertyName));
-  return std::wstring{propertyName};
-}
-
 JsValueRef GetPropertySymbol(JsPropertyIdRef propertyId) {
   if (GetPropertyIdType(propertyId) != JsPropertyIdTypeSymbol) {
     throw facebook::jsi::JSINativeException("It is illegal to retrieve the symbol associated with a property name.");
@@ -199,6 +190,16 @@ std::wstring_view StringToPointer(JsValueRef value) {
   return {utf16, length};
 }
 
+JsValueRef PointerToString(std::wstring_view value) {
+  JsValueRef result{JS_INVALID_REFERENCE};
+  VerifyChakraErrorElseThrow(JsPointerToString(value.data(), value.size(), &result));
+  return result;
+}
+
+JsValueRef PointerToString(std::string_view value) {
+  return PointerToString(Common::Unicode::Utf8ToUtf16(value));
+}
+
 JsPropertyIdRef GetPropertyIdFromName(wchar_t const *name) {
   JsPropertyIdRef propertyId{JS_INVALID_REFERENCE};
   VerifyChakraErrorElseThrow(JsGetPropertyIdFromName(name, &propertyId));
@@ -233,6 +234,12 @@ double NumberToDouble(JsValueRef value) {
   double doubleValue;
   VerifyChakraErrorElseThrow(JsNumberToDouble(value, &doubleValue));
   return doubleValue;
+}
+
+JsValueRef DoubleToNumber(double value) {
+  JsValueRef result;
+  VerifyChakraErrorElseThrow(JsDoubleToNumber(value, &result));
+  return result;
 }
 
 bool BooleanToBool(JsValueRef value) {
@@ -277,10 +284,7 @@ std::string ToStdString(JsValueRef jsString) {
     throw facebook::jsi::JSINativeException("Cannot convert a non JS string ChakraObjectRef to a std::string.");
   }
 
-  wchar_t const *utf16{nullptr};
-  size_t length{0};
-  VerifyChakraErrorElseThrow(JsStringToPointer(jsString, &utf16, &length));
-  return Common::Unicode::Utf16ToUtf8(std::wstring_view{utf16, length});
+  return Common::Unicode::Utf16ToUtf8(StringToPointer(jsString));
 }
 
 std::wstring ToStdWstring(JsValueRef jsString) {
@@ -379,32 +383,12 @@ JsValueRef ToJsArrayBuffer(const std::shared_ptr<const facebook::jsi::Buffer> &b
   return arrayBuffer;
 }
 
-bool CompareJsValues(JsValueRef jsValue1, JsValueRef jsValue2) {
+bool StrictEquals(JsValueRef jsValue1, JsValueRef jsValue2) {
   bool result = false;
   // Note that JsStrictEquals should only be used for JsValueRefs and not for
   // other types of JsRefs (e.g. JsPropertyIdRef, etc.).
   VerifyChakraErrorElseThrow(JsStrictEquals(jsValue1, jsValue2, &result));
   return result;
-}
-
-bool CompareJsPropertyIds(JsValueRef jsPropId1, JsValueRef jsPropId2) {
-  JsPropertyIdType type1 = GetPropertyIdType(jsPropId1);
-  JsPropertyIdType type2 = GetPropertyIdType(jsPropId2);
-
-  if (type1 != type2) {
-    return false;
-  }
-
-  if (type1 == JsPropertyIdTypeString) {
-    return GetPropertyName(jsPropId1) == GetPropertyName(jsPropId2);
-  }
-
-  if (type1 == JsPropertyIdTypeSymbol) {
-    return CompareJsValues(GetPropertySymbol(jsPropId1), GetPropertySymbol(jsPropId2));
-  }
-
-  // Control should never reach here.
-  std::terminate();
 }
 
 void ThrowJsException(const std::string_view &message) {

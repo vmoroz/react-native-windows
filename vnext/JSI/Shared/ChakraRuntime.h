@@ -210,7 +210,7 @@ class ChakraRuntime : public facebook::jsi::Runtime {
   }
 
   // The pointer passed to this function must point to a ChakraPointerValue.
-  inline static ChakraPointerValue *CloneChakraPointerValue(const PointerValue *pointerValue) {
+  static ChakraPointerValue *CloneChakraPointerValue(const PointerValue *pointerValue) {
     return new ChakraPointerValue(*(static_cast<const ChakraPointerValue *>(pointerValue)));
   }
 
@@ -222,7 +222,6 @@ class ChakraRuntime : public facebook::jsi::Runtime {
   // These three functions only performs shallow copies.
   facebook::jsi::Value ToJsiValue(JsValueRef ref);
   JsValueRef ToChakraObjectRef(const facebook::jsi::Value &value);
-  std::vector<JsValueRef> ToChakraObjectRefs(const facebook::jsi::Value *value, size_t count);
 
   // Convenience functions for property access.
   JsValueRef GetProperty(JsValueRef obj, JsPropertyIdRef id);
