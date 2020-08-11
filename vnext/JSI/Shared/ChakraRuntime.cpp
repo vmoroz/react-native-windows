@@ -44,18 +44,6 @@ struct HostFunctionWrapper {
   ChakraRuntime &m_runtime;
 };
 
-// Callers of this functions must make sure that jsThis and args are alive when
-// using the return value of this function.
-// TODO: remove
-std::vector<JsValueRef> ConstructJsFunctionArguments(JsValueRef jsThis, const std::vector<JsValueRef> &args) {
-  std::vector<JsValueRef> result;
-  result.push_back(JsRef(jsThis));
-  for (auto ref : args) {
-    result.push_back(JsRef(ref));
-  }
-  return result;
-}
-
 } // namespace
 
 ChakraRuntime::ChakraRuntime(ChakraRuntimeArgs &&args) noexcept : m_args{std::move(args)} {
@@ -564,34 +552,28 @@ facebook::jsi::Value ChakraRuntime::call(
     const facebook::jsi::Value &jsThis,
     const facebook::jsi::Value *args,
     size_t count) {
-  // We must store these ChakraObjectRefs on the stack to make sure that they do
-  // not go out of scope when JsCallFunction is called.
-  JsValueRef thisRef = ToChakraObjectRef(jsThis);
-  std::vector<JsValueRef> argRefs = ToChakraObjectRefs(args, count);
+  size_t jsArgCount = count + 1; // for 'this' argument.
+  ChakraVerifyElseThrow(jsArgCount <= MaxCallArgCount, "Argument count exceeds MaxCallArgCount");
+  std::array<JsValueRef, MaxCallArgCount> jsArgs;
+  jsArgs[0] = ToChakraObjectRef(jsThis);
+  for (size_t i = 0; i < count; ++i) {
+    jsArgs[i + 1] = ToChakraObjectRef(args[i]);
+  }
 
-  std::vector<JsValueRef> argsWithThis = ConstructJsFunctionArguments(thisRef, argRefs);
-  assert(argsWithThis.size() <= (std::numeric_limits<unsigned short>::max)());
-
-  JsValueRef result;
-  VerifyJsErrorElseThrow(JsCallFunction(
-      GetChakraObjectRef(func), argsWithThis.data(), static_cast<unsigned short>(argsWithThis.size()), &result));
-  return ToJsiValue(result);
+  return ToJsiValue(CallFunction(GetChakraObjectRef(func), JsValueRefSpan(jsArgs.data(), jsArgCount)));
 }
 
 facebook::jsi::Value
 ChakraRuntime::callAsConstructor(const facebook::jsi::Function &func, const facebook::jsi::Value *args, size_t count) {
-  // We must store these ChakraObjectRefs on the stack to make sure that they do
-  // not go out of scope when JsConstructObject is called.
-  JsValueRef undefinedRef = ToChakraObjectRef(facebook::jsi::Value::undefined());
-  std::vector<JsValueRef> argRefs = ToChakraObjectRefs(args, count);
+  size_t jsArgCount = count + 1; // for 'this' argument.
+  ChakraVerifyElseThrow(jsArgCount <= MaxCallArgCount, "Argument count exceeds MaxCallArgCount");
+  std::array<JsValueRef, MaxCallArgCount> jsArgs;
+  jsArgs[0] = m_undefinedValue;
+  for (size_t i = 0; i < count; ++i) {
+    jsArgs[i + 1] = ToChakraObjectRef(args[i]);
+  }
 
-  std::vector<JsValueRef> argsWithThis = ConstructJsFunctionArguments(undefinedRef, argRefs);
-  assert(argsWithThis.size() <= (std::numeric_limits<unsigned short>::max)());
-
-  JsValueRef result;
-  VerifyJsErrorElseThrow(JsConstructObject(
-      GetChakraObjectRef(func), argsWithThis.data(), static_cast<unsigned short>(argsWithThis.size()), &result));
-  return ToJsiValue(result);
+  return ToJsiValue(ConstructObject(GetChakraObjectRef(func), JsValueRefSpan(jsArgs.data(), jsArgCount)));
 }
 
 facebook::jsi::Runtime::ScopeState *ChakraRuntime::pushScope() {
@@ -754,15 +736,15 @@ JsValueRef ChakraRuntime::GetProperty(JsValueRef obj, JsPropertyIdRef id) {
   return result;
 }
 
-JsValueRef ChakraRuntime::CallFunction(JsValueRef function, std::initializer_list<JsValueRef> args) {
+JsValueRef ChakraRuntime::CallFunction(JsValueRef function, JsValueRefSpan args) {
   JsValueRef result{JS_INVALID_REFERENCE};
-  VerifyJsErrorElseThrow(JsCallFunction(function, const_cast<JsValueRef *>(args.begin()), args.size(), &result));
+  VerifyJsErrorElseThrow(JsCallFunction(function, args.begin(), args.size(), &result));
   return result;
 }
 
-JsValueRef ChakraRuntime::ConstructObject(JsValueRef function, std::initializer_list<JsValueRef> args) {
+JsValueRef ChakraRuntime::ConstructObject(JsValueRef function, JsValueRefSpan args) {
   JsValueRef result{JS_INVALID_REFERENCE};
-  VerifyJsErrorElseThrow(JsConstructObject(function, const_cast<JsValueRef *>(args.begin()), args.size(), &result));
+  VerifyJsErrorElseThrow(JsConstructObject(function, args.begin(), args.size(), &result));
   return result;
 }
 

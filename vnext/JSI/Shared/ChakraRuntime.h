@@ -245,8 +245,30 @@ class ChakraRuntime : public facebook::jsi::Runtime {
         const_cast<ChakraRuntime *>(this)->GetProperty(GetChakraObjectRef(obj), name));
   }
 
-  JsValueRef CallFunction(JsValueRef function, std::initializer_list<JsValueRef> args);
-  JsValueRef ConstructObject(JsValueRef function, std::initializer_list<JsValueRef> args);
+  struct JsValueRefSpan {
+    constexpr JsValueRefSpan(std::initializer_list<JsValueRef> il) noexcept
+        : m_data{const_cast<JsValueRef *>(il.begin())}, m_size{il.size()} {}
+    constexpr JsValueRefSpan(JsValueRef *data, size_t size) noexcept : m_data{data}, m_size{size} {}
+
+    [[nodiscard]] constexpr JsValueRef *begin() const noexcept {
+      return m_data;
+    }
+
+    [[nodiscard]] constexpr JsValueRef *end() const noexcept {
+      return m_data + m_size;
+    }
+
+    [[nodiscard]] constexpr size_t size() const noexcept {
+      return m_size;
+    }
+
+   private:
+    JsValueRef *m_data;
+    size_t m_size;
+  };
+
+  JsValueRef CallFunction(JsValueRef function, JsValueRefSpan args);
+  JsValueRef ConstructObject(JsValueRef function, JsValueRefSpan args);
 
   JsValueRef CreateExternalFunction(
       JsPropertyIdRef name,
