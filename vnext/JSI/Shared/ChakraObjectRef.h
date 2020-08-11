@@ -84,12 +84,16 @@ JsValueRef GetUndefinedValue();
 JsValueRef GetNullValue();
 double NumberToDouble(JsValueRef value);
 JsValueRef DoubleToNumber(double value);
+int NumberToInt(JsValueRef value);
 bool BooleanToBool(JsValueRef value);
 JsValueRef CreateArray(size_t length);
+JsValueRef GetIndexedProperty(JsValueRef object, size_t index);
 void SetIndexedProperty(JsValueRef object, size_t index, JsValueRef value);
 void SetException(std::string_view message) noexcept;
 void SetException(std::wstring_view message) noexcept;
 void SetException(JsValueRef error) noexcept;
+JsValueRef GetOwnPropertyNames(JsValueRef object);
+JsValueRef GetPrototype(JsValueRef object);
 
 template <typename T>
 JsValueRef CreateExternalObject(std::unique_ptr<T> &&data) {

@@ -240,6 +240,12 @@ JsValueRef DoubleToNumber(double value) {
   return result;
 }
 
+int NumberToInt(JsValueRef value) {
+  int intValue;
+  VerifyChakraErrorElseThrow(JsNumberToInt(value, &intValue));
+  return intValue;
+}
+
 bool BooleanToBool(JsValueRef value) {
   bool boolValue;
   VerifyChakraErrorElseThrow(JsBooleanToBool(value, &boolValue));
@@ -252,8 +258,26 @@ JsValueRef CreateArray(size_t length) {
   return result;
 }
 
+JsValueRef GetOwnPropertyNames(JsValueRef object) {
+  JsValueRef propertyNames{JS_INVALID_REFERENCE};
+  VerifyChakraErrorElseThrow(JsGetOwnPropertyNames(object, &propertyNames));
+  return propertyNames;
+}
+
+JsValueRef GetIndexedProperty(JsValueRef object, size_t index) {
+  JsValueRef result{JS_INVALID_REFERENCE};
+  VerifyChakraErrorElseThrow(JsGetIndexedProperty(object, IntToNumber(static_cast<int32_t>(index)), &result));
+  return result;
+}
+
 void SetIndexedProperty(JsValueRef object, size_t index, JsValueRef value) {
   VerifyChakraErrorElseThrow(JsSetIndexedProperty(object, IntToNumber(static_cast<int32_t>(index)), value));
+}
+
+JsValueRef GetPrototype(JsValueRef object) {
+  JsValueRef prototype{JS_INVALID_REFERENCE};
+  VerifyChakraErrorElseThrow(JsGetPrototype(object, &prototype));
+  return prototype;
 }
 
 void SetException(std::string_view message) noexcept try {
