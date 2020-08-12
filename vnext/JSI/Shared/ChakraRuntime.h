@@ -159,7 +159,27 @@ class ChakraRuntime : public facebook::jsi::Runtime, ChakraApi, ChakraApi::IExce
   [[noreturn]] void ThrowNativeException(char const *errorMessage) override;
 
  private:
-   //TODO: change comment
+  // ChakraPointerValueView is the base class for ChakraPointerValue.
+  // It holds the JsRef, but unlike the ChakraPointerValue does nothing in the
+  // invalidate() method.
+  // It is used by the JsiValueView, JsiValueViewArray, and JsiPropNameIDView classes
+  // to keep temporary PointerValues on the call stack to avoid extra memory allocations.
+  struct ChakraPointerValueView : PointerValue {
+    ChakraPointerValueView(JsRef ref) noexcept : m_ref{ref} {}
+
+    ChakraPointerValueView(ChakraPointerValueView const &) = delete;
+    ChakraPointerValueView &operator=(ChakraPointerValueView const &) = delete;
+
+    void invalidate() noexcept override {}
+
+    JsRef GetRef() const noexcept {
+      return m_ref;
+    }
+
+   private:
+    JsRef m_ref;
+  };
+
   // ChakraPointerValue is needed for working with Facebook's jsi::Pointer class
   // and must only be used for this purpose. Every instance of
   // ChakraPointerValue should be allocated on the heap and be used as an
@@ -172,23 +192,6 @@ class ChakraRuntime : public facebook::jsi::Runtime, ChakraApi, ChakraApi::IExce
   //     make<Pointer>(new ChakraPointerValue(...));
   //
   // or you can use the helper function MakePointer(), as defined below.
-
-  struct ChakraPointerValueView : PointerValue {
-    ChakraPointerValueView(JsRef ref) noexcept : m_ref{ref} {}
-
-    ChakraPointerValueView(ChakraPointerValueView const &) = delete;
-    ChakraPointerValueView& operator=(ChakraPointerValueView const &) = delete;
-
-    void invalidate() noexcept override {}
-
-    JsRef GetRef() const noexcept {
-      return m_ref;
-    }
-
-   private:
-    JsRef m_ref;
-  };
-
   struct ChakraPointerValue final : ChakraPointerValueView {
     ChakraPointerValue(JsRef ref) noexcept : ChakraPointerValueView{ref} {
       if (ref) {
