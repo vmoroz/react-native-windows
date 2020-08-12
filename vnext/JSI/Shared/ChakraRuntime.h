@@ -159,6 +159,7 @@ class ChakraRuntime : public facebook::jsi::Runtime, ChakraApi, ChakraApi::IExce
   [[noreturn]] void ThrowNativeException(char const *errorMessage) override;
 
  private:
+   //TODO: change comment
   // ChakraPointerValue is needed for working with Facebook's jsi::Pointer class
   // and must only be used for this purpose. Every instance of
   // ChakraPointerValue should be allocated on the heap and be used as an
@@ -220,7 +221,7 @@ class ChakraRuntime : public facebook::jsi::Runtime, ChakraApi, ChakraApi::IExce
   }
 
   // The jsi::Pointer passed to this function must hold a ChakraPointerValue.
-  static JsRef GetChakraObjectRef(const facebook::jsi::Pointer &p) {
+  static JsRef GetJsRef(const facebook::jsi::Pointer &p) {
     return static_cast<const ChakraPointerValueView *>(getPointerValue(p))->GetRef();
   }
 
