@@ -27,16 +27,12 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)ChakraRuntimeFactory.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="E:\GitHub\vmoroz\react-native-windows\vnext\JSI\Shared\ChakraApi.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)ChakraApi.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="$(MSBuildThisFileDirectory)ChakraRuntime.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="E:\GitHub\vmoroz\react-native-windows\vnext\JSI\Shared\ChakraApi.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)ChakraApi.cpp" />
   </ItemGroup>
 </Project>

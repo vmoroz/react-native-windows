@@ -49,7 +49,7 @@ struct ChakraApi {
    */
   struct JsRefHolder {
     JsRefHolder(std::nullptr_t = nullptr) noexcept {}
-    JsRefHolder(JsRef ref) noexcept;
+    explicit JsRefHolder(JsRef ref) noexcept;
 
     JsRefHolder(JsRefHolder const &other) noexcept;
     JsRefHolder(JsRefHolder &&other) noexcept;
@@ -59,7 +59,7 @@ struct ChakraApi {
 
     ~JsRefHolder() noexcept;
 
-    JsRef Get() const noexcept {
+    operator JsRef() const noexcept {
       return m_ref;
     }
 
@@ -137,6 +137,11 @@ struct ChakraApi {
   static JsContextRef CreateContext(JsRuntimeHandle runtime);
 
   /**
+   * @brief Sets the current script context on the thread.
+   */
+  void SetCurrentContext(JsContextRef context);
+
+  /**
    * @brief Gets the property ID associated with the name.
    */
   static JsPropertyIdRef GetPropertyIdFromName(wchar_t const *name);
@@ -145,6 +150,11 @@ struct ChakraApi {
    * @brief Gets the property ID associated with the name.
    */
   static JsPropertyIdRef GetPropertyIdFromName(std::string_view name);
+
+  /**
+   * @brief Gets the property ID associated with the string.
+   */
+  static JsPropertyIdRef GetPropertyIdFromString(JsValueRef value);
 
   /**
    * @brief Gets the name associated with the property ID.
@@ -360,20 +370,20 @@ struct ChakraApi {
   static JsValueRef CreateArrayBuffer(size_t byteLength);
 
   /**
-   * @brief A span of JsValueRef that can be used to pass arguments to function.
+   * @brief A span of values that can be used to pass arguments to function.
    *
    * For C++20 we should consider to replace it with std::span.
    */
-  struct JsValueRefSpan {
-    constexpr JsValueRefSpan(std::initializer_list<JsValueRef> il) noexcept
-        : m_data{const_cast<JsValueRef *>(il.begin())}, m_size{il.size()} {}
-    constexpr JsValueRefSpan(JsValueRef *data, size_t size) noexcept : m_data{data}, m_size{size} {}
+  template <typename T>
+  struct Span {
+    constexpr Span(std::initializer_list<T> il) noexcept : m_data{const_cast<T *>(il.begin())}, m_size{il.size()} {}
+    constexpr Span(T *data, size_t size) noexcept : m_data{data}, m_size{size} {}
 
-    [[nodiscard]] constexpr JsValueRef *begin() const noexcept {
+    [[nodiscard]] constexpr T *begin() const noexcept {
       return m_data;
     }
 
-    [[nodiscard]] constexpr JsValueRef *end() const noexcept {
+    [[nodiscard]] constexpr T *end() const noexcept {
       return m_data + m_size;
     }
 
@@ -382,19 +392,24 @@ struct ChakraApi {
     }
 
    private:
-    JsValueRef *m_data;
+    T *m_data;
     size_t m_size;
   };
 
   /**
+   * @brief Obtains the underlying memory storage used by an \c ArrayBuffer.
+   */
+  Span<std::byte> GetArrayBufferStorage(JsValueRef arrayBuffer);
+
+  /**
    * @brief Invokes a function.
    */
-  static JsValueRef CallFunction(JsValueRef function, JsValueRefSpan args);
+  static JsValueRef CallFunction(JsValueRef function, Span<JsValueRef> args);
 
   /**
    * @brief Invokes a function as a constructor.
    */
-  static JsValueRef ConstructObject(JsValueRef function, JsValueRefSpan args);
+  static JsValueRef ConstructObject(JsValueRef function, Span<JsValueRef> args);
 
   /**
    * @brief Creates a new JavaScript function with name.

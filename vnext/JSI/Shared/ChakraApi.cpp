@@ -101,10 +101,18 @@ JsContextRef ChakraApi::CreateContext(JsRuntimeHandle runtime) {
   return context;
 }
 
+void ChakraApi::SetCurrentContext(JsContextRef context) {
+  VerifyJsErrorElseThrow(JsSetCurrentContext(context));
+}
+
 JsPropertyIdRef ChakraApi::GetPropertyIdFromName(wchar_t const *name) {
   JsPropertyIdRef propertyId;
   VerifyJsErrorElseThrow(JsGetPropertyIdFromName(name, &propertyId));
   return propertyId;
+}
+
+JsPropertyIdRef ChakraApi::GetPropertyIdFromString(JsValueRef value) {
+  return GetPropertyIdFromName(StringToPointer(value).data());
 }
 
 JsPropertyIdRef ChakraApi::GetPropertyIdFromName(std::string_view name) {
@@ -324,7 +332,7 @@ JsValueRef ChakraApi::GetOwnPropertyNames(JsValueRef object) {
 }
 
 void ChakraApi::SetProperty(JsValueRef object, JsPropertyIdRef propertyId, JsValueRef value) {
-  VerifyJsErrorElseThrow(JsSetProperty(object, propertyId, value, /*useStringRules:*/true));
+  VerifyJsErrorElseThrow(JsSetProperty(object, propertyId, value, /*useStringRules:*/ true));
 }
 
 bool ChakraApi::HasProperty(JsValueRef object, JsPropertyIdRef propertyId) {
@@ -373,13 +381,20 @@ JsValueRef ChakraApi::CreateArrayBuffer(size_t byteLength) {
   return result;
 }
 
-JsValueRef ChakraApi::CallFunction(JsValueRef function, JsValueRefSpan args) {
+ChakraApi::Span<std::byte> ChakraApi::GetArrayBufferStorage(JsValueRef arrayBuffer) {
+  BYTE *buffer{nullptr};
+  unsigned int bufferLength{0};
+  VerifyJsErrorElseThrow(JsGetArrayBufferStorage(arrayBuffer, &buffer, &bufferLength));
+  return {reinterpret_cast<std::byte *>(buffer), bufferLength};
+}
+
+JsValueRef ChakraApi::CallFunction(JsValueRef function, Span<JsValueRef> args) {
   JsValueRef result{JS_INVALID_REFERENCE};
   VerifyJsErrorElseThrow(JsCallFunction(function, args.begin(), args.size(), &result));
   return result;
 }
 
-JsValueRef ChakraApi::ConstructObject(JsValueRef function, JsValueRefSpan args) {
+JsValueRef ChakraApi::ConstructObject(JsValueRef function, Span<JsValueRef> args) {
   JsValueRef result{JS_INVALID_REFERENCE};
   VerifyJsErrorElseThrow(JsConstructObject(function, args.begin(), args.size(), &result));
   return result;
@@ -413,5 +428,7 @@ bool ChakraApi::SetException(std::wstring_view message) noexcept try {
   // This method must not throw. We return false in case of error.
   return false;
 }
+
+/*static*/ thread_local ChakraApi::IExceptionThrower *ChakraApi::ExceptionThrowerHolder::tls_exceptionThrower{nullptr};
 
 } // namespace Microsoft::JSI
