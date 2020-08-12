@@ -369,12 +369,12 @@ class ChakraRuntime : public facebook::jsi::Runtime, ChakraApi, ChakraApi::IExce
   // It avoids extra memory allocation by using an in-place storage.
   // It uses ChakraPointerValueView that does nothing in the invalidate() method.
   struct JsiValueView {
-    JsiValueView(JsValueRef jsValue) noexcept;
+    JsiValueView(JsValueRef jsValue);
     ~JsiValueView() noexcept;
     operator facebook::jsi::Value const &() const noexcept;
 
     using StoreType = std::aligned_storage_t<sizeof(ChakraPointerValueView)>;
-    static facebook::jsi::Value InitValue(JsValueRef jsValue, StoreType *store) noexcept;
+    static facebook::jsi::Value InitValue(JsValueRef jsValue, StoreType *store);
 
    private:
     StoreType m_pointerStore{};

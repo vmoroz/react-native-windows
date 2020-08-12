@@ -786,7 +786,7 @@ JsValueRef CALLBACK ChakraRuntime::HostFunctionCall(
     }
 
     JsValueRef result = CreateArray(dedupedOwnKeys.size());
-    size_t index = 0;
+    int32_t index = 0;
     for (JsPropertyIdRef key : dedupedOwnKeys) {
       SetIndexedProperty(result, index, GetPropertyStringFromId(key));
       ++index;
@@ -846,7 +846,7 @@ void ChakraRuntime::setupMemoryTracker() noexcept {
 // ChakraRuntime::JsiValueView implementation
 //===========================================================================
 
-ChakraRuntime::JsiValueView::JsiValueView(JsValueRef jsValue) noexcept
+ChakraRuntime::JsiValueView::JsiValueView(JsValueRef jsValue)
     : m_value{InitValue(jsValue, std::addressof(m_pointerStore))} {}
 
 ChakraRuntime::JsiValueView::~JsiValueView() noexcept {}
@@ -855,7 +855,7 @@ ChakraRuntime::JsiValueView::operator facebook::jsi::Value const &() const noexc
   return m_value;
 }
 
-/*static*/ facebook::jsi::Value ChakraRuntime::JsiValueView::InitValue(JsValueRef jsValue, StoreType *store) noexcept {
+/*static*/ facebook::jsi::Value ChakraRuntime::JsiValueView::InitValue(JsValueRef jsValue, StoreType *store) {
   switch (GetValueType(jsValue)) {
     case JsUndefined:
       return facebook::jsi::Value::undefined();

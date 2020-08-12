@@ -393,13 +393,15 @@ ChakraApi::Span<std::byte> ChakraApi::GetArrayBufferStorage(JsValueRef arrayBuff
 
 JsValueRef ChakraApi::CallFunction(JsValueRef function, Span<JsValueRef> args) {
   JsValueRef result{JS_INVALID_REFERENCE};
-  ChakraVerifyJsErrorElseThrow(JsCallFunction(function, args.begin(), args.size(), &result));
+  ChakraVerifyJsErrorElseThrow(
+      JsCallFunction(function, args.begin(), static_cast<unsigned short>(args.size()), &result));
   return result;
 }
 
 JsValueRef ChakraApi::ConstructObject(JsValueRef function, Span<JsValueRef> args) {
   JsValueRef result{JS_INVALID_REFERENCE};
-  ChakraVerifyJsErrorElseThrow(JsConstructObject(function, args.begin(), args.size(), &result));
+  ChakraVerifyJsErrorElseThrow(
+      JsConstructObject(function, args.begin(), static_cast<unsigned short>(args.size()), &result));
   return result;
 }
 
