@@ -15,7 +15,7 @@
 #include <sstream>
 #include <unordered_set>
 
-//TODO: remove
+// TODO: remove
 #define ChakraVerifyElseThrow(cond, message)            \
   do {                                                  \
     if (!(cond)) {                                      \
@@ -559,7 +559,7 @@ bool ChakraRuntime::instanceOf(const facebook::jsi::Object &obj, const facebook:
 
 #pragma endregion Functions_inherited_from_Runtime
 
-//TODO: rename exception to jsError
+// TODO: rename exception to jsError
 [[noreturn]] void ChakraRuntime::ThrowJsException(JsErrorCode errorCode, JsValueRef exception) {
   if (errorCode == JsErrorScriptException || GetValueType(exception) == JsError) {
     RewriteErrorMessage(exception);
@@ -662,7 +662,17 @@ JsValueRef CALLBACK ChakraRuntime::HostFunctionCall(
     JsiValueViewArray jsiArgs{args + 1, argCount - 1u};
 
     const facebook::jsi::HostFunctionType &hostFunc = hostFuncWraper->GetHostFunction();
-    return chakraRuntime.ToJsValueRef(hostFunc(chakraRuntime, jsiThisArg, jsiArgs.Data(), jsiArgs.Size()));
+    try {
+      return chakraRuntime.ToJsValueRef(hostFunc(chakraRuntime, jsiThisArg, jsiArgs.Data(), jsiArgs.Size()));
+    } catch (facebook::jsi::JSError const &) {
+      throw;
+    } catch (const std::exception &ex) {
+      std::string message{"Exception in HostFunction: "};
+      message += ex.what();
+      VerifyElseThrow(false, message.c_str());
+    } catch (...) {
+      VerifyElseThrow(false, "Exception in HostFunction: <unknown>");
+    }
   });
 }
 
