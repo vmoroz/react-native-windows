@@ -274,10 +274,10 @@ std::string ChakraApi::StringToStdString(JsValueRef string) {
   // using ChakraCore's JsCopyString API.
 #ifdef CHAKRACORE
   size_t length = 0;
-  ChakraVerifyJsErrorElseThrow(JsCopyString(jsString, nullptr, 0, &length));
+  ChakraVerifyJsErrorElseThrow(JsCopyString(string, nullptr, 0, &length));
 
   std::string result(length, 'a');
-  ChakraVerifyJsErrorElseThrow(JsCopyString(jsString, result.data(), result.length(), &length));
+  ChakraVerifyJsErrorElseThrow(JsCopyString(string, result.data(), result.length(), &length));
 
   ChakraVerifyElseThrow(length == result.length(), "Failed to convert a JS string to a std::string.");
   return result;
