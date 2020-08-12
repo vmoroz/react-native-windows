@@ -15,14 +15,6 @@
 #include <sstream>
 #include <unordered_set>
 
-// TODO: remove
-#define ChakraVerifyElseThrow(cond, message)            \
-  do {                                                  \
-    if (!(cond)) {                                      \
-      throw facebook::jsi::JSINativeException(message); \
-    }                                                   \
-  } while (false)
-
 namespace Microsoft::JSI {
 
 namespace {
@@ -55,7 +47,7 @@ ChakraRuntime::ChakraRuntime(ChakraRuntimeArgs &&args) noexcept : m_args{std::mo
         JsRuntimeAttributeDisableExecutablePageAllocation);
   }
 
-  VerifyJsErrorElseThrow(JsCreateRuntime(runtimeAttributes, nullptr, &m_runtime));
+  ChakraVerifyJsErrorElseThrow(JsCreateRuntime(runtimeAttributes, nullptr, &m_runtime));
 
   setupMemoryTracker();
 
@@ -106,7 +98,7 @@ ChakraRuntime::~ChakraRuntime() noexcept {
 
   JsSetRuntimeMemoryAllocationCallback(m_runtime, nullptr, nullptr);
 
-  VerifyJsErrorElseThrow(JsDisposeRuntime(m_runtime));
+  ChakraVerifyJsErrorElseThrow(JsDisposeRuntime(m_runtime));
 }
 
 JsValueRef ChakraRuntime::CreatePropertyDescriptor(JsValueRef value, PropertyAttibutes attrs) {
@@ -455,7 +447,7 @@ size_t ChakraRuntime::size(const facebook::jsi::Array &arr) {
   assert(isArray(arr));
 
   int result = NumberToInt(GetProperty(GetJsRef(arr), m_propertyId.length));
-  VerifyElseThrow(result >= 0, "Invalid JS array length detected.");
+  ChakraVerifyElseThrow(result >= 0, "Invalid JS array length detected.");
   return static_cast<size_t>(result);
 }
 
@@ -463,7 +455,7 @@ size_t ChakraRuntime::size(const facebook::jsi::ArrayBuffer &arrBuf) {
   assert(isArrayBuffer(arrBuf));
 
   int result = NumberToInt(GetProperty(GetJsRef(arrBuf), m_propertyId.byteLength));
-  VerifyElseThrow(result >= 0, "Invalid JS array buffer byteLength detected.");
+  ChakraVerifyElseThrow(result >= 0, "Invalid JS array buffer byteLength detected.");
   return static_cast<size_t>(result);
 }
 
@@ -538,7 +530,7 @@ facebook::jsi::Runtime::ScopeState *ChakraRuntime::pushScope() {
 
 void ChakraRuntime::popScope([[maybe_unused]] Runtime::ScopeState *state) {
   assert(state == nullptr);
-  VerifyJsErrorElseThrow(JsCollectGarbage(m_runtime));
+  ChakraVerifyJsErrorElseThrow(JsCollectGarbage(m_runtime));
 }
 
 bool ChakraRuntime::strictEquals(const facebook::jsi::Symbol &a, const facebook::jsi::Symbol &b) const {
@@ -559,11 +551,10 @@ bool ChakraRuntime::instanceOf(const facebook::jsi::Object &obj, const facebook:
 
 #pragma endregion Functions_inherited_from_Runtime
 
-// TODO: rename exception to jsError
-[[noreturn]] void ChakraRuntime::ThrowJsException(JsErrorCode errorCode, JsValueRef exception) {
-  if (errorCode == JsErrorScriptException || GetValueType(exception) == JsError) {
-    RewriteErrorMessage(exception);
-    throw facebook::jsi::JSError(*this, ToJsiValue(exception));
+[[noreturn]] void ChakraRuntime::ThrowJsExceptionOverride(JsErrorCode errorCode, JsValueRef jsError) {
+  if (errorCode == JsErrorScriptException || GetValueType(jsError) == JsError) {
+    RewriteErrorMessage(jsError);
+    throw facebook::jsi::JSError(*this, ToJsiValue(jsError));
   } else {
     std::ostringstream errorString;
     errorString << "A call to Chakra API returned error code 0x" << std::hex << errorCode << '.';
@@ -571,7 +562,7 @@ bool ChakraRuntime::instanceOf(const facebook::jsi::Object &obj, const facebook:
   }
 }
 
-[[noreturn]] void ChakraRuntime::ThrowNativeException(char const *errorMessage) {
+[[noreturn]] void ChakraRuntime::ThrowNativeExceptionOverride(char const *errorMessage) {
   throw facebook::jsi::JSINativeException(errorMessage);
 }
 

@@ -19,12 +19,33 @@
 #include <string>
 #include <string_view>
 
-#define ChakraVerifyElseCrash(condition, message) \
-  do {                                            \
-    if (!(condition)) {                           \
-      assert(false && (message));                 \
-      *((int *)0) = 1;                            \
-    }                                             \
+// We use macros to report errors.
+// Macros provide more flexibility to show assert and provide failure context.
+
+// Check condition and crash process if it fails.
+#define ChakraVerifyElseCrash(condition, message)          \
+  do {                                                     \
+    if (!(condition)) {                                    \
+      assert(false && "Failed: " #condition && (message)); \
+      *((int *)0) = 1;                                     \
+    }                                                      \
+  } while (false)
+
+// Check condition and throw native exception if it fails.
+#define ChakraVerifyElseThrow(condition, message)          \
+  do {                                                     \
+    if (!(condition)) {                                    \
+      ThrowNativeException(message);                       \
+    }                                                      \
+  } while (false)
+
+// Evaluate expression and throw JS exception if it fails.
+#define ChakraVerifyJsErrorElseThrow(expression) \
+  do {                                           \
+    JsErrorCode errorCode = (expression);        \
+    if (errorCode != JsNoError) {                \
+      ThrowJsException(errorCode);               \
+    }                                            \
   } while (false)
 
 namespace Microsoft::JSI {
@@ -80,7 +101,7 @@ struct ChakraApi {
      * The base implementation throws the generic std::exception.
      * The method can be overridden in derived class to provide more specific exceptions.
      */
-    [[noreturn]] virtual void ThrowJsException(JsErrorCode errorCode, JsValueRef exception) = 0;
+    [[noreturn]] virtual void ThrowJsExceptionOverride(JsErrorCode errorCode, JsValueRef jsError) = 0;
 
     /**
      * @brief Throws an exception with the provided errorMessage.
@@ -88,7 +109,7 @@ struct ChakraApi {
      * The base implementation throws the generic std::exception.
      * The method can be overridden in derived class to provide more specific exceptions.
      */
-    [[noreturn]] virtual void ThrowNativeException(char const *errorMessage) = 0;
+    [[noreturn]] virtual void ThrowNativeExceptionOverride(char const *errorMessage) = 0;
   };
 
   /**
@@ -112,14 +133,14 @@ struct ChakraApi {
   };
 
   /**
-   * @brief Calls ThrowJsException in case if error is not JsNoError.
+   * @brief Throws JavaScript exception with provided errorCode.
    */
-  static void VerifyJsErrorElseThrow(JsErrorCode errorCode);
+  static void ThrowJsException(JsErrorCode errorCode);
 
   /**
-   * @brief Calls ThrowNativeException in case if condition is false.
+   * @brief Throws native exception with provided message.
    */
-  static void VerifyElseThrow(bool condition, char const *errorMessage);
+  static void ThrowNativeException(char const *errorMessage);
 
   /**
    * @brief Adds a reference to a garbage collected object.
