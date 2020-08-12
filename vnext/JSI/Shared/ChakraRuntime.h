@@ -157,6 +157,7 @@ class ChakraRuntime : public facebook::jsi::Runtime, ChakraApi, ChakraApi::IExce
  private: //  ChakraApi::IExceptionThrower members
   [[noreturn]] void ThrowJsException(JsErrorCode errorCode, JsValueRef exception) override;
   [[noreturn]] void ThrowNativeException(char const *errorMessage) override;
+  void RewriteErrorMessage(JsValueRef jsError);
 
  private:
   // ChakraPointerValueView is the base class for ChakraPointerValue.
@@ -407,6 +408,7 @@ class ChakraRuntime : public facebook::jsi::Runtime, ChakraApi, ChakraApi::IExce
     JsRefHolder hostFunctionSymbol;
     JsRefHolder hostObjectSymbol;
     JsRefHolder length;
+    JsRefHolder message;
     JsRefHolder ownKeys;
     JsRefHolder propertyIsEnumerable;
     JsRefHolder prototype;

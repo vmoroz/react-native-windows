@@ -15,6 +15,7 @@
 #include <sstream>
 #include <unordered_set>
 
+//TODO: remove
 #define ChakraVerifyElseThrow(cond, message)            \
   do {                                                  \
     if (!(cond)) {                                      \
@@ -80,6 +81,7 @@ ChakraRuntime::ChakraRuntime(ChakraRuntimeArgs &&args) noexcept : m_args{std::mo
   m_propertyId.hostFunctionSymbol = JsRefHolder{GetPropertyIdFromSymbol(L"hostFunctionSymbol")};
   m_propertyId.hostObjectSymbol = JsRefHolder{GetPropertyIdFromSymbol(L"hostObjectSymbol")};
   m_propertyId.length = JsRefHolder{GetPropertyIdFromName(L"length")};
+  m_propertyId.message = JsRefHolder{GetPropertyIdFromName(L"message")};
   m_propertyId.ownKeys = JsRefHolder{GetPropertyIdFromName(L"ownKeys")};
   m_propertyId.propertyIsEnumerable = JsRefHolder{GetPropertyIdFromName(L"propertyIsEnumerable")};
   m_propertyId.prototype = JsRefHolder{GetPropertyIdFromName(L"prototype")};
@@ -557,8 +559,10 @@ bool ChakraRuntime::instanceOf(const facebook::jsi::Object &obj, const facebook:
 
 #pragma endregion Functions_inherited_from_Runtime
 
+//TODO: rename exception to jsError
 [[noreturn]] void ChakraRuntime::ThrowJsException(JsErrorCode errorCode, JsValueRef exception) {
   if (errorCode == JsErrorScriptException || GetValueType(exception) == JsError) {
+    RewriteErrorMessage(exception);
     throw facebook::jsi::JSError(*this, ToJsiValue(exception));
   } else {
     std::ostringstream errorString;
@@ -569,6 +573,16 @@ bool ChakraRuntime::instanceOf(const facebook::jsi::Object &obj, const facebook:
 
 [[noreturn]] void ChakraRuntime::ThrowNativeException(char const *errorMessage) {
   throw facebook::jsi::JSINativeException(errorMessage);
+}
+
+void ChakraRuntime::RewriteErrorMessage(JsValueRef jsError) {
+  JsValueRef message = GetProperty(jsError, m_propertyId.message);
+  if (GetValueType(message) == JsValueType::JsString) {
+    // JSI unit tests expect V8 or JSC like message for stack overflow.
+    if (StringToPointer(message) == L"Out of stack space") {
+      SetProperty(jsError, m_propertyId.message, PointerToString(L"RangeError : Maximum call stack size exceeded"));
+    }
+  }
 }
 
 facebook::jsi::Value ChakraRuntime::ToJsiValue(JsValueRef ref) {
