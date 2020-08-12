@@ -32,14 +32,18 @@ namespace Microsoft::JSI {
 /**
  * @brief A wrapper for Chakra APIs.
  *
- * The ChakraContext class wraps up the Chakra API functions in a way that:
+ * The ChakraApi class wraps up the Chakra API functions in a way that:
  * - functions throw exceptions instead of returning error code (derived class can define the exception types);
  * - standard library types are used when possible to simplify usage.
  *
  * The order of the functions below follows the corresponding functions order in the chakrart.h
  * Currently we only wrap up functions that are needed to implement the JSI API.
  */
-struct ChakraContext {
+struct ChakraApi {
+
+  ChakraApi(JsRuntimeHandle runtime);
+  ~ChakraApi() noexcept;
+
   /**
    * @brief A smart pointer for JsRefs.
    *
@@ -389,6 +393,9 @@ struct ChakraContext {
    * @brief  Sets the runtime of the current context to an exception state.
    */
   static bool SetException(std::wstring_view message) noexcept;
+
+  private:
+
 };
 
 } // namespace Microsoft::JSI
