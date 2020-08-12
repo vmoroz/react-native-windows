@@ -32,19 +32,19 @@
   } while (false)
 
 // Check condition and throw native exception if it fails.
-#define ChakraVerifyElseThrow(condition, message)          \
-  do {                                                     \
-    if (!(condition)) {                                    \
-      ThrowNativeException(message);                       \
-    }                                                      \
+#define ChakraVerifyElseThrow(condition, message) \
+  do {                                            \
+    if (!(condition)) {                           \
+      ThrowNativeException(message);              \
+    }                                             \
   } while (false)
 
 // Evaluate expression and throw JS exception if it fails.
 #define ChakraVerifyJsErrorElseThrow(expression) \
   do {                                           \
-    JsErrorCode errorCode = (expression);        \
-    if (errorCode != JsNoError) {                \
-      ThrowJsException(errorCode);               \
+    JsErrorCode temp_error_code_ = (expression); \
+    if (temp_error_code_ != JsNoError) {         \
+      ThrowJsException(temp_error_code_);        \
     }                                            \
   } while (false)
 

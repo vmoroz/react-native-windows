@@ -343,7 +343,8 @@ class ChakraRuntime : public facebook::jsi::Runtime, ChakraApi, ChakraApi::IExce
   bool evaluateSerializedScript(
       const facebook::jsi::Buffer &scriptBuffer,
       const facebook::jsi::Buffer &serializedScriptBuffer,
-      const std::string &sourceURL);
+      const std::string &sourceURL,
+      JsValueRef *result);
 
   enum class PropertyAttibutes {
     None = 0,
