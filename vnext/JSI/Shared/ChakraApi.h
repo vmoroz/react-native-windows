@@ -40,10 +40,6 @@ namespace Microsoft::JSI {
  * Currently we only wrap up functions that are needed to implement the JSI API.
  */
 struct ChakraApi {
-
-  ChakraApi(JsRuntimeHandle runtime);
-  ~ChakraApi() noexcept;
-
   /**
    * @brief A smart pointer for JsRefs.
    *
@@ -72,20 +68,48 @@ struct ChakraApi {
   };
 
   /**
-   * @brief Throws an exception based on the errorCore.
+   * @brief Interface that helps override the exception being thrown.
    *
-   * The base implementation throws the generic std::exception.
-   * The method can be overridden in derived class to provide more specific exceptions.
+   * The ChakraApi uses the ExceptionThrowerHolder to retrieve the ExceptionThrower
+   * instance from the current thread.
    */
-  [[noreturn]] virtual void ThrowJsException(JsErrorCode errorCode, JsValueRef exception);
+  struct IExceptionThrower {
+    /**
+     * @brief Throws an exception based on the errorCore.
+     *
+     * The base implementation throws the generic std::exception.
+     * The method can be overridden in derived class to provide more specific exceptions.
+     */
+    [[noreturn]] virtual void ThrowJsException(JsErrorCode errorCode, JsValueRef exception) = 0;
+
+    /**
+     * @brief Throws an exception with the provided errorMessage.
+     *
+     * The base implementation throws the generic std::exception.
+     * The method can be overridden in derived class to provide more specific exceptions.
+     */
+    [[noreturn]] virtual void ThrowNativeException(char const *errorMessage) = 0;
+  };
 
   /**
-   * @brief Throws an exception with the provided errorMessage.
-   *
-   * The base implementation throws the generic std::exception.
-   * The method can be overridden in derived class to provide more specific exceptions.
+   * @brief A RAII class to hold IExceptionThrower instance in the thread local variable.
    */
-  [[noreturn]] virtual void ThrowNativeException(char const *errorMessage);
+  struct ExceptionThrowerHolder {
+    ExceptionThrowerHolder(IExceptionThrower *exceptionThrower) noexcept
+        : m_previous{std::exchange(tls_exceptionThrower, exceptionThrower)} {}
+
+    ~ExceptionThrowerHolder() noexcept {
+      tls_exceptionThrower = m_previous;
+    }
+
+    static IExceptionThrower *Get() noexcept {
+      return tls_exceptionThrower;
+    }
+
+   private:
+    static thread_local IExceptionThrower *tls_exceptionThrower;
+    IExceptionThrower *m_previous;
+  };
 
   /**
    * @brief Calls ThrowJsException in case if error is not JsNoError.
@@ -394,8 +418,7 @@ struct ChakraApi {
    */
   static bool SetException(std::wstring_view message) noexcept;
 
-  private:
-
+ private:
 };
 
 } // namespace Microsoft::JSI

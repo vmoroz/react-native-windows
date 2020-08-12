@@ -59,27 +59,27 @@ ChakraApi::JsRefHolder::~JsRefHolder() noexcept {
 // ChakraApi implementation
 //=============================================================================
 
-[[noreturn]] void ChakraApi::ThrowJsException(JsErrorCode errorCode, JsValueRef /*exception*/) {
-  std::ostringstream errorString;
-  errorString << "A call to Chakra API returned error code 0x" << std::hex << errorCode << '.';
-  throw std::exception(errorString.str().c_str());
-}
-
-[[noreturn]] void ChakraApi::ThrowNativeException(char const *errorMessage) {
-  throw std::exception(errorMessage);
-}
-
 void ChakraApi::VerifyJsErrorElseThrow(JsErrorCode errorCode) {
   if (errorCode != JsNoError) {
     JsValueRef exception{JS_INVALID_REFERENCE};
     ChakraVerifyElseCrash(JsGetAndClearException(&exception) == JsNoError, "Cannot retrieve JS exception.");
-    ThrowJsException(errorCode, exception);
+    if (auto thrower = ExceptionThrowerHolder::Get()) {
+      thrower->ThrowJsException(errorCode, exception);
+    } else {
+      std::ostringstream errorString;
+      errorString << "A call to Chakra API returned error code 0x" << std::hex << errorCode << '.';
+      throw std::exception(errorString.str().c_str());
+    }
   }
 }
 
 void ChakraApi::VerifyElseThrow(bool condition, char const *errorMessage) {
   if (!condition) {
-    ThrowNativeException(errorMessage);
+    if (auto thrower = ExceptionThrowerHolder::Get()) {
+      thrower->ThrowNativeException(errorMessage);
+    } else {
+      throw std::exception(errorMessage);
+    }
   }
 }
 
