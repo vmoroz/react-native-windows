@@ -55,6 +55,8 @@ ChakraRuntime::ChakraRuntime(ChakraRuntimeArgs &&args) noexcept : m_args{std::mo
 
   // Note :: We currently assume that the runtime will be created and
   // exclusively used in a single thread.
+  // Preserve the current context if it is already associated with the thread.
+  m_prevContext = JsRefHolder{GetCurrentContext()};
   SetCurrentContext(m_context);
 
   startDebuggingIfNeeded();
@@ -93,8 +95,9 @@ ChakraRuntime::~ChakraRuntime() noexcept {
 
   stopDebuggingIfNeeded();
 
-  SetCurrentContext(JS_INVALID_REFERENCE);
   m_context = {};
+  SetCurrentContext(m_prevContext);
+  m_prevContext = {};
 
   JsSetRuntimeMemoryAllocationCallback(m_runtime, nullptr, nullptr);
 

@@ -97,6 +97,12 @@ JsContextRef ChakraApi::CreateContext(JsRuntimeHandle runtime) {
   return context;
 }
 
+JsContextRef ChakraApi::GetCurrentContext() {
+  JsContextRef context{JS_INVALID_REFERENCE};
+  ChakraVerifyJsErrorElseThrow(JsGetCurrentContext(&context));
+  return context;
+}
+
 void ChakraApi::SetCurrentContext(JsContextRef context) {
   ChakraVerifyJsErrorElseThrow(JsSetCurrentContext(context));
 }
@@ -261,7 +267,8 @@ std::wstring_view ChakraApi::StringToPointer(JsValueRef string) {
 }
 
 std::string ChakraApi::StringToStdString(JsValueRef string) {
-  ChakraVerifyElseThrow(GetValueType(string) == JsString, "Cannot convert a non JS string ChakraObjectRef to a std::string.");
+  ChakraVerifyElseThrow(
+      GetValueType(string) == JsString, "Cannot convert a non JS string ChakraObjectRef to a std::string.");
 
   // We use a #ifdef here because we can avoid a UTF-8 to UTF-16 conversion
   // using ChakraCore's JsCopyString API.

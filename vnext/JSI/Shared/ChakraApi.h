@@ -158,6 +158,11 @@ struct ChakraApi {
   static JsContextRef CreateContext(JsRuntimeHandle runtime);
 
   /**
+   * @brief Gets the current script context on the thread..
+   */
+  JsContextRef GetCurrentContext();
+
+  /**
    * @brief Sets the current script context on the thread.
    */
   void SetCurrentContext(JsContextRef context);

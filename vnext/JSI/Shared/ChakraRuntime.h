@@ -445,6 +445,7 @@ class ChakraRuntime : public facebook::jsi::Runtime, ChakraApi, ChakraApi::IExce
 
   JsRuntimeHandle m_runtime;
   JsRefHolder m_context;
+  JsRefHolder m_prevContext;
 
   // Set the Chakra API exception thrower on this thread
   ExceptionThrowerHolder m_exceptionThrower{this};
