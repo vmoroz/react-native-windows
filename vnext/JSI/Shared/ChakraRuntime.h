@@ -268,12 +268,26 @@ class ChakraRuntime : public facebook::jsi::Runtime, ChakraApi, ChakraApi::IExce
       void *callbackState) noexcept;
   JsValueRef GetHostObjectProxyHandler();
 
-  // Evaluate code and catch any exceptions
-  template <typename TCode>
-  JsValueRef HandleCallbackExceptions(TCode &&code) noexcept {
+  // Evaluate lambda and augment exception messages with the methodName.
+  template <typename TLambda>
+  static auto RunInMethodContext(char const *methodName, TLambda lambda) {
+    try {
+      return lambda();
+    } catch (facebook::jsi::JSError const &) {
+      throw; // do not augment the JSError exceptions.
+    } catch (std::exception const &ex) {
+      VerifyElseThrow(false, (std::string{"Exception in "} + methodName + ": " + ex.what()).c_str());
+    } catch (...) {
+      VerifyElseThrow(false, (std::string{"Exception in "} + methodName + ": <unknown>").c_str());
+    }
+  }
+
+  // Evaluate lambda and convert all exceptions to Chakra engine exceptions.
+  template <typename TLambda>
+  JsValueRef HandleCallbackExceptions(TLambda lambda) noexcept {
     try {
       try {
-        return code();
+        return lambda();
       } catch (facebook::jsi::JSError const &jsError) {
         // This block may throw exceptions
         SetException(ToJsValueRef(jsError.value()));

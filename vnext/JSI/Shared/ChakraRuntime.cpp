@@ -662,17 +662,9 @@ JsValueRef CALLBACK ChakraRuntime::HostFunctionCall(
     JsiValueViewArray jsiArgs{args + 1, argCount - 1u};
 
     const facebook::jsi::HostFunctionType &hostFunc = hostFuncWraper->GetHostFunction();
-    try {
+    return RunInMethodContext("HostFunction", [&]() {
       return chakraRuntime.ToJsValueRef(hostFunc(chakraRuntime, jsiThisArg, jsiArgs.Data(), jsiArgs.Size()));
-    } catch (facebook::jsi::JSError const &) {
-      throw;
-    } catch (const std::exception &ex) {
-      std::string message{"Exception in HostFunction: "};
-      message += ex.what();
-      VerifyElseThrow(false, message.c_str());
-    } catch (...) {
-      VerifyElseThrow(false, "Exception in HostFunction: <unknown>");
-    }
+    });
   });
 }
 
@@ -696,7 +688,9 @@ JsValueRef CALLBACK ChakraRuntime::HostFunctionCall(
     if (GetValueType(propertyName) == JsValueType::JsString) {
       auto const &hostObject = *static_cast<std::shared_ptr<facebook::jsi::HostObject> *>(GetExternalData(target));
       PropNameIDView propertyId{GetPropertyIdFromName(StringToPointer(propertyName).data())};
-      return chakraRuntime->ToJsValueRef(hostObject->get(*chakraRuntime, propertyId));
+      return RunInMethodContext("HostObject::get", [&]() {
+        return chakraRuntime->ToJsValueRef(hostObject->get(*chakraRuntime, propertyId));
+      });
     } else if (
         GetValueType(propertyName) == JsValueType::JsSymbol &&
         GetPropertyIdFromSymbol(propertyName) == chakraRuntime->m_propertyId.hostObjectSymbol) {
@@ -706,7 +700,7 @@ JsValueRef CALLBACK ChakraRuntime::HostFunctionCall(
 
     return static_cast<JsValueRef>(chakraRuntime->m_undefinedValue);
   });
-}
+} // namespace Microsoft::JSI
 
 /*static*/ JsValueRef CALLBACK ChakraRuntime::HostObjectSetTrap(
     JsValueRef /*callee*/,
@@ -731,7 +725,7 @@ JsValueRef CALLBACK ChakraRuntime::HostFunctionCall(
       auto const &hostObject = *static_cast<std::shared_ptr<facebook::jsi::HostObject> *>(GetExternalData(target));
       PropNameIDView propertyId{GetPropertyIdFromName(StringToPointer(propertyName).data())};
       JsiValueView value{args[3]};
-      hostObject->set(*chakraRuntime, propertyId, value);
+      RunInMethodContext("HostObject::set", [&]() { hostObject->set(*chakraRuntime, propertyId, value); });
     }
 
     return static_cast<JsValueRef>(chakraRuntime->m_undefinedValue);
@@ -754,7 +748,8 @@ JsValueRef CALLBACK ChakraRuntime::HostFunctionCall(
     JsValueRef target = args[1];
     auto const &hostObject = *static_cast<std::shared_ptr<facebook::jsi::HostObject> *>(GetExternalData(target));
 
-    auto ownKeys = hostObject->getPropertyNames(*chakraRuntime);
+    auto ownKeys = RunInMethodContext(
+        "HostObject::getPropertyNames", [&]() { return hostObject->getPropertyNames(*chakraRuntime); });
 
     std::unordered_set<JsPropertyIdRef> dedupedOwnKeys{};
     dedupedOwnKeys.reserve(ownKeys.size());
