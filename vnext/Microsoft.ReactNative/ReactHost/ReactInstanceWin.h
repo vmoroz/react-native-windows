@@ -131,7 +131,7 @@ class ReactInstanceWin final : public Mso::ActiveObject<IReactInstanceInternal, 
   const Mso::Promise<void> m_whenLoaded;
   const Mso::Promise<void> m_whenDestroyed;
 #ifndef CORE_ABI
-  const std::shared_ptr<react::uwp::UwpReactInstanceProxy> m_legacyInstance;
+  std::shared_ptr<react::uwp::UwpReactInstanceProxy> m_legacyInstance;
 #endif
   const Mso::VoidFunctor m_updateUI;
   const bool m_debuggerBreakOnNextLine : 1;
