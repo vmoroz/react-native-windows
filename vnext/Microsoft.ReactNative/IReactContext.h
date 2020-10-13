@@ -31,6 +31,8 @@ struct ReactContext : winrt::implements<ReactContext, IReactContext> {
       hstring const &eventName,
       JSValueArgWriter const &paramsArgWriter) noexcept;
 
+  JsiRuntime Runtime() noexcept;
+
   bool UseWebDebugger() const noexcept;
   bool UseFastRefresh() const noexcept;
   bool UseDirectDebugger() const noexcept;

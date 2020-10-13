@@ -60,6 +60,7 @@ class ReactInstanceWin final : public Mso::ActiveObject<IReactInstanceInternal> 
  public:
   void CallJsFunction(std::string &&moduleName, std::string &&method, folly::dynamic &&params) noexcept;
   void DispatchEvent(int64_t viewTag, std::string &&eventName, folly::dynamic &&eventData) noexcept;
+  std::shared_ptr<facebook::jsi::Runtime> Runtime() noexcept;
 #ifndef CORE_ABI
   facebook::react::INativeUIManager *NativeUIManager() noexcept;
 #endif
@@ -176,6 +177,8 @@ class ReactInstanceWin final : public Mso::ActiveObject<IReactInstanceInternal> 
 #endif
   Mso::DispatchQueue m_uiQueue;
   std::deque<JSCallEntry> m_jsCallQueue;
+
+  std::shared_ptr<facebook::jsi::RuntimeHolderLazyInit> m_runtimeHolder;
 };
 
 } // namespace Mso::React

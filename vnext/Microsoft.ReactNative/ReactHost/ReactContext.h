@@ -5,6 +5,10 @@
 
 #include "React.h"
 
+namespace facebook::jsi {
+struct RuntimeHolderLazyInit;
+} // namespace facebook::jsi
+
 namespace Mso::React {
 
 class ReactInstanceWin;
@@ -26,6 +30,7 @@ class ReactContext final : public Mso::UnknownObject<IReactContext> {
   winrt::Microsoft::ReactNative::IReactNotificationService Notifications() const noexcept override;
   void CallJSFunction(std::string &&module, std::string &&method, folly::dynamic &&params) const noexcept override;
   void DispatchEvent(int64_t viewTag, std::string &&eventName, folly::dynamic &&eventData) const noexcept override;
+  std::shared_ptr<facebook::jsi::Runtime> Runtime() const noexcept override;
 #ifndef CORE_ABI
   ReactInstanceState State() const noexcept override;
   bool IsLoaded() const noexcept override;
@@ -43,12 +48,13 @@ class ReactContext final : public Mso::UnknownObject<IReactContext> {
   uint16_t SourceBundlePort() const noexcept override;
   std::string JavaScriptBundleFile() const noexcept override;
   bool UseDeveloperSupport() const noexcept override;
-
 #endif
 
  private:
   Mso::WeakPtr<ReactInstanceWin> m_reactInstance;
   winrt::Microsoft::ReactNative::IReactPropertyBag m_properties;
   winrt::Microsoft::ReactNative::IReactNotificationService m_notifications;
+  std::shared_ptr<facebook::jsi::RuntimeHolderLazyInit> m_runtimeHolder;
 };
+
 } // namespace Mso::React
