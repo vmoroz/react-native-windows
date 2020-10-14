@@ -68,6 +68,23 @@ void ReactContext::EmitJSEvent(
   m_context->CallJSFunction(to_string(eventEmitterName), "emit", std::move(params));
 }
 
+void ReactContext::EvaluateJavaScript(IJsiByteBuffer const &script) noexcept {
+  std::string scriptString;
+  script.GetData([&scriptString](array_view<uint8_t const> bytes) noexcept {
+    scriptString.reserve(bytes.size());
+    scriptString.assign(reinterpret_cast<char const *>(bytes.data()), bytes.size());
+  });
+  auto bigString = std::make_unique<facebook::react::JSBigStdString>(std::move(scriptString));
+  m_context->EvaluateJavaScript(std::move(bigString));
+}
+
+void ReactContext::SetGlobalVariable(hstring const &variableName, JSValueArgWriter const &variableWriter) noexcept {
+  auto dynamicWriter = winrt::make_self<DynamicWriter>();
+  variableWriter(*dynamicWriter);
+  auto variableValue = dynamicWriter->TakeValue();
+  m_context->SetGlobalVariable(to_string(variableName), std::move(variableValue));
+}
+
 #ifndef CORE_ABI
 bool ReactContext::UseWebDebugger() const noexcept {
   return m_context->UseWebDebugger();

@@ -4,6 +4,7 @@
 import "IJSValueWriter.idl";
 import "IReactNotificationService.idl";
 import "IReactPropertyBag.idl";
+import "JsiApi.idl";
 
 #ifndef CORE_ABI
 #include "NamespaceRedirect.h"
@@ -44,6 +45,12 @@ namespace Microsoft.ReactNative {
 
     // Call JavaScript module event. It is a specialized CallJSFunction call where method name is always 'emit'.
     void EmitJSEvent(String eventEmitterName, String eventName, JSValueArgWriter paramsArgWriter);
+
+    // Evaluate provided JavaScript.
+    void EvaluateJavaScript(IJsiByteBuffer script);
+
+    // Set global variable with the provided value.
+    void SetGlobalVariable(String variableName, JSValueArgWriter variableWriter);
 
 #ifndef CORE_ABI
     Boolean UseWebDebugger { get; };

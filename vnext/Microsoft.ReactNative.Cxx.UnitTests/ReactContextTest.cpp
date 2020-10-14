@@ -53,6 +53,14 @@ struct ReactContextStub : implements<ReactContextStub, IReactContext> {
     Args = TakeJSValue(writer);
   }
 
+  void EvaluateJavaScript(IJsiByteBuffer const &script) noexcept {
+    VerifyElseCrashSz(false, "Not implemented");
+  }
+
+  void SetGlobalVariable(hstring const &variableName, JSValueArgWriter const &variableWriter) noexcept {
+    VerifyElseCrashSz(false, "Not implemented");
+  }
+
   uint16_t DebuggerPort() noexcept {
     VerifyElseCrashSz(false, "Not implemented");
   }

@@ -160,4 +160,9 @@ void ReactContextMock::EmitJSEvent(
   m_builderMock->EmitJSEvent(eventEmitterName, eventName, paramsArgWriter);
 }
 
+void ReactContextMock::EvaluateJavaScript(IJsiByteBuffer const &script) noexcept {}
+
+void ReactContextMock::SetGlobalVariable(hstring const &variableName, JSValueArgWriter const &variableWriter) noexcept {
+}
+
 } // namespace winrt::Microsoft::ReactNative

@@ -26,6 +26,9 @@ class ReactContext final : public Mso::UnknownObject<IReactContext> {
   winrt::Microsoft::ReactNative::IReactNotificationService Notifications() const noexcept override;
   void CallJSFunction(std::string &&module, std::string &&method, folly::dynamic &&params) const noexcept override;
   void DispatchEvent(int64_t viewTag, std::string &&eventName, folly::dynamic &&eventData) const noexcept override;
+  void EvaluateJavaScript(std::unique_ptr<const facebook::react::JSBigString> &&script) const noexcept override;
+  void SetGlobalVariable(std::string &&variableName, folly::dynamic &&variableValue) const noexcept override;
+
 #ifndef CORE_ABI
   ReactInstanceState State() const noexcept override;
   bool IsLoaded() const noexcept override;

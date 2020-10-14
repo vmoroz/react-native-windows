@@ -333,6 +333,10 @@ namespace Microsoft.ReactNative.Managed.UnitTests
       m_builder.EmitJSEvent(eventEmitterName, eventName, paramsArgWriter);
     }
 
+    public void EvaluateJavaScript(IJsiByteBuffer script) {}
+
+    public void SetGlobalVariable(String variableName, JSValueArgWriter variableWriter) {}
+
     bool IReactContext.DebuggerBreakOnNextLine => throw new NotImplementedException();
 
     ushort IReactContext.DebuggerPort => throw new NotImplementedException();

@@ -91,6 +91,9 @@ struct IReactContext : IUnknown {
   virtual winrt::Microsoft::ReactNative::IReactPropertyBag Properties() const noexcept = 0;
   virtual void CallJSFunction(std::string &&module, std::string &&method, folly::dynamic &&params) const noexcept = 0;
   virtual void DispatchEvent(int64_t viewTag, std::string &&eventName, folly::dynamic &&eventData) const noexcept = 0;
+  virtual void EvaluateJavaScript(std::unique_ptr<const facebook::react::JSBigString> &&script) const noexcept = 0;
+  virtual void SetGlobalVariable(std::string &&variableName, folly::dynamic &&variableValue) const noexcept = 0;
+
 #ifndef CORE_ABI
   virtual ReactInstanceState State() const noexcept = 0;
   virtual bool IsLoaded() const noexcept = 0;

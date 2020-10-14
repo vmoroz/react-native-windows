@@ -729,6 +729,19 @@ void ReactInstanceWin::DispatchEvent(int64_t viewTag, std::string &&eventName, f
   CallJsFunction("RCTEventEmitter", "receiveEvent", std::move(params));
 }
 
+void ReactInstanceWin::EvaluateJavaScript(std::unique_ptr<const facebook::react::JSBigString> &&script) noexcept {
+  if (auto instance = m_instance.LoadWithLock()) {
+    instance->loadScriptFromString(std::move(script), "URL", /*loadSynchronously:*/ true);
+  }
+}
+
+void ReactInstanceWin::SetGlobalVariable(std::string &&variableName, folly::dynamic &&variableValue) noexcept {
+  if (auto instance = m_instance.LoadWithLock()) {
+    instance->setGlobalVariable(
+        std::move(variableName), std::make_unique<facebook::react::JSBigStdString>(folly::toJson(variableValue)));
+  }
+}
+
 facebook::react::INativeUIManager *ReactInstanceWin::NativeUIManager() noexcept {
   if (auto uimanager = m_uiManager.LoadWithLock()) {
     return uimanager->getNativeUIManager();

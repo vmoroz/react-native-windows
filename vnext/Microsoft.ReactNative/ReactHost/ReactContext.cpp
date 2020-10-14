@@ -49,6 +49,22 @@ void ReactContext::DispatchEvent(int64_t viewTag, std::string &&eventName, folly
 #endif
 }
 
+void ReactContext::EvaluateJavaScript(std::unique_ptr<const facebook::react::JSBigString> &&script) const noexcept {
+#ifndef CORE_ABI // requires instance
+  if (auto instance = m_reactInstance.GetStrongPtr()) {
+    instance->EvaluateJavaScript(std::move(script));
+  }
+#endif
+}
+
+void ReactContext::SetGlobalVariable(std::string &&variableName, folly::dynamic &&variableValue) const noexcept {
+#ifndef CORE_ABI // requires instance
+  if (auto instance = m_reactInstance.GetStrongPtr()) {
+    instance->SetGlobalVariable(std::move(variableName), std::move(variableValue));
+  }
+#endif
+}
+
 #ifndef CORE_ABI
 ReactInstanceState ReactContext::State() const noexcept {
   if (auto instance = m_reactInstance.GetStrongPtr()) {

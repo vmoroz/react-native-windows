@@ -142,6 +142,10 @@ struct ReactContextMock : implements<ReactContextMock, IReactContext> {
       hstring const &eventName,
       JSValueArgWriter const &paramsArgWriter) noexcept;
 
+  void EvaluateJavaScript(IJsiByteBuffer const &script) noexcept;
+
+  void SetGlobalVariable(hstring const &variableName, JSValueArgWriter const &variableWriter) noexcept;
+
   uint16_t DebuggerPort() noexcept {
     VerifyElseCrashSz(false, "Not implemented");
   }

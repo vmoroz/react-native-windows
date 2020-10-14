@@ -60,6 +60,9 @@ class ReactInstanceWin final : public Mso::ActiveObject<IReactInstanceInternal> 
  public:
   void CallJsFunction(std::string &&moduleName, std::string &&method, folly::dynamic &&params) noexcept;
   void DispatchEvent(int64_t viewTag, std::string &&eventName, folly::dynamic &&eventData) noexcept;
+  void EvaluateJavaScript(std::unique_ptr<const facebook::react::JSBigString> &&script) noexcept;
+  void SetGlobalVariable(std::string &&variableName, folly::dynamic &&variableValue) noexcept;
+
 #ifndef CORE_ABI
   facebook::react::INativeUIManager *NativeUIManager() noexcept;
 #endif
