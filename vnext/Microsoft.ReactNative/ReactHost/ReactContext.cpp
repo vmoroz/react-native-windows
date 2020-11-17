@@ -25,10 +25,6 @@ void ReactContext::Destroy() noexcept {
   }
 }
 
-void ReactContext::SetJsiRuntimeHolder(std::shared_ptr<facebook::jsi::RuntimeHolderLazyInit> runtimeHolder) noexcept {
-  m_runtimeHolder = std::move(runtimeHolder);
-}
-
 winrt::Microsoft::ReactNative::IReactPropertyBag ReactContext::Properties() const noexcept {
   return m_properties;
 }
@@ -53,12 +49,12 @@ void ReactContext::DispatchEvent(int64_t viewTag, std::string &&eventName, folly
 #endif
 }
 
-std::shared_ptr<facebook::jsi::Runtime> ReactContext::Runtime() const noexcept {
+winrt::Microsoft::ReactNative::JsiRuntime ReactContext::JsiRuntime() const noexcept {
   if (auto instance = m_reactInstance.GetStrongPtr()) {
-    return instance->Runtime();
+    return instance->JsiRuntime();
+  } else {
+    return nullptr;
   }
-
-  return nullptr;
 }
 
 #ifndef CORE_ABI

@@ -68,8 +68,8 @@ void ReactContext::EmitJSEvent(
   m_context->CallJSFunction(to_string(eventEmitterName), "emit", std::move(params));
 }
 
-JsiRuntime ReactContext::Runtime() noexcept {
-  return winrt::make<JsiRuntime>(m_context->Runtime());
+ReactNative::JsiRuntime ReactContext::Runtime() noexcept {
+  return m_context->JsiRuntime();
 }
 
 #ifndef CORE_ABI

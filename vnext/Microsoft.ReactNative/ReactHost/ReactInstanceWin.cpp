@@ -64,6 +64,8 @@
 #include <tuple>
 #include "ChakraRuntimeHolder.h"
 
+#include "JsiApi.h"
+
 namespace Microsoft::ReactNative {
 
 void AddStandardViewManagers(
@@ -381,7 +383,7 @@ void ReactInstanceWin::Initialize() noexcept {
                 break;
             }
 
-            m_reactContext->SetJsiRuntimeHolder(devSettings->jsiRuntimeHolder);
+            m_jsiRuntimeHolder = devSettings->jsiRuntimeHolder;
           }
 
           try {
@@ -544,8 +546,8 @@ Mso::Future<void> ReactInstanceWin::Destroy() noexcept {
     {
       // Release the JSI runtime
       std::scoped_lock lock{m_mutex};
-      m_runtimeHolder = nullptr;
-      m_runtime = nullptr;
+      m_jsiRuntimeHolder = nullptr;
+      m_jsiRuntime = nullptr;
     }
     // Release the message queues before the ui manager and instance.
     m_nativeMessageThread.Exchange(nullptr);
@@ -820,13 +822,29 @@ void ReactInstanceWin::DispatchEvent(int64_t viewTag, std::string &&eventName, f
   CallJsFunction("RCTEventEmitter", "receiveEvent", std::move(params));
 }
 
-std::shared_ptr<facebook::jsi::Runtime> ReactInstanceWin::Runtime() noexcept {
-  std::shared_ptr<facebook::jsi::RuntimeHolderLazyInit> runtimeHolder;
+winrt::Microsoft::ReactNative::JsiRuntime ReactInstanceWin::JsiRuntime() noexcept {
+  std::shared_ptr<facebook::jsi::RuntimeHolderLazyInit> jsiRuntimeHolder;
   {
     std::scoped_lock lock{m_mutex};
-    runtimeHolder = m_runtimeHolder;
+    if (m_jsiRuntime) {
+      return m_jsiRuntime;
+    } else {
+      jsiRuntimeHolder = m_jsiRuntimeHolder;
+    }
   }
-  return runtimeHolder ? runtimeHolder->getRuntime() : nullptr;
+
+  auto jsiRuntime = jsiRuntimeHolder ? jsiRuntimeHolder->getRuntime() : nullptr;
+
+  {
+    std::scoped_lock lock{m_mutex};
+    if (!m_jsiRuntime && jsiRuntime) {
+      // Set only if other thread did not do it yet.
+      m_jsiRuntime = winrt::make<winrt::Microsoft::ReactNative::implementation::JsiRuntime>(
+          std::move(jsiRuntimeHolder), std::move(jsiRuntime));
+    }
+
+    return m_jsiRuntime;
+  }
 }
 
 std::shared_ptr<facebook::react::Instance> ReactInstanceWin::GetInnerInstance() noexcept {
