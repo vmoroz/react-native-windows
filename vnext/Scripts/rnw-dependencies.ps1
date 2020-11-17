@@ -93,7 +93,7 @@ function InstallVS {
 function CheckNode {
     try {
         $v = (Get-Command node -ErrorAction Stop).Version.Major
-        return $v -eq 12 -or $v -eq 13
+        return $v -eq 12 -or $v -eq 13 -or $v -eq 14
     } catch {
         return $false;
     }
@@ -178,7 +178,7 @@ $requirements = @(
         Install = { InstallVS };
     },
     @{
-        Name = 'NodeJS 12 or 13 installed';
+        Name = 'NodeJS 12, 13 or 14 installed';
         Tags = @('appDev');
         Valid = CheckNode;
         Install = { choco install -y nodejs.install --version=12.9.1 };
@@ -267,7 +267,7 @@ function IsElevated {
     return [bool](([System.Security.Principal.WindowsIdentity]::GetCurrent()).groups -match "S-1-5-32-544");
 }
 
-if (!(IsElevated)) {
+if (!($NoPrompt) -and !(IsElevated)) {
     Write-Output "rnw-dependencies - this script must run elevated. Exiting.";
     return;
 }

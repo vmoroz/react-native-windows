@@ -6,6 +6,7 @@
 #include "TextViewManager.h"
 
 #include <Views/ShadowNodeBase.h>
+#include <Views/VirtualTextViewManager.h>
 
 #include <UI.Xaml.Automation.Peers.h>
 #include <UI.Xaml.Automation.h>
@@ -21,13 +22,17 @@ using namespace xaml::Automation;
 using namespace xaml::Automation::Peers;
 } // namespace winrt
 
-namespace react::uwp {
+namespace Microsoft::ReactNative {
 
 class TextShadowNode final : public ShadowNodeBase {
   using Super = ShadowNodeBase;
+  friend TextViewManager;
 
  private:
   ShadowNode *m_firstChildNode;
+
+  std::optional<winrt::Windows::UI::Color> m_ColorValue = std::nullopt;
+  int32_t m_prevCursorEnd = 0;
 
  public:
   TextShadowNode() {
@@ -47,6 +52,13 @@ class TextShadowNode final : public ShadowNodeBase {
         transformableText.originalText = text;
         text = transformableText.TransformText();
         textBlock.Text(winrt::hstring(text));
+
+        if (m_ColorValue) {
+          AddHighlighter(m_ColorValue.value(), text.size());
+        }
+
+        m_prevCursorEnd += textBlock.Text().size();
+
         return;
       }
     } else if (index == 1 && m_firstChildNode != nullptr) {
@@ -55,7 +67,49 @@ class TextShadowNode final : public ShadowNodeBase {
       Super::AddView(*m_firstChildNode, 0);
       m_firstChildNode = nullptr;
     }
+
     Super::AddView(child, index);
+
+    if (auto run = static_cast<ShadowNodeBase &>(child).GetView().try_as<winrt::Run>()) {
+      if (m_ColorValue) {
+        AddHighlighter(m_ColorValue.value(), run.Text().size());
+      }
+
+      m_prevCursorEnd += run.Text().size();
+    } else if (auto span = static_cast<ShadowNodeBase &>(child).GetView().try_as<winrt::Span>()) {
+      AddNestedTextHighlighter(m_ColorValue, span, static_cast<VirtualTextShadowNode &>(child).m_highlightData);
+    }
+  }
+
+  void AddNestedTextHighlighter(
+      const std::optional<winrt::Windows::UI::Color> &parentColor,
+      winrt::Span &span,
+      VirtualTextShadowNode::HighlightData highData) {
+    if (!highData.color && parentColor) {
+      highData.color = parentColor;
+    }
+
+    for (const auto &el : span.Inlines()) {
+      if (auto run = el.try_as<winrt::Run>()) {
+        if (highData.color) {
+          AddHighlighter(highData.color.value(), run.Text().size());
+        }
+
+        m_prevCursorEnd += run.Text().size();
+      } else if (auto spanChild = el.try_as<winrt::Span>()) {
+        AddNestedTextHighlighter(highData.color, spanChild, highData.data[highData.spanIdx++]);
+      }
+    }
+  }
+
+  void AddHighlighter(const winrt::Windows::UI::Color &color, size_t runSize) {
+    auto newHigh = winrt::TextHighlighter{};
+    newHigh.Background(react::uwp::SolidBrushFromColor(color));
+
+    winrt::TextRange newRange{m_prevCursorEnd, static_cast<int32_t>(runSize)};
+    newHigh.Ranges().Append(newRange);
+
+    this->GetView().as<xaml::Controls::TextBlock>().TextHighlighters().Append(newHigh);
   }
 
   void removeAllChildren() override {
@@ -75,12 +129,12 @@ class TextShadowNode final : public ShadowNodeBase {
 
 TextViewManager::TextViewManager(const Mso::React::IReactContext &context) : Super(context) {}
 
-facebook::react::ShadowNode *TextViewManager::createShadow() const {
+ShadowNode *TextViewManager::createShadow() const {
   return new TextShadowNode();
 }
 
-const char *TextViewManager::GetName() const {
-  return "RCTText";
+const wchar_t *TextViewManager::GetName() const {
+  return L"RCTText";
 }
 
 XamlView TextViewManager::CreateViewCore(int64_t /*tag*/) {
@@ -92,7 +146,7 @@ XamlView TextViewManager::CreateViewCore(int64_t /*tag*/) {
 bool TextViewManager::UpdateProperty(
     ShadowNodeBase *nodeToUpdate,
     const std::string &propertyName,
-    const folly::dynamic &propertyValue) {
+    const winrt::Microsoft::ReactNative::JSValue &propertyValue) {
   auto textBlock = nodeToUpdate->GetView().as<xaml::Controls::TextBlock>();
   if (textBlock == nullptr)
     return true;
@@ -109,8 +163,9 @@ bool TextViewManager::UpdateProperty(
   } else if (TryUpdateTextDecorationLine(textBlock, propertyName, propertyValue)) {
   } else if (TryUpdateCharacterSpacing(textBlock, propertyName, propertyValue)) {
   } else if (propertyName == "numberOfLines") {
-    if (propertyValue.isNumber()) {
-      auto numberLines = static_cast<int32_t>(propertyValue.asDouble());
+    if (propertyValue.Type() == winrt::Microsoft::ReactNative::JSValueType::Double ||
+        propertyValue.Type() == winrt::Microsoft::ReactNative::JSValueType::Int64) {
+      auto numberLines = propertyValue.AsInt32();
       if (numberLines == 1) {
         textBlock.TextWrapping(xaml::TextWrapping::NoWrap); // setting no wrap for single line
                                                             // text for better trimming
@@ -119,31 +174,36 @@ bool TextViewManager::UpdateProperty(
         textBlock.TextWrapping(xaml::TextWrapping::Wrap);
       }
       textBlock.MaxLines(numberLines);
-    } else if (propertyValue.isNull()) {
+    } else if (propertyValue.IsNull()) {
       textBlock.TextWrapping(xaml::TextWrapping::Wrap); // set wrapping back to default
       textBlock.ClearValue(xaml::Controls::TextBlock::MaxLinesProperty());
     }
   } else if (propertyName == "lineHeight") {
-    if (propertyValue.isNumber())
-      textBlock.LineHeight(static_cast<int32_t>(propertyValue.asDouble()));
-    else if (propertyValue.isNull())
+    if (propertyValue.Type() == winrt::Microsoft::ReactNative::JSValueType::Double ||
+        propertyValue.Type() == winrt::Microsoft::ReactNative::JSValueType::Int64)
+      textBlock.LineHeight(propertyValue.AsInt32());
+    else if (propertyValue.IsNull())
       textBlock.ClearValue(xaml::Controls::TextBlock::LineHeightProperty());
   } else if (propertyName == "selectable") {
-    if (propertyValue.isBool())
-      textBlock.IsTextSelectionEnabled(propertyValue.asBool());
-    else if (propertyValue.isNull())
+    if (propertyValue.Type() == winrt::Microsoft::ReactNative::JSValueType::Boolean)
+      textBlock.IsTextSelectionEnabled(propertyValue.AsBoolean());
+    else if (propertyValue.IsNull())
       textBlock.ClearValue(xaml::Controls::TextBlock::IsTextSelectionEnabledProperty());
   } else if (propertyName == "allowFontScaling") {
-    if (propertyValue.isBool()) {
-      textBlock.IsTextScaleFactorEnabled(propertyValue.asBool());
+    if (propertyValue.Type() == winrt::Microsoft::ReactNative::JSValueType::Boolean) {
+      textBlock.IsTextScaleFactorEnabled(propertyValue.AsBoolean());
     } else {
       textBlock.ClearValue(xaml::Controls::TextBlock::IsTextScaleFactorEnabledProperty());
     }
   } else if (propertyName == "selectionColor") {
-    if (IsValidColorValue(propertyValue)) {
-      textBlock.SelectionHighlightColor(SolidColorBrushFrom(propertyValue));
+    if (react::uwp::IsValidColorValue(propertyValue)) {
+      textBlock.SelectionHighlightColor(react::uwp::SolidColorBrushFrom(propertyValue));
     } else
       textBlock.ClearValue(xaml::Controls::TextBlock::SelectionHighlightColorProperty());
+  } else if (propertyName == "backgroundColor") {
+    if (react::uwp::IsValidColorValue(propertyValue)) {
+      static_cast<TextShadowNode *>(nodeToUpdate)->m_ColorValue = react::uwp::ColorFrom(propertyValue);
+    }
   } else {
     return Super::UpdateProperty(nodeToUpdate, propertyName, propertyValue);
   }
@@ -152,8 +212,18 @@ bool TextViewManager::UpdateProperty(
 
 void TextViewManager::AddView(const XamlView &parent, const XamlView &child, int64_t index) {
   auto textBlock(parent.as<xaml::Controls::TextBlock>());
-  auto childInline(child.as<winrt::Inline>());
-  textBlock.Inlines().InsertAt(static_cast<uint32_t>(index), childInline);
+
+  if (auto childInline = child.try_as<winrt::Inline>()) {
+    textBlock.Inlines().InsertAt(static_cast<uint32_t>(index), childInline);
+  } else {
+    // #6315 Text can embed non-text elements. Fail gracefully instead of crashing if that happens
+    textBlock.Inlines().InsertAt(static_cast<uint32_t>(index), winrt::Run());
+    GetReactContext().CallJSFunction(
+        "RCTLog",
+        "logToConsole",
+        folly::dynamic::array(
+            "warn", "React Native for Windows does not yet support nesting non-Text components under <Text>"));
+  }
 }
 
 void TextViewManager::RemoveAllChildren(const XamlView &parent) {
@@ -185,4 +255,4 @@ void TextViewManager::OnDescendantTextPropertyChanged(ShadowNodeBase *node) {
   }
 }
 
-} // namespace react::uwp
+} // namespace Microsoft::ReactNative

@@ -31,8 +31,6 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Mso", "Mso\Mso.vcxitems", "
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Mso.UnitTests", "Mso.UnitTests\Mso.UnitTests.vcxproj", "{1958CEAA-FBE0-44E3-8A99-90AD85531FFE}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Microsoft.ReactNative.Shared", "Shared\Shared.vcxitems", "{2049DBE9-8D13-42C9-AE4B-413AE38FFFD0}"
-EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ReactCommon", "ReactCommon\ReactCommon.vcxproj", "{A9D95A91-4DB7-4F72-BEB6-FE8A5C89BFBD}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{25C4DA8C-A4D2-4D5F-950A-E5371A8AB659}"
@@ -58,7 +56,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "PropertySheets", "PropertyS
 		PropertySheets\Debug.props = PropertySheets\Debug.props
 		PropertySheets\React.Cpp.props = PropertySheets\React.Cpp.props
 		PropertySheets\ReactCommunity.cpp.props = PropertySheets\ReactCommunity.cpp.props
-		PropertySheets\ReactPatches.targets = PropertySheets\ReactPatches.targets
 		PropertySheets\Release.props = PropertySheets\Release.props
 		PropertySheets\Warnings.props = PropertySheets\Warnings.props
 		PropertySheets\Win32.props = PropertySheets\Win32.props
@@ -120,6 +117,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.ReactNative.Manag
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Microsoft.ReactNative.Managed.CodeGen", "Microsoft.ReactNative.Managed.CodeGen\Microsoft.ReactNative.Managed.CodeGen.csproj", "{ADED4FBE-887D-4271-AF24-F0823BCE7961}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Microsoft.ReactNative.Shared", "Shared\Shared.vcxitems", "{2049DBE9-8D13-42C9-AE4B-413AE38FFFD0}"
+EndProject
 Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
 		JSI\Shared\JSI.Shared.vcxitems*{0cc28589-39e4-4288-b162-97b959f8b843}*SharedItemsImports = 9
@@ -143,14 +142,14 @@ Global
 		Shared\Shared.vcxitems*{f7d32bd0-2749-483e-9a0d-1635ef7e3136}*SharedItemsImports = 4
 	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
-		Debug|x64 = Debug|x64
-		Debug|x86 = Debug|x86
 		Debug|ARM = Debug|ARM
 		Debug|ARM64 = Debug|ARM64
-		Release|x64 = Release|x64
-		Release|x86 = Release|x86
+		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
 		Release|ARM = Release|ARM
 		Release|ARM64 = Release|ARM64
+		Release|x64 = Release|x64
+		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{F7D32BD0-2749-483E-9A0D-1635EF7E3136}.Debug|ARM.ActiveCfg = Debug|ARM
@@ -358,7 +357,6 @@ Global
 		{46D76F7A-8FD9-4A7D-8102-2857E5DA6B84} = {25C4DA8C-A4D2-4D5F-950A-E5371A8AB659}
 		{84E05BFA-CBAF-4F0D-BFB6-4CE85742A57E} = {6348365C-E58A-4CB4-96CA-E2A6C1201DD6}
 		{1958CEAA-FBE0-44E3-8A99-90AD85531FFE} = {25C4DA8C-A4D2-4D5F-950A-E5371A8AB659}
-		{2049DBE9-8D13-42C9-AE4B-413AE38FFFD0} = {6348365C-E58A-4CB4-96CA-E2A6C1201DD6}
 		{A9D95A91-4DB7-4F72-BEB6-FE8A5C89BFBD} = {814A1893-F3C3-45BA-8C80-5377CFD86C5F}
 		{D1CDE6A6-E011-4852-8500-E259AD60846F} = {1DA4BB3B-D0B1-4933-BDBA-60B553B4F946}
 		{4CA4053F-17D8-4619-8600-FF672209828C} = {D1CDE6A6-E011-4852-8500-E259AD60846F}

@@ -33,15 +33,26 @@ const View: React.AbstractComponent<
   // [Windows
   invariant(
     // $FlowFixMe Wanting to catch untyped usages
-    props.acceptsKeyboardFocus === undefined,
+    !props || props.acceptsKeyboardFocus === undefined,
     'Support for the "acceptsKeyboardFocus" property has been removed in favor of "focusable"',
   );
   // Windows]
 
   return (
-    <TextAncestor.Provider value={false}>
-      <ViewNativeComponent {...props} ref={forwardedRef} />
-    </TextAncestor.Provider>
+    // [Windows
+    // In core this is a TextAncestor.Provider value={false} See
+    // https://github.com/facebook/react-native/commit/66601e755fcad10698e61d20878d52194ad0e90c
+    // But since Views are not currently supported in Text, we do not need the extra provider
+    <TextAncestor.Consumer>
+      {hasTextAncestor => {
+        invariant(
+          !hasTextAncestor,
+          'Nesting of <View> within <Text> is not currently supported.',
+        );
+        return <ViewNativeComponent {...props} ref={forwardedRef} />;
+      }}
+    </TextAncestor.Consumer>
+    // Windows]
   );
 });
 

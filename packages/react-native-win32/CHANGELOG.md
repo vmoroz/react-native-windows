@@ -1,8 +1,73 @@
 # Change Log - @office-iss/react-native-win32
 
-This log was last generated on Sat, 03 Oct 2020 05:04:45 GMT and should not be manually modified.
+This log was last generated on Thu, 12 Nov 2020 05:05:57 GMT and should not be manually modified.
 
 <!-- Start content -->
+
+## 0.0.0-canary.63
+
+Thu, 12 Nov 2020 05:05:57 GMT
+
+### Changes
+
+- Add Keyboard Events to TextWin32 (krsiler@microsoft.com)
+
+## 0.0.0-canary.62
+
+Sat, 31 Oct 2020 05:06:50 GMT
+
+### Changes
+
+- Integrate 10/5 Nightly RN Build (ngerlem@microsoft.com)
+
+## 0.0.0-canary.61
+
+Fri, 30 Oct 2020 05:07:51 GMT
+
+### Changes
+
+- Integrate 9/17 Nightly RN Build (ngerlem@microsoft.com)
+
+## 0.0.0-canary.60
+
+Thu, 29 Oct 2020 05:05:49 GMT
+
+### Changes
+
+- Better error handling of Views inside Text components (30809111+acoates-ms@users.noreply.github.com)
+- Integrate Additional RNTester Refactoring (9/2 Nightly RN Build) (ngerlem@microsoft.com)
+
+## 0.0.0-canary.59
+
+Sat, 24 Oct 2020 05:07:36 GMT
+
+### Changes
+
+- Integrate RNTester Redesign (8/26 Nightly Build) (ngerlem@microsoft.com)
+
+## 0.0.0-canary.58
+
+Thu, 22 Oct 2020 05:06:28 GMT
+
+### Changes
+
+- Integrate 8/25 Nightly RN Build (ngerlem@microsoft.com)
+
+## 0.0.0-canary.57
+
+Wed, 21 Oct 2020 05:05:24 GMT
+
+### Changes
+
+- Drop Issue Requirement from Override Manifest Schema Validation (ngerlem@microsoft.com)
+
+## 0.0.0-canary.56
+
+Fri, 09 Oct 2020 05:06:32 GMT
+
+### Changes
+
+- Integrate 8/20 Nightly RN Build (Extract RNTester) (ngerlem@microsoft.com)
 
 ## 0.0.0-canary.55
 

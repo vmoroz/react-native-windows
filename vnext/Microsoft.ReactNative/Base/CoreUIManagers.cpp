@@ -4,11 +4,11 @@
 #include "pch.h"
 
 #include <IReactInstance.h>
-#include <IUIManager.h>
 #include <Modules/NativeUIManager.h>
 #include <ViewManagerProvider.h>
 
 // Standard View Managers
+#include <GlyphViewManager.h>
 #include <Views/ActivityIndicatorViewManager.h>
 #include <Views/DatePickerViewManager.h>
 #include <Views/FlyoutViewManager.h>
@@ -27,17 +27,10 @@
 #include <Views/ViewViewManager.h>
 #include <Views/VirtualTextViewManager.h>
 
-// Polyester View Managers // TODO: Move Polyester implementations out of this
-// library and depot
-#include <Polyester/ButtonContentViewManager.h>
-#include <Polyester/ButtonViewManager.h>
-#include <Polyester/HyperlinkViewManager.h>
-#include <Polyester/IconViewManager.h>
-
-namespace react::uwp {
+namespace Microsoft::ReactNative {
 
 void AddStandardViewManagers(
-    std::vector<std::unique_ptr<facebook::react::IViewManager>> &viewManagers,
+    std::vector<std::unique_ptr<Microsoft::ReactNative::IViewManager>> &viewManagers,
     const Mso::React::IReactContext &context) noexcept {
   viewManagers.push_back(std::make_unique<ActivityIndicatorViewManager>(context));
   viewManagers.push_back(std::make_unique<DatePickerViewManager>(context));
@@ -56,22 +49,7 @@ void AddStandardViewManagers(
   viewManagers.push_back(std::make_unique<ViewViewManager>(context));
   viewManagers.push_back(std::make_unique<VirtualTextViewManager>(context));
   viewManagers.push_back(std::make_unique<RefreshControlViewManager>(context));
+  viewManagers.push_back(std::make_unique<GlyphViewManager>(context));
 }
 
-void AddPolyesterViewManagers(
-    std::vector<std::unique_ptr<facebook::react::IViewManager>> &viewManagers,
-    const Mso::React::IReactContext &context) noexcept {
-  viewManagers.push_back(std::make_unique<polyester::ButtonViewManager>(context));
-  viewManagers.push_back(std::make_unique<polyester::ButtonContentViewManager>(context));
-  viewManagers.push_back(std::make_unique<polyester::HyperlinkViewManager>(context));
-  viewManagers.push_back(std::make_unique<polyester::IconViewManager>(context));
-}
-
-std::shared_ptr<facebook::react::IUIManager> CreateUIManager2(
-    Mso::React::IReactContext *context,
-    std::vector<react::uwp::NativeViewManager> &&viewManagers) noexcept {
-  // Create UIManager, passing in ViewManagers
-  return createIUIManager(std::move(viewManagers), new NativeUIManager(context));
-}
-
-} // namespace react::uwp
+} // namespace Microsoft::ReactNative

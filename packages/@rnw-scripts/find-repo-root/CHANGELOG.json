@@ -2,6 +2,36 @@
   "name": "@rnw-scripts/find-repo-root",
   "entries": [
     {
+      "date": "Wed, 21 Oct 2020 05:05:24 GMT",
+      "tag": "@rnw-scripts/find-repo-root_v0.0.12",
+      "version": "0.0.12",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Allow non-RNW repos",
+            "author": "ngerlem@microsoft.com",
+            "commit": "cd0d904f4779ef919654bc006c6d4525bbf1b724",
+            "package": "@rnw-scripts/find-repo-root"
+          }
+        ]
+      }
+    },
+    {
+      "date": "Fri, 09 Oct 2020 05:06:32 GMT",
+      "tag": "@rnw-scripts/find-repo-root_v0.0.11",
+      "version": "0.0.11",
+      "comments": {
+        "none": [
+          {
+            "comment": "Update just-scipts (remove npm-registry-fetch)",
+            "author": "ngerlem@microsoft.com",
+            "commit": "00b2d84b8effce0b7405a67bd4903eed88cb9aaf",
+            "package": "@rnw-scripts/find-repo-root"
+          }
+        ]
+      }
+    },
+    {
       "date": "Thu, 01 Oct 2020 05:08:11 GMT",
       "tag": "@rnw-scripts/find-repo-root_v0.0.11",
       "version": "0.0.11",

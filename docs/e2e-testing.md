@@ -143,7 +143,6 @@ Pay attention to the last line of the LoginPage, we always export a new instance
 ```
 // login.spec.ts
 before(() => {
-  HomePage.backToHomePage();
   HomePage.clickAndGotoLoginPage();
 });
 
@@ -279,7 +278,7 @@ No matter what JavaScript framework you choose for native app testing, you have 
 
  WinAppDriver provides rich API to help locate the UI element. If [testID](https://facebook.github.io/react-native/docs/picker-item#testid) is specified in React Native app for Windows, the locator strategy should choose `accessibility id`.
 
-A unique `accessiblity id`/`testID` per Window is recommended for React Native Windows E2E testing when authoring the test app and test cases. To ease the maintain effort, all testIDs are defined in [Consts.ts](https://github.com/microsoft/react-native-windows/blob/master/vnext/src/RNTester/js/examples-win/LegacyTests/Consts.ts), then be imported by test app and test page objects or test cases.
+A unique `accessiblity id`/`testID` per Window is recommended for React Native Windows E2E testing when authoring the test app and test cases. To ease the maintain effort, all testIDs are defined in [Consts.ts](https://github.com/microsoft/react-native-windows/blob/master/packages/@react-native-windows/tester/src/js/examples-win/LegacyTests/Consts.ts), then be imported by test app and test page objects or test cases.
 
 | **Client API** | **Locator Strategy** | **Matched Attribute in inspect.exe** | **Example** |
 | --- | --- | --- | --- |
@@ -509,4 +508,12 @@ Then you can access crash dumps under the `ReactUWPTestAppTreeDump\CrashDumps` f
 You can get the symbols from the `appxsym` (just download it and rename it to `.zip`):
 ![SymbolsPackage](img/e2e-syms.png)
 
- The `ReactUWPTestAppTreeDump` folder will also contain any tree dump outputs that were produced that did not match the masters.
+ The `ReactUWPTestAppTreeDump` folder will also contain any tree dump outputs that were produced that did not match the masters.  
+ 
+ ## Troubleshooting
+
+ ### E2ETests fail when run locally after sync  
+
+After doing a sync, E2E tests currently fail, see details in https://github.com/microsoft/react-native-windows/issues/5762  
+The workaround is to do a yarn install --force, then re-run the tests.
+

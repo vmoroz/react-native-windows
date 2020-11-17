@@ -34,6 +34,11 @@ ReactNativeHost::ReactNativeHost() noexcept : m_reactHost{Mso::React::MakeReactH
 #endif
 }
 
+/*static*/ ReactNative::ReactNativeHost ReactNativeHost::FromContext(
+    ReactNative::IReactContext const &reactContext) noexcept {
+  return GetReactNativeHost(ReactPropertyBag{reactContext.Properties()});
+}
+
 IVector<IReactPackageProvider> ReactNativeHost::PackageProviders() noexcept {
   return InstanceSettings().PackageProviders();
 }
@@ -54,10 +59,11 @@ IAsyncAction ReactNativeHost::LoadInstance() noexcept {
   return ReloadInstance();
 }
 
-::Microsoft::ReactNative::ReactPropertyId<::Microsoft::ReactNative::ReactNonAbiValue<winrt::weak_ref<ReactNativeHost>>>
+winrt::Microsoft::ReactNative::ReactPropertyId<
+    winrt::Microsoft::ReactNative::ReactNonAbiValue<winrt::weak_ref<ReactNativeHost>>>
 ReactNativeHostProperty() noexcept {
-  static ::Microsoft::ReactNative::ReactPropertyId<
-      ::Microsoft::ReactNative::ReactNonAbiValue<winrt::weak_ref<ReactNativeHost>>>
+  static winrt::Microsoft::ReactNative::ReactPropertyId<
+      winrt::Microsoft::ReactNative::ReactNonAbiValue<winrt::weak_ref<ReactNativeHost>>>
       propId{L"ReactNative.ReactNativeHost", L"ReactNativeHost"};
   return propId;
 }

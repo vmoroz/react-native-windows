@@ -12,7 +12,6 @@
 #include <TurboModuleManager.h>
 #include <cxxreact/Instance.h>
 #include "InstanceManager.h"
-#include "ViewManager.h"
 
 namespace facebook {
 namespace react {
@@ -23,25 +22,27 @@ struct IReactRootView;
 class InstanceImpl final : public InstanceWrapper, private ::std::enable_shared_from_this<InstanceImpl> {
  public:
   static std::shared_ptr<InstanceImpl> MakeNoBundle(
+      std::shared_ptr<Instance> &&instance,
       std::string &&jsBundleBasePath,
       std::vector<
           std::tuple<std::string, facebook::xplat::module::CxxModule::Provider, std::shared_ptr<MessageQueueThread>>>
           &&cxxModules,
       std::shared_ptr<TurboModuleRegistry> turboModuleRegistry,
-      std::shared_ptr<IUIManager> uimanager,
+      std::unique_ptr<InstanceCallback> &&callback,
       std::shared_ptr<MessageQueueThread> jsQueue,
       std::shared_ptr<MessageQueueThread> nativeQueue,
       std::shared_ptr<DevSettings> devSettings,
       std::shared_ptr<IDevSupportManager> devManager) noexcept;
 
   static std::shared_ptr<InstanceImpl> MakeAndLoadBundle(
+      std::shared_ptr<Instance> &&instance,
       std::string &&jsBundleBasePath,
       std::string &&jsBundleRelativePath,
       std::vector<
           std::tuple<std::string, facebook::xplat::module::CxxModule::Provider, std::shared_ptr<MessageQueueThread>>>
           &&cxxModules,
       std::shared_ptr<TurboModuleRegistry> turboModuleRegistry,
-      std::shared_ptr<IUIManager> uimanager,
+      std::unique_ptr<InstanceCallback> &&callback,
       std::shared_ptr<MessageQueueThread> jsQueue,
       std::shared_ptr<MessageQueueThread> nativeQueue,
       std::shared_ptr<DevSettings> devSettings,
@@ -53,8 +54,6 @@ class InstanceImpl final : public InstanceWrapper, private ::std::enable_shared_
   virtual const std::shared_ptr<Instance> &GetInstance() const noexcept override {
     return m_innerInstance;
   }
-  void AttachMeasuredRootView(IReactRootView *rootView, folly::dynamic &&initProps) noexcept override;
-  void DetachRootView(IReactRootView *rootView) noexcept override;
 
   void DispatchEvent(int64_t viewTag, std::string eventName, folly::dynamic &&eventData) override;
   void invokeCallback(const int64_t callbackId, folly::dynamic &&params) override;
@@ -63,24 +62,26 @@ class InstanceImpl final : public InstanceWrapper, private ::std::enable_shared_
 
  private:
   InstanceImpl(
+      std::shared_ptr<Instance> &&instance,
       std::string &&jsBundleFile,
       std::vector<
           std::tuple<std::string, facebook::xplat::module::CxxModule::Provider, std::shared_ptr<MessageQueueThread>>>
           &&cxxModules,
       std::shared_ptr<TurboModuleRegistry> turboModuleRegistry,
-      std::shared_ptr<IUIManager> uimanager,
+      std::unique_ptr<InstanceCallback> &&callback,
       std::shared_ptr<MessageQueueThread> jsQueue,
       std::shared_ptr<MessageQueueThread> nativeQueue,
       std::shared_ptr<DevSettings> devSettings,
       std::shared_ptr<IDevSupportManager> devManager);
 
   InstanceImpl(
+      std::shared_ptr<Instance> &&instance,
       std::string &&jsBundleBasePath,
       std::string &&jsBundleRelativePath,
       std::vector<
           std::tuple<std::string, facebook::xplat::module::CxxModule::Provider, std::shared_ptr<MessageQueueThread>>>
           &&cxxModules,
-      std::shared_ptr<IUIManager> uimanager,
+      std::unique_ptr<InstanceCallback> &&callback,
       std::shared_ptr<MessageQueueThread> jsQueue,
       std::shared_ptr<MessageQueueThread> nativeQueue,
       std::shared_ptr<DevSettings> devSettings,
@@ -95,7 +96,6 @@ class InstanceImpl final : public InstanceWrapper, private ::std::enable_shared_
   std::shared_ptr<Instance> m_innerInstance;
 
   std::string m_jsBundleBasePath;
-  std::shared_ptr<IUIManager> m_uimanager;
   std::shared_ptr<facebook::react::ModuleRegistry> m_moduleRegistry;
   std::shared_ptr<TurboModuleRegistry> m_turboModuleRegistry;
   std::shared_ptr<MessageQueueThread> m_jsThread;

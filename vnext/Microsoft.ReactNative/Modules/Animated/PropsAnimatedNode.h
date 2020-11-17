@@ -9,8 +9,11 @@
 
 #include "FacadeType.h"
 
-namespace react::uwp {
+namespace Microsoft::ReactNative {
 struct ShadowNodeBase;
+}
+
+namespace react::uwp {
 class PropsAnimatedNode final : public AnimatedNode {
  public:
   PropsAnimatedNode(
@@ -28,7 +31,7 @@ class PropsAnimatedNode final : public AnimatedNode {
 
  private:
   void MakeAnimation(int64_t valueNodeTag, FacadeType facadeType);
-  ShadowNodeBase *GetShadowNodeBase();
+  Microsoft::ReactNative::ShadowNodeBase *GetShadowNodeBase();
   xaml::UIElement GetUIElement();
 
   Mso::CntPtr<Mso::React::IReactContext> m_context{};
@@ -37,7 +40,7 @@ class PropsAnimatedNode final : public AnimatedNode {
 
   int64_t m_connectedViewTag{s_connectedViewTagUnset};
   std::unordered_map<int64_t, comp::CompositionAnimation> m_expressionAnimations{};
-  std::vector<int64_t> m_suspendedExpressionAnimationTags{};
+  // std::vector<int64_t> m_suspendedExpressionAnimationTags{};
   comp::ExpressionAnimation m_centerPointAnimation{nullptr};
   winrt::Numerics::float3 m_rotationAxis{0, 0, 1};
   bool m_needsCenterPointAnimation{false};

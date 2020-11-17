@@ -40,7 +40,6 @@
 #include <DevSettings.h>
 #include <DevSupportManager.h>
 #include <IReactRootView.h>
-#include <IUIManager.h>
 #include <Shlwapi.h>
 #include <WebSocketJSExecutorFactory.h>
 #include "PackagerConnection.h"
@@ -216,100 +215,62 @@ class OJSIExecutorFactory : public JSExecutorFactory {
 
 void logMarker(const facebook::react::ReactMarker::ReactMarkerId /*id*/, const char * /*tag*/) {}
 
-struct BridgeUIBatchInstanceCallback : public InstanceCallback {
-  BridgeUIBatchInstanceCallback(
-      std::weak_ptr<Instance> instance,
-      std::weak_ptr<IUIManager> uimanager,
-      std::weak_ptr<MessageQueueThread> uithread)
-      : m_instance(instance), m_weakUiManager(std::move(uimanager)), m_uiThread(std::move(uithread)) {}
-  virtual ~BridgeUIBatchInstanceCallback() = default;
-  void onBatchComplete() override {
-    if (auto uithread = m_uiThread.lock()) {
-      std::weak_ptr<IUIManager> weakUiManager(m_weakUiManager);
-      uithread->runOnQueue([weakUiManager]() {
-        auto uiManager = weakUiManager.lock();
-        if (uiManager != nullptr)
-          uiManager->onBatchComplete();
-      });
-#ifdef WINRT
-      // For UWP we use a batching message queue to optimize the usage
-      // of the CoreDispatcher.  Win32 already has an optimized queue.
-      facebook::react::BatchingMessageQueueThread *batchingUIThread =
-          static_cast<facebook::react::BatchingMessageQueueThread *>(uithread.get());
-      if (batchingUIThread != nullptr) {
-        batchingUIThread->onBatchComplete();
-      }
-#endif
-    }
-  }
-  void incrementPendingJSCalls() override {}
-  void decrementPendingJSCalls() override {}
-
-  std::weak_ptr<Instance> m_instance;
-  std::weak_ptr<IUIManager> m_weakUiManager;
-  std::weak_ptr<MessageQueueThread> m_uiThread;
-};
-
-struct BridgeTestInstanceCallback : public InstanceCallback {
-  BridgeTestInstanceCallback() {}
-  virtual ~BridgeTestInstanceCallback() = default;
-  void onBatchComplete() override {}
-  void incrementPendingJSCalls() override {}
-  void decrementPendingJSCalls() override {}
-};
-
 /*static*/ std::shared_ptr<InstanceImpl> InstanceImpl::MakeNoBundle(
+    std::shared_ptr<Instance> &&instance,
     std::string &&jsBundleBasePath,
     std::vector<
         std::tuple<std::string, facebook::xplat::module::CxxModule::Provider, std::shared_ptr<MessageQueueThread>>>
         &&cxxModules,
     std::shared_ptr<TurboModuleRegistry> turboModuleRegistry,
-    std::shared_ptr<IUIManager> uimanager,
+    std::unique_ptr<InstanceCallback> &&callback,
     std::shared_ptr<MessageQueueThread> jsQueue,
     std::shared_ptr<MessageQueueThread> nativeQueue,
     std::shared_ptr<DevSettings> devSettings,
     std::shared_ptr<IDevSupportManager> devManager) noexcept {
-  auto instance = std::shared_ptr<InstanceImpl>(new InstanceImpl(
+  auto inner = std::shared_ptr<InstanceImpl>(new InstanceImpl(
+      std::move(instance),
       std::move(jsBundleBasePath),
       std::move(cxxModules),
       std::move(turboModuleRegistry),
-      std::move(uimanager),
+      std::move(callback),
       std::move(jsQueue),
       std::move(nativeQueue),
       std::move(devSettings),
       std::move(devManager)));
 
-  instance->RegisterForReloadIfNecessary();
+  inner->RegisterForReloadIfNecessary();
 
-  return instance;
+  return inner;
 }
 
 /*static*/ std::shared_ptr<InstanceImpl> InstanceImpl::MakeAndLoadBundle(
+    std::shared_ptr<Instance> &&instance,
     std::string &&jsBundleBasePath,
     std::string &&jsBundleRelativePath,
     std::vector<
         std::tuple<std::string, facebook::xplat::module::CxxModule::Provider, std::shared_ptr<MessageQueueThread>>>
         &&cxxModules,
     std::shared_ptr<TurboModuleRegistry> turboModuleRegistry,
-    std::shared_ptr<IUIManager> uimanager,
+    std::unique_ptr<InstanceCallback> &&callback,
     std::shared_ptr<MessageQueueThread> jsQueue,
     std::shared_ptr<MessageQueueThread> nativeQueue,
     std::shared_ptr<DevSettings> devSettings,
     std::shared_ptr<IDevSupportManager> devManager) noexcept {
-  auto instance = std::shared_ptr<InstanceImpl>(new InstanceImpl(
+  auto inner = std::shared_ptr<InstanceImpl>(new InstanceImpl(
+      std::move(instance),
       std::move(jsBundleBasePath),
       std::move(cxxModules),
       std::move(turboModuleRegistry),
-      std::move(uimanager),
+      std::move(callback),
       std::move(jsQueue),
       std::move(nativeQueue),
       std::move(devSettings),
       std::move(devManager)));
 
-  instance->loadBundle(std::move(jsBundleRelativePath));
-  instance->RegisterForReloadIfNecessary();
+  inner->loadBundle(std::move(jsBundleRelativePath));
+  inner->RegisterForReloadIfNecessary();
 
-  return instance;
+  return inner;
 }
 
 void InstanceImpl::SetInError() noexcept {
@@ -317,24 +278,24 @@ void InstanceImpl::SetInError() noexcept {
 }
 
 InstanceImpl::InstanceImpl(
+    std::shared_ptr<Instance> &&instance,
     std::string &&jsBundleBasePath,
     std::vector<
         std::tuple<std::string, facebook::xplat::module::CxxModule::Provider, std::shared_ptr<MessageQueueThread>>>
         &&cxxModules,
     std::shared_ptr<TurboModuleRegistry> turboModuleRegistry,
-    std::shared_ptr<IUIManager> uimanager,
+    std::unique_ptr<InstanceCallback> &&callback,
     std::shared_ptr<MessageQueueThread> jsQueue,
     std::shared_ptr<MessageQueueThread> nativeQueue,
     std::shared_ptr<DevSettings> devSettings,
     std::shared_ptr<IDevSupportManager> devManager)
-    : m_uimanager(std::move(uimanager)),
-      m_turboModuleRegistry(std::move(turboModuleRegistry)),
+    : m_turboModuleRegistry(std::move(turboModuleRegistry)),
       m_jsThread(std::move(jsQueue)),
       m_nativeQueue(nativeQueue),
       m_jsBundleBasePath(std::move(jsBundleBasePath)),
       m_devSettings(std::move(devSettings)),
       m_devManager(std::move(devManager)),
-      m_innerInstance(std::make_shared<Instance>()) {
+      m_innerInstance(std::move(instance)) {
   // Temp set the logmarker here
   facebook::react::ReactMarker::logTaggedMarker = logMarker;
 
@@ -467,11 +428,7 @@ InstanceImpl::InstanceImpl(
     }
   }
 
-  m_innerInstance->initializeBridge(
-      std::make_unique<BridgeUIBatchInstanceCallback>(m_innerInstance, m_uimanager, m_nativeQueue),
-      jsef,
-      m_jsThread,
-      m_moduleRegistry);
+  m_innerInstance->initializeBridge(std::move(callback), jsef, m_jsThread, m_moduleRegistry);
 
   // All JSI runtimes do support host objects and hence the native modules
   // proxy.
@@ -567,35 +524,6 @@ void InstanceImpl::loadBundleInternal(std::string &&jsBundleRelativePath, bool s
 
 InstanceImpl::~InstanceImpl() {
   m_nativeQueue->quitSynchronous();
-}
-
-void InstanceImpl::AttachMeasuredRootView(IReactRootView *rootView, folly::dynamic &&initProps) noexcept {
-  if (m_isInError) {
-    return;
-  }
-
-  rootView->ResetView();
-
-  auto rootTag = m_uimanager->AddMeasuredRootView(rootView);
-  rootView->SetTag(rootTag);
-
-  std::string jsMainModuleName = rootView->JSComponentName();
-  folly::dynamic params = folly::dynamic::array(
-      std::move(jsMainModuleName), folly::dynamic::object("initialProps", std::move(initProps))("rootTag", rootTag));
-  m_innerInstance->callJSFunction("AppRegistry", "runApplication", std::move(params));
-}
-
-void InstanceImpl::DetachRootView(IReactRootView *rootView) noexcept {
-  if (m_isInError) {
-    return;
-  }
-
-  auto rootTag = rootView->GetTag();
-  folly::dynamic params = folly::dynamic::array(rootTag);
-  m_innerInstance->callJSFunction("AppRegistry", "unmountApplicationComponentAtRootTag", std::move(params));
-
-  // Give the JS thread time to finish executing
-  m_jsThread->runOnQueueSync([]() {});
 }
 
 std::vector<std::unique_ptr<NativeModule>> InstanceImpl::GetDefaultNativeModules(
