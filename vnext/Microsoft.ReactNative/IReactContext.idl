@@ -48,6 +48,9 @@ The subscriptions added to the `IReactInstanceSettings.Notifications` are kept a
     DOC_STRING("Get `ReactDispatcherHelper::JSDispatcherProperty` from the Properties property bag.")
     IReactDispatcher JSDispatcher { get; };
 
+    DOC_STRING("Get the JSI runtime for the running React instance.")
+    JsiRuntime Runtime { get; };
+
 #ifndef CORE_ABI
     // Deprecated: Use DispatchEvent on XamlUIService instead
     DOC_STRING("> Deprecated: Use `DispatchEvent` on [`XamlUIService`](XamlUIService.md) instead")
@@ -61,9 +64,6 @@ The subscriptions added to the `IReactInstanceSettings.Notifications` are kept a
     // Call JavaScript module event. It is a specialized CallJSFunction call where method name is always 'emit'.
     DOC_STRING("Call JavaScript module event. It is a specialized `CallJSFunction` call where method name is always 'emit'.")
     void EmitJSEvent(String eventEmitterName, String eventName, JSValueArgWriter paramsArgWriter);
-
-    // Gets the JSI runtime to interface with the JavaScript engine.
-    JsiRuntime Runtime { get; };
 
 #ifndef CORE_ABI
     Boolean UseWebDebugger { get; };
