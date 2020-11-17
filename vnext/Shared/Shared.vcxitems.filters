@@ -329,7 +329,9 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)Utils\CppWinrtLessExceptions.h">
       <Filter>Header Files\Utils</Filter>
     </ClInclude>
-    <ClInclude Include="$(MSBuildThisFileDirectory)Utils\CppWinrtLessExceptions.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Utils\CppWinrtLessExceptions.h">
+      <Filter>Header Files\Utils</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="$(MSBuildThisFileDirectory)etw\build.bat">
