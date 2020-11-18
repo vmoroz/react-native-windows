@@ -68,7 +68,7 @@ void ReactContext::EmitJSEvent(
   m_context->CallJSFunction(to_string(eventEmitterName), "emit", std::move(params));
 }
 
-ReactNative::JsiRuntime ReactContext::Runtime() noexcept {
+ReactNative::JsiRuntime ReactContext::JsiRuntime() noexcept {
   return m_context->JsiRuntime();
 }
 

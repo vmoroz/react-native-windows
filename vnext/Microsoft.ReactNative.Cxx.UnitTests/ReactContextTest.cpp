@@ -24,7 +24,7 @@ struct ReactContextStub : implements<ReactContextStub, IReactContext> {
     VerifyElseCrashSz(false, "Not implemented");
   }
 
-  JsiRuntime Runtime() noexcept {
+  JsiRuntime JsiRuntime() noexcept {
     VerifyElseCrashSz(false, "Not implemented");
   }
 

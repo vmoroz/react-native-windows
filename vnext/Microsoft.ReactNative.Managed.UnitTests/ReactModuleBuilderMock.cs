@@ -318,7 +318,7 @@ namespace Microsoft.ReactNative.Managed.UnitTests
 
     public IReactDispatcher JSDispatcher => Properties.Get(ReactDispatcherHelper.JSDispatcherProperty) as IReactDispatcher;
 
-    public JsiRuntime Runtime => throw new NotImplementedException();
+    public JsiRuntime JsiRuntime => throw new NotImplementedException();
 
     public void DispatchEvent(FrameworkElement view, string eventName, JSValueArgWriter eventDataArgWriter)
     {

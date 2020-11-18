@@ -55,8 +55,8 @@ struct ReactContext {
   // It can be nullptr if React instance is already destroyed.
   // Consider using the ExecuteJsi instead.
   facebook::jsi::Runtime *JsiRuntime() const noexcept {
-    if (auto jsiAbiRuntime = m_handle.Runtime()) {
-      return JsiAbiRuntime::FromJsiRuntime(jsiAbiRuntime);
+    if (auto jsiRuntime = m_handle.JsiRuntime()) {
+      return JsiAbiRuntime::FromJsiRuntime(jsiRuntime);
     } else {
       return nullptr;
     }

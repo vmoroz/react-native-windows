@@ -127,7 +127,7 @@ struct ReactContextMock : implements<ReactContextMock, IReactContext> {
     VerifyElseCrashSz(false, "Not implemented");
   }
 
-  JsiRuntime Runtime() noexcept {
+  JsiRuntime JsiRuntime() noexcept {
     VerifyElseCrashSz(false, "Not implemented");
   }
 

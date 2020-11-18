@@ -31,7 +31,7 @@ struct ReactContext : winrt::implements<ReactContext, IReactContext> {
       hstring const &eventName,
       JSValueArgWriter const &paramsArgWriter) noexcept;
 
-  ReactNative::JsiRuntime Runtime() noexcept;
+  ReactNative::JsiRuntime JsiRuntime() noexcept;
 
   bool UseWebDebugger() const noexcept;
   bool UseFastRefresh() const noexcept;
