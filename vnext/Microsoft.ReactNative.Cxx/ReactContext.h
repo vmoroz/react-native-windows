@@ -51,25 +51,27 @@ struct ReactContext {
     return ReactDispatcher{m_handle.JSDispatcher()};
   }
 
+  // Returns a pointer to facebook::jsi::Runtime.
+  // It can be nullptr if React instance is already destroyed.
+  // Consider using the ExecuteJsi instead.
+  facebook::jsi::Runtime *JsiRuntime() const noexcept {
+    if (auto jsiAbiRuntime = m_handle.Runtime()) {
+      return JsiAbiRuntime::FromJsiRuntime(jsiAbiRuntime);
+    } else {
+      return nullptr;
+    }
+  }
+
   // Call provided lambda with the facebook::jsi::Runtime& parameter.
   // For example: context.ExecuteJsi([](facebook::jsi::Runtime& runtime){...})
   template <class TCodeWithRuntime>
   void ExecuteJsi(TCodeWithRuntime const &code) const {
     ReactDispatcher jsDispatcher = JSDispatcher();
     if (jsDispatcher.HasThreadAccess()) {
-      if (auto jsiAbiRuntime = m_handle.Runtime()) {
-        if (auto jsiRuntime = JsiAbiRuntime::FromJsiRuntime(jsiAbiRuntime)) {
-          code(*jsiRuntime);
-        }
-      }
+      code(*JsiRuntime()); // Execute immediately if we are in JS thread.
     } else {
-      jsDispatcher.Post([handle = m_handle, code]() noexcept {
-        if (auto jsiAbiRuntime = handle.Runtime()) {
-          if (auto jsiRuntime = JsiAbiRuntime::FromJsiRuntime(jsiAbiRuntime)) {
-            code(*jsiRuntime);
-          }
-        }
-      });
+      // Otherwise, schedule work in JS thread.
+      jsDispatcher.Post([context = ReactContext(*this), code]() noexcept { code(*context.JsiRuntime()); });
     }
   }
 
