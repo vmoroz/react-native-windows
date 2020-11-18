@@ -49,7 +49,7 @@ struct JsiError : JsiErrorT<JsiError> {
 struct JsiRuntime : JsiRuntimeT<JsiRuntime> {
   JsiRuntime(
       std::shared_ptr<facebook::jsi::RuntimeHolderLazyInit> &&runtimeHolder,
-      std::shared_ptr<facebook::jsi::Runtime>&& runtime) noexcept;
+      std::shared_ptr<facebook::jsi::Runtime> &&runtime) noexcept;
   ~JsiRuntime() noexcept;
 
   static ReactNative::JsiRuntime FromRuntime(facebook::jsi::Runtime &runtime) noexcept;

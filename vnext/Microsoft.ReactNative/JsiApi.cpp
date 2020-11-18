@@ -338,7 +338,7 @@ ReactNative::JsiRuntime JsiRuntime::MakeChakraRuntime() {
 
 JsiRuntime::JsiRuntime(
     std::shared_ptr<facebook::jsi::RuntimeHolderLazyInit> &&runtimeHolder,
-    std::shared_ptr<facebook::jsi::Runtime>&& runtime) noexcept
+    std::shared_ptr<facebook::jsi::Runtime> &&runtime) noexcept
     : m_runtimeHolder{std::move(runtimeHolder)}, m_runtime{std::move(runtime)} {}
 
 JsiRuntime::~JsiRuntime() noexcept {

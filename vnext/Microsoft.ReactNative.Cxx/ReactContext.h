@@ -71,7 +71,7 @@ struct ReactContext {
       code(*JsiRuntime()); // Execute immediately if we are in JS thread.
     } else {
       // Otherwise, schedule work in JS thread.
-      jsDispatcher.Post([context = ReactContext(*this), code]() noexcept { code(*context.JsiRuntime()); });
+      jsDispatcher.Post([ context = ReactContext(*this), code ]() noexcept { code(*context.JsiRuntime()); });
     }
   }
 
