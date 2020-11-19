@@ -1,8 +1,36 @@
 # Change Log - react-native-windows
 
-This log was last generated on Tue, 17 Nov 2020 05:05:00 GMT and should not be manually modified.
+This log was last generated on Thu, 19 Nov 2020 17:13:10 GMT and should not be manually modified.
 
 <!-- Start content -->
+
+## 0.0.0-canary.213
+
+Thu, 19 Nov 2020 17:13:10 GMT
+
+### Changes
+
+- Update Nuget publish to not overwrite the created anycpu version (dannyvv@microsoft.com)
+- Use lessthrow_await_adapter for WebSocketJSExecutor::ConnectAsync (julio.rocha@microsoft.com)
+
+## 0.0.0-canary.212
+
+Thu, 19 Nov 2020 05:06:10 GMT
+
+### Changes
+
+- Exclude Beast WebSocket from build by default. (julio.rocha@microsoft.com)
+- fix typo (igklemen@microsoft.com)
+- Add Yellowbox warnings for WIndows Variants of Lean Core Components (ngerlem@microsoft.com)
+
+## 0.0.0-canary.211
+
+Wed, 18 Nov 2020 03:10:51 GMT
+
+### Changes
+
+- CornerRadius only exists on RS5, restore the behavior to gracefully degrade on older OS releases (asklar@microsoft.com)
+- Check for VS >= 16.5 (ngerlem@microsoft.com)
 
 ## 0.0.0-canary.209
 

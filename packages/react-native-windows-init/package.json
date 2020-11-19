@@ -28,7 +28,7 @@
     "yargs": "^15.3.1"
   },
   "devDependencies": {
-    "@react-native-windows/cli": "0.0.0-canary.38",
+    "@react-native-windows/cli": "0.0.0-canary.39",
     "@rnw-scripts/eslint-config": "0.1.4",
     "@rnw-scripts/jest-unittest-config": "0.1.1",
     "@rnw-scripts/just-task": "0.0.6",
@@ -40,8 +40,8 @@
     "@types/valid-url": "^1.0.2",
     "@types/yargs": "15.0.5",
     "babel-jest": "^26.3.0",
-    "eslint": "6.8.0",
-    "jest": "^26.4.2",
+    "eslint": "7.12.0",
+    "jest": "^26.5.2",
     "just-scripts": "^0.44.7",
     "prettier": "1.19.1",
     "typescript": "^3.8.3"
