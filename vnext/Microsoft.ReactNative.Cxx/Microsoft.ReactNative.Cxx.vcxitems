@@ -26,6 +26,7 @@
     <ClInclude Include="$(JSI_SourcePath)\jsi\jsi.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)CppWinRTIncludes.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Crash.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)JSApi.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)JSI\JsiAbiApi.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)ReactHandleHelper.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)JSValue.h" />

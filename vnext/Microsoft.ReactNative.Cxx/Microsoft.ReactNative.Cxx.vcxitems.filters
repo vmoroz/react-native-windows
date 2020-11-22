@@ -112,6 +112,7 @@
     <ClInclude Include="$(JSI_SourcePath)\jsi\instrumentation.h">
       <Filter>JSI</Filter>
     </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)JSApi.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="JSI">
