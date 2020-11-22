@@ -6,4 +6,18 @@
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tga;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
   </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="dllmain.cpp" />
+    <ClCompile Include="JSEngine.V8.cpp" />
+    <ClCompile Include="pch.cpp" />
+    <ClCompile Include="env_v8.cc" />
+    <ClCompile Include="js_native_api_v8.cc" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="JSEngine.V8.h" />
+    <ClInclude Include="pch.h" />
+    <ClInclude Include="targetver.h" />
+    <ClInclude Include="js_native_api_v8.h" />
+    <ClInclude Include="js_native_api_v8_internals.h" />
+  </ItemGroup>
 </Project>

@@ -1,12 +1,16 @@
-#include "js_native_api_chakra.h"
-#include <napi/js_native_api.h>
-#include <array>
-#include <cassert>
-#include <cmath>
-#include <vector>
-#include <string>
-#include <stdexcept>
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
 
+#include "pch.h"
+//#include "JSApiChakra.h"
+//#include <array>
+//#include <cassert>
+//#include <cmath>
+//#include <vector>
+//#include <string>
+//#include <stdexcept>
+
+#if 0
 namespace {
 constexpr UINT CP_LATIN1 = 28591;
 
@@ -2419,3 +2423,5 @@ napi_status napi_adjust_external_memory(napi_env env,
 
   return napi_ok;
 }
+
+#endif

@@ -1,8 +1,12 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 #pragma once
 
 #include <jsrt.h>
-#include <napi/js_native_api_types.h>
+#include <JSApi.h>
 
+#if 0 
 struct napi_env__ {
   JsSourceContext source_context = JS_SOURCE_CONTEXT_NONE;
   napi_extended_error_info last_error{ nullptr, nullptr, 0, napi_ok };
@@ -91,3 +95,5 @@ static napi_status napi_set_last_error(napi_env env, JsErrorCode jsError, void* 
   env->last_error.engine_reserved = engine_reserved;
   return status;
 }
+
+#endif

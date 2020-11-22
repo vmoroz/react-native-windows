@@ -1,9 +1,13 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 #pragma once
 #ifndef JSAPI_H
 #define JSAPI_H
 
 // This file needs to be compatible with C compilers.
 #include <cstddef>
+#include <cstdint>
 
 namespace jsapi {
 
