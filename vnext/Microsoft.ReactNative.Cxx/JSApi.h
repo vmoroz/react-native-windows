@@ -11,6 +11,8 @@
 
 namespace jsapi {
 
+constexpr size_t AutoLength = SIZE_MAX;
+
 using Value = struct Value__ *;
 using Ref = struct Ref__ *;
 using HandleScope = struct HandleScope__ *;

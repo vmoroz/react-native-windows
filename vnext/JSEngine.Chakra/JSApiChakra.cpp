@@ -3,21 +3,16 @@
 
 #include "pch.h"
 #include "JSApiChakra.h"
-//#include <array>
-//#include <cassert>
+#include <array>
+#include <cassert>
+#include <memory>
 //#include <cmath>
 //#include <vector>
-//#include <string>
+#include <string>
+#include <string_view>
 //#include <stdexcept>
 
 namespace jsapi {
-
-//#define CHECK_ENV(env)           \
-//  do {                           \
-//    if ((env) == nullptr) {      \
-//      return Status::InvalidArg; \
-//    }                            \
-//  } while (0)
 
 #define RETURN_STATUS_IF_FALSE(condition, status) \
   do {                                            \
@@ -35,6 +30,230 @@ namespace jsapi {
       return SetLastError(err); \
   } while (0)
 
+#define CHECK_JSRT_ERROR_CODE(operation)  \
+  do {                                    \
+    auto result = (operation);            \
+    if (result != JsErrorCode::JsNoError) \
+      return result;                      \
+  } while (0)
+
+// This does not call napi_set_last_error because the expression
+// is assumed to be a NAPI function call that already did.
+#define CHECK_NAPI(expr)      \
+  do {                        \
+    Status status = (expr);   \
+    if (status != Status::OK) \
+      return status;          \
+  } while (0)
+
+#define CHECK_CHAKRA(expr)    \
+  do {                        \
+    JsErrorCode err = (expr); \
+    if (err != JsNoError)     \
+      return err;             \
+  } while (0)
+
+#define WSTR_AND_LENGTH(str) str, sizeof(str) / sizeof(wchar_t) - 1
+
+namespace {
+
+constexpr UINT CP_LATIN1 = 28591;
+
+std::wstring NarrowToWide(std::string_view value, UINT codePage = CP_UTF8) noexcept {
+  std::wstring wstr;
+  if (value.size() == 0) {
+    return wstr;
+  }
+
+  int requiredSize = ::MultiByteToWideChar(codePage, 0, value.data(), static_cast<int>(value.size()), nullptr, 0);
+  assert(requiredSize != 0);
+  wstr.assign(requiredSize, 0);
+  int result = ::MultiByteToWideChar(codePage, 0, value.data(), static_cast<int>(value.size()), &wstr[0], requiredSize);
+  assert(result != 0);
+  return wstr;
+}
+
+JsErrorCode JsCreateString(_In_ const char *content, _In_ size_t length, _Out_ JsValueRef *value) noexcept {
+  auto str = (length == AutoLength ? NarrowToWide({content}) : NarrowToWide({content, length}));
+  return JsPointerToString(str.data(), str.size(), value);
+}
+
+JsErrorCode JsCopyString(
+    _In_ JsValueRef value,
+    _Out_opt_ char *buffer,
+    _In_ size_t bufferSize,
+    _Out_opt_ size_t *length,
+    UINT codePage = CP_UTF8) noexcept {
+  const wchar_t *stringValue;
+  size_t stringLength;
+  CHECK_JSRT_ERROR_CODE(JsStringToPointer(value, &stringValue, &stringLength));
+
+  if (length != nullptr) {
+    *length = stringLength;
+  }
+
+  if (buffer != nullptr) {
+    int result = ::WideCharToMultiByte(
+        codePage,
+        0,
+        stringValue,
+        static_cast<int>(stringLength),
+        buffer,
+        static_cast<int>(bufferSize),
+        nullptr,
+        nullptr);
+    assert(result != 0);
+  }
+
+  return JsErrorCode::JsNoError;
+}
+
+JsErrorCode JsCopyStringUtf16(
+    _In_ JsValueRef value,
+    _Out_opt_ char16_t *buffer,
+    _In_ size_t bufferSize,
+    _Out_opt_ size_t *length) noexcept {
+  const wchar_t *stringValue;
+  size_t stringLength;
+  CHECK_JSRT_ERROR_CODE(JsStringToPointer(value, &stringValue, &stringLength));
+
+  if (length != nullptr) {
+    *length = stringLength;
+  }
+
+  if (buffer != nullptr) {
+    static_assert(sizeof(char16_t) == sizeof(wchar_t));
+    memcpy_s(buffer, bufferSize, stringValue, stringLength * sizeof(wchar_t));
+  }
+
+  return JsErrorCode::JsNoError;
+}
+
+JsErrorCode JsCreatePropertyId(_In_z_ const char *name, _In_ size_t length, _Out_ JsPropertyIdRef *propertyId) {
+  auto str = (length == AutoLength ? NarrowToWide({name}) : NarrowToWide({name, length}));
+  return JsGetPropertyIdFromName(str.data(), propertyId);
+}
+
+// TODO: [vmorozov] Review
+JsErrorCode JsCreatePromise(JsValueRef *promise, JsValueRef *resolve, JsValueRef *reject) {
+  JsValueRef global{};
+  CHECK_JSRT_ERROR_CODE(JsGetGlobalObject(&global));
+
+  JsPropertyIdRef promiseConstructorId{};
+  CHECK_JSRT_ERROR_CODE(JsGetPropertyIdFromName(L"Promise", &promiseConstructorId));
+
+  JsValueRef promiseConstructor{};
+  CHECK_JSRT_ERROR_CODE(JsGetProperty(global, promiseConstructorId, &promiseConstructor));
+
+  struct CallbackStruct {
+    static JsValueRef CALLBACK Callback(
+        JsValueRef callee,
+        bool isConstructCall,
+        JsValueRef *arguments,
+        unsigned short argumentCount,
+        void *callbackState) {
+      return (reinterpret_cast<CallbackStruct *>(callbackState))
+          ->Callback(callee, isConstructCall, arguments, argumentCount);
+    }
+
+    JsValueRef Callback(JsValueRef callee, bool isConstructCall, JsValueRef *arguments, unsigned short argumentCount) {
+      *resolve = arguments[1];
+      *reject = arguments[2];
+
+      return JS_INVALID_REFERENCE;
+    }
+
+    JsValueRef *resolve{};
+    JsValueRef *reject{};
+  } cbs{resolve, reject};
+
+  JsValueRef callbackFunction{};
+  CHECK_JSRT_ERROR_CODE(JsCreateFunction(&CallbackStruct::Callback, &cbs, &callbackFunction));
+
+  JsValueRef args[2];
+  CHECK_JSRT_ERROR_CODE(JsGetUndefinedValue(&args[0]));
+  args[1] = callbackFunction;
+  CHECK_JSRT_ERROR_CODE(JsConstructObject(promiseConstructor, args, 2, promise));
+
+  return JsErrorCode::JsNoError;
+}
+
+// Callback Info struct as per JSRT native function.
+struct ChakraCallbackInfo {
+  Value newTarget;
+  Value thisArg;
+  Value *argv;
+  void *data;
+  uint16_t argc;
+  bool isConstructCall;
+};
+
+// Adapter for JSRT external callback + callback data.
+struct ExternalCallback {
+  ExternalCallback(ChakraEnvironment *env, Callback cb, void *data) : m_env{env}, m_cb{cb}, m_data{data} {}
+
+  // JsNativeFunction
+  static JsValueRef CALLBACK Callback(
+      JsValueRef callee,
+      bool isConstructCall,
+      JsValueRef *arguments,
+      unsigned short argumentCount,
+      void *callbackState) {
+    ExternalCallback *externalCallback = reinterpret_cast<ExternalCallback *>(callbackState);
+
+    // Make sure any errors encountered last time we were in N-API are gone.
+    externalCallback->m_env->ClearLastError();
+
+    ChakraCallbackInfo cbInfo;
+    cbInfo.thisArg = reinterpret_cast<Value>(arguments[0]);
+    cbInfo.newTarget = reinterpret_cast<Value>(externalCallback->newTarget);
+    cbInfo.isConstructCall = isConstructCall;
+    cbInfo.argc = argumentCount - 1;
+    cbInfo.argv = reinterpret_cast<Value *>(arguments + 1);
+    cbInfo.data = externalCallback->m_data;
+
+    Value result = externalCallback->m_cb(externalCallback->m_env, reinterpret_cast<CallbackInfo>(&cbInfo));
+    return reinterpret_cast<JsValueRef>(result);
+  }
+
+  // JsObjectBeforeCollectCallback
+  static void CALLBACK Finalize(JsRef ref, void *callbackState) {
+    ExternalCallback *externalCallback = reinterpret_cast<ExternalCallback *>(callbackState);
+    delete externalCallback;
+  }
+
+  // Value for 'new.target'
+  JsValueRef newTarget;
+
+ private:
+  ChakraEnvironment *m_env;
+  jsapi::Callback m_cb;
+  void *m_data;
+};
+
+} // namespace
+
+ChakraEnvironment::ChakraEnvironment() noexcept {
+  //m_propertyIds.Object = {L"Object"};
+  //m_propertyIds.Proxy = {L"Proxy"};
+  //m_propertyIds.Symbol = {L"Symbol"};
+  //m_propertyIds.byteLength = {L"byteLength"};
+  //m_propertyIds.configurable = {L"configurable"};
+  //m_propertyIds.enumerable = {L"enumerable"};
+  //m_propertyIds.get = {L"get"};
+  //m_propertyIds.hostFunctionSymbol = {L"hostFunctionSymbol"};
+  //m_propertyIds.hostObjectSymbol = {L"hostObjectSymbol"};
+  //m_propertyIds.length = {L"length"};
+  //m_propertyIds.message = {L"message"};
+  //m_propertyIds.ownKeys = {L"ownKeys"};
+  //m_propertyIds.propertyIsEnumerable = {L"propertyIsEnumerable"};
+  //m_propertyIds.prototype = {L"prototype"};
+  //m_propertyIds.set = {L"set"};
+  //m_propertyIds.toString = {L"toString"};
+  //m_propertyIds.value = {L"value"};
+  //m_propertyIds.writable = {L"writable"};
+}
+
 Status ChakraEnvironment::GetLastErrorInfo(const ExtendedErrorInfo **result) noexcept {
   return Status::OK;
 }
@@ -46,71 +265,133 @@ Status ChakraEnvironment::GetUndefined(Value *result) noexcept {
 }
 
 Status ChakraEnvironment::GetNull(Value *result) noexcept {
+  CHECK_ARG(result);
+  CHECK_JSRT(JsGetNullValue(reinterpret_cast<JsValueRef *>(result)));
   return Status::OK;
 }
 
 Status ChakraEnvironment::GetGlobal(Value *result) noexcept {
+  CHECK_ARG(result);
+  CHECK_JSRT(JsGetGlobalObject(reinterpret_cast<JsValueRef *>(result)));
   return Status::OK;
 }
 
 Status ChakraEnvironment::GetBoolean(bool value, Value *result) noexcept {
+  CHECK_ARG(result);
+  CHECK_JSRT(JsBoolToBoolean(value, reinterpret_cast<JsValueRef *>(result)));
   return Status::OK;
 }
 
 Status ChakraEnvironment::CreateObject(Value *result) noexcept {
+  CHECK_ARG(result);
+  CHECK_JSRT(JsCreateObject(reinterpret_cast<JsValueRef *>(result)));
   return Status::OK;
 }
 
 Status ChakraEnvironment::CreateArray(Value *result) noexcept {
+  CHECK_ARG(result);
+  unsigned int length = 0;
+  CHECK_JSRT(JsCreateArray(length, reinterpret_cast<JsValueRef *>(result)));
   return Status::OK;
 }
 
 Status ChakraEnvironment::CreateArrayWithLength(size_t length, Value *result) noexcept {
+  CHECK_ARG(result);
+  CHECK_JSRT(JsCreateArray(static_cast<unsigned int>(length), reinterpret_cast<JsValueRef *>(result)));
   return Status::OK;
 }
 
 Status ChakraEnvironment::CreateDouble(double value, Value *result) noexcept {
+  CHECK_ARG(result);
+  CHECK_JSRT(JsDoubleToNumber(value, reinterpret_cast<JsValueRef *>(result)));
   return Status::OK;
 }
 
 Status ChakraEnvironment::CreateInt32(int32_t value, Value *result) noexcept {
+  CHECK_ARG(result);
+  CHECK_JSRT(JsIntToNumber(value, reinterpret_cast<JsValueRef *>(result)));
   return Status::OK;
 }
 
 Status ChakraEnvironment::CreateUInt32(uint32_t value, Value *result) noexcept {
+  CHECK_ARG(result);
+  CHECK_JSRT(JsDoubleToNumber(static_cast<double>(value), reinterpret_cast<JsValueRef *>(result)));
   return Status::OK;
 }
 
 Status ChakraEnvironment::CreateInt64(int64_t value, Value *result) noexcept {
+  CHECK_ARG(result);
+  CHECK_JSRT(JsDoubleToNumber(static_cast<double>(value), reinterpret_cast<JsValueRef *>(result)));
   return Status::OK;
 }
 
 Status ChakraEnvironment::CreateStringLatin1(const char *str, size_t length, Value *result) noexcept {
+  CHECK_ARG(result);
+  std::wstring wstr = NarrowToWide({str, length}, CP_LATIN1);
+  CHECK_JSRT(JsPointerToString(wstr.data(), wstr.size(), reinterpret_cast<JsValueRef *>(result)));
   return Status::OK;
 }
 
 Status ChakraEnvironment::CreateStringUtf8(const char *str, size_t length, Value *result) noexcept {
+  CHECK_ARG(result);
+  std::wstring wstr = NarrowToWide({str, length});
+  CHECK_JSRT(JsPointerToString(wstr.data(), wstr.size(), reinterpret_cast<JsValueRef *>(result)));
   return Status::OK;
 }
 
 Status ChakraEnvironment::CreateStringUtf16(const char16_t *str, size_t length, Value *result) noexcept {
+  CHECK_ARG(result);
+  static_assert(sizeof(char16_t) == sizeof(wchar_t));
+  CHECK_JSRT(JsPointerToString(reinterpret_cast<const wchar_t *>(str), length, reinterpret_cast<JsValueRef *>(result)));
   return Status::OK;
 }
 
 Status ChakraEnvironment::CreateSymbol(Value description, Value *result) noexcept {
+  CHECK_ARG(result);
+  JsValueRef jsDescription = reinterpret_cast<JsValueRef>(description);
+  CHECK_JSRT(JsCreateSymbol(jsDescription, reinterpret_cast<JsValueRef *>(result)));
   return Status::OK;
 }
 
 Status ChakraEnvironment::CreateFunction(
-    const char *utf8name,
+    const char *utf8Name,
     size_t length,
     Callback cb,
-    void *data,
-    Value *result) noexcept {
+    void *callbackData,
+    Value *result) noexcept try {
+  CHECK_ARG(result);
+
+  auto externalCallback = std::make_unique<ExternalCallback>(this, cb, callbackData);
+
+  JsValueRef name{JS_INVALID_REFERENCE};
+  if (utf8Name != nullptr) {
+    CHECK_JSRT(JsCreateString(utf8Name, length, &name));
+  }
+
+  JsValueRef function{JS_INVALID_REFERENCE};
+  CHECK_JSRT(JsCreateNamedFunction(name, ExternalCallback::Callback, externalCallback.get(), &function));
+
+  externalCallback->newTarget = function;
+
+  CHECK_JSRT(JsSetObjectBeforeCollectCallback(function, externalCallback.get(), ExternalCallback::Finalize));
+  externalCallback.release();
+
+  *result = reinterpret_cast<Value>(function);
   return Status::OK;
+} catch (...) {
+  return SetLastError(Status::GenericFailure);
 }
 
 Status ChakraEnvironment::CreateError(Value code, Value msg, Value *result) noexcept {
+  CHECK_ARG(msg);
+  CHECK_ARG(result);
+  JsValueRef message = reinterpret_cast<JsValueRef>(msg);
+
+  JsValueRef error{JS_INVALID_REFERENCE};
+  CHECK_JSRT(JsCreateError(message, &error));
+  CHECK_NAPI(SetErrorCode(error, code, nullptr));
+
+  *result = reinterpret_cast<Value>(error);
   return Status::OK;
 }
 
@@ -428,6 +709,7 @@ Status ChakraEnvironment::CreateDataView(size_t length, Value arrayBuffer, size_
 Status ChakraEnvironment::IsDataView(Value value, bool *result) noexcept {
   return Status::OK;
 }
+
 Status ChakraEnvironment::GetDataViewInfo(
     Value dataView,
     size_t *byteLength,
@@ -594,105 +876,129 @@ Status ChakraEnvironment::SetLastError(JsErrorCode jsError, void *engineReserved
   return status;
 }
 
+Status ChakraEnvironment::SetErrorCode(JsValueRef error, Value code, const char *codeString) noexcept {
+  if ((code != nullptr) || (codeString != nullptr)) {
+    JsValueRef codeValue = reinterpret_cast<JsValueRef>(code);
+    if (codeValue != JS_INVALID_REFERENCE) {
+      JsValueType valueType = JsUndefined;
+      CHECK_JSRT(JsGetValueType(codeValue, &valueType));
+      RETURN_STATUS_IF_FALSE(valueType == JsString, Status::StringExpected);
+    } else {
+      CHECK_JSRT(JsCreateString(codeString, AutoLength, &codeValue));
+    }
+
+    JsPropertyIdRef codePropId{JS_INVALID_REFERENCE};
+    CHECK_JSRT(JsGetPropertyIdFromName(L"code", &codePropId));
+
+    CHECK_JSRT(JsSetProperty(error, codePropId, codeValue, true));
+
+    JsValueRef nameArray = JS_INVALID_REFERENCE;
+    CHECK_JSRT(JsCreateArray(0, &nameArray));
+
+    JsPropertyIdRef pushPropId{JS_INVALID_REFERENCE};
+    CHECK_JSRT(JsGetPropertyIdFromName(L"push", &pushPropId));
+
+    JsValueRef pushFunction{JS_INVALID_REFERENCE};
+    CHECK_JSRT(JsGetProperty(nameArray, pushPropId, &pushFunction));
+
+    JsPropertyIdRef namePropId{JS_INVALID_REFERENCE};
+    CHECK_JSRT(JsGetPropertyIdFromName(L"name", &namePropId));
+
+    bool hasProp = false;
+    CHECK_JSRT(JsHasProperty(error, namePropId, &hasProp));
+
+    JsValueRef nameValue{JS_INVALID_REFERENCE};
+    std::array<JsValueRef, 2> args {nameArray, JsValueRef{JS_INVALID_REFERENCE}};
+
+    if (hasProp) {
+      CHECK_JSRT(JsGetProperty(error, namePropId, &nameValue));
+
+      args[1] = nameValue;
+      CHECK_JSRT(JsCallFunction(pushFunction, args.data(), static_cast<unsigned short>(args.size()), nullptr));
+    }
+
+    JsValueRef openBracketValue{JS_INVALID_REFERENCE};
+    CHECK_JSRT(JsPointerToString(L" [",  2, &openBracketValue));
+
+    args[1] = openBracketValue;
+    CHECK_JSRT(JsCallFunction(pushFunction, args.data(), static_cast<unsigned short>(args.size()), nullptr));
+
+    args[1] = codeValue;
+    CHECK_JSRT(JsCallFunction(pushFunction, args.data(), static_cast<unsigned short>(args.size()), nullptr));
+
+    JsValueRef closeBracketValue{JS_INVALID_REFERENCE};
+    CHECK_JSRT(JsPointerToString(L"]", 1, &closeBracketValue));
+
+    args[1] = closeBracketValue;
+    CHECK_JSRT(JsCallFunction(pushFunction, args.data(), static_cast<unsigned short>(args.size()), nullptr));
+
+    JsValueRef emptyValue{JS_INVALID_REFERENCE};
+    CHECK_JSRT(JsPointerToString(L"", 0, &closeBracketValue));
+
+    JsPropertyIdRef joinPropId{JS_INVALID_REFERENCE};
+    CHECK_JSRT(JsGetPropertyIdFromName(L"join", &joinPropId));
+
+    JsValueRef joinFunction{JS_INVALID_REFERENCE};
+    CHECK_JSRT(JsGetProperty(nameArray, joinPropId, &joinFunction));
+
+    args[1] = emptyValue;
+    CHECK_JSRT(JsCallFunction(joinFunction, args.data(), static_cast<unsigned short>(args.size()), &nameValue));
+
+    CHECK_JSRT(JsSetProperty(error, namePropId, nameValue, true));
+  }
+
+  return Status::OK;
+}
+
+//JsErrorCode ChakraEnvironment::ChakraPropertyDescriptor(
+//    JsValueRef value,
+//    ChakraPropertyAttibutes attrs,
+//    JsValueRef *descriptor) noexcept {
+//  CHECK_CHAKRA(JsCreateObject(descriptor));
+//  CHECK_CHAKRA(ChakraSetProperty(descriptor, m_propertyIds.value, value));
+//  if (!(attrs & ChakraPropertyAttibutes::ReadOnly)) {
+//    JsValueRef trueValue;
+//    CHECK_CHAKRA(JsBoolToBoolean(true, &trueValue));
+//    CHECK_CHAKRA(ChakraSetProperty(descriptor, m_propertyIds.writable, value));
+//  }
+//  if (!(attrs & ChakraPropertyAttibutes::DontEnum)) {
+//    JsValueRef trueValue;
+//    CHECK_CHAKRA(JsBoolToBoolean(true, &trueValue));
+//    CHECK_CHAKRA(ChakraSetProperty(descriptor, m_propertyIds.enumerable, value));
+//  }
+//  if (!(attrs & ChakraPropertyAttibutes::DontDelete)) {
+//    // The JavaScript 'configurable=true' allows property to be deleted.
+//    JsValueRef trueValue;
+//    CHECK_CHAKRA(JsBoolToBoolean(true, &trueValue));
+//    CHECK_CHAKRA(ChakraSetProperty(descriptor, m_propertyIds.configurable, value));
+//  }
+//  return JsNoError;
+//}
+//
+//JsErrorCode
+//ChakraEnvironment::ChakraSetProperty(JsValueRef object, CachedPropertyId propertyId, JsValueRef value) noexcept {
+//  JsPropertyIdRef jsPropertyId;
+//  CHECK_CHAKRA(ChakraCachedPropertyId(propertyId, &jsPropertyId));
+//  CHECK_CHAKRA(JsSetProperty(object, jsPropertyId, value, /*useStrictRules:*/ true));
+//  return JsNoError;
+//}
+//
+//JsErrorCode ChakraEnvironment::ChakraCachedPropertyId(
+//    CachedPropertyId cachedPropertyId,
+//    JsPropertyIdRef *propertyId) noexcept {
+//  if (!cachedPropertyId.propertyRef) {
+//    JsPropertyIdRef propId{JS_INVALID_REFERENCE};
+//    CHECK_CHAKRA(JsGetPropertyIdFromName(cachedPropertyId.name, &propId));
+//    cachedPropertyId.propertyRef = JsRefHolder{propId};
+//  }
+//  propertyId = cachedPropertyId.propertyRef;
+//  return JsNoError;
+//}
+
 } // namespace jsapi
 
 #if 0
 namespace {
-constexpr UINT CP_LATIN1 = 28591;
-
-std::wstring NarrowToWide(std::string_view value, UINT codePage = CP_UTF8) {
-  if (value.size() == 0) {
-    return {};
-  }
-
-  int requiredSize = ::MultiByteToWideChar(codePage, 0, value.data(), static_cast<int>(value.size()), nullptr, 0);
-  assert(requiredSize != 0);
-  std::wstring wstr(requiredSize, 0);
-  int result = ::MultiByteToWideChar(codePage, 0, value.data(), static_cast<int>(value.size()), &wstr[0], requiredSize);
-  assert(result != 0);
-  return std::move(wstr);
-}
-
-JsErrorCode JsCreateString(_In_ const char* content, _In_ size_t length, _Out_ JsValueRef* value) {
-  auto str = (length == NAPI_AUTO_LENGTH ? NarrowToWide({ content }) : NarrowToWide({ content, length }));
-  return JsPointerToString(str.data(), str.size(), value);
-}
-
-JsErrorCode JsCopyString(_In_ JsValueRef value, _Out_opt_ char* buffer, _In_ size_t bufferSize, _Out_opt_ size_t* length, UINT codePage = CP_UTF8) {
-  const wchar_t* stringValue;
-  size_t stringLength;
-  CHECK_JSRT_ERROR_CODE(JsStringToPointer(value, &stringValue, &stringLength));
-
-  if (length != nullptr) {
-    *length = stringLength;
-  }
-
-  if (buffer != nullptr) {
-    int result = ::WideCharToMultiByte(codePage, 0, stringValue, static_cast<int>(stringLength), buffer, static_cast<int>(bufferSize), nullptr, nullptr);
-    assert(result != 0);
-  }
-
-  return JsErrorCode::JsNoError;
-}
-
-JsErrorCode JsCopyStringUtf16(_In_ JsValueRef value, _Out_opt_ char16_t* buffer, _In_ size_t bufferSize, _Out_opt_ size_t* length) {
-  const wchar_t* stringValue;
-  size_t stringLength;
-  CHECK_JSRT_ERROR_CODE(JsStringToPointer(value, &stringValue, &stringLength));
-
-  if (length != nullptr) {
-    *length = stringLength;
-  }
-
-  if (buffer != nullptr) {
-    static_assert(sizeof(char16_t) == sizeof(wchar_t));
-    memcpy_s(buffer, bufferSize, stringValue, stringLength * sizeof(wchar_t));
-  }
-
-  return JsErrorCode::JsNoError;
-}
-
-JsErrorCode JsCreatePropertyId(_In_z_ const char* name, _In_ size_t length, _Out_ JsPropertyIdRef* propertyId) {
-  auto str = (length == NAPI_AUTO_LENGTH ? NarrowToWide({ name }) : NarrowToWide({ name, length }));
-  return JsGetPropertyIdFromName(str.data(), propertyId);
-}
-
-JsErrorCode JsCreatePromise(JsValueRef* promise, JsValueRef* resolve, JsValueRef* reject) {
-  JsValueRef global{};
-  CHECK_JSRT_ERROR_CODE(JsGetGlobalObject(&global));
-
-  JsPropertyIdRef promiseConstructorId{};
-  CHECK_JSRT_ERROR_CODE(JsGetPropertyIdFromName(L"Promise", &promiseConstructorId));
-
-  JsValueRef promiseConstructor{};
-  CHECK_JSRT_ERROR_CODE(JsGetProperty(global, promiseConstructorId, &promiseConstructor));
-
-  struct CallbackStruct {
-    static JsValueRef CALLBACK Callback(JsValueRef callee, bool isConstructCall, JsValueRef* arguments, unsigned short argumentCount, void* callbackState) {
-      return (reinterpret_cast<CallbackStruct*>(callbackState))->Callback(callee, isConstructCall, arguments, argumentCount);
-    }
-
-    JsValueRef Callback(JsValueRef callee, bool isConstructCall, JsValueRef* arguments, unsigned short argumentCount) {
-      *resolve = arguments[1];
-      *reject = arguments[2];
-
-      return JS_INVALID_REFERENCE;
-    }
-
-    JsValueRef* resolve{};
-    JsValueRef* reject{};
-  } cbs{ resolve, reject };
-
-  JsValueRef callbackFunction{};
-  CHECK_JSRT_ERROR_CODE(JsCreateFunction(&CallbackStruct::Callback, &cbs, &callbackFunction));
-
-  JsValueRef args[2];
-  CHECK_JSRT_ERROR_CODE(JsGetUndefinedValue(&args[0]));
-  args[1] = callbackFunction;
-  CHECK_JSRT_ERROR_CODE(JsConstructObject(promiseConstructor, args, 2, promise));
-
-  return JsErrorCode::JsNoError;
-}
 
 // Callback Info struct as per JSRT native function.
 struct CallbackInfo {
@@ -1527,124 +1833,11 @@ napi_status napi_get_prototype(napi_env env,
   return napi_ok;
 }
 
-napi_status napi_create_object(napi_env env, napi_value* result) {
-  CHECK_ENV(env);
-  CHECK_ARG(env, result);
-  CHECK_JSRT(env, JsCreateObject(reinterpret_cast<JsValueRef*>(result)));
-  return napi_ok;
-}
-
-napi_status napi_create_array(napi_env env, napi_value* result) {
-  CHECK_ENV(env);
-  CHECK_ARG(env, result);
-  unsigned int length = 0;
-  CHECK_JSRT(env, JsCreateArray(length, reinterpret_cast<JsValueRef*>(result)));
-  return napi_ok;
-}
-
-napi_status napi_create_array_with_length(napi_env env,
-                                          size_t length,
-                                          napi_value* result) {
-  CHECK_ENV(env);
-  CHECK_ARG(env, result);
-  CHECK_JSRT(env, JsCreateArray(static_cast<unsigned int>(length), reinterpret_cast<JsValueRef*>(result)));
-  return napi_ok;
-}
-
-napi_status napi_create_string_latin1(napi_env env,
-                                      const char* str,
-                                      size_t length,
-                                      napi_value* result) {
-  CHECK_ENV(env);
-  CHECK_ARG(env, result);
-  std::wstring wstr = NarrowToWide({ str, length }, CP_LATIN1);
-  CHECK_JSRT(env, JsPointerToString(
-    wstr.data(),
-    wstr.size(),
-    reinterpret_cast<JsValueRef*>(result)));
-  return napi_ok;
-}
-
-napi_status napi_create_string_utf8(napi_env env,
-                                    const char* str,
-                                    size_t length,
-                                    napi_value* result) {
-  CHECK_ENV(env);
-  CHECK_ARG(env, result);
-  CHECK_JSRT(env, JsCreateString(
-    str,
-    length,
-    reinterpret_cast<JsValueRef*>(result)));
-  return napi_ok;
-}
-
-napi_status napi_create_string_utf16(napi_env env,
-                                     const char16_t* str,
-                                     size_t length,
-                                     napi_value* result) {
-  CHECK_ENV(env);
-  CHECK_ARG(env, result);
-  static_assert(sizeof(char16_t) == sizeof(wchar_t));
-  CHECK_JSRT(env, JsPointerToString(
-    reinterpret_cast<const wchar_t*>(str),
-    length,
-    reinterpret_cast<JsValueRef*>(result)));
-  return napi_ok;
-}
-
-napi_status napi_create_double(napi_env env,
-                               double value,
-                               napi_value* result) {
-  CHECK_ENV(env);
-  CHECK_ARG(env, result);
-  CHECK_JSRT(env, JsDoubleToNumber(value, reinterpret_cast<JsValueRef*>(result)));
-  return napi_ok;
-}
-
-napi_status napi_create_int32(napi_env env,
-                              int32_t value,
-                              napi_value* result) {
-  CHECK_ENV(env);
-  CHECK_ARG(env, result);
-  CHECK_JSRT(env, JsIntToNumber(value, reinterpret_cast<JsValueRef*>(result)));
-  return napi_ok;
-}
-
-napi_status napi_create_uint32(napi_env env,
-                               uint32_t value,
-                               napi_value* result) {
-  CHECK_ENV(env);
-  CHECK_ARG(env, result);
-  CHECK_JSRT(env, JsDoubleToNumber(static_cast<double>(value),
-                              reinterpret_cast<JsValueRef*>(result)));
-  return napi_ok;
-}
-
-napi_status napi_create_int64(napi_env env,
-                              int64_t value,
-                              napi_value* result) {
-  CHECK_ENV(env);
-  CHECK_ARG(env, result);
-  CHECK_JSRT(env, JsDoubleToNumber(static_cast<double>(value),
-                              reinterpret_cast<JsValueRef*>(result)));
-  return napi_ok;
-}
 
 napi_status napi_get_boolean(napi_env env, bool value, napi_value* result) {
   CHECK_ENV(env);
   CHECK_ARG(env, result);
   CHECK_JSRT(env, JsBoolToBoolean(value, reinterpret_cast<JsValueRef*>(result)));
-  return napi_ok;
-}
-
-napi_status napi_create_symbol(napi_env env,
-                               napi_value description,
-                               napi_value* result) {
-  CHECK_ENV(env);
-  CHECK_ARG(env, result);
-  JsValueRef js_description = reinterpret_cast<JsValueRef>(description);
-  CHECK_JSRT(env,
-    JsCreateSymbol(js_description, reinterpret_cast<JsValueRef*>(result)));
   return napi_ok;
 }
 
@@ -1727,20 +1920,6 @@ napi_status napi_typeof(napi_env env, napi_value value, napi_valuetype* result) 
       *result = hasExternalData ? napi_external : napi_object;
       break;
   }
-  return napi_ok;
-}
-
-napi_status napi_get_undefined(napi_env env, napi_value* result) {
-  CHECK_ENV(env);
-  CHECK_ARG(env, result);
-  CHECK_JSRT(env, JsGetUndefinedValue(reinterpret_cast<JsValueRef*>(result)));
-  return napi_ok;
-}
-
-napi_status napi_get_null(napi_env env, napi_value* result) {
-  CHECK_ENV(env);
-  CHECK_ARG(env, result);
-  CHECK_JSRT(env, JsGetNullValue(reinterpret_cast<JsValueRef*>(result)));
   return napi_ok;
 }
 
@@ -1835,13 +2014,6 @@ napi_status napi_call_function(napi_env env,
   if (result != nullptr) {
     *result = reinterpret_cast<napi_value>(returnValue);
   }
-  return napi_ok;
-}
-
-napi_status napi_get_global(napi_env env, napi_value* result) {
-  CHECK_ENV(env);
-  CHECK_ARG(env, result);
-  CHECK_JSRT(env, JsGetGlobalObject(reinterpret_cast<JsValueRef*>(result)));
   return napi_ok;
 }
 

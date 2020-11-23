@@ -9,6 +9,8 @@
 namespace jsapi {
 
 struct ChakraEnvironment final : IEnvironment {
+  ChakraEnvironment() noexcept;
+
   Status __stdcall GetLastErrorInfo(const ExtendedErrorInfo **result) noexcept override;
 
   // Getters for defined singletons
@@ -29,7 +31,7 @@ struct ChakraEnvironment final : IEnvironment {
   Status __stdcall CreateStringUtf8(const char *str, size_t length, Value *result) noexcept override;
   Status __stdcall CreateStringUtf16(const char16_t *str, size_t length, Value *result) noexcept override;
   Status __stdcall CreateSymbol(Value description, Value *result) noexcept override;
-  Status __stdcall CreateFunction(const char *utf8name, size_t length, Callback cb, void *data, Value *result) noexcept
+  Status __stdcall CreateFunction(const char *utf8Name, size_t length, Callback cb, void *data, Value *result) noexcept
       override;
   Status __stdcall CreateError(Value code, Value msg, Value *result) noexcept override;
   Status __stdcall CreateTypeError(Value code, Value msg, Value *result) noexcept override;
@@ -262,13 +264,90 @@ struct ChakraEnvironment final : IEnvironment {
   Status __stdcall ObjectFreeze(Value object) noexcept override;
   Status __stdcall ObjectSeal(Value object) noexcept override;
 
- private:
+ public:
   void ClearLastError() noexcept;
   Status SetLastError(Status errorCode, uint32_t engineErrorCode = 0, void *engineReserved = nullptr) noexcept;
   Status SetLastError(JsErrorCode jsError, void *engineReserved = nullptr) noexcept;
 
+ private: // Inner types
+  enum class ChakraPropertyAttibutes {
+    None = 0,
+    ReadOnly = 1 << 1,
+    DontEnum = 1 << 2,
+    DontDelete = 1 << 3,
+    Frozen = ReadOnly | DontDelete,
+    DontEnumAndFrozen = DontEnum | Frozen,
+  };
+
+  friend constexpr ChakraPropertyAttibutes operator&(ChakraPropertyAttibutes left, ChakraPropertyAttibutes right) {
+    return (ChakraPropertyAttibutes)((int)left & (int)right);
+  }
+
+  friend constexpr bool operator!(ChakraPropertyAttibutes attrs) {
+    return attrs == ChakraPropertyAttibutes::None;
+  }
+
+  // @brief A smart pointer for JsRefs.
+  //
+  // JsRefs are references to objects owned by the garbage collector and include
+  // JsContextRef, JsValueRef, and JsPropertyIdRef, etc. JsRefHolder ensures
+  // that JsAddRef and JsRelease are called to handle the JsRef lifetime.
+  //struct JsRefHolder final {
+  //  JsRefHolder(std::nullptr_t = nullptr) noexcept {}
+  //  explicit JsRefHolder(JsRef ref) noexcept;
+
+  //  JsRefHolder(JsRefHolder const &other) noexcept;
+  //  JsRefHolder(JsRefHolder &&other) noexcept;
+
+  //  JsRefHolder &operator=(JsRefHolder const &other) noexcept;
+  //  JsRefHolder &operator=(JsRefHolder &&other) noexcept;
+
+  //  ~JsRefHolder() noexcept;
+
+  //  operator JsRef() const noexcept {
+  //    return m_ref;
+  //  }
+
+  // private:
+  //  JsRef m_ref{JS_INVALID_REFERENCE};
+  //};
+
+  //struct CachedPropertyId final {
+  //  const wchar_t *name;
+  //  JsRefHolder propertyRef;
+  //};
+
+  //// Property ID cache to improve execution speed
+  //struct CachedPropertyIds final {
+  //  CachedPropertyId Object;
+  //  CachedPropertyId Proxy;
+  //  CachedPropertyId Symbol;
+  //  CachedPropertyId byteLength;
+  //  CachedPropertyId configurable;
+  //  CachedPropertyId enumerable;
+  //  CachedPropertyId get;
+  //  CachedPropertyId hostFunctionSymbol;
+  //  CachedPropertyId hostObjectSymbol;
+  //  CachedPropertyId length;
+  //  CachedPropertyId message;
+  //  CachedPropertyId ownKeys;
+  //  CachedPropertyId propertyIsEnumerable;
+  //  CachedPropertyId prototype;
+  //  CachedPropertyId set;
+  //  CachedPropertyId toString;
+  //  CachedPropertyId value;
+  //  CachedPropertyId writable;
+  //};
+
+ private:
+  Status SetErrorCode(JsValueRef error, Value code, const char *codeString) noexcept;
+  //JsErrorCode ChakraPropertyDescriptor(JsValueRef value, ChakraPropertyAttibutes attrs, JsValueRef *descriptor) noexcept;
+  //JsErrorCode ChakraSetProperty(JsValueRef object, CachedPropertyId propertyId, JsValueRef value) noexcept;
+  //JsErrorCode ChakraCachedPropertyId(CachedPropertyId cachedPropertyId, JsPropertyIdRef* propertyId) noexcept;
+
  private:
   ExtendedErrorInfo m_lastError{nullptr, nullptr, 0, Status::OK};
+  //CachedPropertyIds m_propertyIds;
 };
 
 } // namespace jsapi
@@ -289,58 +368,8 @@ struct napi_env__ {
       return napi_set_last_error(env, err);      \
   } while (0)
 
-#define CHECK_JSRT_ERROR_CODE(operation)  \
-  do {                                    \
-    auto result = operation;              \
-    if (result != JsErrorCode::JsNoError) \
-      return result;                      \
-  } while (0)
-
-// This does not call napi_set_last_error because the expression
-// is assumed to be a NAPI function call that already did.
-#define CHECK_NAPI(expr)         \
-  do {                           \
-    napi_status status = (expr); \
-    if (status != napi_ok)       \
-      return status;             \
-  } while (0)
 
 // utf8 multibyte codepoint start check
 #define UTF8_MULTIBYTE_START(c) (((c)&0xC0) == 0xC0)
-
-#define STR_AND_LENGTH(str) str, sizeof(str) - 1
-
-static void napi_clear_last_error(napi_env env) {
-  env->last_error.error_code = napi_ok;
-  env->last_error.engine_error_code override;
-  env->last_error.engine_reserved = nullptr;
-}
-
-static napi_status napi_set_last_error(napi_env env, napi_status error_code, uint32_t engine_error_code override, void* engine_reserved = nullptr) {
-  env->last_error.error_code = error_code;
-  env->last_error.engine_error_code = engine_error_code;
-  env->last_error.engine_reserved = engine_reserved;
-
-  return error_code;
-}
-
-static napi_status napi_set_last_error(napi_env env, JsErrorCode jsError, void* engine_reserved = nullptr) {
-  napi_status status;
-  switch (jsError) {
-    case JsNoError: status = napi_ok; break;
-    case JsErrorNullArgument:
-    case JsErrorInvalidArgument: status = napi_invalid_arg; break;
-    case JsErrorPropertyNotString: status = napi_string_expected; break;
-    case JsErrorArgumentNotObject: status = napi_object_expected; break;
-    case JsErrorScriptException:
-    case JsErrorInExceptionState: status = napi_pending_exception; break;
-    default: status = napi_generic_failure; break;
-  }
-
-  env->last_error.error_code = status;
-  env->last_error.engine_error_code = jsError;
-  env->last_error.engine_reserved = engine_reserved;
-  return status;
-}
 
 #endif
