@@ -88,9 +88,9 @@ enum class Status {
   WouldDeadlock // unused
 };
 
-struct Environment;
-using Callback = Value (*)(Environment *env, CallbackInfo info) noexcept;
-using Finalize = void (*)(Environment *env, void *finalizeData, void *finalizeHint) noexcept;
+struct IEnvironment;
+using Callback = Value (*)(IEnvironment *env, CallbackInfo info) noexcept;
+using Finalize = void (*)(IEnvironment *env, void *finalizeData, void *finalizeHint) noexcept;
 
 struct PropertyDescriptor {
   // One of utf8Name or name should be NULL.
@@ -131,7 +131,7 @@ struct TypeTag {
   uint64_t upper;
 };
 
-struct Environment {
+struct IEnvironment {
   virtual Status __stdcall GetLastErrorInfo(const ExtendedErrorInfo **result) noexcept = 0;
 
   // Getters for defined singletons

@@ -2,13 +2,599 @@
 // Licensed under the MIT License.
 
 #include "pch.h"
-//#include "JSApiChakra.h"
+#include "JSApiChakra.h"
 //#include <array>
 //#include <cassert>
 //#include <cmath>
 //#include <vector>
 //#include <string>
 //#include <stdexcept>
+
+namespace jsapi {
+
+//#define CHECK_ENV(env)           \
+//  do {                           \
+//    if ((env) == nullptr) {      \
+//      return Status::InvalidArg; \
+//    }                            \
+//  } while (0)
+
+#define RETURN_STATUS_IF_FALSE(condition, status) \
+  do {                                            \
+    if (!(condition)) {                           \
+      return SetLastError((status));              \
+    }                                             \
+  } while (0)
+
+#define CHECK_ARG(arg) RETURN_STATUS_IF_FALSE(((arg) != nullptr), Status::InvalidArg)
+
+#define CHECK_JSRT(expr)        \
+  do {                          \
+    JsErrorCode err = (expr);   \
+    if (err != JsNoError)       \
+      return SetLastError(err); \
+  } while (0)
+
+Status ChakraEnvironment::GetLastErrorInfo(const ExtendedErrorInfo **result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::GetUndefined(Value *result) noexcept {
+  CHECK_ARG(result);
+  CHECK_JSRT(JsGetUndefinedValue(reinterpret_cast<JsValueRef *>(result)));
+  return Status::OK;
+}
+
+Status ChakraEnvironment::GetNull(Value *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::GetGlobal(Value *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::GetBoolean(bool value, Value *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::CreateObject(Value *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::CreateArray(Value *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::CreateArrayWithLength(size_t length, Value *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::CreateDouble(double value, Value *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::CreateInt32(int32_t value, Value *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::CreateUInt32(uint32_t value, Value *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::CreateInt64(int64_t value, Value *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::CreateStringLatin1(const char *str, size_t length, Value *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::CreateStringUtf8(const char *str, size_t length, Value *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::CreateStringUtf16(const char16_t *str, size_t length, Value *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::CreateSymbol(Value description, Value *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::CreateFunction(
+    const char *utf8name,
+    size_t length,
+    Callback cb,
+    void *data,
+    Value *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::CreateError(Value code, Value msg, Value *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::CreateTypeError(Value code, Value msg, Value *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::CreateRangeError(Value code, Value msg, Value *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::TypeOf(Value value, ValueType *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::GetValueDouble(Value value, double *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::GetValueInt32(Value value, int32_t *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::GetValueUInt32(Value value, uint32_t *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::GetValueInt64(Value value, int64_t *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::GetValueBool(Value value, bool *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::GetValueStringLatin1(Value value, char *buf, size_t bufSize, size_t *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::GetValueStringUtf8(Value value, char *buf, size_t bufSize, size_t *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::GetValueStringUtf16(Value value, char16_t *buf, size_t bufSize, size_t *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::CoerceToBool(Value value, Value *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::CoerceToNumber(Value value, Value *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::CoerceToObject(Value value, Value *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::CoerceToString(Value value, Value *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::GetPrototype(Value object, Value *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::GetPropertyNames(Value object, Value *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::SetProperty(Value object, Value key, Value value) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::HasProperty(Value object, Value key, bool *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::GetProperty(Value object, Value key, Value *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::DeleteProperty(Value object, Value key, bool *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::HasOwnProperty(Value object, Value key, bool *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::SetNamedProperty(Value object, const char *utf8Name, Value value) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::HasNamedProperty(Value object, const char *utf8Name, bool *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::GetNamedProperty(Value object, const char *utf8Name, Value *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::SetElement(Value object, uint32_t index, Value value) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::HasElement(Value object, uint32_t index, bool *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::GetElement(Value object, uint32_t index, Value *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::DeleteElement(Value object, uint32_t index, bool *result) noexcept {
+  return Status::OK;
+}
+
+Status
+ChakraEnvironment::DefineProperties(Value object, size_t propertyCount, const PropertyDescriptor *properties) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::IsArray(Value value, bool *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::GetArrayLength(Value value, uint32_t *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::StrictEquals(Value lhs, Value rhs, bool *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::CallFunction(Value recv, Value func, size_t argc, const Value *argv, Value *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::NewInstance(Value constructor, size_t argc, const Value *argv, Value *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::InstanceOf(Value object, Value constructor, bool *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::GetCallbackInfo(
+    CallbackInfo callbackInfo,
+    size_t *argc,
+    Value *argv,
+    Value *thisArg,
+    void **data) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::GetNewTarget(CallbackInfo callbackInfo, Value *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::DefineClass(
+    const char *utf8Name,
+    size_t length,
+    Callback constructor,
+    void *data,
+    size_t propertyCount,
+    const PropertyDescriptor *properties,
+    Value *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::Wrap(
+    Value jsObject,
+    void *nativeObject,
+    Finalize finalizeCallback,
+    void *finalizeHint,
+    Ref *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::Unwrap(Value js_object, void **result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::RemoveWrap(Value jsObject, void **result) noexcept {
+  return Status::OK;
+}
+
+Status
+ChakraEnvironment::CreateExternal(void *data, Finalize finalizeCallback, void *finalizeHint, Value *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::GetValueExternal(Value value, void **result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::CreateReference(Value value, uint32_t initialRefCount, Ref *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::DeleteReference(Ref ref) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::ReferenceRef(Ref ref, uint32_t *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::ReferenceUnref(Ref ref, uint32_t *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::GetReferenceValue(Ref ref, Value *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::OpenHandleScope(HandleScope *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::CloseHandleScope(HandleScope scope) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::OpenEscapableHandleScope(EscapableHandleScope *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::CloseEscapableHandleScope(EscapableHandleScope scope) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::EscapeHandle(EscapableHandleScope scope, Value escapee, Value *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::Throw(Value error) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::ThrowError(const char *code, const char *msg) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::ThrowTypeError(const char *code, const char *msg) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::ThrowRangeError(const char *code, const char *msg) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::IsError(Value value, bool *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::IsExceptionPending(bool *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::GetAndClearLastException(Value *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::IsArrayBuffer(Value value, bool *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::CreateArrayBuffer(size_t byteLength, void **data, Value *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::CreateExternalArrayBuffer(
+    void *externalData,
+    size_t byteLength,
+    Finalize finalizeCallback,
+    void *finalizeHint,
+    Value *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::GetArrayBufferInfo(Value arrayBuffer, void **data, size_t *byteLength) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::IsTypedArray(Value value, bool *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::CreateTypedArray(
+    TypedArrayType type,
+    size_t length,
+    Value arrayBuffer,
+    size_t byteOffset,
+    Value *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::GetTypedArrayInfo(
+    Value typedArray,
+    TypedArrayType *type,
+    size_t *length,
+    void **data,
+    Value *arrayBuffer,
+    size_t *byteOffset) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::CreateDataView(size_t length, Value arrayBuffer, size_t byteOffset, Value *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::IsDataView(Value value, bool *result) noexcept {
+  return Status::OK;
+}
+Status ChakraEnvironment::GetDataViewInfo(
+    Value dataView,
+    size_t *byteLength,
+    void **data,
+    Value *arrayBuffer,
+    size_t *byteOffset) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::GetVersion(uint32_t *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::CreatePromise(Deferred *deferred, Value *promise) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::ResolveDeferred(Deferred deferred, Value resolution) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::RejectDeferred(Deferred deferred, Value rejection) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::IsPromise(Value value, bool *isPromise) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::RunScript(Value script, Value *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::AdjustExternalMemory(int64_t changeInBytes, int64_t *adjustedValue) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::CreateDate(double time, Value *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::IsDate(Value value, bool *isDate) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::GetDateValue(Value value, double *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::AddFinalizer(
+    Value jsObject,
+    void *nativeObject,
+    Finalize finalizeCallback,
+    void *finalizeHint,
+    Ref *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::CreateBigIntInt64(int64_t value, Value *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::CreateBigIntUInt64(uint64_t value, Value *result) noexcept {
+  return Status::OK;
+}
+
+Status
+ChakraEnvironment::CreateBigIntWords(int signBit, size_t wordCount, const uint64_t *words, Value *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::GetValueBigIntInt64(Value value, int64_t *result, bool *lossless) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::GetValueBigIntUInt64(Value value, uint64_t *result, bool *lossless) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::GetValueBigIntWords(Value value, int *signBit, size_t *wordCount, uint64_t *words) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::GetAllPropertyNames(
+    Value object,
+    KeyCollectionMode keyMode,
+    KeyFilter keyFilter,
+    KeyConversion keyConversion,
+    Value *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::SetInstanceData(void *data, Finalize finalizeCallback, void *finalizeHint) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::GetInstanceData(void **data) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::DetachArrayBuffer(Value arraybuffer) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::IsDetachedArrayBuffer(Value value, bool *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::TypeTagObject(Value value, const TypeTag *typeTag) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::CheckObjectTypeTag(Value value, const TypeTag *typeTag, bool *result) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::ObjectFreeze(Value object) noexcept {
+  return Status::OK;
+}
+
+Status ChakraEnvironment::ObjectSeal(Value object) noexcept {
+  return Status::OK;
+}
+
+void ChakraEnvironment::ClearLastError() noexcept {
+  m_lastError = {nullptr, nullptr, 0, Status::OK};
+}
+
+Status ChakraEnvironment::SetLastError(Status errorCode, uint32_t engineErrorCode, void *engineReserved) noexcept {
+  m_lastError.errorCode = errorCode;
+  m_lastError.engineErrorCode = engineErrorCode;
+  m_lastError.engineReserved = engineReserved;
+  return errorCode;
+}
+
+Status ChakraEnvironment::SetLastError(JsErrorCode jsError, void *engineReserved) noexcept {
+  Status status;
+  switch (jsError) {
+    case JsNoError:
+      status = Status::OK;
+      break;
+    case JsErrorNullArgument:
+    case JsErrorInvalidArgument:
+      status = Status::InvalidArg;
+      break;
+    case JsErrorPropertyNotString:
+      status = Status::StringExpected;
+      break;
+    case JsErrorArgumentNotObject:
+      status = Status::ObjectExpected;
+      break;
+    case JsErrorScriptException:
+    case JsErrorInExceptionState:
+      status = Status::PendingException;
+      break;
+    default:
+      status = Status::GenericFailure;
+      break;
+  }
+
+  m_lastError.errorCode = status;
+  m_lastError.engineErrorCode = jsError;
+  m_lastError.engineReserved = engineReserved;
+  return status;
+}
+
+} // namespace jsapi
 
 #if 0
 namespace {

@@ -3,8 +3,275 @@
 
 #pragma once
 
-#include <jsrt.h>
 #include <JSApi.h>
+#include <jsrt.h>
+
+namespace jsapi {
+
+struct ChakraEnvironment final : IEnvironment {
+  Status __stdcall GetLastErrorInfo(const ExtendedErrorInfo **result) noexcept override;
+
+  // Getters for defined singletons
+  Status __stdcall GetUndefined(Value *result) noexcept override;
+  Status __stdcall GetNull(Value *result) noexcept override;
+  Status __stdcall GetGlobal(Value *result) noexcept override;
+  Status __stdcall GetBoolean(bool value, Value *result) noexcept override;
+
+  // Methods to create Primitive types/Objects
+  Status __stdcall CreateObject(Value *result) noexcept override;
+  Status __stdcall CreateArray(Value *result) noexcept override;
+  Status __stdcall CreateArrayWithLength(size_t length, Value *result) noexcept override;
+  Status __stdcall CreateDouble(double value, Value *result) noexcept override;
+  Status __stdcall CreateInt32(int32_t value, Value *result) noexcept override;
+  Status __stdcall CreateUInt32(uint32_t value, Value *result) noexcept override;
+  Status __stdcall CreateInt64(int64_t value, Value *result) noexcept override;
+  Status __stdcall CreateStringLatin1(const char *str, size_t length, Value *result) noexcept override;
+  Status __stdcall CreateStringUtf8(const char *str, size_t length, Value *result) noexcept override;
+  Status __stdcall CreateStringUtf16(const char16_t *str, size_t length, Value *result) noexcept override;
+  Status __stdcall CreateSymbol(Value description, Value *result) noexcept override;
+  Status __stdcall CreateFunction(const char *utf8name, size_t length, Callback cb, void *data, Value *result) noexcept
+      override;
+  Status __stdcall CreateError(Value code, Value msg, Value *result) noexcept override;
+  Status __stdcall CreateTypeError(Value code, Value msg, Value *result) noexcept override;
+  Status __stdcall CreateRangeError(Value code, Value msg, Value *result) noexcept override;
+
+  // Methods to get the native Value from Primitive type
+  Status __stdcall TypeOf(Value value, ValueType *result) noexcept override;
+  Status __stdcall GetValueDouble(Value value, double *result) noexcept override;
+  Status __stdcall GetValueInt32(Value value, int32_t *result) noexcept override;
+  Status __stdcall GetValueUInt32(Value value, uint32_t *result) noexcept override;
+  Status __stdcall GetValueInt64(Value value, int64_t *result) noexcept override;
+  Status __stdcall GetValueBool(Value value, bool *result) noexcept override;
+
+  // Copies LATIN-1 encoded bytes from a string into a buffer.
+  Status __stdcall GetValueStringLatin1(Value value, char *buf, size_t bufSize, size_t *result) noexcept override;
+
+  // Copies UTF-8 encoded bytes from a string into a buffer.
+  Status __stdcall GetValueStringUtf8(Value value, char *buf, size_t bufSize, size_t *result) noexcept override;
+
+  // Copies UTF-16 encoded bytes from a string into a buffer.
+  Status __stdcall GetValueStringUtf16(Value value, char16_t *buf, size_t bufSize, size_t *result) noexcept override;
+
+  // Methods to coerce values
+  // These APIs may execute user scripts
+  Status __stdcall CoerceToBool(Value value, Value *result) noexcept override;
+  Status __stdcall CoerceToNumber(Value value, Value *result) noexcept override;
+  Status __stdcall CoerceToObject(Value value, Value *result) noexcept override;
+  Status __stdcall CoerceToString(Value value, Value *result) noexcept override;
+
+  // Methods to work with Objects
+  Status __stdcall GetPrototype(Value object, Value *result) noexcept override;
+  Status __stdcall GetPropertyNames(Value object, Value *result) noexcept override;
+  Status __stdcall SetProperty(Value object, Value key, Value value) noexcept override;
+  Status __stdcall HasProperty(Value object, Value key, bool *result) noexcept override;
+  Status __stdcall GetProperty(Value object, Value key, Value *result) noexcept override;
+  Status __stdcall DeleteProperty(Value object, Value key, bool *result) noexcept override;
+  Status __stdcall HasOwnProperty(Value object, Value key, bool *result) noexcept override;
+  Status __stdcall SetNamedProperty(Value object, const char *utf8Name, Value value) noexcept override;
+  Status __stdcall HasNamedProperty(Value object, const char *utf8Name, bool *result) noexcept override;
+  Status __stdcall GetNamedProperty(Value object, const char *utf8Name, Value *result) noexcept override;
+  Status __stdcall SetElement(Value object, uint32_t index, Value value) noexcept override;
+  Status __stdcall HasElement(Value object, uint32_t index, bool *result) noexcept override;
+  Status __stdcall GetElement(Value object, uint32_t index, Value *result) noexcept override;
+  Status __stdcall DeleteElement(Value object, uint32_t index, bool *result) noexcept override;
+  Status __stdcall DefineProperties(Value object, size_t propertyCount, const PropertyDescriptor *properties) noexcept
+      override;
+
+  // Methods to work with Arrays
+  Status __stdcall IsArray(Value value, bool *result) noexcept override;
+  Status __stdcall GetArrayLength(Value value, uint32_t *result) noexcept override;
+
+  // Methods to compare values
+  Status __stdcall StrictEquals(Value lhs, Value rhs, bool *result) noexcept override;
+
+  // Methods to work with Functions
+  Status __stdcall CallFunction(Value recv, Value func, size_t argc, const Value *argv, Value *result) noexcept
+      override;
+  Status __stdcall NewInstance(Value constructor, size_t argc, const Value *argv, Value *result) noexcept override;
+  Status __stdcall InstanceOf(Value object, Value constructor, bool *result) noexcept override;
+
+  // Methods to work with napi_callbacks
+
+  // Gets all callback info in a single call. (Ugly, but faster.)
+  Status __stdcall GetCallbackInfo(
+      CallbackInfo callbackInfo, // [in] Opaque callback-info handle
+      size_t *argc, // [in-out] Specifies the size of the provided argv array
+                    // and receives the actual count of args.
+      Value *argv, // [out] Array of values
+      Value *thisArg, // [out] Receives the JS 'this' arg for the call
+      void **data) noexcept override; // [out] Receives the data pointer for the callback.
+
+  Status __stdcall GetNewTarget(CallbackInfo callbackInfo, Value *result) noexcept override;
+  Status __stdcall DefineClass(
+      const char *utf8Name,
+      size_t length,
+      Callback constructor,
+      void *data,
+      size_t propertyCount,
+      const PropertyDescriptor *properties,
+      Value *result) noexcept override;
+
+  // Methods to work with external data objects
+  Status __stdcall Wrap(
+      Value jsObject,
+      void *nativeObject,
+      Finalize finalizeCallback,
+      void *finalizeHint,
+      Ref *result) noexcept override;
+  Status __stdcall Unwrap(Value js_object, void **result) noexcept override;
+  Status __stdcall RemoveWrap(Value jsObject, void **result) noexcept override;
+  Status __stdcall CreateExternal(void *data, Finalize finalizeCallback, void *finalizeHint, Value *result) noexcept
+      override;
+  Status __stdcall GetValueExternal(Value value, void **result) noexcept override;
+
+  // Methods to control object lifespan
+
+  // Set initial_refcount to 0 for a weak reference, >0 for a strong reference.
+  Status __stdcall CreateReference(Value value, uint32_t initialRefCount, Ref *result) noexcept override;
+
+  // Deletes a reference. The referenced value is released, and may
+  // be GC'd unless there are other references to it.
+  Status __stdcall DeleteReference(Ref ref) noexcept override;
+
+  // Increments the reference count, optionally returning the resulting count.
+  // After this call the  reference will be a strong reference because its
+  // refcount is >0, and the referenced object is effectively "pinned".
+  // Calling this when the refcount is 0 and the object is unavailable
+  // results in an error.
+  Status __stdcall ReferenceRef(Ref ref, uint32_t *result) noexcept override;
+
+  // Decrements the reference count, optionally returning the resulting count.
+  // If the result is 0 the reference is now weak and the object may be GC'd
+  // at any time if there are no other references. Calling this when the
+  // refcount is already 0 results in an error.
+  Status __stdcall ReferenceUnref(Ref ref, uint32_t *result) noexcept override;
+
+  // Attempts to get a referenced value. If the reference is weak,
+  // the value might no longer be available, in that case the call
+  // is still successful but the result is NULL.
+  Status __stdcall GetReferenceValue(Ref ref, Value *result) noexcept override;
+
+  Status __stdcall OpenHandleScope(HandleScope *result) noexcept override;
+  Status __stdcall CloseHandleScope(HandleScope scope) noexcept override;
+  Status __stdcall OpenEscapableHandleScope(EscapableHandleScope *result) noexcept override;
+  Status __stdcall CloseEscapableHandleScope(EscapableHandleScope scope) noexcept override;
+
+  Status __stdcall EscapeHandle(EscapableHandleScope scope, Value escapee, Value *result) noexcept override;
+
+  // Methods to support error handling
+  Status __stdcall Throw(Value error) noexcept override;
+  Status __stdcall ThrowError(const char *code, const char *msg) noexcept override;
+  Status __stdcall ThrowTypeError(const char *code, const char *msg) noexcept override;
+  Status __stdcall ThrowRangeError(const char *code, const char *msg) noexcept override;
+  Status __stdcall IsError(Value value, bool *result) noexcept override;
+
+  // Methods to support catching exceptions
+  Status __stdcall IsExceptionPending(bool *result) noexcept override;
+  Status __stdcall GetAndClearLastException(Value *result) noexcept override;
+
+  // Methods to work with array buffers and typed arrays
+  Status __stdcall IsArrayBuffer(Value value, bool *result) noexcept override;
+  Status __stdcall CreateArrayBuffer(size_t byteLength, void **data, Value *result) noexcept override;
+  Status __stdcall CreateExternalArrayBuffer(
+      void *externalData,
+      size_t byteLength,
+      Finalize finalizeCallback,
+      void *finalizeHint,
+      Value *result) noexcept override;
+  Status __stdcall GetArrayBufferInfo(Value arrayBuffer, void **data, size_t *byteLength) noexcept override;
+  Status __stdcall IsTypedArray(Value value, bool *result) noexcept override;
+  Status __stdcall CreateTypedArray(
+      TypedArrayType type,
+      size_t length,
+      Value arrayBuffer,
+      size_t byteOffset,
+      Value *result) noexcept override;
+  Status __stdcall GetTypedArrayInfo(
+      Value typedArray,
+      TypedArrayType *type,
+      size_t *length,
+      void **data,
+      Value *arrayBuffer,
+      size_t *byteOffset) noexcept override;
+
+  Status __stdcall CreateDataView(size_t length, Value arrayBuffer, size_t byteOffset, Value *result) noexcept override;
+  Status __stdcall IsDataView(Value value, bool *result) noexcept override;
+  Status __stdcall GetDataViewInfo(
+      Value dataView,
+      size_t *byteLength,
+      void **data,
+      Value *arrayBuffer,
+      size_t *byteOffset) noexcept override;
+
+  // version management
+  Status __stdcall GetVersion(uint32_t *result) noexcept override;
+
+  // Promises
+  Status __stdcall CreatePromise(Deferred *deferred, Value *promise) noexcept override;
+  Status __stdcall ResolveDeferred(Deferred deferred, Value resolution) noexcept override;
+  Status __stdcall RejectDeferred(Deferred deferred, Value rejection) noexcept override;
+  Status __stdcall IsPromise(Value value, bool *isPromise) noexcept override;
+
+  // Running a script
+  Status __stdcall RunScript(Value script, Value *result) noexcept override;
+
+  // Memory management
+  Status __stdcall AdjustExternalMemory(int64_t changeInBytes, int64_t *adjustedValue) noexcept override;
+
+  // Dates
+  Status __stdcall CreateDate(double time, Value *result) noexcept override;
+  Status __stdcall IsDate(Value value, bool *isDate) noexcept override;
+  Status __stdcall GetDateValue(Value value, double *result) noexcept override;
+
+  // Add finalizer for pointer
+  Status __stdcall AddFinalizer(
+      Value jsObject,
+      void *nativeObject,
+      Finalize finalizeCallback,
+      void *finalizeHint,
+      Ref *result) noexcept override;
+
+  // BigInt
+  Status __stdcall CreateBigIntInt64(int64_t value, Value *result) noexcept override;
+  Status __stdcall CreateBigIntUInt64(uint64_t value, Value *result) noexcept override;
+  Status __stdcall CreateBigIntWords(int signBit, size_t wordCount, const uint64_t *words, Value *result) noexcept
+      override;
+  Status __stdcall GetValueBigIntInt64(Value value, int64_t *result, bool *lossless) noexcept override;
+  Status __stdcall GetValueBigIntUInt64(Value value, uint64_t *result, bool *lossless) noexcept override;
+  Status __stdcall GetValueBigIntWords(Value value, int *signBit, size_t *wordCount, uint64_t *words) noexcept override;
+
+  // Object
+  Status __stdcall GetAllPropertyNames(
+      Value object,
+      KeyCollectionMode keyMode,
+      KeyFilter keyFilter,
+      KeyConversion keyConversion,
+      Value *result) noexcept override;
+
+  // Instance data
+  Status __stdcall SetInstanceData(void *data, Finalize finalizeCallback, void *finalizeHint) noexcept override;
+  Status __stdcall GetInstanceData(void **data) noexcept override;
+
+  // ArrayBuffer detaching
+  Status __stdcall DetachArrayBuffer(Value arraybuffer) noexcept override;
+  Status __stdcall IsDetachedArrayBuffer(Value value, bool *result) noexcept override;
+
+  // Type tagging
+  Status __stdcall TypeTagObject(Value value, const TypeTag *typeTag) noexcept override;
+  Status __stdcall CheckObjectTypeTag(Value value, const TypeTag *typeTag, bool *result) noexcept override;
+  Status __stdcall ObjectFreeze(Value object) noexcept override;
+  Status __stdcall ObjectSeal(Value object) noexcept override;
+
+ private:
+  void ClearLastError() noexcept;
+  Status SetLastError(Status errorCode, uint32_t engineErrorCode = 0, void *engineReserved = nullptr) noexcept;
+  Status SetLastError(JsErrorCode jsError, void *engineReserved = nullptr) noexcept;
+
+ private:
+  ExtendedErrorInfo m_lastError{nullptr, nullptr, 0, Status::OK};
+};
+
+} // namespace jsapi
 
 #if 0 
 struct napi_env__ {
@@ -13,63 +280,43 @@ struct napi_env__ {
   JsValueRef has_own_property_function = JS_INVALID_REFERENCE;
 };
 
-#define RETURN_STATUS_IF_FALSE(env, condition, status)                  \
-  do {                                                                  \
-    if (!(condition)) {                                                 \
-      return napi_set_last_error((env), (status));                      \
-    }                                                                   \
+#define CHECK_JSRT_EXPECTED(env, expr, expected) \
+  do {                                           \
+    JsErrorCode err = (expr);                    \
+    if (err == JsErrorInvalidArgument)           \
+      return napi_set_last_error(env, expected); \
+    if (err != JsNoError)                        \
+      return napi_set_last_error(env, err);      \
   } while (0)
 
-#define CHECK_ENV(env)          \
-  do {                          \
-    if ((env) == nullptr) {     \
-      return napi_invalid_arg;  \
-    }                           \
-  } while (0)
-
-#define CHECK_ARG(env, arg) \
-  RETURN_STATUS_IF_FALSE((env), ((arg) != nullptr), napi_invalid_arg)
-
-#define CHECK_JSRT(env, expr)                                   \
-  do {                                                          \
-    JsErrorCode err = (expr);                                   \
-    if (err != JsNoError) return napi_set_last_error(env, err); \
-  } while (0)
-
-#define CHECK_JSRT_EXPECTED(env, expr, expected)                 \
-  do {                                                          \
-    JsErrorCode err = (expr);                                   \
-    if (err == JsErrorInvalidArgument)                          \
-      return napi_set_last_error(env, expected);                \
-    if (err != JsNoError) return napi_set_last_error(env, err); \
-  } while (0)
-
-#define CHECK_JSRT_ERROR_CODE(operation)                 \
-  do {                                                   \
-    auto result = operation;                             \
-    if (result != JsErrorCode::JsNoError) return result; \
+#define CHECK_JSRT_ERROR_CODE(operation)  \
+  do {                                    \
+    auto result = operation;              \
+    if (result != JsErrorCode::JsNoError) \
+      return result;                      \
   } while (0)
 
 // This does not call napi_set_last_error because the expression
 // is assumed to be a NAPI function call that already did.
-#define CHECK_NAPI(expr)                  \
-  do {                                    \
-    napi_status status = (expr);          \
-    if (status != napi_ok) return status; \
+#define CHECK_NAPI(expr)         \
+  do {                           \
+    napi_status status = (expr); \
+    if (status != napi_ok)       \
+      return status;             \
   } while (0)
 
 // utf8 multibyte codepoint start check
-#define UTF8_MULTIBYTE_START(c) (((c) & 0xC0) == 0xC0)
+#define UTF8_MULTIBYTE_START(c) (((c)&0xC0) == 0xC0)
 
 #define STR_AND_LENGTH(str) str, sizeof(str) - 1
 
 static void napi_clear_last_error(napi_env env) {
   env->last_error.error_code = napi_ok;
-  env->last_error.engine_error_code = 0;
+  env->last_error.engine_error_code override;
   env->last_error.engine_reserved = nullptr;
 }
 
-static napi_status napi_set_last_error(napi_env env, napi_status error_code, uint32_t engine_error_code = 0, void* engine_reserved = nullptr) {
+static napi_status napi_set_last_error(napi_env env, napi_status error_code, uint32_t engine_error_code override, void* engine_reserved = nullptr) {
   env->last_error.error_code = error_code;
   env->last_error.engine_error_code = engine_error_code;
   env->last_error.engine_reserved = engine_reserved;
