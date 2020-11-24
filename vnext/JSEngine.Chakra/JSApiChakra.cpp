@@ -267,7 +267,31 @@ void ThrowIfFailed(JsErrorCode errorCode) {
   }
 }
 
+struct RefInfo final {
+  JsValueRef value;
+  uint32_t count;
+};
+
 } // namespace
+
+ExternalData::ExternalData(ChakraEnvironment *env, void *data, ::jsapi::Finalize finalizeCallback, void *hint) noexcept
+    : m_env{env}, m_data{data}, m_cb{finalizeCallback}, m_hint{hint} {}
+
+void *ExternalData::Data() noexcept {
+  return m_data;
+}
+
+// JsFinalizeCallback
+/*static*/ void CALLBACK ExternalData::Finalize(void *callbackState) noexcept {
+  ExternalData *externalData = reinterpret_cast<ExternalData *>(callbackState);
+  if (externalData != nullptr) {
+    if (externalData->m_cb != nullptr) {
+      externalData->m_cb(externalData->m_env, externalData->m_data, externalData->m_hint);
+    }
+
+    delete externalData;
+  }
+}
 
 ChakraEnvironment::ChakraEnvironment() noexcept {
   // m_propertyIds.Object = {L"Object"};
@@ -1135,18 +1159,87 @@ Status ChakraEnvironment::GetCallbackInfo(
 }
 
 Status ChakraEnvironment::GetNewTarget(CallbackInfo callbackInfo, Value *result) noexcept {
+  CHECK_ARG(callbackInfo);
+  CHECK_ARG(result);
+
+  const ChakraCallbackInfo *info = reinterpret_cast<ChakraCallbackInfo *>(callbackInfo);
+  if (info->isConstructCall) {
+    *result = info->newTarget;
+  } else {
+    *result = nullptr;
+  }
+
   return Status::OK;
 }
 
 Status ChakraEnvironment::DefineClass(
     const char *utf8Name,
     size_t length,
-    Callback constructor,
+    Callback cb,
     void *data,
     size_t propertyCount,
     const PropertyDescriptor *properties,
-    Value *result) noexcept {
+    Value *result) noexcept try {
+  CHECK_ARG(result);
+
+  Value nameString;
+  CHECK_NAPI(CreateStringUtf8(utf8Name, length, &nameString));
+
+  auto externalCallback = std::make_unique<ExternalCallback>(this, cb, data);
+
+  JsValueRef constructor;
+  CHECK_JSRT(JsCreateNamedFunction(nameString, ExternalCallback::Callback, externalCallback.get(), &constructor));
+
+  externalCallback->newTarget = constructor;
+
+  CHECK_JSRT(JsSetObjectBeforeCollectCallback(constructor, externalCallback.get(), ExternalCallback::Finalize));
+
+  JsPropertyIdRef pid = nullptr;
+  JsValueRef prototype = nullptr;
+  CHECK_JSRT(JsGetPropertyIdFromName(L"prototype", &pid));
+  CHECK_JSRT(JsGetProperty(constructor, pid, &prototype));
+
+  CHECK_JSRT(JsGetPropertyIdFromName(L"constructor", &pid));
+  CHECK_JSRT(JsSetProperty(prototype, pid, constructor, false));
+
+  int instancePropertyCount = 0;
+  int staticPropertyCount = 0;
+  for (size_t i = 0; i < propertyCount; i++) {
+    if (!!(properties[i].attributes & PropertyAttributes::Static)) {
+      staticPropertyCount++;
+    } else {
+      instancePropertyCount++;
+    }
+  }
+
+  std::vector<PropertyDescriptor> staticDescriptors;
+  std::vector<PropertyDescriptor> instanceDescriptors;
+  staticDescriptors.reserve(staticPropertyCount);
+  instanceDescriptors.reserve(instancePropertyCount);
+
+  for (size_t i = 0; i < propertyCount; i++) {
+    if (!!(properties[i].attributes & PropertyAttributes::Static)) {
+      staticDescriptors.push_back(properties[i]);
+    } else {
+      instanceDescriptors.push_back(properties[i]);
+    }
+  }
+
+  if (staticPropertyCount > 0) {
+    CHECK_NAPI(
+        DefineProperties(reinterpret_cast<Value>(constructor), staticDescriptors.size(), staticDescriptors.data()));
+  }
+
+  if (instancePropertyCount > 0) {
+    CHECK_NAPI(
+        DefineProperties(reinterpret_cast<Value>(prototype), instanceDescriptors.size(), instanceDescriptors.data()));
+  }
+
+  *result = reinterpret_cast<Value>(constructor);
+
   return Status::OK;
+} catch (...) {
+  return SetLastError(Status::GenericFailure);
 }
 
 Status ChakraEnvironment::Wrap(
@@ -1154,44 +1247,174 @@ Status ChakraEnvironment::Wrap(
     void *nativeObject,
     Finalize finalizeCallback,
     void *finalizeHint,
-    Ref *result) noexcept {
+    Ref *result) noexcept try {
+  CHECK_ARG(jsObject);
+
+  JsValueRef value = reinterpret_cast<JsValueRef>(jsObject);
+
+  JsValueRef wrapper{JS_INVALID_REFERENCE};
+  CHECK_NAPI(FindWrapper(value, &wrapper));
+  RETURN_STATUS_IF_FALSE(wrapper == JS_INVALID_REFERENCE, Status::InvalidArg);
+
+  auto externalData = std::make_unique<ExternalData>(this, nativeObject, finalizeCallback, finalizeHint);
+
+  // Create an external object that will hold the external data pointer.
+  JsValueRef external{JS_INVALID_REFERENCE};
+  CHECK_JSRT(JsCreateExternalObject(externalData.get(), ExternalData::Finalize, &external));
+  externalData.release();
+
+  // Insert the external object into the value's prototype chain.
+  JsValueRef valuePrototype{JS_INVALID_REFERENCE};
+  CHECK_JSRT(JsGetPrototype(value, &valuePrototype));
+  CHECK_JSRT(JsSetPrototype(external, valuePrototype));
+  CHECK_JSRT(JsSetPrototype(value, external));
+
+  if (result != nullptr) {
+    CHECK_NAPI(CreateReference(jsObject, 0, result));
+  }
+
   return Status::OK;
+} catch (...) {
+  return SetLastError(Status::GenericFailure);
 }
 
-Status ChakraEnvironment::Unwrap(Value js_object, void **result) noexcept {
+Status ChakraEnvironment::Unwrap(Value jsObject, void **result) noexcept {
+  CHECK_ARG(jsObject);
+
+  JsValueRef value = reinterpret_cast<JsValueRef>(jsObject);
+
+  ExternalData *externalData = nullptr;
+  CHECK_NAPI(UnwrapInternal(value, &externalData));
+
+  *result = (externalData != nullptr ? externalData->Data() : nullptr);
+
   return Status::OK;
 }
 
 Status ChakraEnvironment::RemoveWrap(Value jsObject, void **result) noexcept {
+  CHECK_ARG(jsObject);
+
+  JsValueRef value = reinterpret_cast<JsValueRef>(jsObject);
+
+  ExternalData *externalData = nullptr;
+  JsValueRef parent{JS_INVALID_REFERENCE};
+  JsValueRef wrapper{JS_INVALID_REFERENCE};
+  CHECK_NAPI(UnwrapInternal(value, &externalData, &wrapper, &parent));
+  RETURN_STATUS_IF_FALSE(parent != JS_INVALID_REFERENCE, Status::InvalidArg);
+  RETURN_STATUS_IF_FALSE(wrapper != JS_INVALID_REFERENCE, Status::InvalidArg);
+
+  // Remove the external from the prototype chain
+  JsValueRef wrapperProto{JS_INVALID_REFERENCE};
+  CHECK_JSRT(JsGetPrototype(wrapper, &wrapperProto));
+  CHECK_JSRT(JsSetPrototype(parent, wrapperProto));
+
+  // Clear the external data from the object
+  CHECK_JSRT(JsSetExternalData(wrapper, nullptr));
+
+  if (externalData != nullptr) {
+    *result = externalData->Data();
+    delete externalData;
+  } else {
+    *result = nullptr;
+  }
+
   return Status::OK;
 }
 
 Status
-ChakraEnvironment::CreateExternal(void *data, Finalize finalizeCallback, void *finalizeHint, Value *result) noexcept {
+ChakraEnvironment::CreateExternal(void *data, Finalize finalizeCallback, void *finalizeHint, Value *result) noexcept
+    try {
+  CHECK_ARG(result);
+
+  auto externalData = std::make_unique<ExternalData>(this, data, finalizeCallback, finalizeHint);
+
+  CHECK_JSRT(
+      JsCreateExternalObject(externalData.get(), ExternalData::Finalize, reinterpret_cast<JsValueRef *>(result)));
+  externalData.release();
+
   return Status::OK;
+} catch (...) {
+  return SetLastError(Status::GenericFailure);
 }
 
 Status ChakraEnvironment::GetValueExternal(Value value, void **result) noexcept {
+  CHECK_ARG(value);
+  CHECK_ARG(result);
+
+  ExternalData *externalData;
+  CHECK_JSRT(JsGetExternalData(reinterpret_cast<JsValueRef>(value), reinterpret_cast<void **>(&externalData)));
+
+  *result = (externalData != nullptr ? externalData->Data() : nullptr);
+
   return Status::OK;
 }
 
-Status ChakraEnvironment::CreateReference(Value value, uint32_t initialRefCount, Ref *result) noexcept {
+Status ChakraEnvironment::CreateReference(Value value, uint32_t initialRefCount, Ref *result) noexcept try {
+  CHECK_ARG(value);
+  CHECK_ARG(result);
+
+  auto jsValue = reinterpret_cast<JsValueRef>(value);
+  auto info = std::make_unique<RefInfo>(RefInfo{jsValue, initialRefCount});
+
+  if (info->count != 0) {
+    CHECK_JSRT(JsAddRef(jsValue, nullptr));
+  }
+
+  *result = reinterpret_cast<Ref>(info.release());
   return Status::OK;
+} catch (...) {
+  return SetLastError(Status::GenericFailure);
 }
 
 Status ChakraEnvironment::DeleteReference(Ref ref) noexcept {
+  CHECK_ARG(ref);
+
+  auto info = reinterpret_cast<RefInfo *>(ref);
+
+  if (info->count != 0) {
+    CHECK_JSRT(JsRelease(info->value, nullptr));
+  }
+
+  delete info;
+
   return Status::OK;
 }
 
 Status ChakraEnvironment::ReferenceRef(Ref ref, uint32_t *result) noexcept {
+  CHECK_ARG(ref);
+  auto info = reinterpret_cast<RefInfo *>(ref);
+  if (info->count++ == 0) {
+    CHECK_JSRT(JsAddRef(info->value, nullptr));
+  }
+  if (result != nullptr) {
+    *result = info->count;
+  }
   return Status::OK;
 }
 
 Status ChakraEnvironment::ReferenceUnref(Ref ref, uint32_t *result) noexcept {
+  CHECK_ARG(ref);
+  auto info = reinterpret_cast<RefInfo *>(ref);
+  if (--info->count == 0) {
+    CHECK_JSRT(JsRelease(info->value, nullptr));
+  }
+  if (result != nullptr) {
+    *result = info->count;
+  }
+
   return Status::OK;
 }
 
 Status ChakraEnvironment::GetReferenceValue(Ref ref, Value *result) noexcept {
+  CHECK_ARG(ref);
+  CHECK_ARG(result);
+  auto info = reinterpret_cast<RefInfo *>(ref);
+  if (info->count == 0) {
+    *result = nullptr;
+  } else {
+    *result = reinterpret_cast<Value>(info->value);
+  }
+
   return Status::OK;
 }
 
@@ -1581,6 +1804,65 @@ JsErrorCode ChakraEnvironment::JsNameValueFromPropertyDescriptor(const PropertyD
     *name = p->name;
     return JsErrorCode::JsNoError;
   }
+}
+
+Status ChakraEnvironment::FindWrapper(JsValueRef obj, JsValueRef *wrapper, JsValueRef *parent) noexcept {
+  // Search the object's prototype chain for the wrapper with external data.
+  // Usually the wrapper would be the first in the chain, but it is OK for
+  // other objects to be inserted in the prototype chain.
+  JsValueRef candidate = obj;
+  JsValueRef current{JS_INVALID_REFERENCE};
+  bool hasExternalData = false;
+
+  JsValueRef nullValue{JS_INVALID_REFERENCE};
+  CHECK_JSRT(JsGetNullValue(&nullValue));
+
+  do {
+    current = candidate;
+
+    CHECK_JSRT(JsGetPrototype(current, &candidate));
+    if (candidate == JS_INVALID_REFERENCE || candidate == nullValue) {
+      if (parent != nullptr) {
+        *parent = JS_INVALID_REFERENCE;
+      }
+
+      *wrapper = JS_INVALID_REFERENCE;
+      return Status::OK;
+    }
+
+    CHECK_JSRT(JsHasExternalData(candidate, &hasExternalData));
+  } while (!hasExternalData);
+
+  if (parent != nullptr) {
+    *parent = current;
+  }
+
+  *wrapper = candidate;
+
+  return Status::OK;
+}
+
+Status ChakraEnvironment::UnwrapInternal(
+    JsValueRef obj,
+    ExternalData **externalData,
+    JsValueRef *wrapper,
+    JsValueRef *parent) noexcept {
+  JsValueRef candidate{JS_INVALID_REFERENCE};
+  JsValueRef candidateParent{JS_INVALID_REFERENCE};
+  CHECK_NAPI(FindWrapper(obj, &candidate, &candidateParent));
+  RETURN_STATUS_IF_FALSE(candidate != JS_INVALID_REFERENCE, Status::InvalidArg);
+
+  CHECK_JSRT(JsGetExternalData(candidate, reinterpret_cast<void **>(externalData)));
+
+  if (wrapper != nullptr) {
+    *wrapper = candidate;
+  }
+
+  if (parent != nullptr) {
+    *parent = candidateParent;
+  }
+
+  return Status::OK;
 }
 
 // JsErrorCode ChakraEnvironment::ChakraPropertyDescriptor(
@@ -2058,87 +2340,6 @@ napi_status napi_create_function(napi_env env,
   return napi_ok;
 }
 
-napi_status napi_define_class(napi_env env,
-                              const char* utf8Name,
-                              size_t length,
-                              napi_callback cb,
-                              void* data,
-                              size_t property_count,
-                              const napi_property_descriptor* properties,
-                              napi_value* result) {
-  CHECK_ENV(env);
-  CHECK_ARG(result);
-
-  napi_value namestring;
-  CHECK_NAPI(napi_create_string_utf8(env, utf8Name, length, &namestring));
-
-  ExternalCallback* externalCallback =
-    new ExternalCallback(env, cb, data);
-  if (externalCallback == nullptr) {
-    return napi_set_last_error(env, napi_generic_failure);
-  }
-
-  JsValueRef constructor;
-  CHECK_JSRT(JsCreateNamedFunction(
-    namestring,
-    ExternalCallback::Callback,
-    externalCallback,
-    &constructor));
-
-  externalCallback->newTarget = constructor;
-
-  CHECK_JSRT(JsSetObjectBeforeCollectCallback(
-    constructor, externalCallback, ExternalCallback::Finalize));
-
-  JsPropertyIdRef pid = nullptr;
-  JsValueRef prototype = nullptr;
-  CHECK_JSRT(JsCreatePropertyId(STR_AND_LENGTH("prototype"), &pid));
-  CHECK_JSRT(JsGetProperty(constructor, pid, &prototype));
-
-  CHECK_JSRT(JsCreatePropertyId(STR_AND_LENGTH("constructor"), &pid));
-  CHECK_JSRT(JsSetProperty(prototype, pid, constructor, false));
-
-  int instancePropertyCount = 0;
-  int staticPropertyCount = 0;
-  for (size_t i = 0; i < property_count; i++) {
-    if ((properties[i].attributes & napi_static) != 0) {
-      staticPropertyCount++;
-    } else {
-      instancePropertyCount++;
-    }
-  }
-
-  std::vector<napi_property_descriptor> staticDescriptors;
-  std::vector<napi_property_descriptor> instanceDescriptors;
-  staticDescriptors.reserve(staticPropertyCount);
-  instanceDescriptors.reserve(instancePropertyCount);
-
-  for (size_t i = 0; i < property_count; i++) {
-    if ((properties[i].attributes & napi_static) != 0) {
-      staticDescriptors.push_back(properties[i]);
-    } else {
-      instanceDescriptors.push_back(properties[i]);
-    }
-  }
-
-  if (staticPropertyCount > 0) {
-    CHECK_NAPI(napi_define_properties(env,
-                                      reinterpret_cast<napi_value>(constructor),
-                                      staticDescriptors.size(),
-                                      staticDescriptors.data()));
-  }
-
-  if (instancePropertyCount > 0) {
-    CHECK_NAPI(napi_define_properties(env,
-                                      reinterpret_cast<napi_value>(prototype),
-                                      instanceDescriptors.size(),
-                                      instanceDescriptors.data()));
-  }
-
-  *result = reinterpret_cast<napi_value>(constructor);
-  return napi_ok;
-}
-
 napi_status napi_get_property_names(napi_env env,
                                     napi_value object,
                                     napi_value* result) {
@@ -2553,23 +2754,6 @@ napi_status napi_typeof(napi_env env, napi_value value, napi_valuetype* result) 
       *result = hasExternalData ? napi_external : napi_object;
       break;
   }
-  return napi_ok;
-}
-
-napi_status napi_get_new_target(napi_env env,
-                                napi_callback_info cbinfo,
-                                napi_value* result) {
-  CHECK_ENV(env);
-  CHECK_ARG(cbinfo);
-  CHECK_ARG(result);
-
-  const CallbackInfo* info = reinterpret_cast<CallbackInfo*>(cbinfo);
-  if (info->isConstructCall) {
-    *result = info->newTarget;
-  } else {
-    *result = nullptr;
-  }
-
   return napi_ok;
 }
 

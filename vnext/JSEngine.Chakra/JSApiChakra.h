@@ -8,6 +8,21 @@
 
 namespace jsapi {
 
+struct ChakraEnvironment;
+
+// Adapter for JSRT external data + finalize callback.
+struct ExternalData {
+  ExternalData(ChakraEnvironment *env, void *data, Finalize finalizeCallback, void *hint) noexcept;
+  void *Data() noexcept;
+  static void CALLBACK Finalize(void *callbackState) noexcept;
+
+ private:
+  ChakraEnvironment *m_env;
+  void *m_data;
+  jsapi::Finalize m_cb;
+  void *m_hint;
+};
+
 struct ChakraEnvironment final : IEnvironment {
   ChakraEnvironment() noexcept;
 
@@ -292,7 +307,7 @@ struct ChakraEnvironment final : IEnvironment {
   // JsRefs are references to objects owned by the garbage collector and include
   // JsContextRef, JsValueRef, and JsPropertyIdRef, etc. JsRefHolder ensures
   // that JsAddRef and JsRelease are called to handle the JsRef lifetime.
-  //struct JsRefHolder final {
+  // struct JsRefHolder final {
   //  JsRefHolder(std::nullptr_t = nullptr) noexcept {}
   //  explicit JsRefHolder(JsRef ref) noexcept;
 
@@ -312,13 +327,13 @@ struct ChakraEnvironment final : IEnvironment {
   //  JsRef m_ref{JS_INVALID_REFERENCE};
   //};
 
-  //struct CachedPropertyId final {
+  // struct CachedPropertyId final {
   //  const wchar_t *name;
   //  JsRefHolder propertyRef;
   //};
 
   //// Property ID cache to improve execution speed
-  //struct CachedPropertyIds final {
+  // struct CachedPropertyIds final {
   //  CachedPropertyId Object;
   //  CachedPropertyId Proxy;
   //  CachedPropertyId Symbol;
@@ -344,16 +359,21 @@ struct ChakraEnvironment final : IEnvironment {
   Status CreatePropertyFunction(Value propertyName, Callback cb, void *callbackData, Value *result) noexcept;
   JsErrorCode JsPropertyIdFromPropertyDescriptor(const PropertyDescriptor *p, JsPropertyIdRef *propertyId) noexcept;
   JsErrorCode JsNameValueFromPropertyDescriptor(const PropertyDescriptor *p, Value *name) noexcept;
+  Status FindWrapper(JsValueRef obj, JsValueRef *wrapper, JsValueRef *parent = nullptr) noexcept;
+  Status UnwrapInternal(
+      JsValueRef obj,
+      ExternalData **externalData,
+      JsValueRef *wrapper = nullptr,
+      JsValueRef *parent = nullptr) noexcept;
 
-
-  //JsErrorCode ChakraPropertyDescriptor(JsValueRef value, ChakraPropertyAttibutes attrs, JsValueRef *descriptor) noexcept;
-  //JsErrorCode ChakraSetProperty(JsValueRef object, CachedPropertyId propertyId, JsValueRef value) noexcept;
-  //JsErrorCode ChakraCachedPropertyId(CachedPropertyId cachedPropertyId, JsPropertyIdRef* propertyId) noexcept;
+  // JsErrorCode ChakraPropertyDescriptor(JsValueRef value, ChakraPropertyAttibutes attrs, JsValueRef *descriptor)
+  // noexcept; JsErrorCode ChakraSetProperty(JsValueRef object, CachedPropertyId propertyId, JsValueRef value) noexcept;
+  // JsErrorCode ChakraCachedPropertyId(CachedPropertyId cachedPropertyId, JsPropertyIdRef* propertyId) noexcept;
 
  private:
   ExtendedErrorInfo m_lastError{nullptr, nullptr, 0, Status::OK};
   JsValueRef has_own_property_function = JS_INVALID_REFERENCE;
-  //CachedPropertyIds m_propertyIds;
+  // CachedPropertyIds m_propertyIds;
 };
 
 } // namespace jsapi
