@@ -10,7 +10,7 @@
 #include <memory>
 #include <string>
 #include <string_view>
-//#include <stdexcept>
+#include <stdexcept>
 #include <vector>
 
 namespace jsapi {
@@ -270,6 +270,17 @@ void ThrowIfFailed(JsErrorCode errorCode) {
 struct RefInfo final {
   JsValueRef value;
   uint32_t count;
+};
+
+struct DataViewInfo {
+  JsValueRef dataView;
+  JsValueRef arrayBuffer;
+  size_t byteOffset;
+  size_t byteLength;
+
+  static void CALLBACK Finalize(_In_opt_ void *data) {
+    delete reinterpret_cast<DataViewInfo *>(data);
+  }
 };
 
 } // namespace
@@ -1419,58 +1430,126 @@ Status ChakraEnvironment::GetReferenceValue(Ref ref, Value *result) noexcept {
 }
 
 Status ChakraEnvironment::OpenHandleScope(HandleScope *result) noexcept {
+  CHECK_ARG(result);
+  *result = reinterpret_cast<HandleScope>(1);
   return Status::OK;
 }
 
 Status ChakraEnvironment::CloseHandleScope(HandleScope scope) noexcept {
+  CHECK_ARG(scope);
   return Status::OK;
 }
 
 Status ChakraEnvironment::OpenEscapableHandleScope(EscapableHandleScope *result) noexcept {
+  CHECK_ARG(result);
+  *result = reinterpret_cast<EscapableHandleScope>(1);
   return Status::OK;
 }
 
 Status ChakraEnvironment::CloseEscapableHandleScope(EscapableHandleScope scope) noexcept {
+  CHECK_ARG(scope);
   return Status::OK;
 }
 
 Status ChakraEnvironment::EscapeHandle(EscapableHandleScope scope, Value escapee, Value *result) noexcept {
+  CHECK_ARG(scope);
+  CHECK_ARG(escapee);
+  CHECK_ARG(result);
+  *result = escapee;
   return Status::OK;
 }
 
 Status ChakraEnvironment::Throw(Value error) noexcept {
+  JsValueRef exception = reinterpret_cast<JsValueRef>(error);
+  CHECK_JSRT(JsSetException(exception));
   return Status::OK;
 }
 
 Status ChakraEnvironment::ThrowError(const char *code, const char *msg) noexcept {
+  JsValueRef strRef;
+  JsValueRef exception;
+  size_t length = strlen(msg);
+  CHECK_JSRT(JsCreateString(msg, length, &strRef));
+  CHECK_JSRT(JsCreateError(strRef, &exception));
+  CHECK_NAPI(SetErrorCode(exception, nullptr, code));
+  CHECK_JSRT(JsSetException(exception));
   return Status::OK;
 }
 
 Status ChakraEnvironment::ThrowTypeError(const char *code, const char *msg) noexcept {
+  JsValueRef strRef;
+  JsValueRef exception;
+  size_t length = strlen(msg);
+  CHECK_JSRT(JsCreateString(msg, length, &strRef));
+  CHECK_JSRT(JsCreateTypeError(strRef, &exception));
+  CHECK_NAPI(SetErrorCode(exception, nullptr, code));
+  CHECK_JSRT(JsSetException(exception));
   return Status::OK;
 }
 
 Status ChakraEnvironment::ThrowRangeError(const char *code, const char *msg) noexcept {
+  JsValueRef strRef;
+  JsValueRef exception;
+  size_t length = strlen(msg);
+  CHECK_JSRT(JsCreateString(msg, length, &strRef));
+  CHECK_JSRT(JsCreateRangeError(strRef, &exception));
+  CHECK_NAPI(SetErrorCode(exception, nullptr, code));
+  CHECK_JSRT(JsSetException(exception));
   return Status::OK;
 }
 
 Status ChakraEnvironment::IsError(Value value, bool *result) noexcept {
+  CHECK_ARG(value);
+  CHECK_ARG(result);
+  JsValueType valueType;
+  CHECK_JSRT(JsGetValueType(value, &valueType));
+  *result = (valueType == JsError);
   return Status::OK;
 }
 
 Status ChakraEnvironment::IsExceptionPending(bool *result) noexcept {
+  CHECK_ARG(result);
+  CHECK_JSRT(JsHasException(result));
   return Status::OK;
 }
 
 Status ChakraEnvironment::GetAndClearLastException(Value *result) noexcept {
+  CHECK_ARG(result);
+
+  bool hasException;
+  CHECK_JSRT(JsHasException(&hasException));
+  if (hasException) {
+    CHECK_JSRT(JsGetAndClearException(reinterpret_cast<JsValueRef *>(result)));
+  } else {
+    CHECK_NAPI(GetUndefined(result));
+  }
   return Status::OK;
 }
 
 Status ChakraEnvironment::IsArrayBuffer(Value value, bool *result) noexcept {
+  CHECK_ARG(value);
+  CHECK_ARG(result);
+
+  JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
+  JsValueType valueType;
+  CHECK_JSRT(JsGetValueType(jsValue, &valueType));
+
+  *result = (valueType == JsArrayBuffer);
   return Status::OK;
 }
 
 Status ChakraEnvironment::CreateArrayBuffer(size_t byteLength, void **data, Value *result) noexcept {
+  CHECK_ARG(result);
+
+  JsValueRef arrayBuffer;
+  CHECK_JSRT(JsCreateArrayBuffer(static_cast<unsigned int>(byteLength), &arrayBuffer));
+
+  if (data != nullptr) {
+    CHECK_JSRT(JsGetArrayBufferStorage(
+        arrayBuffer, reinterpret_cast<BYTE **>(data), reinterpret_cast<unsigned int *>(&byteLength)));
+  }
+
+  *result = reinterpret_cast<Value>(arrayBuffer);
   return Status::OK;
 }
 
@@ -1479,15 +1558,49 @@ Status ChakraEnvironment::CreateExternalArrayBuffer(
     size_t byteLength,
     Finalize finalizeCallback,
     void *finalizeHint,
-    Value *result) noexcept {
+    Value *result) noexcept try {
+  CHECK_ARG(result);
+
+  auto jsExternalData = std::make_unique<ExternalData>(this, externalData, finalizeCallback, finalizeHint);
+
+  JsValueRef arrayBuffer;
+  CHECK_JSRT(JsCreateExternalArrayBuffer(
+      externalData, static_cast<unsigned int>(byteLength), ExternalData::Finalize, jsExternalData.get(), &arrayBuffer));
+  jsExternalData.release();
+
+  *result = reinterpret_cast<Value>(arrayBuffer);
   return Status::OK;
+} catch (...) {
+  return SetLastError(Status::GenericFailure);
 }
 
 Status ChakraEnvironment::GetArrayBufferInfo(Value arrayBuffer, void **data, size_t *byteLength) noexcept {
+  CHECK_ARG(arrayBuffer);
+
+  BYTE *storageData;
+  unsigned int storageLength;
+  CHECK_JSRT(JsGetArrayBufferStorage(reinterpret_cast<JsValueRef>(arrayBuffer), &storageData, &storageLength));
+
+  if (data != nullptr) {
+    *data = reinterpret_cast<void *>(storageData);
+  }
+
+  if (byteLength != nullptr) {
+    *byteLength = static_cast<size_t>(storageLength);
+  }
+
   return Status::OK;
 }
 
 Status ChakraEnvironment::IsTypedArray(Value value, bool *result) noexcept {
+  CHECK_ARG(value);
+  CHECK_ARG(result);
+
+  JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
+  JsValueType valueType;
+  CHECK_JSRT(JsGetValueType(jsValue, &valueType));
+
+  *result = (valueType == JsTypedArray);
   return Status::OK;
 }
 
@@ -1497,6 +1610,51 @@ Status ChakraEnvironment::CreateTypedArray(
     Value arrayBuffer,
     size_t byteOffset,
     Value *result) noexcept {
+  CHECK_ARG(arrayBuffer);
+  CHECK_ARG(result);
+
+  JsTypedArrayType jsType;
+  switch (type) {
+    case TypedArrayType::Int8Array:
+      jsType = JsArrayTypeInt8;
+      break;
+    case TypedArrayType::UInt8Array:
+      jsType = JsArrayTypeUint8;
+      break;
+    case TypedArrayType::UInt8ClampedArray:
+      jsType = JsArrayTypeUint8Clamped;
+      break;
+    case TypedArrayType::Int16Array:
+      jsType = JsArrayTypeInt16;
+      break;
+    case TypedArrayType::UInt16Array:
+      jsType = JsArrayTypeUint16;
+      break;
+    case TypedArrayType::Int32Array:
+      jsType = JsArrayTypeInt32;
+      break;
+    case TypedArrayType::UInt32Array:
+      jsType = JsArrayTypeUint32;
+      break;
+    case TypedArrayType::Float32Array:
+      jsType = JsArrayTypeFloat32;
+      break;
+    case TypedArrayType::Float64Array:
+      jsType = JsArrayTypeFloat64;
+      break;
+    default:
+      return SetLastError(Status::InvalidArg);
+  }
+
+  JsValueRef jsArrayBuffer = reinterpret_cast<JsValueRef>(arrayBuffer);
+
+  CHECK_JSRT(JsCreateTypedArray(
+      jsType,
+      jsArrayBuffer,
+      static_cast<unsigned int>(byteOffset),
+      static_cast<unsigned int>(length),
+      reinterpret_cast<JsValueRef *>(result)));
+
   return Status::OK;
 }
 
@@ -1507,14 +1665,112 @@ Status ChakraEnvironment::GetTypedArrayInfo(
     void **data,
     Value *arrayBuffer,
     size_t *byteOffset) noexcept {
+  CHECK_ARG(typedArray);
+
+  JsTypedArrayType jsType;
+  JsValueRef jsArrayBuffer;
+  unsigned int byteOffset2;
+  unsigned int byteLength;
+  BYTE *bufferData;
+  unsigned int bufferLength;
+  int elementSize;
+
+  CHECK_JSRT(JsGetTypedArrayInfo(
+      reinterpret_cast<JsValueRef>(typedArray), &jsType, &jsArrayBuffer, &byteOffset2, &byteLength));
+
+  CHECK_JSRT(JsGetTypedArrayStorage(
+      reinterpret_cast<JsValueRef>(typedArray), &bufferData, &bufferLength, &jsType, &elementSize));
+
+  if (type != nullptr) {
+    switch (jsType) {
+      case JsArrayTypeInt8:
+        *type = TypedArrayType::Int8Array;
+        break;
+      case JsArrayTypeUint8:
+        *type = TypedArrayType::UInt8Array;
+        break;
+      case JsArrayTypeUint8Clamped:
+        *type = TypedArrayType::UInt8ClampedArray;
+        break;
+      case JsArrayTypeInt16:
+        *type = TypedArrayType::Int16Array;
+        break;
+      case JsArrayTypeUint16:
+        *type = TypedArrayType::UInt16Array;
+        break;
+      case JsArrayTypeInt32:
+        *type = TypedArrayType::Int32Array;
+        break;
+      case JsArrayTypeUint32:
+        *type = TypedArrayType::UInt32Array;
+        break;
+      case JsArrayTypeFloat32:
+        *type = TypedArrayType::Float32Array;
+        break;
+      case JsArrayTypeFloat64:
+        *type = TypedArrayType::Float64Array;
+        break;
+      default:
+        return SetLastError(Status::GenericFailure);
+    }
+  }
+
+  if (length != nullptr) {
+    *length = static_cast<size_t>(byteLength / elementSize);
+  }
+
+  if (data != nullptr) {
+    *data = static_cast<uint8_t *>(bufferData);
+  }
+
+  if (arrayBuffer != nullptr) {
+    *arrayBuffer = reinterpret_cast<Value>(jsArrayBuffer);
+  }
+
+  if (byteOffset != nullptr) {
+    *byteOffset = static_cast<size_t>(byteOffset2);
+  }
+
   return Status::OK;
 }
 
 Status ChakraEnvironment::CreateDataView(size_t length, Value arrayBuffer, size_t byteOffset, Value *result) noexcept {
+  CHECK_ARG(arrayBuffer);
+  CHECK_ARG(result);
+
+  JsValueRef jsArrayBuffer = reinterpret_cast<JsValueRef>(arrayBuffer);
+
+  BYTE *unused = nullptr;
+  unsigned int bufferLength = 0;
+
+  CHECK_JSRT(JsGetArrayBufferStorage(jsArrayBuffer, &unused, &bufferLength));
+
+  if (length + byteOffset > bufferLength) {
+    ThrowRangeError(
+        "ERR_NAPI_INVALID_DATAVIEW_ARGS",
+        "byte_offset + byte_length should be less than or "
+        "equal to the size in bytes of the array passed in");
+    return SetLastError(Status::PendingException);
+  }
+
+  JsValueRef jsDataView;
+  CHECK_JSRT(JsCreateDataView(
+      jsArrayBuffer, static_cast<unsigned int>(byteOffset), static_cast<unsigned int>(length), &jsDataView));
+
+  auto dataViewInfo = new DataViewInfo{jsDataView, jsArrayBuffer, byteOffset, length};
+  CHECK_JSRT(JsCreateExternalObject(dataViewInfo, DataViewInfo::Finalize, reinterpret_cast<JsValueRef *>(result)));
   return Status::OK;
 }
 
 Status ChakraEnvironment::IsDataView(Value value, bool *result) noexcept {
+  CHECK_ARG(value);
+  CHECK_ARG(result);
+
+  JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
+  JsValueType valueType;
+  CHECK_JSRT(JsGetValueType(jsValue, &valueType));
+
+  *result = (valueType == JsDataView);
   return Status::OK;
 }
 
@@ -1524,46 +1780,144 @@ Status ChakraEnvironment::GetDataViewInfo(
     void **data,
     Value *arrayBuffer,
     size_t *byteOffset) noexcept {
+  CHECK_ARG(dataView);
+
+  BYTE *bufferData = nullptr;
+  unsigned int bufferLength = 0;
+
+  JsValueRef jsExternalObject = reinterpret_cast<JsValueRef>(dataView);
+
+  DataViewInfo *dataViewInfo;
+  CHECK_JSRT(JsGetExternalData(jsExternalObject, reinterpret_cast<void **>(&dataViewInfo)));
+
+  CHECK_JSRT(JsGetDataViewStorage(dataViewInfo->dataView, &bufferData, &bufferLength));
+
+  if (byteLength != nullptr) {
+    *byteLength = dataViewInfo->byteLength;
+  }
+
+  if (data != nullptr) {
+    *data = static_cast<uint8_t *>(bufferData);
+  }
+
+  if (arrayBuffer != nullptr) {
+    *arrayBuffer = reinterpret_cast<Value>(dataViewInfo->arrayBuffer);
+  }
+
+  if (byteOffset != nullptr) {
+    *byteOffset = dataViewInfo->byteOffset;
+  }
+
   return Status::OK;
 }
 
 Status ChakraEnvironment::GetVersion(uint32_t *result) noexcept {
+  CHECK_ARG(result);
+  *result = NAPI_VERSION;
   return Status::OK;
 }
 
 Status ChakraEnvironment::CreatePromise(Deferred *deferred, Value *promise) noexcept {
+  CHECK_ARG(deferred);
+  CHECK_ARG(promise);
+
+  JsValueRef js_promise, resolve, reject, container;
+  Ref ref;
+  Value js_deferred;
+
+  CHECK_JSRT(JsCreatePromise(&js_promise, &resolve, &reject));
+
+  CHECK_JSRT(JsCreateObject(&container));
+  js_deferred = reinterpret_cast<Value>(container);
+
+  CHECK_NAPI(SetNamedProperty(js_deferred, "resolve", reinterpret_cast<Value>(resolve)));
+  CHECK_NAPI(SetNamedProperty(js_deferred, "reject", reinterpret_cast<Value>(reject)));
+
+  CHECK_NAPI(CreateReference(js_deferred, 1, &ref));
+
+  *deferred = reinterpret_cast<Deferred>(ref);
+  *promise = reinterpret_cast<Value>(js_promise);
+
   return Status::OK;
 }
 
 Status ChakraEnvironment::ResolveDeferred(Deferred deferred, Value resolution) noexcept {
-  return Status::OK;
+  return ConcludeDeferred(deferred, "resolve", resolution);
 }
 
 Status ChakraEnvironment::RejectDeferred(Deferred deferred, Value rejection) noexcept {
-  return Status::OK;
+  return ConcludeDeferred(deferred, "reject", rejection);
 }
 
 Status ChakraEnvironment::IsPromise(Value value, bool *isPromise) noexcept {
+  CHECK_ARG(value);
+  CHECK_ARG(isPromise);
+
+  Value global, promise_ctor;
+
+  CHECK_NAPI(GetGlobal(&global));
+  CHECK_NAPI(GetNamedProperty(global, "Promise", &promise_ctor));
+  CHECK_NAPI(InstanceOf(value, promise_ctor, isPromise));
+
   return Status::OK;
 }
 
 Status ChakraEnvironment::RunScript(Value script, Value *result) noexcept {
+  CHECK_ARG(script);
+  CHECK_ARG(result);
+
+  JsValueRef scriptVar = reinterpret_cast<JsValueRef>(script);
+
+  const wchar_t *scriptStr;
+  size_t scriptStrLen;
+  CHECK_JSRT(JsStringToPointer(scriptVar, &scriptStr, &scriptStrLen));
+  CHECK_JSRT_EXPECTED(
+      JsRunScript(scriptStr, ++source_context, L"Unknown", reinterpret_cast<JsValueRef *>(result)),
+      Status::StringExpected);
+
   return Status::OK;
 }
 
+//TODO: [vmorozov] Implement
+//napi_status napi_run_script(napi_env env, napi_value script, const char *source_url, napi_value *result) {
+//  CHECK_ARG(script);
+//  CHECK_ARG(result);
+//  JsValueRef scriptVar = reinterpret_cast<JsValueRef>(script);
+//
+//  const wchar_t *scriptStr;
+//  size_t scriptStrLen;
+//  CHECK_JSRT(JsStringToPointer(scriptVar, &scriptStr, &scriptStrLen));
+//  CHECK_JSRT_EXPECTED(
+//      env,
+//      JsRunScript(
+//          scriptStr, ++env->source_context, NarrowToWide({source_url}).data(), reinterpret_cast<JsValueRef *>(result)),
+//      Status::StringExpected);
+//
+//  return napi_ok;
+//}
+
 Status ChakraEnvironment::AdjustExternalMemory(int64_t changeInBytes, int64_t *adjustedValue) noexcept {
+  CHECK_ARG(adjustedValue);
+
+  // TODO(jackhorton): Determine if Chakra needs or is able to do anything here
+  // For now, we can lie and say that we always adjusted more memory
+  *adjustedValue = changeInBytes;
+
   return Status::OK;
 }
 
 Status ChakraEnvironment::CreateDate(double time, Value *result) noexcept {
+  //TODO: [vmorozov] Implement
   return Status::OK;
 }
 
 Status ChakraEnvironment::IsDate(Value value, bool *isDate) noexcept {
+  // TODO: [vmorozov] Implement
   return Status::OK;
 }
 
 Status ChakraEnvironment::GetDateValue(Value value, double *result) noexcept {
+  // TODO: [vmorozov] Implement
   return Status::OK;
 }
 
@@ -1573,32 +1927,32 @@ Status ChakraEnvironment::AddFinalizer(
     Finalize finalizeCallback,
     void *finalizeHint,
     Ref *result) noexcept {
-  return Status::OK;
+  throw std::runtime_error("not impl");
 }
 
 Status ChakraEnvironment::CreateBigIntInt64(int64_t value, Value *result) noexcept {
-  return Status::OK;
+  throw std::runtime_error("not impl");
 }
 
 Status ChakraEnvironment::CreateBigIntUInt64(uint64_t value, Value *result) noexcept {
-  return Status::OK;
+  throw std::runtime_error("not impl");
 }
 
 Status
 ChakraEnvironment::CreateBigIntWords(int signBit, size_t wordCount, const uint64_t *words, Value *result) noexcept {
-  return Status::OK;
+  throw std::runtime_error("not impl");
 }
 
 Status ChakraEnvironment::GetValueBigIntInt64(Value value, int64_t *result, bool *lossless) noexcept {
-  return Status::OK;
+  throw std::runtime_error("not impl");
 }
 
 Status ChakraEnvironment::GetValueBigIntUInt64(Value value, uint64_t *result, bool *lossless) noexcept {
-  return Status::OK;
+  throw std::runtime_error("not impl");
 }
 
 Status ChakraEnvironment::GetValueBigIntWords(Value value, int *signBit, size_t *wordCount, uint64_t *words) noexcept {
-  return Status::OK;
+  throw std::runtime_error("not impl");
 }
 
 Status ChakraEnvironment::GetAllPropertyNames(
@@ -1607,39 +1961,39 @@ Status ChakraEnvironment::GetAllPropertyNames(
     KeyFilter keyFilter,
     KeyConversion keyConversion,
     Value *result) noexcept {
-  return Status::OK;
+  throw std::runtime_error("not impl");
 }
 
 Status ChakraEnvironment::SetInstanceData(void *data, Finalize finalizeCallback, void *finalizeHint) noexcept {
-  return Status::OK;
+  throw std::runtime_error("not impl");
 }
 
 Status ChakraEnvironment::GetInstanceData(void **data) noexcept {
-  return Status::OK;
+  throw std::runtime_error("not impl");
 }
 
 Status ChakraEnvironment::DetachArrayBuffer(Value arraybuffer) noexcept {
-  return Status::OK;
+  throw std::runtime_error("not impl");
 }
 
 Status ChakraEnvironment::IsDetachedArrayBuffer(Value value, bool *result) noexcept {
-  return Status::OK;
+  throw std::runtime_error("not impl");
 }
 
 Status ChakraEnvironment::TypeTagObject(Value value, const TypeTag *typeTag) noexcept {
-  return Status::OK;
+  throw std::runtime_error("not impl");
 }
 
 Status ChakraEnvironment::CheckObjectTypeTag(Value value, const TypeTag *typeTag, bool *result) noexcept {
-  return Status::OK;
+  throw std::runtime_error("not impl");
 }
 
 Status ChakraEnvironment::ObjectFreeze(Value object) noexcept {
-  return Status::OK;
+  throw std::runtime_error("not impl");
 }
 
 Status ChakraEnvironment::ObjectSeal(Value object) noexcept {
-  return Status::OK;
+  throw std::runtime_error("not impl");
 }
 
 void ChakraEnvironment::ClearLastError() noexcept {
@@ -1861,6 +2215,23 @@ Status ChakraEnvironment::UnwrapInternal(
   if (parent != nullptr) {
     *parent = candidateParent;
   }
+
+  return Status::OK;
+}
+
+Status ChakraEnvironment::ConcludeDeferred(Deferred deferred, const char *property, Value result) noexcept {
+  // We do not check if property is OK, because that's not coming from outside.
+  CHECK_ARG(deferred);
+  CHECK_ARG(result);
+
+  Value container, resolver, js_null;
+  Ref ref = reinterpret_cast<Ref>(deferred);
+
+  CHECK_NAPI(GetReferenceValue(ref, &container));
+  CHECK_NAPI(GetNamedProperty(container, property, &resolver));
+  CHECK_NAPI(GetNull(&js_null));
+  CHECK_NAPI(CallFunction(js_null, resolver, 1, &result, nullptr));
+  CHECK_NAPI(DeleteReference(ref));
 
   return Status::OK;
 }
@@ -3450,19 +3821,6 @@ napi_status napi_get_and_clear_last_exception(napi_env env,
   return napi_ok;
 }
 
-napi_status napi_is_arraybuffer(napi_env env, napi_value value, bool* result) {
-  CHECK_ENV(env);
-  CHECK_ARG(value);
-  CHECK_ARG(result);
-
-  JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
-  JsValueType valueType;
-  CHECK_JSRT(JsGetValueType(jsValue, &valueType));
-
-  *result = (valueType == JsArrayBuffer);
-  return napi_ok;
-}
-
 napi_status napi_create_arraybuffer(napi_env env,
                                     size_t byte_length,
                                     void** data,
@@ -3782,13 +4140,6 @@ napi_status napi_get_dataview_info(napi_env env,
     *byte_offset = dataViewInfo->byteOffset;
   }
 
-  return napi_ok;
-}
-
-napi_status napi_get_version(napi_env env, uint32_t* result) {
-  CHECK_ENV(env);
-  CHECK_ARG(result);
-  *result = NAPI_VERSION;
   return napi_ok;
 }
 

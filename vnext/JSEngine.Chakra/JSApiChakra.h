@@ -6,6 +6,16 @@
 #include <JSApi.h>
 #include <jsrt.h>
 
+#ifndef NAPI_VERSION
+#ifdef NAPI_EXPERIMENTAL
+// Use INT_MAX, this should only be consumed by the pre-processor anyway.
+#define NAPI_VERSION 2147483647
+#else
+// The baseline version for N-API
+#define NAPI_VERSION 3
+#endif
+#endif
+
 namespace jsapi {
 
 struct ChakraEnvironment;
@@ -365,7 +375,7 @@ struct ChakraEnvironment final : IEnvironment {
       ExternalData **externalData,
       JsValueRef *wrapper = nullptr,
       JsValueRef *parent = nullptr) noexcept;
-
+  Status ConcludeDeferred(Deferred deferred, const char *property, Value result) noexcept;
   // JsErrorCode ChakraPropertyDescriptor(JsValueRef value, ChakraPropertyAttibutes attrs, JsValueRef *descriptor)
   // noexcept; JsErrorCode ChakraSetProperty(JsValueRef object, CachedPropertyId propertyId, JsValueRef value) noexcept;
   // JsErrorCode ChakraCachedPropertyId(CachedPropertyId cachedPropertyId, JsPropertyIdRef* propertyId) noexcept;
@@ -373,6 +383,7 @@ struct ChakraEnvironment final : IEnvironment {
  private:
   ExtendedErrorInfo m_lastError{nullptr, nullptr, 0, Status::OK};
   JsValueRef has_own_property_function = JS_INVALID_REFERENCE;
+  JsSourceContext source_context{JS_SOURCE_CONTEXT_NONE};
   // CachedPropertyIds m_propertyIds;
 };
 
