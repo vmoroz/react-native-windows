@@ -3,6 +3,7 @@
 
 #include "pch.h"
 #include "JSApiChakra.h"
+#include <algorithm>
 #include <array>
 #include <cassert>
 #include <cmath>
@@ -10,7 +11,7 @@
 #include <string>
 #include <string_view>
 //#include <stdexcept>
-//#include <vector>
+#include <vector>
 
 namespace jsapi {
 
@@ -1028,14 +1029,65 @@ Status ChakraEnvironment::StrictEquals(Value lhs, Value rhs, bool *result) noexc
 }
 
 Status ChakraEnvironment::CallFunction(Value recv, Value func, size_t argc, const Value *argv, Value *result) noexcept {
+  CHECK_ARG(recv);
+  if (argc > 0) {
+    CHECK_ARG(argv);
+  }
+
+  JsValueRef object = reinterpret_cast<JsValueRef>(recv);
+  JsValueRef function = reinterpret_cast<JsValueRef>(func);
+  std::vector<JsValueRef> args(argc + 1);
+  args[0] = object;
+  for (size_t i = 0; i < argc; i++) {
+    args[i + 1] = reinterpret_cast<JsValueRef>(argv[i]);
+  }
+  JsValueRef returnValue;
+  CHECK_JSRT(JsCallFunction(function, args.data(), static_cast<uint16_t>(argc + 1), &returnValue));
+  if (result != nullptr) {
+    *result = reinterpret_cast<Value>(returnValue);
+  }
   return Status::OK;
 }
 
 Status ChakraEnvironment::NewInstance(Value constructor, size_t argc, const Value *argv, Value *result) noexcept {
+  CHECK_ARG(constructor);
+  if (argc > 0) {
+    CHECK_ARG(argv);
+  }
+  CHECK_ARG(result);
+  JsValueRef function = reinterpret_cast<JsValueRef>(constructor);
+  std::vector<JsValueRef> args(argc + 1);
+  CHECK_JSRT(JsGetUndefinedValue(&args[0]));
+  for (size_t i = 0; i < argc; i++) {
+    args[i + 1] = reinterpret_cast<JsValueRef>(argv[i]);
+  }
+  CHECK_JSRT(JsConstructObject(
+      function, args.data(), static_cast<uint16_t>(argc + 1), reinterpret_cast<JsValueRef *>(result)));
+
   return Status::OK;
 }
 
 Status ChakraEnvironment::InstanceOf(Value object, Value constructor, bool *result) noexcept {
+  CHECK_ARG(object);
+  CHECK_ARG(constructor);
+  CHECK_ARG(result);
+  JsValueRef jsObject = reinterpret_cast<JsValueRef>(object);
+  JsValueRef jsConstructor = reinterpret_cast<JsValueRef>(constructor);
+
+  // FIXME: Remove this type check when we switch to a version of ChakraCore
+  // where passing an integer into JsInstanceOf as the constructor parameter
+  // does not cause a segfault. The need for this if-statement is removed in at
+  // least ChakraCore 1.4.0, but maybe in an earlier version too.
+  ValueType valueType;
+  CHECK_NAPI(TypeOf(constructor, &valueType));
+  if (valueType != ValueType::Function) {
+    ThrowTypeError("ERR_NAPI_CONS_FUNCTION", "constructor must be a function");
+
+    return SetLastError(Status::InvalidArg);
+  }
+
+  CHECK_JSRT(JsInstanceOf(jsObject, jsConstructor, result));
+
   return Status::OK;
 }
 
@@ -1045,6 +1097,40 @@ Status ChakraEnvironment::GetCallbackInfo(
     Value *argv,
     Value *thisArg,
     void **data) noexcept {
+  CHECK_ARG(callbackInfo);
+  ChakraCallbackInfo const *info = reinterpret_cast<ChakraCallbackInfo *>(callbackInfo);
+
+  if (argv != nullptr) {
+    CHECK_ARG(argc);
+
+    size_t i = 0;
+    size_t minArg = (std::min)(*argc, static_cast<size_t>(info->argc));
+
+    for (; i < minArg; i++) {
+      argv[i] = info->argv[i];
+    }
+
+    if (i < *argc) {
+      Value undefined;
+      CHECK_JSRT(JsGetUndefinedValue(reinterpret_cast<JsValueRef *>(&undefined)));
+      for (; i < *argc; i++) {
+        argv[i] = undefined;
+      }
+    }
+  }
+
+  if (argc != nullptr) {
+    *argc = info->argc;
+  }
+
+  if (thisArg != nullptr) {
+    *thisArg = info->thisArg;
+  }
+
+  if (data != nullptr) {
+    *data = info->data;
+  }
+
   return Status::OK;
 }
 
@@ -2470,52 +2556,6 @@ napi_status napi_typeof(napi_env env, napi_value value, napi_valuetype* result) 
   return napi_ok;
 }
 
-napi_status napi_get_cb_info(napi_env env,              // [in] NAPI environment handle
-                             napi_callback_info cbinfo, // [in] Opaque callback-info handle
-                             size_t* argc,              // [in-out] Specifies the size of the provided argv array
-                                                        // and receives the actual count of args.
-                             napi_value* argv,          // [out] Array of values
-                             napi_value* this_arg,      // [out] Receives the JS 'this' arg for the call
-                             void** data) {             // [out] Receives the data pointer for the callback.
-  CHECK_ENV(env);
-  CHECK_ARG(cbinfo);
-  const CallbackInfo* info = reinterpret_cast<CallbackInfo*>(cbinfo);
-
-  if (argv != nullptr) {
-    CHECK_ARG(argc);
-
-    size_t i = 0;
-    size_t min = std::min(*argc, static_cast<size_t>(info->argc));
-
-    for (; i < min; i++) {
-      argv[i] = info->argv[i];
-    }
-
-    if (i < *argc) {
-      napi_value undefined;
-      CHECK_JSRT(env,
-        JsGetUndefinedValue(reinterpret_cast<JsValueRef*>(&undefined)));
-      for (; i < *argc; i++) {
-        argv[i] = undefined;
-      }
-    }
-  }
-
-  if (argc != nullptr) {
-    *argc = info->argc;
-  }
-
-  if (this_arg != nullptr) {
-    *this_arg = info->thisArg;
-  }
-
-  if (data != nullptr) {
-    *data = info->data;
-  }
-
-  return napi_ok;
-}
-
 napi_status napi_get_new_target(napi_env env,
                                 napi_callback_info cbinfo,
                                 napi_value* result) {
@@ -3200,59 +3240,6 @@ napi_status napi_escape_handle(napi_env env,
   CHECK_ARG(escapee);
   CHECK_ARG(result);
   *result = escapee;
-  return napi_ok;
-}
-
-napi_status napi_new_instance(napi_env env,
-                              napi_value constructor,
-                              size_t argc,
-                              const napi_value* argv,
-                              napi_value* result) {
-  CHECK_ENV(env);
-  CHECK_ARG(constructor);
-  if (argc > 0) {
-    CHECK_ARG(argv);
-  }
-  CHECK_ARG(result);
-  JsValueRef function = reinterpret_cast<JsValueRef>(constructor);
-  std::vector<JsValueRef> args(argc + 1);
-  CHECK_JSRT(JsGetUndefinedValue(&args[0]));
-  for (size_t i = 0; i < argc; i++) {
-    args[i + 1] = reinterpret_cast<JsValueRef>(argv[i]);
-  }
-  CHECK_JSRT(JsConstructObject(
-    function,
-    args.data(),
-    static_cast<uint16_t>(argc + 1),
-    reinterpret_cast<JsValueRef*>(result)));
-  return napi_ok;
-}
-
-napi_status napi_instanceof(napi_env env,
-                            napi_value object,
-                            napi_value c,
-                            bool* result) {
-  CHECK_ENV(env);
-  CHECK_ARG(object);
-  CHECK_ARG(result);
-  JsValueRef obj = reinterpret_cast<JsValueRef>(object);
-  JsValueRef constructor = reinterpret_cast<JsValueRef>(c);
-
-  // FIXME: Remove this type check when we switch to a version of Chakracore
-  // where passing an integer into JsInstanceOf as the constructor parameter
-  // does not cause a segfault. The need for this if-statement is removed in at
-  // least Chakracore 1.4.0, but maybe in an earlier version too.
-  napi_valuetype valuetype;
-  CHECK_NAPI(napi_typeof(env, c, &valuetype));
-  if (valuetype != napi_function) {
-    napi_throw_type_error(env,
-                          "ERR_NAPI_CONS_FUNCTION",
-                          "constructor must be a function");
-
-    return napi_set_last_error(env, Status::InvalidArg);
-  }
-
-  CHECK_JSRT(JsInstanceOf(obj, constructor, result));
   return napi_ok;
 }
 
