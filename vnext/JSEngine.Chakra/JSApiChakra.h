@@ -341,12 +341,18 @@ struct ChakraEnvironment final : IEnvironment {
 
  private:
   Status SetErrorCode(JsValueRef error, Value code, const char *codeString) noexcept;
+  Status CreatePropertyFunction(Value propertyName, Callback cb, void *callbackData, Value *result) noexcept;
+  JsErrorCode JsPropertyIdFromPropertyDescriptor(const PropertyDescriptor *p, JsPropertyIdRef *propertyId) noexcept;
+  JsErrorCode JsNameValueFromPropertyDescriptor(const PropertyDescriptor *p, Value *name) noexcept;
+
+
   //JsErrorCode ChakraPropertyDescriptor(JsValueRef value, ChakraPropertyAttibutes attrs, JsValueRef *descriptor) noexcept;
   //JsErrorCode ChakraSetProperty(JsValueRef object, CachedPropertyId propertyId, JsValueRef value) noexcept;
   //JsErrorCode ChakraCachedPropertyId(CachedPropertyId cachedPropertyId, JsPropertyIdRef* propertyId) noexcept;
 
  private:
   ExtendedErrorInfo m_lastError{nullptr, nullptr, 0, Status::OK};
+  JsValueRef has_own_property_function = JS_INVALID_REFERENCE;
   //CachedPropertyIds m_propertyIds;
 };
 
@@ -358,18 +364,5 @@ struct napi_env__ {
   napi_extended_error_info last_error{ nullptr, nullptr, 0, napi_ok };
   JsValueRef has_own_property_function = JS_INVALID_REFERENCE;
 };
-
-#define CHECK_JSRT_EXPECTED(env, expr, expected) \
-  do {                                           \
-    JsErrorCode err = (expr);                    \
-    if (err == JsErrorInvalidArgument)           \
-      return napi_set_last_error(env, expected); \
-    if (err != JsNoError)                        \
-      return napi_set_last_error(env, err);      \
-  } while (0)
-
-
-// utf8 multibyte codepoint start check
-#define UTF8_MULTIBYTE_START(c) (((c)&0xC0) == 0xC0)
 
 #endif

@@ -37,6 +37,14 @@ enum class PropertyAttributes {
   DefaultJSProperty = Writable | Enumerable | Configurable,
 };
 
+constexpr PropertyAttributes operator&(PropertyAttributes left, PropertyAttributes right) noexcept {
+  return (PropertyAttributes)((int)left & (int)right);
+}
+
+constexpr bool operator!(PropertyAttributes attrs) noexcept {
+  return attrs == PropertyAttributes::Default;
+}
+
 enum class ValueType {
   // ES6 types (corresponds to typeof)
   Undefined,

@@ -5,12 +5,12 @@
 #include "JSApiChakra.h"
 #include <array>
 #include <cassert>
+#include <cmath>
 #include <memory>
-//#include <cmath>
-//#include <vector>
 #include <string>
 #include <string_view>
 //#include <stdexcept>
+//#include <vector>
 
 namespace jsapi {
 
@@ -46,6 +46,15 @@ namespace jsapi {
       return status;          \
   } while (0)
 
+#define CHECK_JSRT_EXPECTED(expr, expected) \
+  do {                                      \
+    JsErrorCode err = (expr);               \
+    if (err == JsErrorInvalidArgument)      \
+      return SetLastError(expected);        \
+    if (err != JsNoError)                   \
+      return SetLastError(err);             \
+  } while (0)
+
 #define CHECK_CHAKRA(expr)    \
   do {                        \
     JsErrorCode err = (expr); \
@@ -54,6 +63,9 @@ namespace jsapi {
   } while (0)
 
 #define WSTR_AND_LENGTH(str) str, sizeof(str) / sizeof(wchar_t) - 1
+
+// utf8 multibyte codepoint start check
+#define UTF8_MULTIBYTE_START(c) (((c)&0xC0) == 0xC0)
 
 namespace {
 
@@ -231,27 +243,61 @@ struct ExternalCallback {
   void *m_data;
 };
 
+JsErrorCode JsPropertyIdFromKey(JsValueRef key, JsPropertyIdRef *propertyId) noexcept {
+  JsValueType keyType;
+  CHECK_JSRT_ERROR_CODE(JsGetValueType(key, &keyType));
+
+  if (keyType == JsString) {
+    const wchar_t *stringValue;
+    size_t stringLength;
+    CHECK_JSRT_ERROR_CODE(JsStringToPointer(key, &stringValue, &stringLength));
+    CHECK_JSRT_ERROR_CODE(JsGetPropertyIdFromName(stringValue, propertyId));
+  } else if (keyType == JsSymbol) {
+    CHECK_JSRT_ERROR_CODE(JsGetPropertyIdFromSymbol(key, propertyId));
+  } else {
+    return JsErrorCode::JsErrorInvalidArgument;
+  }
+  return JsErrorCode::JsNoError;
+}
+
+void ThrowIfFailed(JsErrorCode errorCode) {
+  if (errorCode != JsErrorCode::JsNoError) {
+    throw std::exception();
+  }
+}
+
 } // namespace
 
 ChakraEnvironment::ChakraEnvironment() noexcept {
-  //m_propertyIds.Object = {L"Object"};
-  //m_propertyIds.Proxy = {L"Proxy"};
-  //m_propertyIds.Symbol = {L"Symbol"};
-  //m_propertyIds.byteLength = {L"byteLength"};
-  //m_propertyIds.configurable = {L"configurable"};
-  //m_propertyIds.enumerable = {L"enumerable"};
-  //m_propertyIds.get = {L"get"};
-  //m_propertyIds.hostFunctionSymbol = {L"hostFunctionSymbol"};
-  //m_propertyIds.hostObjectSymbol = {L"hostObjectSymbol"};
-  //m_propertyIds.length = {L"length"};
-  //m_propertyIds.message = {L"message"};
-  //m_propertyIds.ownKeys = {L"ownKeys"};
-  //m_propertyIds.propertyIsEnumerable = {L"propertyIsEnumerable"};
-  //m_propertyIds.prototype = {L"prototype"};
-  //m_propertyIds.set = {L"set"};
-  //m_propertyIds.toString = {L"toString"};
-  //m_propertyIds.value = {L"value"};
-  //m_propertyIds.writable = {L"writable"};
+  // m_propertyIds.Object = {L"Object"};
+  // m_propertyIds.Proxy = {L"Proxy"};
+  // m_propertyIds.Symbol = {L"Symbol"};
+  // m_propertyIds.byteLength = {L"byteLength"};
+  // m_propertyIds.configurable = {L"configurable"};
+  // m_propertyIds.enumerable = {L"enumerable"};
+  // m_propertyIds.get = {L"get"};
+  // m_propertyIds.hostFunctionSymbol = {L"hostFunctionSymbol"};
+  // m_propertyIds.hostObjectSymbol = {L"hostObjectSymbol"};
+  // m_propertyIds.length = {L"length"};
+  // m_propertyIds.message = {L"message"};
+  // m_propertyIds.ownKeys = {L"ownKeys"};
+  // m_propertyIds.propertyIsEnumerable = {L"propertyIsEnumerable"};
+  // m_propertyIds.prototype = {L"prototype"};
+  // m_propertyIds.set = {L"set"};
+  // m_propertyIds.toString = {L"toString"};
+  // m_propertyIds.value = {L"value"};
+  // m_propertyIds.writable = {L"writable"};
+
+  JsValueRef global;
+  ThrowIfFailed(JsGetGlobalObject(&global));
+  JsPropertyIdRef propertyId;
+  ThrowIfFailed(JsGetPropertyIdFromName(L"Object", &propertyId));
+  JsValueRef object;
+  ThrowIfFailed(JsGetProperty(global, propertyId, &object));
+  JsValueRef prototype;
+  ThrowIfFailed(JsGetPrototype(object, &prototype));
+  ThrowIfFailed(JsGetPropertyIdFromName(L"hasOwnProperty", &propertyId));
+  ThrowIfFailed(JsGetProperty(prototype, propertyId, &has_own_property_function));
 }
 
 Status ChakraEnvironment::GetLastErrorInfo(const ExtendedErrorInfo **result) noexcept {
@@ -396,135 +442,588 @@ Status ChakraEnvironment::CreateError(Value code, Value msg, Value *result) noex
 }
 
 Status ChakraEnvironment::CreateTypeError(Value code, Value msg, Value *result) noexcept {
+  CHECK_ARG(msg);
+  CHECK_ARG(result);
+  JsValueRef message = reinterpret_cast<JsValueRef>(msg);
+
+  JsValueRef error{JS_INVALID_REFERENCE};
+  CHECK_JSRT(JsCreateTypeError(message, &error));
+  CHECK_NAPI(SetErrorCode(error, code, nullptr));
+
+  *result = reinterpret_cast<Value>(error);
   return Status::OK;
 }
 
 Status ChakraEnvironment::CreateRangeError(Value code, Value msg, Value *result) noexcept {
+  CHECK_ARG(msg);
+  CHECK_ARG(result);
+  JsValueRef message = reinterpret_cast<JsValueRef>(msg);
+
+  JsValueRef error{JS_INVALID_REFERENCE};
+  CHECK_JSRT(JsCreateRangeError(message, &error));
+  CHECK_NAPI(SetErrorCode(error, code, nullptr));
+
+  *result = reinterpret_cast<Value>(error);
   return Status::OK;
 }
 
 Status ChakraEnvironment::TypeOf(Value value, ValueType *result) noexcept {
+  CHECK_ARG(value);
+  CHECK_ARG(result);
+  JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
+  JsValueType valueType{JsUndefined};
+  CHECK_JSRT(JsGetValueType(jsValue, &valueType));
+
+  switch (valueType) {
+    case JsUndefined:
+      *result = ValueType::Undefined;
+      break;
+    case JsNull:
+      *result = ValueType::Null;
+      break;
+    case JsNumber:
+      *result = ValueType::Number;
+      break;
+    case JsString:
+      *result = ValueType::String;
+      break;
+    case JsBoolean:
+      *result = ValueType::Boolean;
+      break;
+    case JsFunction:
+      *result = ValueType::Function;
+      break;
+    case JsSymbol:
+      *result = ValueType::Symbol;
+      break;
+    case JsError:
+      *result = ValueType::Object;
+      break;
+
+    default:
+      bool hasExternalData;
+      if (JsHasExternalData(jsValue, &hasExternalData) != JsNoError) {
+        hasExternalData = false;
+      }
+
+      *result = hasExternalData ? ValueType::External : ValueType::Object;
+      break;
+  }
   return Status::OK;
 }
 
 Status ChakraEnvironment::GetValueDouble(Value value, double *result) noexcept {
+  CHECK_ARG(value);
+  CHECK_ARG(result);
+  JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
+  CHECK_JSRT_EXPECTED(JsNumberToDouble(jsValue, result), Status::NumberExpected);
   return Status::OK;
 }
 
 Status ChakraEnvironment::GetValueInt32(Value value, int32_t *result) noexcept {
+  CHECK_ARG(value);
+  CHECK_ARG(result);
+  JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
+  int valueInt;
+  CHECK_JSRT_EXPECTED(JsNumberToInt(jsValue, &valueInt), Status::NumberExpected);
+  *result = static_cast<int32_t>(valueInt);
   return Status::OK;
 }
 
 Status ChakraEnvironment::GetValueUInt32(Value value, uint32_t *result) noexcept {
+  CHECK_ARG(value);
+  CHECK_ARG(result);
+  JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
+  int valueInt;
+  CHECK_JSRT_EXPECTED(JsNumberToInt(jsValue, &valueInt), Status::NumberExpected);
+  *result = static_cast<uint32_t>(valueInt);
   return Status::OK;
 }
 
 Status ChakraEnvironment::GetValueInt64(Value value, int64_t *result) noexcept {
+  CHECK_ARG(value);
+  CHECK_ARG(result);
+
+  JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
+
+  double valueDouble;
+  CHECK_JSRT_EXPECTED(JsNumberToDouble(jsValue, &valueDouble), Status::NumberExpected);
+
+  if (std::isfinite(valueDouble)) {
+    *result = static_cast<int64_t>(valueDouble);
+  } else {
+    *result = 0;
+  }
+
   return Status::OK;
 }
 
 Status ChakraEnvironment::GetValueBool(Value value, bool *result) noexcept {
+  CHECK_ARG(value);
+  CHECK_ARG(result);
+  JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
+  CHECK_JSRT_EXPECTED(JsBooleanToBool(jsValue, result), Status::BooleanExpected);
   return Status::OK;
 }
 
+// Copies a JavaScript string into a LATIN-1 string buffer. The result is the
+// number of bytes (excluding the null terminator) copied into buf.
+// A sufficient buffer size should be greater than the length of string,
+// reserving space for null terminator.
+// If bufSize is insufficient, the string will be truncated and null terminated.
+// If buf is NULL, this method returns the length of the string (in bytes)
+// via the result parameter.
+// The result argument is optional unless buf is NULL.
 Status ChakraEnvironment::GetValueStringLatin1(Value value, char *buf, size_t bufSize, size_t *result) noexcept {
+  CHECK_ARG(value);
+
+  JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
+
+  if (!buf) {
+    CHECK_ARG(result);
+    CHECK_JSRT_EXPECTED(JsCopyString(jsValue, nullptr, 0, result, CP_LATIN1), Status::StringExpected);
+  } else {
+    size_t count = 0;
+    CHECK_JSRT_EXPECTED(JsCopyString(jsValue, nullptr, 0, &count), Status::StringExpected);
+
+    if (bufSize <= count) {
+      // if bufSize == count there is no space for null terminator
+      // Slow path: must implement truncation here.
+      std::unique_ptr<char[]> fullBuffer = std::make_unique<char[]>(count);
+      // CHAKRA_VERIFY(fullBuffer != nullptr);
+
+      CHECK_JSRT_EXPECTED(JsCopyString(jsValue, fullBuffer.get(), count, nullptr), Status::StringExpected);
+      memmove(buf, fullBuffer.get(), sizeof(char) * bufSize);
+
+      // Truncate string to the start of the last codepoint
+      if (bufSize > 0 && (((buf[bufSize - 1] & 0x80) == 0) || UTF8_MULTIBYTE_START(buf[bufSize - 1]))) {
+        // Last byte is a single byte codepoint or
+        // starts a multibyte codepoint
+        bufSize -= 1;
+      } else if (bufSize > 1 && UTF8_MULTIBYTE_START(buf[bufSize - 2])) {
+        // Second last byte starts a multibyte codepoint,
+        bufSize -= 2;
+      } else if (bufSize > 2 && UTF8_MULTIBYTE_START(buf[bufSize - 3])) {
+        // Third last byte starts a multibyte codepoint
+        bufSize -= 3;
+      } else if (bufSize > 3 && UTF8_MULTIBYTE_START(buf[bufSize - 4])) {
+        // Fourth last byte starts a multibyte codepoint
+        bufSize -= 4;
+      }
+
+      buf[bufSize] = '\0';
+
+      if (result) {
+        *result = bufSize;
+      }
+
+      return Status::OK;
+    }
+
+    // Fastpath, result fits in the buffer
+    CHECK_JSRT_EXPECTED(JsCopyString(jsValue, buf, bufSize - 1, &count), Status::StringExpected);
+
+    buf[count] = 0;
+
+    if (result != nullptr) {
+      *result = count;
+    }
+  }
+
   return Status::OK;
 }
 
+// Copies a JavaScript string into a UTF-8 string buffer. The result is the
+// number of bytes (excluding the null terminator) copied into buf.
+// A sufficient buffer size should be greater than the length of string,
+// reserving space for null terminator.
+// If bufSize is insufficient, the string will be truncated and null terminated.
+// If buf is NULL, this method returns the length of the string (in bytes)
+// via the result parameter.
+// The result argument is optional unless buf is NULL.
 Status ChakraEnvironment::GetValueStringUtf8(Value value, char *buf, size_t bufSize, size_t *result) noexcept {
+  CHECK_ARG(value);
+
+  JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
+
+  if (!buf) {
+    CHECK_ARG(result);
+    CHECK_JSRT_EXPECTED(JsCopyString(jsValue, nullptr, 0, result), Status::StringExpected);
+  } else {
+    size_t count = 0;
+    CHECK_JSRT_EXPECTED(JsCopyString(jsValue, nullptr, 0, &count), Status::StringExpected);
+
+    if (bufSize <= count) {
+      // if bufSize == count there is no space for null terminator
+      // Slow path: must implement truncation here.
+      std::unique_ptr<char[]> fullBuffer = std::make_unique<char[]>(count);
+      // CHAKRA_VERIFY(fullBuffer != nullptr);
+
+      CHECK_JSRT_EXPECTED(JsCopyString(jsValue, fullBuffer.get(), count, nullptr), Status::StringExpected);
+      memmove(buf, fullBuffer.get(), sizeof(char) * bufSize);
+
+      // Truncate string to the start of the last codepoint
+      if (bufSize > 0 && (((buf[bufSize - 1] & 0x80) == 0) || UTF8_MULTIBYTE_START(buf[bufSize - 1]))) {
+        // Last byte is a single byte codepoint or
+        // starts a multibyte codepoint
+        bufSize -= 1;
+      } else if (bufSize > 1 && UTF8_MULTIBYTE_START(buf[bufSize - 2])) {
+        // Second last byte starts a multibyte codepoint,
+        bufSize -= 2;
+      } else if (bufSize > 2 && UTF8_MULTIBYTE_START(buf[bufSize - 3])) {
+        // Third last byte starts a multibyte codepoint
+        bufSize -= 3;
+      } else if (bufSize > 3 && UTF8_MULTIBYTE_START(buf[bufSize - 4])) {
+        // Fourth last byte starts a multibyte codepoint
+        bufSize -= 4;
+      }
+
+      buf[bufSize] = '\0';
+
+      if (result) {
+        *result = bufSize;
+      }
+
+      return Status::OK;
+    }
+
+    // Fastpath, result fits in the buffer
+    CHECK_JSRT_EXPECTED(JsCopyString(jsValue, buf, bufSize - 1, &count), Status::StringExpected);
+
+    buf[count] = 0;
+
+    if (result != nullptr) {
+      *result = count;
+    }
+  }
+
   return Status::OK;
 }
 
+// Copies a JavaScript string into a UTF-16 string buffer. The result is the
+// number of 2-byte code units (excluding the null terminator) copied into buf.
+// A sufficient buffer size should be greater than the length of string,
+// reserving space for null terminator.
+// If bufSize is insufficient, the string will be truncated and null terminated.
+// If buf is NULL, this method returns the length of the string (in 2-byte
+// code units) via the result parameter.
+// The result argument is optional unless buf is NULL.
 Status ChakraEnvironment::GetValueStringUtf16(Value value, char16_t *buf, size_t bufSize, size_t *result) noexcept {
+  CHECK_ARG(value);
+
+  JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
+
+  if (!buf) {
+    CHECK_ARG(result);
+
+    CHECK_JSRT_EXPECTED(JsCopyStringUtf16(jsValue, nullptr, 0, result), Status::StringExpected);
+  } else {
+    size_t copied = 0;
+    CHECK_JSRT_EXPECTED(JsCopyStringUtf16(jsValue, buf, bufSize - 1, &copied), Status::StringExpected);
+
+    if (copied < bufSize - 1) {
+      buf[copied] = 0;
+    } else {
+      buf[bufSize - 1] = 0;
+    }
+
+    if (result != nullptr) {
+      *result = copied;
+    }
+  }
+
   return Status::OK;
 }
 
 Status ChakraEnvironment::CoerceToBool(Value value, Value *result) noexcept {
+  CHECK_ARG(result);
+  JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
+  CHECK_JSRT(JsConvertValueToBoolean(jsValue, reinterpret_cast<JsValueRef *>(result)));
   return Status::OK;
 }
 
 Status ChakraEnvironment::CoerceToNumber(Value value, Value *result) noexcept {
+  CHECK_ARG(value);
+  CHECK_ARG(result);
+  JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
+  CHECK_JSRT(JsConvertValueToNumber(jsValue, reinterpret_cast<JsValueRef *>(result)));
   return Status::OK;
 }
 
 Status ChakraEnvironment::CoerceToObject(Value value, Value *result) noexcept {
+  CHECK_ARG(value);
+  CHECK_ARG(result);
+  JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
+  CHECK_JSRT(JsConvertValueToObject(jsValue, reinterpret_cast<JsValueRef *>(result)));
   return Status::OK;
 }
 
 Status ChakraEnvironment::CoerceToString(Value value, Value *result) noexcept {
+  CHECK_ARG(value);
+  CHECK_ARG(result);
+  JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
+  CHECK_JSRT(JsConvertValueToString(jsValue, reinterpret_cast<JsValueRef *>(result)));
   return Status::OK;
 }
 
 Status ChakraEnvironment::GetPrototype(Value object, Value *result) noexcept {
+  CHECK_ARG(object);
+  CHECK_ARG(result);
+  JsValueRef obj = reinterpret_cast<JsValueRef>(object);
+  CHECK_JSRT(JsGetPrototype(obj, reinterpret_cast<JsValueRef *>(result)));
   return Status::OK;
 }
 
 Status ChakraEnvironment::GetPropertyNames(Value object, Value *result) noexcept {
+  CHECK_ARG(object);
+  CHECK_ARG(result);
+  JsValueRef obj = reinterpret_cast<JsValueRef>(object);
+  JsValueRef propertyNames;
+  CHECK_JSRT(JsGetOwnPropertyNames(obj, &propertyNames));
+  *result = reinterpret_cast<Value>(propertyNames);
   return Status::OK;
 }
 
 Status ChakraEnvironment::SetProperty(Value object, Value key, Value value) noexcept {
+  CHECK_ARG(object);
+  CHECK_ARG(value);
+  JsValueRef obj = reinterpret_cast<JsValueRef>(object);
+  JsPropertyIdRef propertyId;
+  CHECK_JSRT(JsPropertyIdFromKey(key, &propertyId));
+  JsValueRef js_value = reinterpret_cast<JsValueRef>(value);
+  CHECK_JSRT(JsSetProperty(obj, propertyId, js_value, true));
   return Status::OK;
 }
 
 Status ChakraEnvironment::HasProperty(Value object, Value key, bool *result) noexcept {
+  CHECK_ARG(object);
+  CHECK_ARG(result);
+  CHECK_ARG(key);
+  JsPropertyIdRef propertyId;
+  CHECK_JSRT(JsPropertyIdFromKey(key, &propertyId));
+  JsValueRef obj = reinterpret_cast<JsValueRef>(object);
+  CHECK_JSRT(JsHasProperty(obj, propertyId, result));
   return Status::OK;
 }
 
 Status ChakraEnvironment::GetProperty(Value object, Value key, Value *result) noexcept {
+  CHECK_ARG(object);
+  CHECK_ARG(key);
+  CHECK_ARG(result);
+  JsValueRef obj = reinterpret_cast<JsValueRef>(object);
+  JsPropertyIdRef propertyId;
+  CHECK_JSRT(JsPropertyIdFromKey(key, &propertyId));
+  CHECK_JSRT(JsGetProperty(obj, propertyId, reinterpret_cast<JsValueRef *>(result)));
   return Status::OK;
 }
 
 Status ChakraEnvironment::DeleteProperty(Value object, Value key, bool *result) noexcept {
+  CHECK_ARG(object);
+  CHECK_ARG(result);
+  *result = false;
+
+  JsValueRef obj = reinterpret_cast<JsValueRef>(object);
+  JsPropertyIdRef propertyId;
+  JsValueRef deletePropertyResult;
+  CHECK_JSRT(JsPropertyIdFromKey(key, &propertyId));
+  CHECK_JSRT(JsDeleteProperty(obj, propertyId, /*isStrictMode:*/ false, &deletePropertyResult));
+  CHECK_JSRT(JsBooleanToBool(deletePropertyResult, result));
   return Status::OK;
 }
 
 Status ChakraEnvironment::HasOwnProperty(Value object, Value key, bool *result) noexcept {
+  CHECK_ARG(result);
+  JsValueRef hasOwnPropertyResult;
+  std::array<JsValueRef, 2> hasOwnPropertyFuncArgs{object, key};
+  CHECK_JSRT(JsCallFunction(
+      has_own_property_function,
+      hasOwnPropertyFuncArgs.data(),
+      static_cast<unsigned short>(hasOwnPropertyFuncArgs.size()),
+      &hasOwnPropertyResult));
+  CHECK_JSRT(JsBooleanToBool(hasOwnPropertyResult, result));
   return Status::OK;
 }
 
 Status ChakraEnvironment::SetNamedProperty(Value object, const char *utf8Name, Value value) noexcept {
+  CHECK_ARG(value);
+  JsValueRef obj = reinterpret_cast<JsValueRef>(object);
+  JsPropertyIdRef propertyId;
+  CHECK_JSRT(JsCreatePropertyId(utf8Name, AutoLength, &propertyId));
+  JsValueRef js_value = reinterpret_cast<JsValueRef>(value);
+  CHECK_JSRT(JsSetProperty(obj, propertyId, js_value, true));
   return Status::OK;
 }
 
 Status ChakraEnvironment::HasNamedProperty(Value object, const char *utf8Name, bool *result) noexcept {
+  CHECK_ARG(result);
+  JsPropertyIdRef propertyId;
+  CHECK_JSRT(JsCreatePropertyId(utf8Name, strlen(utf8Name), &propertyId));
+  JsValueRef obj = reinterpret_cast<JsValueRef>(object);
+  CHECK_JSRT(JsHasProperty(obj, propertyId, result));
   return Status::OK;
 }
 
 Status ChakraEnvironment::GetNamedProperty(Value object, const char *utf8Name, Value *result) noexcept {
+  CHECK_ARG(result);
+  JsValueRef obj = reinterpret_cast<JsValueRef>(object);
+  JsPropertyIdRef propertyId;
+  CHECK_JSRT(JsCreatePropertyId(utf8Name, strlen(utf8Name), &propertyId));
+  CHECK_JSRT(JsGetProperty(obj, propertyId, reinterpret_cast<JsValueRef *>(result)));
   return Status::OK;
 }
 
 Status ChakraEnvironment::SetElement(Value object, uint32_t index, Value value) noexcept {
+  CHECK_ARG(value);
+  JsValueRef jsIndex = nullptr;
+  CHECK_JSRT(JsIntToNumber(index, &jsIndex));
+  JsValueRef obj = reinterpret_cast<JsValueRef>(object);
+  JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
+  CHECK_JSRT(JsSetIndexedProperty(obj, jsIndex, jsValue));
   return Status::OK;
 }
 
 Status ChakraEnvironment::HasElement(Value object, uint32_t index, bool *result) noexcept {
+  CHECK_ARG(object);
+  CHECK_ARG(result);
+  JsValueRef jsIndex{JS_INVALID_REFERENCE};
+  CHECK_JSRT(JsIntToNumber(index, &jsIndex));
+  JsValueRef obj = reinterpret_cast<JsValueRef>(object);
+  CHECK_JSRT(JsHasIndexedProperty(obj, jsIndex, result));
   return Status::OK;
 }
 
 Status ChakraEnvironment::GetElement(Value object, uint32_t index, Value *result) noexcept {
+  CHECK_ARG(object);
+  CHECK_ARG(result);
+  JsValueRef jsIndex{JS_INVALID_REFERENCE};
+  JsValueRef obj = reinterpret_cast<JsValueRef>(object);
+  CHECK_JSRT(JsIntToNumber(index, &jsIndex));
+  CHECK_JSRT(JsGetIndexedProperty(obj, jsIndex, reinterpret_cast<JsValueRef *>(result)));
   return Status::OK;
 }
 
 Status ChakraEnvironment::DeleteElement(Value object, uint32_t index, bool *result) noexcept {
+  CHECK_ARG(result);
+  JsValueRef indexValue = nullptr;
+  JsValueRef obj = reinterpret_cast<JsValueRef>(object);
+  CHECK_JSRT(JsIntToNumber(index, &indexValue));
+  CHECK_JSRT(JsDeleteIndexedProperty(obj, indexValue));
+  *result = true;
   return Status::OK;
 }
 
 Status
 ChakraEnvironment::DefineProperties(Value object, size_t propertyCount, const PropertyDescriptor *properties) noexcept {
+  if (propertyCount > 0) {
+    CHECK_ARG(properties);
+  }
+
+  JsPropertyIdRef configurableProperty;
+  CHECK_JSRT(JsGetPropertyIdFromName(L"configurable", &configurableProperty));
+
+  JsPropertyIdRef enumerableProperty;
+  CHECK_JSRT(JsGetPropertyIdFromName(L"enumerable", &enumerableProperty));
+
+  for (size_t i = 0; i < propertyCount; i++) {
+    const PropertyDescriptor *p = properties + i;
+
+    JsValueRef descriptor;
+    CHECK_JSRT(JsCreateObject(&descriptor));
+
+    JsValueRef configurable;
+    CHECK_JSRT(JsBoolToBoolean(!!(p->attributes & PropertyAttributes::Configurable), &configurable));
+    CHECK_JSRT(JsSetProperty(descriptor, configurableProperty, configurable, true));
+
+    JsValueRef enumerable;
+    CHECK_JSRT(JsBoolToBoolean(!!(p->attributes & PropertyAttributes::Enumerable), &enumerable));
+    CHECK_JSRT(JsSetProperty(descriptor, enumerableProperty, enumerable, true));
+
+    if (p->getter != nullptr || p->setter != nullptr) {
+      Value propertyName;
+      CHECK_JSRT(JsNameValueFromPropertyDescriptor(p, &propertyName));
+
+      if (p->getter != nullptr) {
+        JsPropertyIdRef getProperty;
+        CHECK_JSRT(JsGetPropertyIdFromName(L"get", &getProperty));
+        JsValueRef getter;
+        CHECK_NAPI(CreatePropertyFunction(propertyName, p->getter, p->data, reinterpret_cast<Value *>(&getter)));
+        CHECK_JSRT(JsSetProperty(descriptor, getProperty, getter, true));
+      }
+
+      if (p->setter != nullptr) {
+        JsPropertyIdRef setProperty;
+        CHECK_JSRT(JsGetPropertyIdFromName(L"set", &setProperty));
+        JsValueRef setter;
+        CHECK_NAPI(CreatePropertyFunction(propertyName, p->setter, p->data, reinterpret_cast<Value *>(&setter)));
+        CHECK_JSRT(JsSetProperty(descriptor, setProperty, setter, true));
+      }
+    } else if (p->method != nullptr) {
+      Value propertyName;
+      CHECK_JSRT(JsNameValueFromPropertyDescriptor(p, &propertyName));
+
+      JsPropertyIdRef valueProperty;
+      CHECK_JSRT(JsGetPropertyIdFromName(L"value", &valueProperty));
+      JsValueRef method;
+      CHECK_NAPI(CreatePropertyFunction(propertyName, p->method, p->data, reinterpret_cast<Value *>(&method)));
+      CHECK_JSRT(JsSetProperty(descriptor, valueProperty, method, true));
+    } else {
+      RETURN_STATUS_IF_FALSE(p->value != nullptr, Status::InvalidArg);
+
+      JsPropertyIdRef writableProperty;
+      CHECK_JSRT(JsGetPropertyIdFromName(L"writable", &writableProperty));
+      JsValueRef writable;
+      CHECK_JSRT(JsBoolToBoolean(!!(p->attributes & PropertyAttributes::Writable), &writable));
+      CHECK_JSRT(JsSetProperty(descriptor, writableProperty, writable, true));
+
+      JsPropertyIdRef valueProperty;
+      CHECK_JSRT(JsGetPropertyIdFromName(L"value", &valueProperty));
+      CHECK_JSRT(JsSetProperty(descriptor, valueProperty, reinterpret_cast<JsValueRef>(p->value), true));
+    }
+
+    JsPropertyIdRef nameProperty;
+    CHECK_JSRT(JsPropertyIdFromPropertyDescriptor(p, &nameProperty));
+    bool result;
+    CHECK_JSRT(JsDefineProperty(
+        reinterpret_cast<JsValueRef>(object),
+        reinterpret_cast<JsPropertyIdRef>(nameProperty),
+        reinterpret_cast<JsValueRef>(descriptor),
+        &result));
+  }
+
   return Status::OK;
 }
 
 Status ChakraEnvironment::IsArray(Value value, bool *result) noexcept {
+  CHECK_ARG(value);
+  CHECK_ARG(result);
+  JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
+  JsValueType type = JsUndefined;
+  CHECK_JSRT(JsGetValueType(jsValue, &type));
+  *result = (type == JsArray);
   return Status::OK;
 }
 
 Status ChakraEnvironment::GetArrayLength(Value value, uint32_t *result) noexcept {
+  CHECK_ARG(value);
+  CHECK_ARG(result);
+  JsPropertyIdRef propertyIdRef;
+  CHECK_JSRT(JsGetPropertyIdFromName(L"length", &propertyIdRef));
+  JsValueRef lengthRef;
+  JsValueRef arrayRef = reinterpret_cast<JsValueRef>(value);
+  CHECK_JSRT(JsGetProperty(arrayRef, propertyIdRef, &lengthRef));
+  double sizeInDouble;
+  CHECK_JSRT(JsNumberToDouble(lengthRef, &sizeInDouble));
+  *result = static_cast<uint32_t>(sizeInDouble);
   return Status::OK;
 }
 
 Status ChakraEnvironment::StrictEquals(Value lhs, Value rhs, bool *result) noexcept {
+  CHECK_ARG(lhs);
+  CHECK_ARG(rhs);
+  CHECK_ARG(result);
+  JsValueRef object1 = reinterpret_cast<JsValueRef>(lhs);
+  JsValueRef object2 = reinterpret_cast<JsValueRef>(rhs);
+  CHECK_JSRT(JsStrictEquals(object1, object2, result));
   return Status::OK;
 }
 
@@ -908,7 +1407,7 @@ Status ChakraEnvironment::SetErrorCode(JsValueRef error, Value code, const char 
     CHECK_JSRT(JsHasProperty(error, namePropId, &hasProp));
 
     JsValueRef nameValue{JS_INVALID_REFERENCE};
-    std::array<JsValueRef, 2> args {nameArray, JsValueRef{JS_INVALID_REFERENCE}};
+    std::array<JsValueRef, 2> args{nameArray, JsValueRef{JS_INVALID_REFERENCE}};
 
     if (hasProp) {
       CHECK_JSRT(JsGetProperty(error, namePropId, &nameValue));
@@ -918,7 +1417,7 @@ Status ChakraEnvironment::SetErrorCode(JsValueRef error, Value code, const char 
     }
 
     JsValueRef openBracketValue{JS_INVALID_REFERENCE};
-    CHECK_JSRT(JsPointerToString(L" [",  2, &openBracketValue));
+    CHECK_JSRT(JsPointerToString(L" [", 2, &openBracketValue));
 
     args[1] = openBracketValue;
     CHECK_JSRT(JsCallFunction(pushFunction, args.data(), static_cast<unsigned short>(args.size()), nullptr));
@@ -950,7 +1449,55 @@ Status ChakraEnvironment::SetErrorCode(JsValueRef error, Value code, const char 
   return Status::OK;
 }
 
-//JsErrorCode ChakraEnvironment::ChakraPropertyDescriptor(
+Status
+ChakraEnvironment::CreatePropertyFunction(Value propertyName, Callback cb, void *callbackData, Value *result) noexcept
+    try {
+  CHECK_ARG(result);
+
+  auto externalCallback = std::make_unique<ExternalCallback>(this, cb, callbackData);
+
+  ValueType nameType;
+  CHECK_NAPI(TypeOf(propertyName, &nameType));
+
+  JsValueRef function{JS_INVALID_REFERENCE};
+  JsValueRef name{JS_INVALID_REFERENCE};
+  if (nameType == ValueType::String) {
+    name = propertyName;
+  }
+
+  CHECK_JSRT(JsCreateNamedFunction(name, ExternalCallback::Callback, externalCallback.get(), &function));
+
+  externalCallback->newTarget = function;
+
+  CHECK_JSRT(JsSetObjectBeforeCollectCallback(function, externalCallback.get(), ExternalCallback::Finalize));
+  externalCallback.release();
+
+  *result = reinterpret_cast<Value>(function);
+  return Status::OK;
+} catch (...) {
+  return SetLastError(Status::GenericFailure);
+}
+
+JsErrorCode ChakraEnvironment::JsPropertyIdFromPropertyDescriptor(
+    const PropertyDescriptor *p,
+    JsPropertyIdRef *propertyId) noexcept {
+  if (p->utf8Name != nullptr) {
+    return JsCreatePropertyId(p->utf8Name, strlen(p->utf8Name), propertyId);
+  } else {
+    return JsPropertyIdFromKey(p->name, propertyId);
+  }
+}
+
+JsErrorCode ChakraEnvironment::JsNameValueFromPropertyDescriptor(const PropertyDescriptor *p, Value *name) noexcept {
+  if (p->utf8Name != nullptr) {
+    return JsCreateString(p->utf8Name, AutoLength, reinterpret_cast<JsValueRef *>(name));
+  } else {
+    *name = p->name;
+    return JsErrorCode::JsNoError;
+  }
+}
+
+// JsErrorCode ChakraEnvironment::ChakraPropertyDescriptor(
 //    JsValueRef value,
 //    ChakraPropertyAttibutes attrs,
 //    JsValueRef *descriptor) noexcept {
@@ -975,15 +1522,15 @@ Status ChakraEnvironment::SetErrorCode(JsValueRef error, Value code, const char 
 //  return JsNoError;
 //}
 //
-//JsErrorCode
-//ChakraEnvironment::ChakraSetProperty(JsValueRef object, CachedPropertyId propertyId, JsValueRef value) noexcept {
+// JsErrorCode
+// ChakraEnvironment::ChakraSetProperty(JsValueRef object, CachedPropertyId propertyId, JsValueRef value) noexcept {
 //  JsPropertyIdRef jsPropertyId;
 //  CHECK_CHAKRA(ChakraCachedPropertyId(propertyId, &jsPropertyId));
 //  CHECK_CHAKRA(JsSetProperty(object, jsPropertyId, value, /*useStrictRules:*/ true));
 //  return JsNoError;
 //}
 //
-//JsErrorCode ChakraEnvironment::ChakraCachedPropertyId(
+// JsErrorCode ChakraEnvironment::ChakraCachedPropertyId(
 //    CachedPropertyId cachedPropertyId,
 //    JsPropertyIdRef *propertyId) noexcept {
 //  if (!cachedPropertyId.propertyRef) {
@@ -1107,17 +1654,17 @@ JsErrorCode JsPropertyIdFromKey(JsValueRef key, JsPropertyIdRef* propertyId) {
 }
 
 JsErrorCode JsPropertyIdFromPropertyDescriptor(const napi_property_descriptor* p, JsPropertyIdRef* propertyId) {
-  if (p->utf8name != nullptr) {
-    return JsCreatePropertyId(p->utf8name, strlen(p->utf8name), propertyId);
+  if (p->utf8Name != nullptr) {
+    return JsCreatePropertyId(p->utf8Name, strlen(p->utf8Name), propertyId);
   } else {
     return JsPropertyIdFromKey(p->name, propertyId);
   }
 }
 
 JsErrorCode JsNameValueFromPropertyDescriptor(const napi_property_descriptor* p, napi_value* name) {
-  if (p->utf8name != nullptr) {
+  if (p->utf8Name != nullptr) {
     return JsCreateString(
-      p->utf8name,
+      p->utf8Name,
       NAPI_AUTO_LENGTH,
       reinterpret_cast<JsValueRef*>(name));
   } else {
@@ -1135,12 +1682,12 @@ inline napi_status FindWrapper(napi_env env, JsValueRef obj, JsValueRef* wrapper
   bool hasExternalData = false;
 
   JsValueRef nullValue = JS_INVALID_REFERENCE;
-  CHECK_JSRT(env, JsGetNullValue(&nullValue));
+  CHECK_JSRT(JsGetNullValue(&nullValue));
 
   do {
     current = candidate;
 
-    CHECK_JSRT(env, JsGetPrototype(current, &candidate));
+    CHECK_JSRT(JsGetPrototype(current, &candidate));
     if (candidate == JS_INVALID_REFERENCE || candidate == nullValue) {
       if (parent != nullptr) {
         *parent = JS_INVALID_REFERENCE;
@@ -1150,7 +1697,7 @@ inline napi_status FindWrapper(napi_env env, JsValueRef obj, JsValueRef* wrapper
       return napi_ok;
     }
 
-    CHECK_JSRT(env, JsHasExternalData(candidate, &hasExternalData));
+    CHECK_JSRT(JsHasExternalData(candidate, &hasExternalData));
   } while (!hasExternalData);
 
   if (parent != nullptr) {
@@ -1166,9 +1713,9 @@ inline napi_status Unwrap(napi_env env, JsValueRef obj, ExternalData** externalD
   JsValueRef candidate = JS_INVALID_REFERENCE;
   JsValueRef candidateParent = JS_INVALID_REFERENCE;
   CHECK_NAPI(FindWrapper(env, obj, &candidate, &candidateParent));
-  RETURN_STATUS_IF_FALSE(env, candidate != JS_INVALID_REFERENCE, napi_invalid_arg);
+  RETURN_STATUS_IF_FALSE(candidate != JS_INVALID_REFERENCE, Status::InvalidArg);
 
-  CHECK_JSRT(env, JsGetExternalData(candidate,
+  CHECK_JSRT(JsGetExternalData(candidate,
                                reinterpret_cast<void**>(externalData)));
 
   if (wrapper != nullptr) {
@@ -1187,37 +1734,37 @@ static napi_status SetErrorCode(napi_env env, JsValueRef error, napi_value code,
     JsValueRef codeValue = reinterpret_cast<JsValueRef>(code);
     if (codeValue != JS_INVALID_REFERENCE) {
       JsValueType valueType = JsUndefined;
-      CHECK_JSRT(env, JsGetValueType(codeValue, &valueType));
-      RETURN_STATUS_IF_FALSE(env, valueType == JsString, napi_string_expected);
+      CHECK_JSRT(JsGetValueType(codeValue, &valueType));
+      RETURN_STATUS_IF_FALSE(valueType == JsString, Status::StringExpected);
     } else {
-      CHECK_JSRT(env, JsCreateString(codeString, NAPI_AUTO_LENGTH, &codeValue));
+      CHECK_JSRT(JsCreateString(codeString, NAPI_AUTO_LENGTH, &codeValue));
     }
 
     JsPropertyIdRef codePropId = JS_INVALID_REFERENCE;
-    CHECK_JSRT(env, JsCreatePropertyId(STR_AND_LENGTH("code"), &codePropId));
+    CHECK_JSRT(JsCreatePropertyId(STR_AND_LENGTH("code"), &codePropId));
 
-    CHECK_JSRT(env, JsSetProperty(error, codePropId, codeValue, true));
+    CHECK_JSRT(JsSetProperty(error, codePropId, codeValue, true));
 
     JsValueRef nameArray = JS_INVALID_REFERENCE;
-    CHECK_JSRT(env, JsCreateArray(0, &nameArray));
+    CHECK_JSRT(JsCreateArray(0, &nameArray));
 
     JsPropertyIdRef pushPropId = JS_INVALID_REFERENCE;
-    CHECK_JSRT(env, JsCreatePropertyId(STR_AND_LENGTH("push"), &pushPropId));
+    CHECK_JSRT(JsCreatePropertyId(STR_AND_LENGTH("push"), &pushPropId));
 
     JsValueRef pushFunction = JS_INVALID_REFERENCE;
-    CHECK_JSRT(env, JsGetProperty(nameArray, pushPropId, &pushFunction));
+    CHECK_JSRT(JsGetProperty(nameArray, pushPropId, &pushFunction));
 
     JsPropertyIdRef namePropId = JS_INVALID_REFERENCE;
-    CHECK_JSRT(env, JsCreatePropertyId(STR_AND_LENGTH("name"), &namePropId));
+    CHECK_JSRT(JsCreatePropertyId(STR_AND_LENGTH("name"), &namePropId));
 
     bool hasProp = false;
-    CHECK_JSRT(env, JsHasProperty(error, namePropId, &hasProp));
+    CHECK_JSRT(JsHasProperty(error, namePropId, &hasProp));
 
     JsValueRef nameValue = JS_INVALID_REFERENCE;
     std::array<JsValueRef, 2> args = { nameArray, JS_INVALID_REFERENCE };
 
     if (hasProp) {
-      CHECK_JSRT(env, JsGetProperty(error, namePropId, &nameValue));
+      CHECK_JSRT(JsGetProperty(error, namePropId, &nameValue));
 
       args[1] = nameValue;
       CHECK_JSRT(env,
@@ -1229,32 +1776,32 @@ static napi_status SetErrorCode(napi_env env, JsValueRef error, napi_value code,
 
     const char* openBracket = " [";
     JsValueRef openBracketValue = JS_INVALID_REFERENCE;
-    CHECK_JSRT(env, JsCreateString(openBracket, NAPI_AUTO_LENGTH, &openBracketValue));
+    CHECK_JSRT(JsCreateString(openBracket, NAPI_AUTO_LENGTH, &openBracketValue));
 
     args[1] = openBracketValue;
-    CHECK_JSRT(env, JsCallFunction(pushFunction, args.data(), static_cast<unsigned short>(args.size()), nullptr));
+    CHECK_JSRT(JsCallFunction(pushFunction, args.data(), static_cast<unsigned short>(args.size()), nullptr));
 
     args[1] = codeValue;
-    CHECK_JSRT(env, JsCallFunction(pushFunction, args.data(), static_cast<unsigned short>(args.size()), nullptr));
+    CHECK_JSRT(JsCallFunction(pushFunction, args.data(), static_cast<unsigned short>(args.size()), nullptr));
 
     const char* closeBracket = "]";
     JsValueRef closeBracketValue = JS_INVALID_REFERENCE;
-    CHECK_JSRT(env, JsCreateString(closeBracket, NAPI_AUTO_LENGTH, &closeBracketValue));
+    CHECK_JSRT(JsCreateString(closeBracket, NAPI_AUTO_LENGTH, &closeBracketValue));
 
     args[1] = closeBracketValue;
-    CHECK_JSRT(env, JsCallFunction(pushFunction, args.data(), static_cast<unsigned short>(args.size()), nullptr));
+    CHECK_JSRT(JsCallFunction(pushFunction, args.data(), static_cast<unsigned short>(args.size()), nullptr));
 
     JsValueRef emptyValue = JS_INVALID_REFERENCE;
-    CHECK_JSRT(env, JsCreateString("", 0, &emptyValue));
+    CHECK_JSRT(JsCreateString("", 0, &emptyValue));
 
     const char* joinPropIdName = "join";
     JsPropertyIdRef joinPropId = JS_INVALID_REFERENCE;
-    CHECK_JSRT(env, JsCreatePropertyId(joinPropIdName,
+    CHECK_JSRT(JsCreatePropertyId(joinPropIdName,
                                   strlen(joinPropIdName),
                                   &joinPropId));
 
     JsValueRef joinFunction = JS_INVALID_REFERENCE;
-    CHECK_JSRT(env, JsGetProperty(nameArray, joinPropId, &joinFunction));
+    CHECK_JSRT(JsGetProperty(nameArray, joinPropId, &joinFunction));
 
     args[1] = emptyValue;
     CHECK_JSRT(env,
@@ -1263,15 +1810,15 @@ static napi_status SetErrorCode(napi_env env, JsValueRef error, napi_value code,
                      static_cast<unsigned short>(args.size()),
                      &nameValue));
 
-    CHECK_JSRT(env, JsSetProperty(error, namePropId, nameValue, true));
+    CHECK_JSRT(JsSetProperty(error, namePropId, nameValue, true));
   }
   return napi_ok;
 }
 
 napi_status ConcludeDeferred(napi_env env, napi_deferred deferred, const char* property, napi_value result) {
   // We do not check if property is OK, because that's not coming from outside.
-  CHECK_ARG(env, deferred);
-  CHECK_ARG(env, result);
+  CHECK_ARG(deferred);
+  CHECK_ARG(result);
 
   napi_value container, resolver, js_null;
   napi_ref ref = reinterpret_cast<napi_ref>(deferred);
@@ -1290,7 +1837,7 @@ napi_status CreatePropertyFunction(napi_env env,
                                    napi_callback cb,
                                    void* callback_data,
                                    napi_value* result) {
-  CHECK_ARG(env, result);
+  CHECK_ARG(result);
 
   ExternalCallback* externalCallback =
     new ExternalCallback(env, cb, callback_data);
@@ -1307,7 +1854,7 @@ napi_status CreatePropertyFunction(napi_env env,
     name = property_name;
   }
 
-  CHECK_JSRT(env, JsCreateNamedFunction(
+  CHECK_JSRT(JsCreateNamedFunction(
     name,
     ExternalCallback::Callback,
     externalCallback,
@@ -1315,7 +1862,7 @@ napi_status CreatePropertyFunction(napi_env env,
 
   externalCallback->newTarget = function;
 
-  CHECK_JSRT(env, JsSetObjectBeforeCollectCallback(
+  CHECK_JSRT(JsSetObjectBeforeCollectCallback(
     function, externalCallback, ExternalCallback::Finalize));
 
   *result = reinterpret_cast<napi_value>(function);
@@ -1366,7 +1913,7 @@ static const char* error_messages[] = {
 napi_status napi_get_last_error_info(napi_env env,
                                      const napi_extended_error_info** result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, result);
+  CHECK_ARG(result);
 
   // you must update this assert to reference the last message
   // in the napi_status enum each time a new error message is added.
@@ -1387,13 +1934,13 @@ napi_status napi_get_last_error_info(napi_env env,
 }
 
 napi_status napi_create_function(napi_env env,
-                                 const char* utf8name,
+                                 const char* utf8Name,
                                  size_t length,
                                  napi_callback cb,
                                  void* callback_data,
                                  napi_value* result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, result);
+  CHECK_ARG(result);
 
   ExternalCallback* externalCallback =
     new ExternalCallback(env, cb, callback_data);
@@ -1403,14 +1950,14 @@ napi_status napi_create_function(napi_env env,
 
   JsValueRef function;
   JsValueRef name = JS_INVALID_REFERENCE;
-  if (utf8name != nullptr) {
-    CHECK_JSRT(env, JsCreateString(
-      utf8name,
+  if (utf8Name != nullptr) {
+    CHECK_JSRT(JsCreateString(
+      utf8Name,
       length,
       &name));
   }
 
-  CHECK_JSRT(env, JsCreateNamedFunction(
+  CHECK_JSRT(JsCreateNamedFunction(
     name,
     ExternalCallback::Callback,
     externalCallback,
@@ -1418,7 +1965,7 @@ napi_status napi_create_function(napi_env env,
 
   externalCallback->newTarget = function;
 
-  CHECK_JSRT(env, JsSetObjectBeforeCollectCallback(
+  CHECK_JSRT(JsSetObjectBeforeCollectCallback(
     function, externalCallback, ExternalCallback::Finalize));
 
   *result = reinterpret_cast<napi_value>(function);
@@ -1426,7 +1973,7 @@ napi_status napi_create_function(napi_env env,
 }
 
 napi_status napi_define_class(napi_env env,
-                              const char* utf8name,
+                              const char* utf8Name,
                               size_t length,
                               napi_callback cb,
                               void* data,
@@ -1434,10 +1981,10 @@ napi_status napi_define_class(napi_env env,
                               const napi_property_descriptor* properties,
                               napi_value* result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, result);
+  CHECK_ARG(result);
 
   napi_value namestring;
-  CHECK_NAPI(napi_create_string_utf8(env, utf8name, length, &namestring));
+  CHECK_NAPI(napi_create_string_utf8(env, utf8Name, length, &namestring));
 
   ExternalCallback* externalCallback =
     new ExternalCallback(env, cb, data);
@@ -1446,7 +1993,7 @@ napi_status napi_define_class(napi_env env,
   }
 
   JsValueRef constructor;
-  CHECK_JSRT(env, JsCreateNamedFunction(
+  CHECK_JSRT(JsCreateNamedFunction(
     namestring,
     ExternalCallback::Callback,
     externalCallback,
@@ -1454,16 +2001,16 @@ napi_status napi_define_class(napi_env env,
 
   externalCallback->newTarget = constructor;
 
-  CHECK_JSRT(env, JsSetObjectBeforeCollectCallback(
+  CHECK_JSRT(JsSetObjectBeforeCollectCallback(
     constructor, externalCallback, ExternalCallback::Finalize));
 
   JsPropertyIdRef pid = nullptr;
   JsValueRef prototype = nullptr;
-  CHECK_JSRT(env, JsCreatePropertyId(STR_AND_LENGTH("prototype"), &pid));
-  CHECK_JSRT(env, JsGetProperty(constructor, pid, &prototype));
+  CHECK_JSRT(JsCreatePropertyId(STR_AND_LENGTH("prototype"), &pid));
+  CHECK_JSRT(JsGetProperty(constructor, pid, &prototype));
 
-  CHECK_JSRT(env, JsCreatePropertyId(STR_AND_LENGTH("constructor"), &pid));
-  CHECK_JSRT(env, JsSetProperty(prototype, pid, constructor, false));
+  CHECK_JSRT(JsCreatePropertyId(STR_AND_LENGTH("constructor"), &pid));
+  CHECK_JSRT(JsSetProperty(prototype, pid, constructor, false));
 
   int instancePropertyCount = 0;
   int staticPropertyCount = 0;
@@ -1510,10 +2057,10 @@ napi_status napi_get_property_names(napi_env env,
                                     napi_value object,
                                     napi_value* result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, result);
+  CHECK_ARG(result);
   JsValueRef obj = reinterpret_cast<JsValueRef>(object);
   JsValueRef propertyNames;
-  CHECK_JSRT(env, JsGetOwnPropertyNames(obj, &propertyNames));
+  CHECK_JSRT(JsGetOwnPropertyNames(obj, &propertyNames));
   *result = reinterpret_cast<napi_value>(propertyNames);
   return napi_ok;
 }
@@ -1523,13 +2070,13 @@ napi_status napi_set_property(napi_env env,
                               napi_value key,
                               napi_value value) {
   CHECK_ENV(env);
-  CHECK_ARG(env, key);
-  CHECK_ARG(env, value);
+  CHECK_ARG(key);
+  CHECK_ARG(value);
   JsValueRef obj = reinterpret_cast<JsValueRef>(object);
   JsPropertyIdRef propertyId;
-  CHECK_JSRT(env, JsPropertyIdFromKey(key, &propertyId));
+  CHECK_JSRT(JsPropertyIdFromKey(key, &propertyId));
   JsValueRef js_value = reinterpret_cast<JsValueRef>(value);
-  CHECK_JSRT(env, JsSetProperty(obj, propertyId, js_value, true));
+  CHECK_JSRT(JsSetProperty(obj, propertyId, js_value, true));
   return napi_ok;
 }
 
@@ -1538,12 +2085,12 @@ napi_status napi_has_property(napi_env env,
                               napi_value key,
                               bool* result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, result);
-  CHECK_ARG(env, key);
+  CHECK_ARG(result);
+  CHECK_ARG(key);
   JsPropertyIdRef propertyId;
-  CHECK_JSRT(env, JsPropertyIdFromKey(key, &propertyId));
+  CHECK_JSRT(JsPropertyIdFromKey(key, &propertyId));
   JsValueRef obj = reinterpret_cast<JsValueRef>(object);
-  CHECK_JSRT(env, JsHasProperty(obj, propertyId, result));
+  CHECK_JSRT(JsHasProperty(obj, propertyId, result));
   return napi_ok;
 }
 
@@ -1552,12 +2099,12 @@ napi_status napi_get_property(napi_env env,
                               napi_value key,
                               napi_value* result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, key);
-  CHECK_ARG(env, result);
+  CHECK_ARG(key);
+  CHECK_ARG(result);
   JsValueRef obj = reinterpret_cast<JsValueRef>(object);
   JsPropertyIdRef propertyId;
-  CHECK_JSRT(env, JsPropertyIdFromKey(key, &propertyId));
-  CHECK_JSRT(env, JsGetProperty(obj, propertyId, reinterpret_cast<JsValueRef*>(result)));
+  CHECK_JSRT(JsPropertyIdFromKey(key, &propertyId));
+  CHECK_JSRT(JsGetProperty(obj, propertyId, reinterpret_cast<JsValueRef*>(result)));
   return napi_ok;
 }
 
@@ -1566,15 +2113,15 @@ napi_status napi_delete_property(napi_env env,
                                  napi_value key,
                                  bool* result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, result);
+  CHECK_ARG(result);
   *result = false;
 
   JsValueRef obj = reinterpret_cast<JsValueRef>(object);
   JsPropertyIdRef propertyId;
   JsValueRef deletePropertyResult;
-  CHECK_JSRT(env, JsPropertyIdFromKey(key, &propertyId));
-  CHECK_JSRT(env, JsDeleteProperty(obj, propertyId, false /* isStrictMode */, &deletePropertyResult));
-  CHECK_JSRT(env, JsBooleanToBool(deletePropertyResult, result));
+  CHECK_JSRT(JsPropertyIdFromKey(key, &propertyId));
+  CHECK_JSRT(JsDeleteProperty(obj, propertyId, false /* isStrictMode */, &deletePropertyResult));
+  CHECK_JSRT(JsBooleanToBool(deletePropertyResult, result));
 
   return napi_ok;
 }
@@ -1584,50 +2131,50 @@ NAPI_EXTERN napi_status napi_has_own_property(napi_env env,
                                               napi_value key,
                                               bool* result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, result);
+  CHECK_ARG(result);
   JsValueRef hasOwnPropertyResult;
   std::array<JsValueRef, 2> hasOwnPropertyFuncArgs{ object, key };
-  CHECK_JSRT(env, JsCallFunction(env->has_own_property_function, hasOwnPropertyFuncArgs.data(), static_cast<unsigned short>(hasOwnPropertyFuncArgs.size()), &hasOwnPropertyResult));
-  CHECK_JSRT(env, JsBooleanToBool(hasOwnPropertyResult, result));
+  CHECK_JSRT(JsCallFunction(env->has_own_property_function, hasOwnPropertyFuncArgs.data(), static_cast<unsigned short>(hasOwnPropertyFuncArgs.size()), &hasOwnPropertyResult));
+  CHECK_JSRT(JsBooleanToBool(hasOwnPropertyResult, result));
   return napi_ok;
 }
 
 napi_status napi_set_named_property(napi_env env,
                                     napi_value object,
-                                    const char* utf8name,
+                                    const char* utf8Name,
                                     napi_value value) {
   CHECK_ENV(env);
-  CHECK_ARG(env, value);
+  CHECK_ARG(value);
   JsValueRef obj = reinterpret_cast<JsValueRef>(object);
   JsPropertyIdRef propertyId;
-  CHECK_JSRT(env, JsCreatePropertyId(utf8name, NAPI_AUTO_LENGTH, &propertyId));
+  CHECK_JSRT(JsCreatePropertyId(utf8Name, NAPI_AUTO_LENGTH, &propertyId));
   JsValueRef js_value = reinterpret_cast<JsValueRef>(value);
-  CHECK_JSRT(env, JsSetProperty(obj, propertyId, js_value, true));
+  CHECK_JSRT(JsSetProperty(obj, propertyId, js_value, true));
   return napi_ok;
 }
 
 napi_status napi_has_named_property(napi_env env,
                                     napi_value object,
-                                    const char* utf8name,
+                                    const char* utf8Name,
                                     bool* result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, result);
+  CHECK_ARG(result);
   JsPropertyIdRef propertyId;
-  CHECK_JSRT(env, JsCreatePropertyId(utf8name, strlen(utf8name), &propertyId));
+  CHECK_JSRT(JsCreatePropertyId(utf8Name, strlen(utf8Name), &propertyId));
   JsValueRef obj = reinterpret_cast<JsValueRef>(object);
-  CHECK_JSRT(env, JsHasProperty(obj, propertyId, result));
+  CHECK_JSRT(JsHasProperty(obj, propertyId, result));
   return napi_ok;
 }
 
 napi_status napi_get_named_property(napi_env env,
                                     napi_value object,
-                                    const char* utf8name,
+                                    const char* utf8Name,
                                     napi_value* result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, result);
+  CHECK_ARG(result);
   JsValueRef obj = reinterpret_cast<JsValueRef>(object);
   JsPropertyIdRef propertyId;
-  CHECK_JSRT(env, JsCreatePropertyId(utf8name, strlen(utf8name), &propertyId));
+  CHECK_JSRT(JsCreatePropertyId(utf8Name, strlen(utf8Name), &propertyId));
   CHECK_JSRT(env,
     JsGetProperty(obj, propertyId, reinterpret_cast<JsValueRef*>(result)));
   return napi_ok;
@@ -1638,12 +2185,12 @@ napi_status napi_set_element(napi_env env,
                              uint32_t index,
                              napi_value value) {
   CHECK_ENV(env);
-  CHECK_ARG(env, value);
+  CHECK_ARG(value);
   JsValueRef jsIndex = nullptr;
-  CHECK_JSRT(env, JsIntToNumber(index, &jsIndex));
+  CHECK_JSRT(JsIntToNumber(index, &jsIndex));
   JsValueRef obj = reinterpret_cast<JsValueRef>(object);
   JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
-  CHECK_JSRT(env, JsSetIndexedProperty(obj, jsIndex, jsValue));
+  CHECK_JSRT(JsSetIndexedProperty(obj, jsIndex, jsValue));
   return napi_ok;
 }
 
@@ -1652,11 +2199,11 @@ napi_status napi_has_element(napi_env env,
                              uint32_t i,
                              bool* result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, result);
+  CHECK_ARG(result);
   JsValueRef index = nullptr;
-  CHECK_JSRT(env, JsIntToNumber(i, &index));
+  CHECK_JSRT(JsIntToNumber(i, &index));
   JsValueRef obj = reinterpret_cast<JsValueRef>(object);
-  CHECK_JSRT(env, JsHasIndexedProperty(obj, index, result));
+  CHECK_JSRT(JsHasIndexedProperty(obj, index, result));
   return napi_ok;
 }
 
@@ -1665,10 +2212,10 @@ napi_status napi_get_element(napi_env env,
                              uint32_t i,
                              napi_value* result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, result);
+  CHECK_ARG(result);
   JsValueRef index = nullptr;
   JsValueRef obj = reinterpret_cast<JsValueRef>(object);
-  CHECK_JSRT(env, JsIntToNumber(i, &index));
+  CHECK_JSRT(JsIntToNumber(i, &index));
   CHECK_JSRT(env,
     JsGetIndexedProperty(obj, index, reinterpret_cast<JsValueRef*>(result)));
   return napi_ok;
@@ -1679,11 +2226,11 @@ napi_status napi_delete_element(napi_env env,
                                 uint32_t index,
                                 bool* result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, result);
+  CHECK_ARG(result);
   JsValueRef indexValue = nullptr;
   JsValueRef obj = reinterpret_cast<JsValueRef>(object);
-  CHECK_JSRT(env, JsIntToNumber(index, &indexValue));
-  CHECK_JSRT(env, JsDeleteIndexedProperty(obj, indexValue));
+  CHECK_JSRT(JsIntToNumber(index, &indexValue));
+  CHECK_JSRT(JsDeleteIndexedProperty(obj, indexValue));
   *result = true;
   return napi_ok;
 }
@@ -1694,30 +2241,30 @@ napi_status napi_define_properties(napi_env env,
                                    const napi_property_descriptor* properties) {
   CHECK_ENV(env);
   if (property_count > 0) {
-    CHECK_ARG(env, properties);
+    CHECK_ARG(properties);
   }
 
   JsPropertyIdRef configurableProperty;
-  CHECK_JSRT(env, JsCreatePropertyId(STR_AND_LENGTH("configurable"),
+  CHECK_JSRT(JsCreatePropertyId(STR_AND_LENGTH("configurable"),
                                 &configurableProperty));
 
   JsPropertyIdRef enumerableProperty;
-  CHECK_JSRT(env, JsCreatePropertyId(STR_AND_LENGTH("enumerable"),
+  CHECK_JSRT(JsCreatePropertyId(STR_AND_LENGTH("enumerable"),
                                 &enumerableProperty));
 
   for (size_t i = 0; i < property_count; i++) {
     const napi_property_descriptor* p = properties + i;
 
     JsValueRef descriptor;
-    CHECK_JSRT(env, JsCreateObject(&descriptor));
+    CHECK_JSRT(JsCreateObject(&descriptor));
 
     JsValueRef configurable;
-    CHECK_JSRT(env, JsBoolToBoolean((p->attributes & napi_configurable), &configurable));
-    CHECK_JSRT(env, JsSetProperty(descriptor, configurableProperty, configurable, true));
+    CHECK_JSRT(JsBoolToBoolean((p->attributes & napi_configurable), &configurable));
+    CHECK_JSRT(JsSetProperty(descriptor, configurableProperty, configurable, true));
 
     JsValueRef enumerable;
-    CHECK_JSRT(env, JsBoolToBoolean((p->attributes & napi_enumerable), &enumerable));
-    CHECK_JSRT(env, JsSetProperty(descriptor, enumerableProperty, enumerable, true));
+    CHECK_JSRT(JsBoolToBoolean((p->attributes & napi_enumerable), &enumerable));
+    CHECK_JSRT(JsSetProperty(descriptor, enumerableProperty, enumerable, true));
 
     if (p->getter != nullptr || p->setter != nullptr) {
       napi_value property_name;
@@ -1726,20 +2273,20 @@ napi_status napi_define_properties(napi_env env,
 
       if (p->getter != nullptr) {
         JsPropertyIdRef getProperty;
-        CHECK_JSRT(env, JsCreatePropertyId(STR_AND_LENGTH("get"), &getProperty));
+        CHECK_JSRT(JsCreatePropertyId(STR_AND_LENGTH("get"), &getProperty));
         JsValueRef getter;
         CHECK_NAPI(CreatePropertyFunction(env, property_name,
           p->getter, p->data, reinterpret_cast<napi_value*>(&getter)));
-        CHECK_JSRT(env, JsSetProperty(descriptor, getProperty, getter, true));
+        CHECK_JSRT(JsSetProperty(descriptor, getProperty, getter, true));
       }
 
       if (p->setter != nullptr) {
         JsPropertyIdRef setProperty;
-        CHECK_JSRT(env, JsCreatePropertyId(STR_AND_LENGTH("set"), &setProperty));
+        CHECK_JSRT(JsCreatePropertyId(STR_AND_LENGTH("set"), &setProperty));
         JsValueRef setter;
         CHECK_NAPI(CreatePropertyFunction(env, property_name,
           p->setter, p->data, reinterpret_cast<napi_value*>(&setter)));
-        CHECK_JSRT(env, JsSetProperty(descriptor, setProperty, setter, true));
+        CHECK_JSRT(JsSetProperty(descriptor, setProperty, setter, true));
       }
     } else if (p->method != nullptr) {
       napi_value property_name;
@@ -1747,31 +2294,31 @@ napi_status napi_define_properties(napi_env env,
         JsNameValueFromPropertyDescriptor(p, &property_name));
 
       JsPropertyIdRef valueProperty;
-      CHECK_JSRT(env, JsCreatePropertyId(STR_AND_LENGTH("value"), &valueProperty));
+      CHECK_JSRT(JsCreatePropertyId(STR_AND_LENGTH("value"), &valueProperty));
       JsValueRef method;
       CHECK_NAPI(CreatePropertyFunction(env, property_name,
         p->method, p->data, reinterpret_cast<napi_value*>(&method)));
-      CHECK_JSRT(env, JsSetProperty(descriptor, valueProperty, method, true));
+      CHECK_JSRT(JsSetProperty(descriptor, valueProperty, method, true));
     } else {
-      RETURN_STATUS_IF_FALSE(env, p->value != nullptr, napi_invalid_arg);
+      RETURN_STATUS_IF_FALSE(p->value != nullptr, Status::InvalidArg);
 
       JsPropertyIdRef writableProperty;
-      CHECK_JSRT(env, JsCreatePropertyId(STR_AND_LENGTH("writable"),
+      CHECK_JSRT(JsCreatePropertyId(STR_AND_LENGTH("writable"),
                                     &writableProperty));
       JsValueRef writable;
-      CHECK_JSRT(env, JsBoolToBoolean((p->attributes & napi_writable), &writable));
-      CHECK_JSRT(env, JsSetProperty(descriptor, writableProperty, writable, true));
+      CHECK_JSRT(JsBoolToBoolean((p->attributes & napi_writable), &writable));
+      CHECK_JSRT(JsSetProperty(descriptor, writableProperty, writable, true));
 
       JsPropertyIdRef valueProperty;
-      CHECK_JSRT(env, JsCreatePropertyId(STR_AND_LENGTH("value"), &valueProperty));
-      CHECK_JSRT(env, JsSetProperty(descriptor, valueProperty,
+      CHECK_JSRT(JsCreatePropertyId(STR_AND_LENGTH("value"), &valueProperty));
+      CHECK_JSRT(JsSetProperty(descriptor, valueProperty,
         reinterpret_cast<JsValueRef>(p->value), true));
     }
 
     JsPropertyIdRef nameProperty;
-    CHECK_JSRT(env, JsPropertyIdFromPropertyDescriptor(p, &nameProperty));
+    CHECK_JSRT(JsPropertyIdFromPropertyDescriptor(p, &nameProperty));
     bool result;
-    CHECK_JSRT(env, JsDefineProperty(
+    CHECK_JSRT(JsDefineProperty(
       reinterpret_cast<JsValueRef>(object),
       reinterpret_cast<JsPropertyIdRef>(nameProperty),
       reinterpret_cast<JsValueRef>(descriptor),
@@ -1783,11 +2330,11 @@ napi_status napi_define_properties(napi_env env,
 
 napi_status napi_is_array(napi_env env, napi_value value, bool* result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, value);
-  CHECK_ARG(env, result);
+  CHECK_ARG(value);
+  CHECK_ARG(result);
   JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
   JsValueType type = JsUndefined;
-  CHECK_JSRT(env, JsGetValueType(jsValue, &type));
+  CHECK_JSRT(JsGetValueType(jsValue, &type));
   *result = (type == JsArray);
   return napi_ok;
 }
@@ -1796,15 +2343,15 @@ napi_status napi_get_array_length(napi_env env,
                                   napi_value value,
                                   uint32_t* result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, value);
-  CHECK_ARG(env, result);
+  CHECK_ARG(value);
+  CHECK_ARG(result);
   JsPropertyIdRef propertyIdRef;
-  CHECK_JSRT(env, JsCreatePropertyId(STR_AND_LENGTH("length"), &propertyIdRef));
+  CHECK_JSRT(JsCreatePropertyId(STR_AND_LENGTH("length"), &propertyIdRef));
   JsValueRef lengthRef;
   JsValueRef arrayRef = reinterpret_cast<JsValueRef>(value);
-  CHECK_JSRT(env, JsGetProperty(arrayRef, propertyIdRef, &lengthRef));
+  CHECK_JSRT(JsGetProperty(arrayRef, propertyIdRef, &lengthRef));
   double sizeInDouble;
-  CHECK_JSRT(env, JsNumberToDouble(lengthRef, &sizeInDouble));
+  CHECK_JSRT(JsNumberToDouble(lengthRef, &sizeInDouble));
   *result = static_cast<uint32_t>(sizeInDouble);
   return napi_ok;
 }
@@ -1814,12 +2361,12 @@ napi_status napi_strict_equals(napi_env env,
                                napi_value rhs,
                                bool* result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, lhs);
-  CHECK_ARG(env, rhs);
-  CHECK_ARG(env, result);
+  CHECK_ARG(lhs);
+  CHECK_ARG(rhs);
+  CHECK_ARG(result);
   JsValueRef object1 = reinterpret_cast<JsValueRef>(lhs);
   JsValueRef object2 = reinterpret_cast<JsValueRef>(rhs);
-  CHECK_JSRT(env, JsStrictEquals(object1, object2, result));
+  CHECK_JSRT(JsStrictEquals(object1, object2, result));
   return napi_ok;
 }
 
@@ -1827,17 +2374,17 @@ napi_status napi_get_prototype(napi_env env,
                                napi_value object,
                                napi_value* result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, result);
+  CHECK_ARG(result);
   JsValueRef obj = reinterpret_cast<JsValueRef>(object);
-  CHECK_JSRT(env, JsGetPrototype(obj, reinterpret_cast<JsValueRef*>(result)));
+  CHECK_JSRT(JsGetPrototype(obj, reinterpret_cast<JsValueRef*>(result)));
   return napi_ok;
 }
 
 
 napi_status napi_get_boolean(napi_env env, bool value, napi_value* result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, result);
-  CHECK_JSRT(env, JsBoolToBoolean(value, reinterpret_cast<JsValueRef*>(result)));
+  CHECK_ARG(result);
+  CHECK_JSRT(JsBoolToBoolean(value, reinterpret_cast<JsValueRef*>(result)));
   return napi_ok;
 }
 
@@ -1846,12 +2393,12 @@ napi_status napi_create_error(napi_env env,
                               napi_value msg,
                               napi_value* result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, msg);
-  CHECK_ARG(env, result);
+  CHECK_ARG(msg);
+  CHECK_ARG(result);
   JsValueRef message = reinterpret_cast<JsValueRef>(msg);
 
   JsValueRef error = JS_INVALID_REFERENCE;
-  CHECK_JSRT(env, JsCreateError(message, &error));
+  CHECK_JSRT(JsCreateError(message, &error));
   CHECK_NAPI(SetErrorCode(env, error, code, nullptr));
 
   *result = reinterpret_cast<napi_value>(error);
@@ -1863,12 +2410,12 @@ napi_status napi_create_type_error(napi_env env,
                                    napi_value msg,
                                    napi_value* result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, msg);
-  CHECK_ARG(env, result);
+  CHECK_ARG(msg);
+  CHECK_ARG(result);
   JsValueRef message = reinterpret_cast<JsValueRef>(msg);
 
   JsValueRef error = JS_INVALID_REFERENCE;
-  CHECK_JSRT(env, JsCreateTypeError(message,  &error));
+  CHECK_JSRT(JsCreateTypeError(message,  &error));
   CHECK_NAPI(SetErrorCode(env, error, code, nullptr));
 
   *result = reinterpret_cast<napi_value>(error);
@@ -1880,8 +2427,8 @@ napi_status napi_create_range_error(napi_env env,
                                     napi_value msg,
                                     napi_value* result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, msg);
-  CHECK_ARG(env, result);
+  CHECK_ARG(msg);
+  CHECK_ARG(result);
   JsValueRef message = reinterpret_cast<JsValueRef>(msg);
 
   JsValueRef error = JS_INVALID_REFERENCE;
@@ -1895,11 +2442,11 @@ napi_status napi_create_range_error(napi_env env,
 
 napi_status napi_typeof(napi_env env, napi_value value, napi_valuetype* result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, value);
-  CHECK_ARG(env, result);
+  CHECK_ARG(value);
+  CHECK_ARG(result);
   JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
   JsValueType valueType = JsUndefined;
-  CHECK_JSRT(env, JsGetValueType(jsValue, &valueType));
+  CHECK_JSRT(JsGetValueType(jsValue, &valueType));
 
   switch (valueType) {
     case JsUndefined: *result = napi_undefined; break;
@@ -1931,11 +2478,11 @@ napi_status napi_get_cb_info(napi_env env,              // [in] NAPI environment
                              napi_value* this_arg,      // [out] Receives the JS 'this' arg for the call
                              void** data) {             // [out] Receives the data pointer for the callback.
   CHECK_ENV(env);
-  CHECK_ARG(env, cbinfo);
+  CHECK_ARG(cbinfo);
   const CallbackInfo* info = reinterpret_cast<CallbackInfo*>(cbinfo);
 
   if (argv != nullptr) {
-    CHECK_ARG(env, argc);
+    CHECK_ARG(argc);
 
     size_t i = 0;
     size_t min = std::min(*argc, static_cast<size_t>(info->argc));
@@ -1973,8 +2520,8 @@ napi_status napi_get_new_target(napi_env env,
                                 napi_callback_info cbinfo,
                                 napi_value* result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, cbinfo);
-  CHECK_ARG(env, result);
+  CHECK_ARG(cbinfo);
+  CHECK_ARG(result);
 
   const CallbackInfo* info = reinterpret_cast<CallbackInfo*>(cbinfo);
   if (info->isConstructCall) {
@@ -1993,9 +2540,9 @@ napi_status napi_call_function(napi_env env,
                                const napi_value* argv,
                                napi_value* result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, recv);
+  CHECK_ARG(recv);
   if (argc > 0) {
-    CHECK_ARG(env, argv);
+    CHECK_ARG(argv);
   }
 
   JsValueRef object = reinterpret_cast<JsValueRef>(recv);
@@ -2006,7 +2553,7 @@ napi_status napi_call_function(napi_env env,
     args[i + 1] = reinterpret_cast<JsValueRef>(argv[i]);
   }
   JsValueRef returnValue;
-  CHECK_JSRT(env, JsCallFunction(
+  CHECK_JSRT(JsCallFunction(
     function,
     args.data(),
     static_cast<uint16_t>(argc + 1),
@@ -2020,7 +2567,7 @@ napi_status napi_call_function(napi_env env,
 napi_status napi_throw(napi_env env, napi_value error) {
   CHECK_ENV(env);
   JsValueRef exception = reinterpret_cast<JsValueRef>(error);
-  CHECK_JSRT(env, JsSetException(exception));
+  CHECK_JSRT(JsSetException(exception));
   return napi_ok;
 }
 
@@ -2031,10 +2578,10 @@ napi_status napi_throw_error(napi_env env,
   JsValueRef strRef;
   JsValueRef exception;
   size_t length = strlen(msg);
-  CHECK_JSRT(env, JsCreateString(msg, length, &strRef));
-  CHECK_JSRT(env, JsCreateError(strRef, &exception));
+  CHECK_JSRT(JsCreateString(msg, length, &strRef));
+  CHECK_JSRT(JsCreateError(strRef, &exception));
   CHECK_NAPI(SetErrorCode(env, exception, nullptr, code));
-  CHECK_JSRT(env, JsSetException(exception));
+  CHECK_JSRT(JsSetException(exception));
   return napi_ok;
 }
 
@@ -2045,10 +2592,10 @@ napi_status napi_throw_type_error(napi_env env,
   JsValueRef strRef;
   JsValueRef exception;
   size_t length = strlen(msg);
-  CHECK_JSRT(env, JsCreateString(msg, length, &strRef));
-  CHECK_JSRT(env, JsCreateTypeError(strRef, &exception));
+  CHECK_JSRT(JsCreateString(msg, length, &strRef));
+  CHECK_JSRT(JsCreateTypeError(strRef, &exception));
   CHECK_NAPI(SetErrorCode(env, exception, nullptr, code));
-  CHECK_JSRT(env, JsSetException(exception));
+  CHECK_JSRT(JsSetException(exception));
   return napi_ok;
 }
 
@@ -2059,27 +2606,27 @@ napi_status napi_throw_range_error(napi_env env,
   JsValueRef strRef;
   JsValueRef exception;
   size_t length = strlen(msg);
-  CHECK_JSRT(env, JsCreateString(msg, length, &strRef));
-  CHECK_JSRT(env, JsCreateRangeError(strRef, &exception));
+  CHECK_JSRT(JsCreateString(msg, length, &strRef));
+  CHECK_JSRT(JsCreateRangeError(strRef, &exception));
   CHECK_NAPI(SetErrorCode(env, exception, nullptr, code));
-  CHECK_JSRT(env, JsSetException(exception));
+  CHECK_JSRT(JsSetException(exception));
   return napi_ok;
 }
 
 napi_status napi_is_error(napi_env env, napi_value value, bool* result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, value);
-  CHECK_ARG(env, result);
+  CHECK_ARG(value);
+  CHECK_ARG(result);
   JsValueType valueType;
-  CHECK_JSRT(env, JsGetValueType(value, &valueType));
+  CHECK_JSRT(JsGetValueType(value, &valueType));
   *result = (valueType == JsError);
   return napi_ok;
 }
 
 napi_status napi_get_value_double(napi_env env, napi_value value, double* result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, value);
-  CHECK_ARG(env, result);
+  CHECK_ARG(value);
+  CHECK_ARG(result);
   JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
   CHECK_JSRT_EXPECTED(env, JsNumberToDouble(jsValue, result), napi_number_expected);
   return napi_ok;
@@ -2087,8 +2634,8 @@ napi_status napi_get_value_double(napi_env env, napi_value value, double* result
 
 napi_status napi_get_value_int32(napi_env env, napi_value v, int32_t* result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, v);
-  CHECK_ARG(env, result);
+  CHECK_ARG(v);
+  CHECK_ARG(result);
   JsValueRef value = reinterpret_cast<JsValueRef>(v);
   int valueInt;
   CHECK_JSRT_EXPECTED(env, JsNumberToInt(value, &valueInt), napi_number_expected);
@@ -2098,8 +2645,8 @@ napi_status napi_get_value_int32(napi_env env, napi_value v, int32_t* result) {
 
 napi_status napi_get_value_uint32(napi_env env, napi_value value, uint32_t* result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, value);
-  CHECK_ARG(env, result);
+  CHECK_ARG(value);
+  CHECK_ARG(result);
   JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
   int valueInt;
   CHECK_JSRT_EXPECTED(env, JsNumberToInt(jsValue, &valueInt), napi_number_expected);
@@ -2109,8 +2656,8 @@ napi_status napi_get_value_uint32(napi_env env, napi_value value, uint32_t* resu
 
 napi_status napi_get_value_int64(napi_env env, napi_value value, int64_t* result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, value);
-  CHECK_ARG(env, result);
+  CHECK_ARG(value);
+  CHECK_ARG(result);
 
   JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
 
@@ -2129,8 +2676,8 @@ napi_status napi_get_value_int64(napi_env env, napi_value value, int64_t* result
 
 napi_status napi_get_value_bool(napi_env env, napi_value value, bool* result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, value);
-  CHECK_ARG(env, result);
+  CHECK_ARG(value);
+  CHECK_ARG(result);
   JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
   CHECK_JSRT_EXPECTED(env, JsBooleanToBool(jsValue, result), napi_boolean_expected);
   return napi_ok;
@@ -2140,66 +2687,66 @@ napi_status napi_get_value_bool(napi_env env, napi_value value, bool* result) {
 // number of bytes (excluding the null terminator) copied into buf.
 // A sufficient buffer size should be greater than the length of string,
 // reserving space for null terminator.
-// If bufsize is insufficient, the string will be truncated and null terminated.
+// If bufSize is insufficient, the string will be truncated and null terminated.
 // If buf is NULL, this method returns the length of the string (in bytes)
 // via the result parameter.
 // The result argument is optional unless buf is NULL.
 napi_status napi_get_value_string_latin1(napi_env env,
                                          napi_value value,
                                          char* buf,
-                                         size_t bufsize,
+                                         size_t bufSize,
                                          size_t* result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, value);
+  CHECK_ARG(value);
 
   JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
 
   if (!buf) {
-    CHECK_ARG(env, result);
+    CHECK_ARG(result);
     CHECK_JSRT_EXPECTED(env,
       JsCopyString(jsValue, nullptr, 0, result, CP_LATIN1),
-      napi_string_expected);
+      Status::StringExpected);
   } else {
     size_t count = 0;
     CHECK_JSRT_EXPECTED(env,
       JsCopyString(jsValue, nullptr, 0, &count),
-      napi_string_expected);
+      Status::StringExpected);
 
-    if (bufsize <= count) {
-      // if bufsize == count there is no space for null terminator
+    if (bufSize <= count) {
+      // if bufSize == count there is no space for null terminator
       // Slow path: must implement truncation here.
       char* fullBuffer = static_cast<char*>(malloc(count));
       //CHAKRA_VERIFY(fullBuffer != nullptr);
 
       CHECK_JSRT_EXPECTED(env,
         JsCopyString(jsValue, fullBuffer, count, nullptr),
-        napi_string_expected);
-      memmove(buf, fullBuffer, sizeof(char) * bufsize);
+        Status::StringExpected);
+      memmove(buf, fullBuffer, sizeof(char) * bufSize);
       free(fullBuffer);
 
       // Truncate string to the start of the last codepoint
-      if (bufsize > 0 &&
-          (((buf[bufsize-1] & 0x80) == 0)
-            || UTF8_MULTIBYTE_START(buf[bufsize-1]))
+      if (bufSize > 0 &&
+          (((buf[bufSize-1] & 0x80) == 0)
+            || UTF8_MULTIBYTE_START(buf[bufSize-1]))
         ) {
         // Last byte is a single byte codepoint or
         // starts a multibyte codepoint
-        bufsize -= 1;
-      } else if (bufsize > 1 && UTF8_MULTIBYTE_START(buf[bufsize-2])) {
+        bufSize -= 1;
+      } else if (bufSize > 1 && UTF8_MULTIBYTE_START(buf[bufSize-2])) {
         // Second last byte starts a multibyte codepoint,
-        bufsize -= 2;
-      } else if (bufsize > 2 && UTF8_MULTIBYTE_START(buf[bufsize-3])) {
+        bufSize -= 2;
+      } else if (bufSize > 2 && UTF8_MULTIBYTE_START(buf[bufSize-3])) {
         // Third last byte starts a multibyte codepoint
-        bufsize -= 3;
-      } else if (bufsize > 3 && UTF8_MULTIBYTE_START(buf[bufsize-4])) {
+        bufSize -= 3;
+      } else if (bufSize > 3 && UTF8_MULTIBYTE_START(buf[bufSize-4])) {
         // Fourth last byte starts a multibyte codepoint
-        bufsize -= 4;
+        bufSize -= 4;
       }
 
-      buf[bufsize] = '\0';
+      buf[bufSize] = '\0';
 
       if (result) {
-        *result = bufsize;
+        *result = bufSize;
       }
 
       return napi_ok;
@@ -2207,8 +2754,8 @@ napi_status napi_get_value_string_latin1(napi_env env,
 
     // Fastpath, result fits in the buffer
     CHECK_JSRT_EXPECTED(env,
-      JsCopyString(jsValue, buf, bufsize-1, &count),
-      napi_string_expected);
+      JsCopyString(jsValue, buf, bufSize-1, &count),
+      Status::StringExpected);
 
     buf[count] = 0;
 
@@ -2224,66 +2771,66 @@ napi_status napi_get_value_string_latin1(napi_env env,
 // number of bytes (excluding the null terminator) copied into buf.
 // A sufficient buffer size should be greater than the length of string,
 // reserving space for null terminator.
-// If bufsize is insufficient, the string will be truncated and null terminated.
+// If bufSize is insufficient, the string will be truncated and null terminated.
 // If buf is NULL, this method returns the length of the string (in bytes)
 // via the result parameter.
 // The result argument is optional unless buf is NULL.
 napi_status napi_get_value_string_utf8(napi_env env,
                                        napi_value value,
                                        char* buf,
-                                       size_t bufsize,
+                                       size_t bufSize,
                                        size_t* result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, value);
+  CHECK_ARG(value);
 
   JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
 
   if (!buf) {
-    CHECK_ARG(env, result);
+    CHECK_ARG(result);
     CHECK_JSRT_EXPECTED(env,
       JsCopyString(jsValue, nullptr, 0, result),
-      napi_string_expected);
+      Status::StringExpected);
   } else {
     size_t count = 0;
     CHECK_JSRT_EXPECTED(env,
       JsCopyString(jsValue, nullptr, 0, &count),
-      napi_string_expected);
+      Status::StringExpected);
 
-    if (bufsize <= count) {
-      // if bufsize == count there is no space for null terminator
+    if (bufSize <= count) {
+      // if bufSize == count there is no space for null terminator
       // Slow path: must implement truncation here.
       char* fullBuffer = static_cast<char*>(malloc(count));
       //CHAKRA_VERIFY(fullBuffer != nullptr);
 
       CHECK_JSRT_EXPECTED(env,
         JsCopyString(jsValue, fullBuffer, count, nullptr),
-        napi_string_expected);
-      memmove(buf, fullBuffer, sizeof(char) * bufsize);
+        Status::StringExpected);
+      memmove(buf, fullBuffer, sizeof(char) * bufSize);
       free(fullBuffer);
 
       // Truncate string to the start of the last codepoint
-      if (bufsize > 0 &&
-          (((buf[bufsize-1] & 0x80) == 0)
-           || UTF8_MULTIBYTE_START(buf[bufsize-1]))
+      if (bufSize > 0 &&
+          (((buf[bufSize-1] & 0x80) == 0)
+           || UTF8_MULTIBYTE_START(buf[bufSize-1]))
         ) {
         // Last byte is a single byte codepoint or
         // starts a multibyte codepoint
-        bufsize -= 1;
-      } else if (bufsize > 1 && UTF8_MULTIBYTE_START(buf[bufsize-2])) {
+        bufSize -= 1;
+      } else if (bufSize > 1 && UTF8_MULTIBYTE_START(buf[bufSize-2])) {
         // Second last byte starts a multibyte codepoint,
-        bufsize -= 2;
-      } else if (bufsize > 2 && UTF8_MULTIBYTE_START(buf[bufsize-3])) {
+        bufSize -= 2;
+      } else if (bufSize > 2 && UTF8_MULTIBYTE_START(buf[bufSize-3])) {
         // Third last byte starts a multibyte codepoint
-        bufsize -= 3;
-      } else if (bufsize > 3 && UTF8_MULTIBYTE_START(buf[bufsize-4])) {
+        bufSize -= 3;
+      } else if (bufSize > 3 && UTF8_MULTIBYTE_START(buf[bufSize-4])) {
         // Fourth last byte starts a multibyte codepoint
-        bufsize -= 4;
+        bufSize -= 4;
       }
 
-      buf[bufsize] = '\0';
+      buf[bufSize] = '\0';
 
       if (result) {
-        *result = bufsize;
+        *result = bufSize;
       }
 
       return napi_ok;
@@ -2291,8 +2838,8 @@ napi_status napi_get_value_string_utf8(napi_env env,
 
     // Fastpath, result fits in the buffer
     CHECK_JSRT_EXPECTED(env,
-      JsCopyString(jsValue, buf, bufsize-1, &count),
-      napi_string_expected);
+      JsCopyString(jsValue, buf, bufSize-1, &count),
+      Status::StringExpected);
 
     buf[count] = 0;
 
@@ -2308,40 +2855,40 @@ napi_status napi_get_value_string_utf8(napi_env env,
 // number of 2-byte code units (excluding the null terminator) copied into buf.
 // A sufficient buffer size should be greater than the length of string,
 // reserving space for null terminator.
-// If bufsize is insufficient, the string will be truncated and null terminated.
+// If bufSize is insufficient, the string will be truncated and null terminated.
 // If buf is NULL, this method returns the length of the string (in 2-byte
 // code units) via the result parameter.
 // The result argument is optional unless buf is NULL.
 napi_status napi_get_value_string_utf16(napi_env env,
                                         napi_value value,
                                         char16_t* buf,
-                                        size_t bufsize,
+                                        size_t bufSize,
                                         size_t* result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, value);
+  CHECK_ARG(value);
 
   JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
 
   if (!buf) {
-    CHECK_ARG(env, result);
+    CHECK_ARG(result);
 
     CHECK_JSRT_EXPECTED(env,
       JsCopyStringUtf16(jsValue, nullptr, 0, result),
-      napi_string_expected);
+      Status::StringExpected);
   } else {
     size_t copied = 0;
     CHECK_JSRT_EXPECTED(env,
       JsCopyStringUtf16(
         jsValue,
         buf,
-        bufsize - 1,
+        bufSize - 1,
         &copied),
-      napi_string_expected);
+      Status::StringExpected);
 
-    if (copied < bufsize - 1) {
+    if (copied < bufSize - 1) {
       buf[copied] = 0;
     } else {
-      buf[bufsize - 1] = 0;
+      buf[bufSize - 1] = 0;
     }
 
     if (result != nullptr) {
@@ -2355,7 +2902,7 @@ napi_status napi_get_value_string_utf16(napi_env env,
 napi_status napi_coerce_to_bool(napi_env env,
                                 napi_value v,
                                 napi_value* result) {
-  CHECK_ARG(env, result);
+  CHECK_ARG(result);
   JsValueRef value = reinterpret_cast<JsValueRef>(v);
   CHECK_JSRT(env,
     JsConvertValueToBoolean(value, reinterpret_cast<JsValueRef*>(result)));
@@ -2366,8 +2913,8 @@ napi_status napi_coerce_to_number(napi_env env,
                                   napi_value value,
                                   napi_value* result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, value);
-  CHECK_ARG(env, result);
+  CHECK_ARG(value);
+  CHECK_ARG(result);
   JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
   CHECK_JSRT(env,
     JsConvertValueToNumber(jsValue, reinterpret_cast<JsValueRef*>(result)));
@@ -2378,8 +2925,8 @@ napi_status napi_coerce_to_object(napi_env env,
                                   napi_value value,
                                   napi_value* result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, value);
-  CHECK_ARG(env, result);
+  CHECK_ARG(value);
+  CHECK_ARG(result);
   JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
   CHECK_JSRT(env,
     JsConvertValueToObject(jsValue, reinterpret_cast<JsValueRef*>(result)));
@@ -2390,8 +2937,8 @@ napi_status napi_coerce_to_string(napi_env env,
                                   napi_value value,
                                   napi_value* result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, value);
-  CHECK_ARG(env, result);
+  CHECK_ARG(value);
+  CHECK_ARG(result);
   JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
   CHECK_JSRT(env,
     JsConvertValueToString(jsValue, reinterpret_cast<JsValueRef*>(result)));
@@ -2405,13 +2952,13 @@ napi_status napi_wrap(napi_env env,
                       void* finalize_hint,
                       napi_ref* result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, js_object);
+  CHECK_ARG(js_object);
 
   JsValueRef value = reinterpret_cast<JsValueRef>(js_object);
 
   JsValueRef wrapper = JS_INVALID_REFERENCE;
   CHECK_NAPI(FindWrapper(env, value, &wrapper));
-  RETURN_STATUS_IF_FALSE(env, wrapper == JS_INVALID_REFERENCE, napi_invalid_arg);
+  RETURN_STATUS_IF_FALSE(wrapper == JS_INVALID_REFERENCE, Status::InvalidArg);
 
   ExternalData* externalData = new ExternalData(
     env, native_object, finalize_cb, finalize_hint);
@@ -2419,14 +2966,14 @@ napi_status napi_wrap(napi_env env,
 
   // Create an external object that will hold the external data pointer.
   JsValueRef external = JS_INVALID_REFERENCE;
-  CHECK_JSRT(env, JsCreateExternalObject(
+  CHECK_JSRT(JsCreateExternalObject(
     externalData, ExternalData::Finalize, &external));
 
   // Insert the external object into the value's prototype chain.
   JsValueRef valuePrototype = JS_INVALID_REFERENCE;
-  CHECK_JSRT(env, JsGetPrototype(value, &valuePrototype));
-  CHECK_JSRT(env, JsSetPrototype(external, valuePrototype));
-  CHECK_JSRT(env, JsSetPrototype(value, external));
+  CHECK_JSRT(JsGetPrototype(value, &valuePrototype));
+  CHECK_JSRT(JsSetPrototype(external, valuePrototype));
+  CHECK_JSRT(JsSetPrototype(value, external));
 
   if (result != nullptr) {
     CHECK_NAPI(napi_create_reference(env, js_object, 0, result));
@@ -2437,7 +2984,7 @@ napi_status napi_wrap(napi_env env,
 
 napi_status napi_unwrap(napi_env env, napi_value js_object, void** result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, js_object);
+  CHECK_ARG(js_object);
 
   JsValueRef value = reinterpret_cast<JsValueRef>(js_object);
 
@@ -2451,7 +2998,7 @@ napi_status napi_unwrap(napi_env env, napi_value js_object, void** result) {
 
 napi_status napi_remove_wrap(napi_env env, napi_value js_object, void** result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, js_object);
+  CHECK_ARG(js_object);
 
   JsValueRef value = reinterpret_cast<JsValueRef>(js_object);
 
@@ -2459,16 +3006,16 @@ napi_status napi_remove_wrap(napi_env env, napi_value js_object, void** result) 
   JsValueRef parent = JS_INVALID_REFERENCE;
   JsValueRef wrapper = JS_INVALID_REFERENCE;
   CHECK_NAPI(Unwrap(env, value, &externalData, &wrapper, &parent));
-  RETURN_STATUS_IF_FALSE(env, parent != JS_INVALID_REFERENCE, napi_invalid_arg);
-  RETURN_STATUS_IF_FALSE(env, wrapper != JS_INVALID_REFERENCE, napi_invalid_arg);
+  RETURN_STATUS_IF_FALSE(parent != JS_INVALID_REFERENCE, Status::InvalidArg);
+  RETURN_STATUS_IF_FALSE(wrapper != JS_INVALID_REFERENCE, Status::InvalidArg);
 
   // Remove the external from the prototype chain
   JsValueRef wrapperProto = JS_INVALID_REFERENCE;
-  CHECK_JSRT(env, JsGetPrototype(wrapper, &wrapperProto));
-  CHECK_JSRT(env, JsSetPrototype(parent, wrapperProto));
+  CHECK_JSRT(JsGetPrototype(wrapper, &wrapperProto));
+  CHECK_JSRT(JsSetPrototype(parent, wrapperProto));
 
   // Clear the external data from the object
-  CHECK_JSRT(env, JsSetExternalData(wrapper, nullptr));
+  CHECK_JSRT(JsSetExternalData(wrapper, nullptr));
 
   if (externalData != nullptr) {
     *result = externalData->Data();
@@ -2486,13 +3033,13 @@ napi_status napi_create_external(napi_env env,
                                  void* finalize_hint,
                                  napi_value* result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, result);
+  CHECK_ARG(result);
 
   ExternalData* externalData = new ExternalData(
     env, data, finalize_cb, finalize_hint);
   if (externalData == nullptr) return napi_set_last_error(env, napi_generic_failure);
 
-  CHECK_JSRT(env, JsCreateExternalObject(
+  CHECK_JSRT(JsCreateExternalObject(
     externalData,
     ExternalData::Finalize,
     reinterpret_cast<JsValueRef*>(result)));
@@ -2502,11 +3049,11 @@ napi_status napi_create_external(napi_env env,
 
 napi_status napi_get_value_external(napi_env env, napi_value value, void** result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, value);
-  CHECK_ARG(env, result);
+  CHECK_ARG(value);
+  CHECK_ARG(result);
 
   ExternalData* externalData;
-  CHECK_JSRT(env, JsGetExternalData(
+  CHECK_JSRT(JsGetExternalData(
     reinterpret_cast<JsValueRef>(value),
     reinterpret_cast<void**>(&externalData)));
 
@@ -2521,8 +3068,8 @@ napi_status napi_create_reference(napi_env env,
                                   uint32_t initial_refcount,
                                   napi_ref* result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, value);
-  CHECK_ARG(env, result);
+  CHECK_ARG(value);
+  CHECK_ARG(result);
 
   auto jsValue = reinterpret_cast<JsValueRef>(value);
   auto info = new RefInfo{ reinterpret_cast<JsValueRef>(value), initial_refcount };
@@ -2532,7 +3079,7 @@ napi_status napi_create_reference(napi_env env,
 
   if (info->count != 0)
   {
-    CHECK_JSRT(env, JsAddRef(jsValue, nullptr));
+    CHECK_JSRT(JsAddRef(jsValue, nullptr));
   }
 
   *result = reinterpret_cast<napi_ref>(info);
@@ -2543,12 +3090,12 @@ napi_status napi_create_reference(napi_env env,
 // unless there are other references to it.
 napi_status napi_delete_reference(napi_env env, napi_ref ref) {
   CHECK_ENV(env);
-  CHECK_ARG(env, ref);
+  CHECK_ARG(ref);
 
   auto info = reinterpret_cast<RefInfo*>(ref);
 
   if (info->count != 0) {
-    CHECK_JSRT(env, JsRelease(info->value, nullptr));
+    CHECK_JSRT(JsRelease(info->value, nullptr));
   }
 
   delete info;
@@ -2562,10 +3109,10 @@ napi_status napi_delete_reference(napi_env env, napi_ref ref) {
 // the refcount is 0 and the target is unavailable results in an error.
 napi_status napi_reference_ref(napi_env env, napi_ref ref, uint32_t* result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, ref);
+  CHECK_ARG(ref);
   auto info = reinterpret_cast<RefInfo*>(ref);
   if (info->count++ == 0) {
-    CHECK_JSRT(env, JsAddRef(info->value, nullptr));
+    CHECK_JSRT(JsAddRef(info->value, nullptr));
   }
   if (result != nullptr) {
     *result = info->count;
@@ -2579,10 +3126,10 @@ napi_status napi_reference_ref(napi_env env, napi_ref ref, uint32_t* result) {
 // is already 0 results in an error.
 napi_status napi_reference_unref(napi_env env, napi_ref ref, uint32_t* result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, ref);
+  CHECK_ARG(ref);
   auto info = reinterpret_cast<RefInfo*>(ref);
   if (--info->count == 0) {
-    CHECK_JSRT(env, JsRelease(info->value, nullptr));
+    CHECK_JSRT(JsRelease(info->value, nullptr));
   }
   if (result != nullptr) {
     *result = info->count;
@@ -2597,8 +3144,8 @@ napi_status napi_get_reference_value(napi_env env,
                                      napi_ref ref,
                                      napi_value* result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, ref);
-  CHECK_ARG(env, result);
+  CHECK_ARG(ref);
+  CHECK_ARG(result);
   auto info = reinterpret_cast<RefInfo*>(ref);
   if (info->count == 0) {
       *result = nullptr;
@@ -2611,7 +3158,7 @@ napi_status napi_get_reference_value(napi_env env,
 // Stub implementation of handle scope apis for JSRT.
 napi_status napi_open_handle_scope(napi_env env, napi_handle_scope* result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, result);
+  CHECK_ARG(result);
   *result = reinterpret_cast<napi_handle_scope>(1);
   return napi_ok;
 }
@@ -2619,7 +3166,7 @@ napi_status napi_open_handle_scope(napi_env env, napi_handle_scope* result) {
 // Stub implementation of handle scope apis for JSRT.
 napi_status napi_close_handle_scope(napi_env env, napi_handle_scope scope) {
   CHECK_ENV(env);
-  CHECK_ARG(env, scope);
+  CHECK_ARG(scope);
   return napi_ok;
 }
 
@@ -2628,7 +3175,7 @@ napi_status napi_open_escapable_handle_scope(
   napi_env env,
   napi_escapable_handle_scope* result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, result);
+  CHECK_ARG(result);
   *result = reinterpret_cast<napi_escapable_handle_scope>(1);
   return napi_ok;
 }
@@ -2638,7 +3185,7 @@ napi_status napi_close_escapable_handle_scope(
   napi_env env,
   napi_escapable_handle_scope scope) {
   CHECK_ENV(env);
-  CHECK_ARG(env, scope);
+  CHECK_ARG(scope);
   return napi_ok;
 }
 
@@ -2649,9 +3196,9 @@ napi_status napi_escape_handle(napi_env env,
                                napi_value escapee,
                                napi_value* result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, scope);
-  CHECK_ARG(env, escapee);
-  CHECK_ARG(env, result);
+  CHECK_ARG(scope);
+  CHECK_ARG(escapee);
+  CHECK_ARG(result);
   *result = escapee;
   return napi_ok;
 }
@@ -2662,18 +3209,18 @@ napi_status napi_new_instance(napi_env env,
                               const napi_value* argv,
                               napi_value* result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, constructor);
+  CHECK_ARG(constructor);
   if (argc > 0) {
-    CHECK_ARG(env, argv);
+    CHECK_ARG(argv);
   }
-  CHECK_ARG(env, result);
+  CHECK_ARG(result);
   JsValueRef function = reinterpret_cast<JsValueRef>(constructor);
   std::vector<JsValueRef> args(argc + 1);
-  CHECK_JSRT(env, JsGetUndefinedValue(&args[0]));
+  CHECK_JSRT(JsGetUndefinedValue(&args[0]));
   for (size_t i = 0; i < argc; i++) {
     args[i + 1] = reinterpret_cast<JsValueRef>(argv[i]);
   }
-  CHECK_JSRT(env, JsConstructObject(
+  CHECK_JSRT(JsConstructObject(
     function,
     args.data(),
     static_cast<uint16_t>(argc + 1),
@@ -2686,8 +3233,8 @@ napi_status napi_instanceof(napi_env env,
                             napi_value c,
                             bool* result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, object);
-  CHECK_ARG(env, result);
+  CHECK_ARG(object);
+  CHECK_ARG(result);
   JsValueRef obj = reinterpret_cast<JsValueRef>(object);
   JsValueRef constructor = reinterpret_cast<JsValueRef>(c);
 
@@ -2702,29 +3249,29 @@ napi_status napi_instanceof(napi_env env,
                           "ERR_NAPI_CONS_FUNCTION",
                           "constructor must be a function");
 
-    return napi_set_last_error(env, napi_invalid_arg);
+    return napi_set_last_error(env, Status::InvalidArg);
   }
 
-  CHECK_JSRT(env, JsInstanceOf(obj, constructor, result));
+  CHECK_JSRT(JsInstanceOf(obj, constructor, result));
   return napi_ok;
 }
 
 napi_status napi_is_exception_pending(napi_env env, bool* result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, result);
-  CHECK_JSRT(env, JsHasException(result));
+  CHECK_ARG(result);
+  CHECK_JSRT(JsHasException(result));
   return napi_ok;
 }
 
 napi_status napi_get_and_clear_last_exception(napi_env env,
                                               napi_value* result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, result);
+  CHECK_ARG(result);
 
   bool hasException;
-  CHECK_JSRT(env, JsHasException(&hasException));
+  CHECK_JSRT(JsHasException(&hasException));
   if (hasException) {
-    CHECK_JSRT(env, JsGetAndClearException(reinterpret_cast<JsValueRef*>(result)));
+    CHECK_JSRT(JsGetAndClearException(reinterpret_cast<JsValueRef*>(result)));
   } else {
     CHECK_NAPI(napi_get_undefined(env, result));
   }
@@ -2734,12 +3281,12 @@ napi_status napi_get_and_clear_last_exception(napi_env env,
 
 napi_status napi_is_arraybuffer(napi_env env, napi_value value, bool* result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, value);
-  CHECK_ARG(env, result);
+  CHECK_ARG(value);
+  CHECK_ARG(result);
 
   JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
   JsValueType valueType;
-  CHECK_JSRT(env, JsGetValueType(jsValue, &valueType));
+  CHECK_JSRT(JsGetValueType(jsValue, &valueType));
 
   *result = (valueType == JsArrayBuffer);
   return napi_ok;
@@ -2750,14 +3297,14 @@ napi_status napi_create_arraybuffer(napi_env env,
                                     void** data,
                                     napi_value* result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, result);
+  CHECK_ARG(result);
 
   JsValueRef arrayBuffer;
   CHECK_JSRT(env,
     JsCreateArrayBuffer(static_cast<unsigned int>(byte_length), &arrayBuffer));
 
   if (data != nullptr) {
-    CHECK_JSRT(env, JsGetArrayBufferStorage(
+    CHECK_JSRT(JsGetArrayBufferStorage(
       arrayBuffer,
       reinterpret_cast<BYTE**>(data),
       reinterpret_cast<unsigned int*>(&byte_length)));
@@ -2774,14 +3321,14 @@ napi_status napi_create_external_arraybuffer(napi_env env,
                                              void* finalize_hint,
                                              napi_value* result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, result);
+  CHECK_ARG(result);
 
   ExternalData* externalData = new ExternalData(
     env, external_data, finalize_cb, finalize_hint);
   if (externalData == nullptr) return napi_set_last_error(env, napi_generic_failure);
 
   JsValueRef arrayBuffer;
-  CHECK_JSRT(env, JsCreateExternalArrayBuffer(
+  CHECK_JSRT(JsCreateExternalArrayBuffer(
     external_data,
     static_cast<unsigned int>(byte_length),
     ExternalData::Finalize,
@@ -2797,11 +3344,11 @@ napi_status napi_get_arraybuffer_info(napi_env env,
                                       void** data,
                                       size_t* byte_length) {
   CHECK_ENV(env);
-  CHECK_ARG(env, arraybuffer);
+  CHECK_ARG(arraybuffer);
 
   BYTE* storageData;
   unsigned int storageLength;
-  CHECK_JSRT(env, JsGetArrayBufferStorage(
+  CHECK_JSRT(JsGetArrayBufferStorage(
     reinterpret_cast<JsValueRef>(arraybuffer),
     &storageData,
     &storageLength));
@@ -2819,12 +3366,12 @@ napi_status napi_get_arraybuffer_info(napi_env env,
 
 napi_status napi_is_typedarray(napi_env env, napi_value value, bool* result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, value);
-  CHECK_ARG(env, result);
+  CHECK_ARG(value);
+  CHECK_ARG(result);
 
   JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
   JsValueType valueType;
-  CHECK_JSRT(env, JsGetValueType(jsValue, &valueType));
+  CHECK_JSRT(JsGetValueType(jsValue, &valueType));
 
   *result = (valueType == JsTypedArray);
   return napi_ok;
@@ -2837,8 +3384,8 @@ napi_status napi_create_typedarray(napi_env env,
                                    size_t byte_offset,
                                    napi_value* result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, arraybuffer);
-  CHECK_ARG(env, result);
+  CHECK_ARG(arraybuffer);
+  CHECK_ARG(result);
 
   JsTypedArrayType jsType;
   switch (type) {
@@ -2870,12 +3417,12 @@ napi_status napi_create_typedarray(napi_env env,
       jsType = JsArrayTypeFloat64;
       break;
     default:
-      return napi_set_last_error(env, napi_invalid_arg);
+      return napi_set_last_error(env, Status::InvalidArg);
   }
 
   JsValueRef jsArrayBuffer = reinterpret_cast<JsValueRef>(arraybuffer);
 
-  CHECK_JSRT(env, JsCreateTypedArray(
+  CHECK_JSRT(JsCreateTypedArray(
     jsType,
     jsArrayBuffer,
     static_cast<unsigned int>(byte_offset),
@@ -2893,7 +3440,7 @@ napi_status napi_get_typedarray_info(napi_env env,
                                      napi_value* arraybuffer,
                                      size_t* byte_offset) {
   CHECK_ENV(env);
-  CHECK_ARG(env, typedarray);
+  CHECK_ARG(typedarray);
 
   JsTypedArrayType jsType;
   JsValueRef jsArrayBuffer;
@@ -2903,14 +3450,14 @@ napi_status napi_get_typedarray_info(napi_env env,
   unsigned int bufferLength;
   int elementSize;
 
-  CHECK_JSRT(env, JsGetTypedArrayInfo(
+  CHECK_JSRT(JsGetTypedArrayInfo(
     reinterpret_cast<JsValueRef>(typedarray),
     &jsType,
     &jsArrayBuffer,
     &byteOffset,
     &byteLength));
 
-  CHECK_JSRT(env, JsGetTypedArrayStorage(
+  CHECK_JSRT(JsGetTypedArrayStorage(
     reinterpret_cast<JsValueRef>(typedarray),
     &bufferData,
     &bufferLength,
@@ -2976,15 +3523,15 @@ napi_status napi_create_dataview(napi_env env,
                                  size_t byte_offset,
                                  napi_value* result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, arraybuffer);
-  CHECK_ARG(env, result);
+  CHECK_ARG(arraybuffer);
+  CHECK_ARG(result);
 
   JsValueRef jsArrayBuffer = reinterpret_cast<JsValueRef>(arraybuffer);
 
   BYTE* unused = nullptr;
   unsigned int bufferLength = 0;
 
-  CHECK_JSRT(env, JsGetArrayBufferStorage(
+  CHECK_JSRT(JsGetArrayBufferStorage(
     jsArrayBuffer,
     &unused,
     &bufferLength));
@@ -2999,26 +3546,26 @@ napi_status napi_create_dataview(napi_env env,
   }
 
   JsValueRef jsDataView;
-  CHECK_JSRT(env, JsCreateDataView(
+  CHECK_JSRT(JsCreateDataView(
     jsArrayBuffer,
     static_cast<unsigned int>(byte_offset),
     static_cast<unsigned int>(byte_length),
     &jsDataView));
 
   auto dataViewInfo = new DataViewInfo{ jsDataView, jsArrayBuffer, byte_offset, byte_length };
-  CHECK_JSRT(env, JsCreateExternalObject(dataViewInfo, DataViewInfo::Finalize, reinterpret_cast<JsValueRef*>(result)));
+  CHECK_JSRT(JsCreateExternalObject(dataViewInfo, DataViewInfo::Finalize, reinterpret_cast<JsValueRef*>(result)));
 
   return napi_ok;
 }
 
 napi_status napi_is_dataview(napi_env env, napi_value value, bool* result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, value);
-  CHECK_ARG(env, result);
+  CHECK_ARG(value);
+  CHECK_ARG(result);
 
   JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
   JsValueType valueType;
-  CHECK_JSRT(env, JsGetValueType(jsValue, &valueType));
+  CHECK_JSRT(JsGetValueType(jsValue, &valueType));
 
   *result = (valueType == JsDataView);
   return napi_ok;
@@ -3031,7 +3578,7 @@ napi_status napi_get_dataview_info(napi_env env,
                                    napi_value* arraybuffer,
                                    size_t* byte_offset) {
   CHECK_ENV(env);
-  CHECK_ARG(env, dataview);
+  CHECK_ARG(dataview);
 
   BYTE* bufferData = nullptr;
   unsigned int bufferLength = 0;
@@ -3039,11 +3586,11 @@ napi_status napi_get_dataview_info(napi_env env,
   JsValueRef jsExternalObject = reinterpret_cast<JsValueRef>(dataview);
 
   DataViewInfo* dataViewInfo;
-  CHECK_JSRT(env, JsGetExternalData(
+  CHECK_JSRT(JsGetExternalData(
     jsExternalObject,
     reinterpret_cast<void**>(&dataViewInfo)));
 
-  CHECK_JSRT(env, JsGetDataViewStorage(
+  CHECK_JSRT(JsGetDataViewStorage(
     dataViewInfo->dataView,
     &bufferData,
     &bufferLength));
@@ -3069,7 +3616,7 @@ napi_status napi_get_dataview_info(napi_env env,
 
 napi_status napi_get_version(napi_env env, uint32_t* result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, result);
+  CHECK_ARG(result);
   *result = NAPI_VERSION;
   return napi_ok;
 }
@@ -3077,16 +3624,16 @@ napi_status napi_get_version(napi_env env, uint32_t* result) {
 napi_status napi_create_promise(napi_env env,
                                 napi_deferred* deferred,
                                 napi_value* promise) {
-  CHECK_ARG(env, deferred);
-  CHECK_ARG(env, promise);
+  CHECK_ARG(deferred);
+  CHECK_ARG(promise);
 
   JsValueRef js_promise, resolve, reject, container;
   napi_ref ref;
   napi_value js_deferred;
 
-  CHECK_JSRT(env, JsCreatePromise(&js_promise, &resolve, &reject));
+  CHECK_JSRT(JsCreatePromise(&js_promise, &resolve, &reject));
 
-  CHECK_JSRT(env, JsCreateObject(&container));
+  CHECK_JSRT(JsCreateObject(&container));
   js_deferred = reinterpret_cast<napi_value>(container);
 
   CHECK_NAPI(napi_set_named_property(env, js_deferred, "resolve",
@@ -3117,8 +3664,8 @@ napi_status napi_reject_deferred(napi_env env,
 napi_status napi_is_promise(napi_env env,
                             napi_value promise,
                             bool* is_promise) {
-  CHECK_ARG(env, promise);
-  CHECK_ARG(env, is_promise);
+  CHECK_ARG(promise);
+  CHECK_ARG(is_promise);
 
   napi_value global, promise_ctor;
 
@@ -3132,15 +3679,15 @@ napi_status napi_is_promise(napi_env env,
 napi_status napi_run_script(napi_env env,
                             napi_value script,
                             napi_value* result) {
-  CHECK_ARG(env, script);
-  CHECK_ARG(env, result);
+  CHECK_ARG(script);
+  CHECK_ARG(result);
 
   JsValueRef scriptVar = reinterpret_cast<JsValueRef>(script);
 
   const wchar_t* scriptStr;
   size_t scriptStrLen;
-  CHECK_JSRT(env, JsStringToPointer(scriptVar, &scriptStr, &scriptStrLen));
-  CHECK_JSRT_EXPECTED(env, JsRunScript(scriptStr, ++env->source_context, L"Unknown", reinterpret_cast<JsValueRef*>(result)), napi_string_expected);
+  CHECK_JSRT(JsStringToPointer(scriptVar, &scriptStr, &scriptStrLen));
+  CHECK_JSRT_EXPECTED(env, JsRunScript(scriptStr, ++env->source_context, L"Unknown", reinterpret_cast<JsValueRef*>(result)), Status::StringExpected);
 
   return napi_ok;
 }
@@ -3149,14 +3696,14 @@ napi_status napi_run_script(napi_env env,
                             napi_value script,
                             const char* source_url,
                             napi_value* result) {
-  CHECK_ARG(env, script);
-  CHECK_ARG(env, result);
+  CHECK_ARG(script);
+  CHECK_ARG(result);
   JsValueRef scriptVar = reinterpret_cast<JsValueRef>(script);
 
   const wchar_t* scriptStr;
   size_t scriptStrLen;
-  CHECK_JSRT(env, JsStringToPointer(scriptVar, &scriptStr, &scriptStrLen));
-  CHECK_JSRT_EXPECTED(env, JsRunScript(scriptStr, ++env->source_context, NarrowToWide({ source_url }).data(), reinterpret_cast<JsValueRef*>(result)), napi_string_expected);
+  CHECK_JSRT(JsStringToPointer(scriptVar, &scriptStr, &scriptStrLen));
+  CHECK_JSRT_EXPECTED(env, JsRunScript(scriptStr, ++env->source_context, NarrowToWide({ source_url }).data(), reinterpret_cast<JsValueRef*>(result)), Status::StringExpected);
 
   return napi_ok;
 }
@@ -3173,7 +3720,7 @@ napi_status napi_add_finalizer(napi_env env,
 napi_status napi_adjust_external_memory(napi_env env,
                                         int64_t change_in_bytes,
                                         int64_t* adjusted_value) {
-  CHECK_ARG(env, adjusted_value);
+  CHECK_ARG(adjusted_value);
 
   // TODO(jackhorton): Determine if Chakra needs or is able to do anything here
   // For now, we can lie and say that we always adjusted more memory
