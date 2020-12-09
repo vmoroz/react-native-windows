@@ -28,6 +28,9 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)Crash.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)JSI\JsiAbiApi.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)JSI\JsiApi.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)NAPI\JsiNApi.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)NAPI\js_native_api.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)NAPI\js_native_api_types.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)ReactHandleHelper.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)JSValue.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)JSValueReader.h" />
@@ -77,5 +80,8 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)ModuleRegistration.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)ReactPromise.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)JSI\JsiAbiApi.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="$(MSBuildThisFileDirectory)NAPI\JsiNApi.cpp" />
   </ItemGroup>
 </Project>

@@ -12,6 +12,9 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)JSI\JsiAbiApi.cpp">
       <Filter>JSI</Filter>
     </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)NAPI\JsiNApi.cpp">
+      <Filter>NAPI</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="$(MSBuildThisFileDirectory)Crash.h" />
@@ -115,6 +118,15 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)JSI\JsiApi.h">
       <Filter>JSI</Filter>
     </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)NAPI\js_native_api.h">
+      <Filter>NAPI</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)NAPI\js_native_api_types.h">
+      <Filter>NAPI</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)NAPI\JsiNApi.h">
+      <Filter>NAPI</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="JSI">
@@ -122,6 +134,9 @@
     </Filter>
     <Filter Include="UI">
       <UniqueIdentifier>{acac5f8a-4b6a-4139-9b74-6e3c36aceb20}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NAPI">
+      <UniqueIdentifier>{578ba5ec-1e7d-4ba2-baf9-07fcc506d4ce}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>
