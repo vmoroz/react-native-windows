@@ -57,7 +57,7 @@
       return status;             \
   } while (0)
 
-#define STR_AND_LENGTH(str) str, sizeof(str) - 1
+#define STR_AND_LENGTH(str) str, std::size(str) - 1
 
 struct napi_env__ {
   JsSourceContext source_context = JS_SOURCE_CONTEXT_NONE;
@@ -227,27 +227,27 @@ napi_status SetErrorCode(napi_env env, JsValueRef error, napi_value code, const 
       CHECK_JSRT(env, JsCreateString(codeString, NAPI_AUTO_LENGTH, &codeValue));
     }
 
-    JsPropertyIdRef codePropId = JS_INVALID_REFERENCE;
-    CHECK_JSRT(env, JsCreatePropertyId(STR_AND_LENGTH("code"), &codePropId));
+    JsPropertyIdRef codePropId{JS_INVALID_REFERENCE};
+    CHECK_JSRT(env, JsGetPropertyIdFromName(L"code", &codePropId));
 
     CHECK_JSRT(env, JsSetProperty(error, codePropId, codeValue, true));
 
-    JsValueRef nameArray = JS_INVALID_REFERENCE;
+    JsValueRef nameArray{JS_INVALID_REFERENCE};
     CHECK_JSRT(env, JsCreateArray(0, &nameArray));
 
-    JsPropertyIdRef pushPropId = JS_INVALID_REFERENCE;
-    CHECK_JSRT(env, JsCreatePropertyId(STR_AND_LENGTH("push"), &pushPropId));
+    JsPropertyIdRef pushPropId{JS_INVALID_REFERENCE};
+    CHECK_JSRT(env, JsGetPropertyIdFromName(L"push", &pushPropId));
 
-    JsValueRef pushFunction = JS_INVALID_REFERENCE;
+    JsValueRef pushFunction{JS_INVALID_REFERENCE};
     CHECK_JSRT(env, JsGetProperty(nameArray, pushPropId, &pushFunction));
 
-    JsPropertyIdRef namePropId = JS_INVALID_REFERENCE;
-    CHECK_JSRT(env, JsCreatePropertyId(STR_AND_LENGTH("name"), &namePropId));
+    JsPropertyIdRef namePropId{JS_INVALID_REFERENCE};
+    CHECK_JSRT(env, JsGetPropertyIdFromName(L"name", &namePropId));
 
     bool hasProp = false;
     CHECK_JSRT(env, JsHasProperty(error, namePropId, &hasProp));
 
-    JsValueRef nameValue = JS_INVALID_REFERENCE;
+    JsValueRef nameValue{JS_INVALID_REFERENCE};
     std::array<JsValueRef, 2> args = {nameArray, JS_INVALID_REFERENCE};
 
     if (hasProp) {
@@ -257,9 +257,8 @@ napi_status SetErrorCode(napi_env env, JsValueRef error, napi_value code, const 
       CHECK_JSRT(env, JsCallFunction(pushFunction, args.data(), static_cast<unsigned short>(args.size()), nullptr));
     }
 
-    const char *openBracket = " [";
-    JsValueRef openBracketValue = JS_INVALID_REFERENCE;
-    CHECK_JSRT(env, JsCreateString(openBracket, NAPI_AUTO_LENGTH, &openBracketValue));
+    JsValueRef openBracketValue{JS_INVALID_REFERENCE};
+    CHECK_JSRT(env, JsPointerToString(STR_AND_LENGTH(L" ["), &openBracketValue));
 
     args[1] = openBracketValue;
     CHECK_JSRT(env, JsCallFunction(pushFunction, args.data(), static_cast<unsigned short>(args.size()), nullptr));
@@ -267,19 +266,17 @@ napi_status SetErrorCode(napi_env env, JsValueRef error, napi_value code, const 
     args[1] = codeValue;
     CHECK_JSRT(env, JsCallFunction(pushFunction, args.data(), static_cast<unsigned short>(args.size()), nullptr));
 
-    const char *closeBracket = "]";
-    JsValueRef closeBracketValue = JS_INVALID_REFERENCE;
-    CHECK_JSRT(env, JsCreateString(closeBracket, NAPI_AUTO_LENGTH, &closeBracketValue));
+    JsValueRef closeBracketValue{JS_INVALID_REFERENCE};
+    CHECK_JSRT(env, JsPointerToString(STR_AND_LENGTH(L"]"), &closeBracketValue));
 
     args[1] = closeBracketValue;
     CHECK_JSRT(env, JsCallFunction(pushFunction, args.data(), static_cast<unsigned short>(args.size()), nullptr));
 
-    JsValueRef emptyValue = JS_INVALID_REFERENCE;
-    CHECK_JSRT(env, JsCreateString("", 0, &emptyValue));
+    JsValueRef emptyValue{JS_INVALID_REFERENCE};
+    CHECK_JSRT(env, JsPointerToString(L"", 0, &emptyValue));
 
-    const char *joinPropIdName = "join";
-    JsPropertyIdRef joinPropId = JS_INVALID_REFERENCE;
-    CHECK_JSRT(env, JsCreatePropertyId(joinPropIdName, strlen(joinPropIdName), &joinPropId));
+    JsPropertyIdRef joinPropId{JS_INVALID_REFERENCE};
+    CHECK_JSRT(env, JsGetPropertyIdFromName(L"join", &joinPropId));
 
     JsValueRef joinFunction = JS_INVALID_REFERENCE;
     CHECK_JSRT(env, JsGetProperty(nameArray, joinPropId, &joinFunction));
@@ -347,49 +344,49 @@ napi_status napi_get_boolean(napi_env env, bool value, napi_value *result) {
 // Methods to create Primitive types/Objects
 //==============================================================================
 
-NAPI_EXTERN napi_status napi_create_object(napi_env env, napi_value *result) {
+napi_status napi_create_object(napi_env env, napi_value *result) {
   CHECK_ENV_AND_ARG(env, result);
   CHECK_JSRT(env, JsCreateObject(reinterpret_cast<JsValueRef *>(result)));
   return napi_ok;
 }
 
-NAPI_EXTERN napi_status napi_create_array(napi_env env, napi_value *result) {
+napi_status napi_create_array(napi_env env, napi_value *result) {
   CHECK_ENV_AND_ARG(env, result);
   CHECK_JSRT(env, JsCreateArray(0, reinterpret_cast<JsValueRef *>(result)));
   return napi_ok;
 }
 
-NAPI_EXTERN napi_status napi_create_array_with_length(napi_env env, size_t length, napi_value *result) {
+napi_status napi_create_array_with_length(napi_env env, size_t length, napi_value *result) {
   CHECK_ENV_AND_ARG(env, result);
   CHECK_JSRT(env, JsCreateArray(static_cast<unsigned int>(length), reinterpret_cast<JsValueRef *>(result)));
   return napi_ok;
 }
 
-NAPI_EXTERN napi_status napi_create_double(napi_env env, double value, napi_value *result) {
+napi_status napi_create_double(napi_env env, double value, napi_value *result) {
   CHECK_ENV_AND_ARG(env, result);
   CHECK_JSRT(env, JsDoubleToNumber(value, reinterpret_cast<JsValueRef *>(result)));
   return napi_ok;
 }
 
-NAPI_EXTERN napi_status napi_create_int32(napi_env env, int32_t value, napi_value *result) {
+napi_status napi_create_int32(napi_env env, int32_t value, napi_value *result) {
   CHECK_ENV_AND_ARG(env, result);
   CHECK_JSRT(env, JsIntToNumber(value, reinterpret_cast<JsValueRef *>(result)));
   return napi_ok;
 }
 
-NAPI_EXTERN napi_status napi_create_uint32(napi_env env, uint32_t value, napi_value *result) {
+napi_status napi_create_uint32(napi_env env, uint32_t value, napi_value *result) {
   CHECK_ENV_AND_ARG(env, result);
   CHECK_JSRT(env, JsDoubleToNumber(static_cast<double>(value), reinterpret_cast<JsValueRef *>(result)));
   return napi_ok;
 }
 
-NAPI_EXTERN napi_status napi_create_int64(napi_env env, int64_t value, napi_value *result) {
+napi_status napi_create_int64(napi_env env, int64_t value, napi_value *result) {
   CHECK_ENV_AND_ARG(env, result);
   CHECK_JSRT(env, JsDoubleToNumber(static_cast<double>(value), reinterpret_cast<JsValueRef *>(result)));
   return napi_ok;
 }
 
-NAPI_EXTERN napi_status napi_create_string_latin1(napi_env env, const char *str, size_t length, napi_value *result) {
+napi_status napi_create_string_latin1(napi_env env, const char *str, size_t length, napi_value *result) {
   CHECK_ENV_AND_ARG(env, result);
   std::wstring wstr =
       (length == NAPI_AUTO_LENGTH) ? NarrowToWide({str}, CP_LATIN1) : NarrowToWide({str, length}, CP_LATIN1);
@@ -397,13 +394,13 @@ NAPI_EXTERN napi_status napi_create_string_latin1(napi_env env, const char *str,
   return napi_ok;
 }
 
-NAPI_EXTERN napi_status napi_create_string_utf8(napi_env env, const char *str, size_t length, napi_value *result) {
+napi_status napi_create_string_utf8(napi_env env, const char *str, size_t length, napi_value *result) {
   CHECK_ENV_AND_ARG(env, result);
   CHECK_JSRT(env, JsCreateString(str, length, reinterpret_cast<JsValueRef *>(result)));
   return napi_ok;
 }
 
-NAPI_EXTERN napi_status napi_create_string_utf16(napi_env env, const char16_t *str, size_t length, napi_value *result) {
+napi_status napi_create_string_utf16(napi_env env, const char16_t *str, size_t length, napi_value *result) {
   CHECK_ENV_AND_ARG(env, result);
   static_assert(sizeof(char16_t) == sizeof(wchar_t));
   CHECK_JSRT(
@@ -411,14 +408,14 @@ NAPI_EXTERN napi_status napi_create_string_utf16(napi_env env, const char16_t *s
   return napi_ok;
 }
 
-NAPI_EXTERN napi_status napi_create_symbol(napi_env env, napi_value description, napi_value *result) {
+napi_status napi_create_symbol(napi_env env, napi_value description, napi_value *result) {
   CHECK_ENV_AND_ARG(env, result);
   JsValueRef js_description = reinterpret_cast<JsValueRef>(description);
   CHECK_JSRT(env, JsCreateSymbol(js_description, reinterpret_cast<JsValueRef *>(result)));
   return napi_ok;
 }
 
-NAPI_EXTERN napi_status napi_create_function(
+napi_status napi_create_function(
     napi_env env,
     const char *utf8name,
     size_t length,
@@ -449,7 +446,7 @@ NAPI_EXTERN napi_status napi_create_function(
   return napi_set_last_error(env, napi_generic_failure);
 }
 
-NAPI_EXTERN napi_status napi_create_error(napi_env env, napi_value code, napi_value msg, napi_value *result) {
+napi_status napi_create_error(napi_env env, napi_value code, napi_value msg, napi_value *result) {
   CHECK_ENV_AND_ARG2(env, msg, result);
   JsValueRef message = reinterpret_cast<JsValueRef>(msg);
 
@@ -461,7 +458,7 @@ NAPI_EXTERN napi_status napi_create_error(napi_env env, napi_value code, napi_va
   return napi_ok;
 }
 
-NAPI_EXTERN napi_status napi_create_type_error(napi_env env, napi_value code, napi_value msg, napi_value *result) {
+napi_status napi_create_type_error(napi_env env, napi_value code, napi_value msg, napi_value *result) {
   CHECK_ENV_AND_ARG2(env, msg, result);
   JsValueRef message = reinterpret_cast<JsValueRef>(msg);
 
@@ -473,7 +470,7 @@ NAPI_EXTERN napi_status napi_create_type_error(napi_env env, napi_value code, na
   return napi_ok;
 }
 
-NAPI_EXTERN napi_status napi_create_range_error(napi_env env, napi_value code, napi_value msg, napi_value *result) {
+napi_status napi_create_range_error(napi_env env, napi_value code, napi_value msg, napi_value *result) {
   CHECK_ENV_AND_ARG2(env, msg, result);
   JsValueRef message = reinterpret_cast<JsValueRef>(msg);
 
