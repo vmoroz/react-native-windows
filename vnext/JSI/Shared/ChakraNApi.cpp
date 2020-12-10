@@ -823,3 +823,36 @@ napi_status napi_get_value_string_utf16(napi_env env, napi_value value, char16_t
 
   return napi_ok;
 }
+
+//==============================================================================
+// Methods to coerce values
+// These APIs may execute user scripts
+//==============================================================================
+
+napi_status napi_coerce_to_bool(napi_env env, napi_value value, napi_value *result) {
+  CHECK_ENV_AND_ARG(env, result);
+  JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
+  CHECK_JSRT(env, JsConvertValueToBoolean(jsValue, reinterpret_cast<JsValueRef *>(result)));
+  return napi_ok;
+}
+
+napi_status napi_coerce_to_number(napi_env env, napi_value value, napi_value *result) {
+  CHECK_ENV_AND_ARG(env, result);
+  JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
+  CHECK_JSRT(env, JsConvertValueToNumber(jsValue, reinterpret_cast<JsValueRef *>(result)));
+  return napi_ok;
+}
+
+napi_status napi_coerce_to_object(napi_env env, napi_value value, napi_value *result) {
+  CHECK_ENV_AND_ARG(env, result);
+  JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
+  CHECK_JSRT(env, JsConvertValueToObject(jsValue, reinterpret_cast<JsValueRef *>(result)));
+  return napi_ok;
+}
+
+napi_status napi_coerce_to_string(napi_env env, napi_value value, napi_value *result) {
+  CHECK_ENV_AND_ARG(env, result);
+  JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
+  CHECK_JSRT(env, JsConvertValueToString(jsValue, reinterpret_cast<JsValueRef *>(result)));
+  return napi_ok;
+}
