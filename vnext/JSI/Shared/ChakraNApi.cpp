@@ -16,6 +16,7 @@
 #include <memory>
 #include <string>
 #include <string_view>
+#include <vector>
 
 #define RETURN_STATUS_IF_FALSE(env, condition, status) \
   do {                                                 \
@@ -1324,4 +1325,139 @@ napi_status napi_instanceof(napi_env env, napi_value object, napi_value construc
 
   CHECK_JSRT(env, JsInstanceOf(obj, jsConstructor, result));
   return napi_ok;
+}
+
+//==============================================================================
+// Methods to work with napi_callbacks
+//==============================================================================
+
+// Gets all callback info in a single call. (Ugly, but faster.)
+napi_status napi_get_cb_info(
+    napi_env env, // [in] NAPI environment handle
+    napi_callback_info cbinfo, // [in] Opaque callback-info handle
+    size_t *argc, // [in-out] Specifies the size of the provided argv array
+                  // and receives the actual count of args.
+    napi_value *argv, // [out] Array of values
+    napi_value *this_arg, // [out] Receives the JS 'this' arg for the call
+    void **data) // [out] Receives the data pointer for the callback.
+{
+  CHECK_ENV_AND_ARG(env, cbinfo);
+  const CallbackInfo *info = reinterpret_cast<CallbackInfo *>(cbinfo);
+
+  if (argv != nullptr) {
+    CHECK_ARG(env, argc);
+
+    size_t i = 0;
+    size_t min = (std::min)(*argc, static_cast<size_t>(info->argc));
+
+    for (; i < min; i++) {
+      argv[i] = info->argv[i];
+    }
+
+    if (i < *argc) {
+      napi_value undefined;
+      CHECK_JSRT(env, JsGetUndefinedValue(reinterpret_cast<JsValueRef *>(&undefined)));
+      for (; i < *argc; i++) {
+        argv[i] = undefined;
+      }
+    }
+  }
+
+  if (argc != nullptr) {
+    *argc = info->argc;
+  }
+
+  if (this_arg != nullptr) {
+    *this_arg = info->thisArg;
+  }
+
+  if (data != nullptr) {
+    *data = info->data;
+  }
+
+  return napi_ok;
+}
+
+napi_status napi_get_new_target(napi_env env, napi_callback_info cbinfo, napi_value *result) {
+  CHECK_ENV_AND_ARG2(env, cbinfo, result);
+
+  const CallbackInfo *info = reinterpret_cast<CallbackInfo *>(cbinfo);
+  if (info->isConstructCall) {
+    *result = info->newTarget;
+  } else {
+    *result = nullptr;
+  }
+
+  return napi_ok;
+}
+
+napi_status napi_define_class(
+    napi_env env,
+    const char *utf8name,
+    size_t length,
+    napi_callback constructor,
+    void *data,
+    size_t property_count,
+    const napi_property_descriptor *properties,
+    napi_value *result) try {
+  CHECK_ENV_AND_ARG(env, result);
+
+  napi_value namestring;
+  CHECK_NAPI(napi_create_string_utf8(env, utf8name, length, &namestring));
+
+  std::unique_ptr<ExternalCallback> externalCallback{new ExternalCallback(env, constructor, data)};
+
+  JsValueRef jsConstructor;
+  CHECK_JSRT(env, JsCreateNamedFunction(namestring, ExternalCallback::Callback, externalCallback.get(), &jsConstructor));
+
+  externalCallback->newTarget = jsConstructor;
+
+  CHECK_JSRT(env, JsSetObjectBeforeCollectCallback(jsConstructor, externalCallback.get(), ExternalCallback::Finalize));
+  externalCallback.release();
+
+  JsPropertyIdRef pid = nullptr;
+  JsValueRef prototype = nullptr;
+  CHECK_JSRT(env, JsGetPropertyIdFromName(L"prototype", &pid));
+  CHECK_JSRT(env, JsGetProperty(jsConstructor, pid, &prototype));
+
+  CHECK_JSRT(env, JsGetPropertyIdFromName(L"constructor", &pid));
+  CHECK_JSRT(env, JsSetProperty(prototype, pid, jsConstructor, false));
+
+  int instancePropertyCount = 0;
+  int staticPropertyCount = 0;
+  for (size_t i = 0; i < property_count; i++) {
+    if ((properties[i].attributes & napi_static) != 0) {
+      staticPropertyCount++;
+    } else {
+      instancePropertyCount++;
+    }
+  }
+
+  std::vector<napi_property_descriptor> staticDescriptors;
+  std::vector<napi_property_descriptor> instanceDescriptors;
+  staticDescriptors.reserve(staticPropertyCount);
+  instanceDescriptors.reserve(instancePropertyCount);
+
+  for (size_t i = 0; i < property_count; i++) {
+    if ((properties[i].attributes & napi_static) != 0) {
+      staticDescriptors.push_back(properties[i]);
+    } else {
+      instanceDescriptors.push_back(properties[i]);
+    }
+  }
+
+  if (staticPropertyCount > 0) {
+    CHECK_NAPI(napi_define_properties(
+        env, reinterpret_cast<napi_value>(constructor), staticDescriptors.size(), staticDescriptors.data()));
+  }
+
+  if (instancePropertyCount > 0) {
+    CHECK_NAPI(napi_define_properties(
+        env, reinterpret_cast<napi_value>(prototype), instanceDescriptors.size(), instanceDescriptors.data()));
+  }
+
+  *result = reinterpret_cast<napi_value>(constructor);
+  return napi_ok;
+} catch (...) {
+  return napi_set_last_error(env, napi_generic_failure);
 }
