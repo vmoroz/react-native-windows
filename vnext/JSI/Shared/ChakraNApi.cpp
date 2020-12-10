@@ -138,6 +138,11 @@ static napi_status napi_set_last_error(napi_env env, JsErrorCode jsError, void *
   return status;
 }
 
+struct RefInfo {
+  JsValueRef value;
+  uint32_t count;
+};
+
 // Warning: Keep in-sync with napi_status enum
 static const char *error_messages[] = {
     nullptr,
@@ -1655,5 +1660,126 @@ napi_status napi_get_value_external(napi_env env, napi_value value, void **resul
 
   *result = (externalData != nullptr ? externalData->Data() : nullptr);
 
+  return napi_ok;
+}
+
+//==============================================================================
+// Methods to control object lifespan
+//==============================================================================
+
+// Set initial_refcount to 0 for a weak reference, >0 for a strong reference.
+napi_status napi_create_reference(napi_env env, napi_value value, uint32_t initial_refcount, napi_ref *result) try {
+  CHECK_ENV_AND_ARG2(env, value, result);
+
+  auto jsValue = reinterpret_cast<JsValueRef>(value);
+  std::unique_ptr<RefInfo> info{new RefInfo{jsValue, initial_refcount}};
+
+  //TODO: implement object weak semantic
+  if (info->count != 0) {
+    CHECK_JSRT(env, JsAddRef(jsValue, nullptr));
+  }
+
+  *result = reinterpret_cast<napi_ref>(info.release());
+  return napi_ok;
+} catch (...) {
+  return napi_set_last_error(env, napi_generic_failure);
+}
+
+// Deletes a reference. The referenced value is released, and may
+// be GC'd unless there are other references to it.
+napi_status napi_delete_reference(napi_env env, napi_ref ref) {
+  CHECK_ENV_AND_ARG(env, ref);
+
+  auto info = reinterpret_cast<RefInfo *>(ref);
+
+  if (info->count != 0) {
+    CHECK_JSRT(env, JsRelease(info->value, nullptr));
+  }
+
+  delete info;
+
+  return napi_ok;
+}
+
+// Increments the reference count, optionally returning the resulting count.
+// After this call the  reference will be a strong reference because its
+// refcount is >0, and the referenced object is effectively "pinned".
+// Calling this when the refcount is 0 and the object is unavailable
+// results in an error.
+napi_status napi_reference_ref(napi_env env, napi_ref ref, uint32_t *result) {
+  CHECK_ENV_AND_ARG(env, ref);
+  auto info = reinterpret_cast<RefInfo *>(ref);
+  if (info->count == 0) {
+    CHECK_JSRT(env, JsAddRef(info->value, nullptr));
+  }
+  ++info->count;
+  if (result != nullptr) {
+    *result = info->count;
+  }
+  return napi_ok;
+}
+
+// Decrements the reference count, optionally returning the resulting count.
+// If the result is 0 the reference is now weak and the object may be GC'd
+// at any time if there are no other references. Calling this when the
+// refcount is already 0 results in an error.
+napi_status napi_reference_unref(napi_env env, napi_ref ref, uint32_t *result) {
+  CHECK_ENV_AND_ARG(env, ref);
+  auto info = reinterpret_cast<RefInfo *>(ref);
+  if (--info->count == 0) {
+    CHECK_JSRT(env, JsRelease(info->value, nullptr));
+  }
+  if (result != nullptr) {
+    *result = info->count;
+  }
+  return napi_ok;
+}
+
+// Attempts to get a referenced value. If the reference is weak,
+// the value might no longer be available, in that case the call
+// is still successful but the result is NULL.
+napi_status napi_get_reference_value(napi_env env, napi_ref ref, napi_value *result) {
+  CHECK_ENV_AND_ARG2(env, ref, result);
+  auto info = reinterpret_cast<RefInfo *>(ref);
+  if (info->count == 0) {
+    // TODO: [vmoroz] We must return non-null value here if object is still alive.
+    *result = nullptr;
+  } else {
+    *result = reinterpret_cast<napi_value>(info->value);
+  }
+  return napi_ok;
+}
+
+// Stub implementation of handle scope apis for JSRT.
+napi_status napi_open_handle_scope(napi_env env, napi_handle_scope *result) {
+  CHECK_ENV_AND_ARG(env, result);
+  *result = reinterpret_cast<napi_handle_scope>(1);
+  return napi_ok;
+}
+
+// Stub implementation of handle scope apis for JSRT.
+napi_status napi_close_handle_scope(napi_env env, napi_handle_scope scope) {
+  CHECK_ENV_AND_ARG(env, scope);
+  return napi_ok;
+}
+
+// Stub implementation of handle scope apis for JSRT.
+napi_status napi_open_escapable_handle_scope(napi_env env, napi_escapable_handle_scope *result) {
+  CHECK_ENV_AND_ARG(env, result);
+  *result = reinterpret_cast<napi_escapable_handle_scope>(1);
+  return napi_ok;
+}
+
+// Stub implementation of handle scope apis for JSRT.
+napi_status napi_close_escapable_handle_scope(napi_env env, napi_escapable_handle_scope scope) {
+  CHECK_ENV_AND_ARG(env, scope);
+  return napi_ok;
+}
+
+// Stub implementation of handle scope apis for JSRT.
+napi_status
+napi_escape_handle(napi_env env, napi_escapable_handle_scope scope, napi_value escapee, napi_value *result) {
+  CHECK_ENV_AND_ARG3(env, scope, escapee, result);
+  *result = escapee;
   return napi_ok;
 }
