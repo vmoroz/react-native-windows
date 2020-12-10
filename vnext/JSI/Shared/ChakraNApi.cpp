@@ -1783,3 +1783,82 @@ napi_escape_handle(napi_env env, napi_escapable_handle_scope scope, napi_value e
   *result = escapee;
   return napi_ok;
 }
+
+//==============================================================================
+// Methods to support error handling
+//==============================================================================
+
+napi_status napi_throw(napi_env env, napi_value error) {
+  CHECK_ENV(env);
+  JsValueRef exception = reinterpret_cast<JsValueRef>(error);
+  CHECK_JSRT(env, JsSetException(exception));
+  return napi_ok;
+}
+
+napi_status napi_throw_error(napi_env env, const char *code, const char *msg) {
+  CHECK_ENV(env);
+  JsValueRef strRef;
+  JsValueRef exception;
+  size_t length = strlen(msg);
+  CHECK_JSRT(env, JsCreateString(msg, length, &strRef));
+  CHECK_JSRT(env, JsCreateError(strRef, &exception));
+  CHECK_NAPI(SetErrorCode(env, exception, nullptr, code));
+  CHECK_JSRT(env, JsSetException(exception));
+  return napi_ok;
+}
+
+napi_status napi_throw_type_error(napi_env env, const char *code, const char *msg) {
+  CHECK_ENV(env);
+  JsValueRef strRef;
+  JsValueRef exception;
+  size_t length = strlen(msg);
+  CHECK_JSRT(env, JsCreateString(msg, length, &strRef));
+  CHECK_JSRT(env, JsCreateTypeError(strRef, &exception));
+  CHECK_NAPI(SetErrorCode(env, exception, nullptr, code));
+  CHECK_JSRT(env, JsSetException(exception));
+  return napi_ok;
+}
+
+napi_status napi_throw_range_error(napi_env env, const char *code, const char *msg) {
+  CHECK_ENV(env);
+  JsValueRef strRef;
+  JsValueRef exception;
+  size_t length = strlen(msg);
+  CHECK_JSRT(env, JsCreateString(msg, length, &strRef));
+  CHECK_JSRT(env, JsCreateRangeError(strRef, &exception));
+  CHECK_NAPI(SetErrorCode(env, exception, nullptr, code));
+  CHECK_JSRT(env, JsSetException(exception));
+  return napi_ok;
+}
+
+napi_status napi_is_error(napi_env env, napi_value value, bool *result) {
+  CHECK_ENV_AND_ARG2(env, value, result);
+  JsValueType valueType;
+  CHECK_JSRT(env, JsGetValueType(value, &valueType));
+  *result = (valueType == JsError);
+  return napi_ok;
+}
+
+//==============================================================================
+// Methods to support catching exceptions
+//==============================================================================
+
+napi_status napi_is_exception_pending(napi_env env, bool *result) {
+  CHECK_ENV_AND_ARG(env, result);
+  CHECK_JSRT(env, JsHasException(result));
+  return napi_ok;
+}
+
+napi_status napi_get_and_clear_last_exception(napi_env env, napi_value *result) {
+  CHECK_ENV_AND_ARG(env, result);
+
+  bool hasException;
+  CHECK_JSRT(env, JsHasException(&hasException));
+  if (hasException) {
+    CHECK_JSRT(env, JsGetAndClearException(reinterpret_cast<JsValueRef *>(result)));
+  } else {
+    CHECK_NAPI(napi_get_undefined(env, result));
+  }
+
+  return napi_ok;
+}
