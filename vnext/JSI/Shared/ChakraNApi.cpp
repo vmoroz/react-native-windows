@@ -244,6 +244,35 @@ struct CallbackInfo {
   bool isConstructCall;
 };
 
+// Adapter for JSRT external data + finalize callback.
+class ExternalData {
+ public:
+  ExternalData(napi_env env, void *data, napi_finalize finalize_cb, void *hint)
+      : _env(env), _data(data), _cb(finalize_cb), _hint(hint) {}
+
+  void *Data() {
+    return _data;
+  }
+
+  // JsFinalizeCallback
+  static void CALLBACK Finalize(void *callbackState) {
+    ExternalData *externalData = reinterpret_cast<ExternalData *>(callbackState);
+    if (externalData != nullptr) {
+      if (externalData->_cb != nullptr) {
+        externalData->_cb(externalData->_env, externalData->_data, externalData->_hint);
+      }
+
+      delete externalData;
+    }
+  }
+
+ private:
+  napi_env _env;
+  void *_data;
+  napi_finalize _cb;
+  void *_hint;
+};
+
 // Adapter for JSRT external callback + callback data.
 class ExternalCallback {
  public:
@@ -320,6 +349,66 @@ JsErrorCode JsNameValueFromPropertyDescriptor(const napi_property_descriptor *p,
     *name = p->name;
     return JsErrorCode::JsNoError;
   }
+}
+
+napi_status FindWrapper(napi_env env, JsValueRef obj, JsValueRef *wrapper, JsValueRef *parent = nullptr) {
+  // Search the object's prototype chain for the wrapper with external data.
+  // Usually the wrapper would be the first in the chain, but it is OK for
+  // other objects to be inserted in the prototype chain.
+  JsValueRef candidate = obj;
+  JsValueRef current = JS_INVALID_REFERENCE;
+  bool hasExternalData = false;
+
+  JsValueRef nullValue = JS_INVALID_REFERENCE;
+  CHECK_JSRT(env, JsGetNullValue(&nullValue));
+
+  do {
+    current = candidate;
+
+    CHECK_JSRT(env, JsGetPrototype(current, &candidate));
+    if (candidate == JS_INVALID_REFERENCE || candidate == nullValue) {
+      if (parent != nullptr) {
+        *parent = JS_INVALID_REFERENCE;
+      }
+
+      *wrapper = JS_INVALID_REFERENCE;
+      return napi_ok;
+    }
+
+    CHECK_JSRT(env, JsHasExternalData(candidate, &hasExternalData));
+  } while (!hasExternalData);
+
+  if (parent != nullptr) {
+    *parent = current;
+  }
+
+  *wrapper = candidate;
+
+  return napi_ok;
+}
+
+napi_status Unwrap(
+    napi_env env,
+    JsValueRef obj,
+    ExternalData **externalData,
+    JsValueRef *wrapper = nullptr,
+    JsValueRef *parent = nullptr) {
+  JsValueRef candidate = JS_INVALID_REFERENCE;
+  JsValueRef candidateParent = JS_INVALID_REFERENCE;
+  CHECK_NAPI(FindWrapper(env, obj, &candidate, &candidateParent));
+  RETURN_STATUS_IF_FALSE(env, candidate != JS_INVALID_REFERENCE, napi_invalid_arg);
+
+  CHECK_JSRT(env, JsGetExternalData(candidate, reinterpret_cast<void **>(externalData)));
+
+  if (wrapper != nullptr) {
+    *wrapper = candidate;
+  }
+
+  if (parent != nullptr) {
+    *parent = candidateParent;
+  }
+
+  return napi_ok;
 }
 
 napi_status SetErrorCode(napi_env env, JsValueRef error, napi_value code, const char *codeString) {
@@ -1391,6 +1480,10 @@ napi_status napi_get_new_target(napi_env env, napi_callback_info cbinfo, napi_va
   return napi_ok;
 }
 
+//==============================================================================
+// Methods to work with external data objects
+//==============================================================================
+
 napi_status napi_define_class(
     napi_env env,
     const char *utf8name,
@@ -1460,4 +1553,107 @@ napi_status napi_define_class(
   return napi_ok;
 } catch (...) {
   return napi_set_last_error(env, napi_generic_failure);
+}
+
+napi_status napi_wrap(
+    napi_env env,
+    napi_value js_object,
+    void *native_object,
+    napi_finalize finalize_cb,
+    void *finalize_hint,
+    napi_ref *result) try {
+  CHECK_ENV_AND_ARG(env, js_object);
+
+  JsValueRef value = reinterpret_cast<JsValueRef>(js_object);
+
+  JsValueRef wrapper = JS_INVALID_REFERENCE;
+  CHECK_NAPI(FindWrapper(env, value, &wrapper));
+  RETURN_STATUS_IF_FALSE(env, wrapper == JS_INVALID_REFERENCE, napi_invalid_arg);
+
+  std::unique_ptr<ExternalData> externalData{new ExternalData(env, native_object, finalize_cb, finalize_hint)};
+
+  // Create an external object that will hold the external data pointer.
+  JsValueRef external = JS_INVALID_REFERENCE;
+  CHECK_JSRT(env, JsCreateExternalObject(externalData.get(), ExternalData::Finalize, &external));
+  externalData.release();
+
+  // Insert the external object into the value's prototype chain.
+  JsValueRef valuePrototype = JS_INVALID_REFERENCE;
+  CHECK_JSRT(env, JsGetPrototype(value, &valuePrototype));
+  CHECK_JSRT(env, JsSetPrototype(external, valuePrototype));
+  CHECK_JSRT(env, JsSetPrototype(value, external));
+
+  if (result != nullptr) {
+    CHECK_NAPI(napi_create_reference(env, js_object, 0, result));
+  }
+
+  return napi_ok;
+}
+catch (...) {
+  return napi_set_last_error(env, napi_generic_failure);
+}
+
+napi_status napi_unwrap(napi_env env, napi_value js_object, void **result) {
+  CHECK_ENV_AND_ARG(env, js_object);
+
+  JsValueRef value = reinterpret_cast<JsValueRef>(js_object);
+
+  ExternalData *externalData = nullptr;
+  CHECK_NAPI(Unwrap(env, value, &externalData));
+
+  *result = (externalData != nullptr ? externalData->Data() : nullptr);
+
+  return napi_ok;
+}
+
+napi_status napi_remove_wrap(napi_env env, napi_value js_object, void **result) {
+  CHECK_ENV_AND_ARG(env, js_object);
+
+  JsValueRef value = reinterpret_cast<JsValueRef>(js_object);
+
+  ExternalData *externalData = nullptr;
+  JsValueRef parent = JS_INVALID_REFERENCE;
+  JsValueRef wrapper = JS_INVALID_REFERENCE;
+  CHECK_NAPI(Unwrap(env, value, &externalData, &wrapper, &parent));
+  RETURN_STATUS_IF_FALSE(env, parent != JS_INVALID_REFERENCE, napi_invalid_arg);
+  RETURN_STATUS_IF_FALSE(env, wrapper != JS_INVALID_REFERENCE, napi_invalid_arg);
+
+  // Remove the external from the prototype chain
+  JsValueRef wrapperProto = JS_INVALID_REFERENCE;
+  CHECK_JSRT(env, JsGetPrototype(wrapper, &wrapperProto));
+  CHECK_JSRT(env, JsSetPrototype(parent, wrapperProto));
+
+  // Clear the external data from the object
+  CHECK_JSRT(env, JsSetExternalData(wrapper, nullptr));
+
+  if (externalData != nullptr) {
+    *result = externalData->Data();
+    delete externalData;
+  } else {
+    *result = nullptr;
+  }
+
+  return napi_ok;
+}
+
+napi_status
+napi_create_external(napi_env env, void *data, napi_finalize finalize_cb, void *finalize_hint, napi_value *result) try {
+  CHECK_ENV_AND_ARG(env, result);
+  std::unique_ptr<ExternalData> externalData{new ExternalData(env, data, finalize_cb, finalize_hint)};
+
+  CHECK_JSRT(env, JsCreateExternalObject(externalData.get(), ExternalData::Finalize, reinterpret_cast<JsValueRef *>(result)));
+  externalData.release();
+
+  return napi_ok;
+} catch (...) {
+  return napi_set_last_error(env, napi_generic_failure);
+}
+
+napi_status napi_get_value_external(napi_env env, napi_value value, void **result) {
+  ExternalData *externalData;
+  CHECK_JSRT(env, JsGetExternalData(reinterpret_cast<JsValueRef>(value), reinterpret_cast<void **>(&externalData)));
+
+  *result = (externalData != nullptr ? externalData->Data() : nullptr);
+
+  return napi_ok;
 }
