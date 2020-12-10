@@ -4,7 +4,7 @@
 #include "pch.h"
 #include <utility>
 #include "JsiNApi.h"
-
+#if 0
 using namespace facebook::jsi;
 
 namespace winrt::Microsoft::ReactNative {
@@ -1014,3 +1014,5 @@ JsiAbiRuntime::PropNameIDRef::operator facebook::jsi::PropNameID const &() const
 }
 
 } // namespace winrt::Microsoft::ReactNative
+
+#endif

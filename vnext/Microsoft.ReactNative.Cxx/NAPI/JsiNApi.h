@@ -4,6 +4,7 @@
 #pragma once
 #ifndef MICROSOFT_REACTNATIVE_JSINAPI
 #define MICROSOFT_REACTNATIVE_JSINAPI
+#if 0
 
 #include <map>
 #include <mutex>
@@ -315,5 +316,7 @@ struct JsiAbiRuntime : facebook::jsi::Runtime {
 };
 
 } // namespace winrt::Microsoft::ReactNative
+
+#endif
 
 #endif // MICROSOFT_REACTNATIVE_JSINAPI
