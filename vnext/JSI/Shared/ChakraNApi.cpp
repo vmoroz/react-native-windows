@@ -12,6 +12,7 @@
 #endif
 #include <array>
 #include <cassert>
+#include <cmath>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -48,6 +49,22 @@
       return napi_set_last_error(env, err); \
   } while (0)
 
+#define CHECK_JSRT_EXPECTED(env, expr, expected) \
+  do {                                           \
+    JsErrorCode err = (expr);                    \
+    if (err == JsErrorInvalidArgument)           \
+      return napi_set_last_error(env, expected); \
+    if (err != JsNoError)                        \
+      return napi_set_last_error(env, err);      \
+  } while (0)
+
+#define CHECK_JSRT_ERROR_CODE(expr)  \
+  do {                                    \
+    auto result = (expr);              \
+    if (result != JsErrorCode::JsNoError) \
+      return result;                      \
+  } while (0)
+
 // This does not call napi_set_last_error because the expression
 // is assumed to be a NAPI function call that already did.
 #define CHECK_NAPI(expr)         \
@@ -56,6 +73,9 @@
     if (status != napi_ok)       \
       return status;             \
   } while (0)
+
+// utf8 multibyte codepoint start check
+#define UTF8_MULTIBYTE_START(c) (((c)&0xC0) == 0xC0)
 
 #define STR_AND_LENGTH(str) str, std::size(str) - 1
 
@@ -155,6 +175,54 @@ std::wstring NarrowToWide(std::string_view value, UINT codePage = CP_UTF8) {
 JsErrorCode JsCreateString(_In_ const char *content, _In_ size_t length, _Out_ JsValueRef *value) {
   auto str = (length == NAPI_AUTO_LENGTH ? NarrowToWide({content}) : NarrowToWide({content, length}));
   return JsPointerToString(str.data(), str.size(), value);
+}
+
+JsErrorCode JsCopyString(
+    _In_ JsValueRef value,
+    _Out_opt_ char *buffer,
+    _In_ size_t bufferSize,
+    _Out_opt_ size_t *length,
+    UINT codePage = CP_UTF8) {
+  const wchar_t *stringValue;
+  size_t stringLength;
+  CHECK_JSRT_ERROR_CODE(JsStringToPointer(value, &stringValue, &stringLength));
+
+  if (length != nullptr) {
+    *length = stringLength;
+  }
+
+  if (buffer != nullptr) {
+    int result = ::WideCharToMultiByte(
+        codePage,
+        0,
+        stringValue,
+        static_cast<int>(stringLength),
+        buffer,
+        static_cast<int>(bufferSize),
+        nullptr,
+        nullptr);
+    assert(result != 0);
+  }
+
+  return JsErrorCode::JsNoError;
+}
+
+JsErrorCode
+JsCopyStringUtf16(_In_ JsValueRef value, _Out_opt_ char16_t *buffer, _In_ size_t bufferSize, _Out_opt_ size_t *length) {
+  const wchar_t *stringValue;
+  size_t stringLength;
+  CHECK_JSRT_ERROR_CODE(JsStringToPointer(value, &stringValue, &stringLength));
+
+  if (length != nullptr) {
+    *length = stringLength;
+  }
+
+  if (buffer != nullptr) {
+    static_assert(sizeof(char16_t) == sizeof(wchar_t));
+    memcpy_s(buffer, bufferSize, stringValue, stringLength * sizeof(wchar_t));
+  }
+
+  return JsErrorCode::JsNoError;
 }
 
 JsErrorCode JsCreatePropertyId(_In_z_ const char *name, _In_ size_t length, _Out_ JsPropertyIdRef *propertyId) {
@@ -462,7 +530,7 @@ napi_status napi_create_type_error(napi_env env, napi_value code, napi_value msg
   CHECK_ENV_AND_ARG2(env, msg, result);
   JsValueRef message = reinterpret_cast<JsValueRef>(msg);
 
-  JsValueRef error = JS_INVALID_REFERENCE;
+  JsValueRef error{JS_INVALID_REFERENCE};
   CHECK_JSRT(env, JsCreateTypeError(message, &error));
   CHECK_NAPI(SetErrorCode(env, error, code, nullptr));
 
@@ -474,10 +542,284 @@ napi_status napi_create_range_error(napi_env env, napi_value code, napi_value ms
   CHECK_ENV_AND_ARG2(env, msg, result);
   JsValueRef message = reinterpret_cast<JsValueRef>(msg);
 
-  JsValueRef error = JS_INVALID_REFERENCE;
+  JsValueRef error{JS_INVALID_REFERENCE};
   CHECK_JSRT(env, JsCreateRangeError(message, &error));
   CHECK_NAPI(SetErrorCode(env, error, code, nullptr));
 
   *result = reinterpret_cast<napi_value>(error);
+  return napi_ok;
+}
+
+//==============================================================================
+// Methods to get the native napi_value from Primitive type
+//==============================================================================
+
+napi_status napi_typeof(napi_env env, napi_value value, napi_valuetype *result) {
+  CHECK_ENV_AND_ARG2(env, value, result);
+  JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
+  JsValueType valueType = JsUndefined;
+  CHECK_JSRT(env, JsGetValueType(jsValue, &valueType));
+
+  switch (valueType) {
+    case JsUndefined:
+      *result = napi_undefined;
+      break;
+    case JsNull:
+      *result = napi_null;
+      break;
+    case JsNumber:
+      *result = napi_number;
+      break;
+    case JsString:
+      *result = napi_string;
+      break;
+    case JsBoolean:
+      *result = napi_boolean;
+      break;
+    case JsFunction:
+      *result = napi_function;
+      break;
+    case JsSymbol:
+      *result = napi_symbol;
+      break;
+    case JsError:
+      *result = napi_object;
+      break;
+
+    default:
+      bool hasExternalData;
+      if (JsHasExternalData(jsValue, &hasExternalData) != JsNoError) {
+        hasExternalData = false;
+      }
+
+      *result = hasExternalData ? napi_external : napi_object;
+      break;
+      // TODO: [vmoroz] add detection of napi_bigint
+  }
+
+  return napi_ok;
+}
+
+napi_status napi_get_value_double(napi_env env, napi_value value, double *result) {
+  CHECK_ENV_AND_ARG2(env, value, result);
+  JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
+  CHECK_JSRT_EXPECTED(env, JsNumberToDouble(jsValue, result), napi_number_expected);
+  return napi_ok;
+}
+
+napi_status napi_get_value_int32(napi_env env, napi_value value, int32_t *result) {
+  CHECK_ENV_AND_ARG2(env, value, result);
+  JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
+  int valueInt;
+  CHECK_JSRT_EXPECTED(env, JsNumberToInt(jsValue, &valueInt), napi_number_expected);
+  *result = static_cast<int32_t>(valueInt);
+  return napi_ok;
+}
+
+napi_status napi_get_value_uint32(napi_env env, napi_value value, uint32_t *result) {
+  CHECK_ENV_AND_ARG2(env, value, result);
+  JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
+  double valueDouble;
+  CHECK_JSRT_EXPECTED(env, JsNumberToDouble(jsValue, &valueDouble), napi_number_expected);
+  if (std::isfinite(valueDouble)) {
+    *result = static_cast<int32_t>(valueDouble);
+  } else {
+    *result = 0;
+  }
+  return napi_ok;
+}
+
+napi_status napi_get_value_int64(napi_env env, napi_value value, int64_t *result) {
+  CHECK_ENV_AND_ARG2(env, value, result);
+  JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
+
+  double valueDouble;
+  CHECK_JSRT_EXPECTED(env, JsNumberToDouble(jsValue, &valueDouble), napi_number_expected);
+
+  if (std::isfinite(valueDouble)) {
+    *result = static_cast<int64_t>(valueDouble);
+  } else {
+    *result = 0;
+  }
+
+  return napi_ok;
+}
+
+napi_status napi_get_value_bool(napi_env env, napi_value value, bool *result) {
+  CHECK_ENV_AND_ARG2(env, value, result);
+  JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
+  CHECK_JSRT_EXPECTED(env, JsBooleanToBool(jsValue, result), napi_boolean_expected);
+  return napi_ok;
+}
+
+// Copies a JavaScript string into a LATIN-1 string buffer. The result is the
+// number of bytes (excluding the null terminator) copied into buf.
+// A sufficient buffer size should be greater than the length of string,
+// reserving space for null terminator.
+// If bufsize is insufficient, the string will be truncated and null terminated.
+// If buf is NULL, this method returns the length of the string (in bytes)
+// via the result parameter.
+// The result argument is optional unless buf is NULL.
+napi_status napi_get_value_string_latin1(napi_env env, napi_value value, char *buf, size_t bufsize, size_t *result) {
+  CHECK_ENV_AND_ARG(env, value);
+
+  JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
+
+  if (!buf) {
+    CHECK_ARG(env, result);
+    CHECK_JSRT_EXPECTED(env, JsCopyString(jsValue, nullptr, 0, result, CP_LATIN1), napi_string_expected);
+  } else {
+    size_t count = 0;
+    CHECK_JSRT_EXPECTED(env, JsCopyString(jsValue, nullptr, 0, &count), napi_string_expected);
+
+    if (bufsize <= count) {
+      // if bufsize == count there is no space for null terminator
+      // Slow path: must implement truncation here.
+      std::unique_ptr<char[]> fullBuffer{new char[count]};
+      // CHAKRA_VERIFY(fullBuffer != nullptr);
+
+      CHECK_JSRT_EXPECTED(env, JsCopyString(jsValue, fullBuffer.get(), count, nullptr), napi_string_expected);
+      memmove(buf, fullBuffer.get(), sizeof(char) * bufsize);
+      fullBuffer.reset();
+
+      // Truncate string to the start of the last codepoint
+      if (bufsize > 0 && (((buf[bufsize - 1] & 0x80) == 0) || UTF8_MULTIBYTE_START(buf[bufsize - 1]))) {
+        // Last byte is a single byte codepoint or
+        // starts a multibyte codepoint
+        bufsize -= 1;
+      } else if (bufsize > 1 && UTF8_MULTIBYTE_START(buf[bufsize - 2])) {
+        // Second last byte starts a multibyte codepoint,
+        bufsize -= 2;
+      } else if (bufsize > 2 && UTF8_MULTIBYTE_START(buf[bufsize - 3])) {
+        // Third last byte starts a multibyte codepoint
+        bufsize -= 3;
+      } else if (bufsize > 3 && UTF8_MULTIBYTE_START(buf[bufsize - 4])) {
+        // Fourth last byte starts a multibyte codepoint
+        bufsize -= 4;
+      }
+
+      buf[bufsize] = '\0';
+
+      if (result) {
+        *result = bufsize;
+      }
+
+      return napi_ok;
+    }
+
+    // Fast path, result fits in the buffer
+    CHECK_JSRT_EXPECTED(env, JsCopyString(jsValue, buf, bufsize - 1, &count), napi_string_expected);
+
+    buf[count] = 0;
+
+    if (result != nullptr) {
+      *result = count;
+    }
+  }
+
+  return napi_ok;
+}
+
+// Copies a JavaScript string into a UTF-8 string buffer. The result is the
+// number of bytes (excluding the null terminator) copied into buf.
+// A sufficient buffer size should be greater than the length of string,
+// reserving space for null terminator.
+// If bufsize is insufficient, the string will be truncated and null terminated.
+// If buf is NULL, this method returns the length of the string (in bytes)
+// via the result parameter.
+// The result argument is optional unless buf is NULL.
+napi_status napi_get_value_string_utf8(napi_env env, napi_value value, char *buf, size_t bufsize, size_t *result) {
+  CHECK_ENV_AND_ARG(env, value);
+
+  JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
+
+  if (!buf) {
+    CHECK_ARG(env, result);
+    CHECK_JSRT_EXPECTED(env, JsCopyString(jsValue, nullptr, 0, result), napi_string_expected);
+  } else {
+    size_t count = 0;
+    CHECK_JSRT_EXPECTED(env, JsCopyString(jsValue, nullptr, 0, &count), napi_string_expected);
+
+    if (bufsize <= count) {
+      // if bufsize == count there is no space for null terminator
+      // Slow path: must implement truncation here.
+      std::unique_ptr<char[]> fullBuffer{new char[count]};
+      // CHAKRA_VERIFY(fullBuffer != nullptr);
+
+      CHECK_JSRT_EXPECTED(env, JsCopyString(jsValue, fullBuffer.get(), count, nullptr), napi_string_expected);
+      memmove(buf, fullBuffer.get(), sizeof(char) * bufsize);
+      fullBuffer.reset();
+
+      // Truncate string to the start of the last codepoint
+      if (bufsize > 0 && (((buf[bufsize - 1] & 0x80) == 0) || UTF8_MULTIBYTE_START(buf[bufsize - 1]))) {
+        // Last byte is a single byte codepoint or
+        // starts a multibyte codepoint
+        bufsize -= 1;
+      } else if (bufsize > 1 && UTF8_MULTIBYTE_START(buf[bufsize - 2])) {
+        // Second last byte starts a multibyte codepoint,
+        bufsize -= 2;
+      } else if (bufsize > 2 && UTF8_MULTIBYTE_START(buf[bufsize - 3])) {
+        // Third last byte starts a multibyte codepoint
+        bufsize -= 3;
+      } else if (bufsize > 3 && UTF8_MULTIBYTE_START(buf[bufsize - 4])) {
+        // Fourth last byte starts a multibyte codepoint
+        bufsize -= 4;
+      }
+
+      buf[bufsize] = '\0';
+
+      if (result) {
+        *result = bufsize;
+      }
+
+      return napi_ok;
+    }
+
+    // Fast path, result fits in the buffer
+    CHECK_JSRT_EXPECTED(env, JsCopyString(jsValue, buf, bufsize - 1, &count), napi_string_expected);
+
+    buf[count] = 0;
+
+    if (result != nullptr) {
+      *result = count;
+    }
+  }
+
+  return napi_ok;
+}
+
+
+// Copies a JavaScript string into a UTF-16 string buffer. The result is the
+// number of 2-byte code units (excluding the null terminator) copied into buf.
+// A sufficient buffer size should be greater than the length of string,
+// reserving space for null terminator.
+// If bufsize is insufficient, the string will be truncated and null terminated.
+// If buf is NULL, this method returns the length of the string (in 2-byte
+// code units) via the result parameter.
+// The result argument is optional unless buf is NULL.
+napi_status napi_get_value_string_utf16(napi_env env, napi_value value, char16_t *buf, size_t bufsize, size_t *result) {
+  CHECK_ENV_AND_ARG(env, value);
+
+  JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
+
+  if (!buf) {
+    CHECK_ARG(env, result);
+
+    CHECK_JSRT_EXPECTED(env, JsCopyStringUtf16(jsValue, nullptr, 0, result), napi_string_expected);
+  } else {
+    size_t copied = 0;
+    CHECK_JSRT_EXPECTED(env, JsCopyStringUtf16(jsValue, buf, bufsize - 1, &copied), napi_string_expected);
+
+    if (copied < bufsize - 1) {
+      buf[copied] = 0;
+    } else {
+      buf[bufsize - 1] = 0;
+    }
+
+    if (result != nullptr) {
+      *result = copied;
+    }
+  }
+
   return napi_ok;
 }
