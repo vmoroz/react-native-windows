@@ -38,9 +38,12 @@
   CHECK_ARG((env), (arg))
 
 #define CHECK_ENV_AND_ARG2(env, arg1, arg2) \
-  CHECK_ENV((env));                         \
-  CHECK_ARG((env), (arg1));                 \
+  CHECK_ENV_AND_ARG((env), (arg1));         \
   CHECK_ARG((env), (arg2))
+
+#define CHECK_ENV_AND_ARG3(env, arg1, arg2, arg3) \
+  CHECK_ENV_AND_ARG2((env), (arg1), (arg2));      \
+  CHECK_ARG((env), (arg3))
 
 #define CHECK_JSRT(env, expr)               \
   do {                                      \
@@ -423,6 +426,60 @@ napi_status CreatePropertyFunction(
 } catch (...) {
   return napi_set_last_error(env, napi_generic_failure);
 }
+
+// A span of values that can be used to pass arguments to function.
+// For C++20 we should consider to replace it with std::span.
+template <typename T>
+struct Span final {
+  constexpr Span(std::initializer_list<T> il) noexcept : m_data{const_cast<T *>(il.begin())}, m_size{il.size()} {}
+  constexpr Span(T const *data, size_t size) noexcept : m_data{data}, m_size{size} {}
+
+  [[nodiscard]] constexpr T const *begin() const noexcept {
+    return m_data;
+  }
+
+  [[nodiscard]] constexpr T const *end() const noexcept {
+    return m_data + m_size;
+  }
+
+  [[nodiscard]] constexpr size_t size() const noexcept {
+    return m_size;
+  }
+
+ private:
+  T const *const m_data;
+  size_t const m_size;
+};
+
+// JsValueArgs helps to optimize passing arguments to Chakra function.
+// If number of arguments is below or equal to MaxStackArgCount,
+// then they are kept on call stack, otherwise arguments are allocated on heap.
+struct JsValueArgs final {
+  JsValueArgs(napi_value thisArg, Span<napi_value> args) noexcept
+      : m_count{args.size() + 1},
+        m_heapArgs{m_count > MaxStackArgCount ? std::make_unique<JsValueRef[]>(m_count) : nullptr} {
+    JsValueRef *const jsArgs = m_heapArgs ? m_heapArgs.get() : m_stackArgs.data();
+    jsArgs[0] = reinterpret_cast<JsValueRef>(thisArg);
+    for (size_t i = 1; i < m_count; ++i) {
+      jsArgs[i] = reinterpret_cast<JsValueRef>(args.begin()[i - 1]);
+    }
+  }
+
+  JsValueRef *Data() noexcept {
+    return m_heapArgs ? m_heapArgs.get() : m_stackArgs.data();
+  }
+
+  size_t Size() noexcept {
+    return m_count;
+  };
+
+ private:
+  static constexpr size_t MaxStackArgCount = 8;
+
+  size_t const m_count{};
+  std::array<JsValueRef, MaxStackArgCount> m_stackArgs{{JS_INVALID_REFERENCE}};
+  std::unique_ptr<JsValueRef[]> const m_heapArgs;
+};
 
 } // namespace
 
@@ -1162,5 +1219,109 @@ napi_status napi_define_properties(
             &result));
   }
 
+  return napi_ok;
+}
+
+//==============================================================================
+// Methods to work with Arrays
+//==============================================================================
+napi_status napi_is_array(napi_env env, napi_value value, bool *result) {
+  CHECK_ENV_AND_ARG2(env, value, result);
+  JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
+  JsValueType type = JsUndefined;
+  CHECK_JSRT(env, JsGetValueType(jsValue, &type));
+  *result = (type == JsArray);
+  return napi_ok;
+}
+
+napi_status napi_get_array_length(napi_env env, napi_value value, uint32_t *result) {
+  CHECK_ENV_AND_ARG2(env, value, result);
+  JsPropertyIdRef propertyIdRef;
+  CHECK_JSRT(env, JsGetPropertyIdFromName(L"length", &propertyIdRef));
+  JsValueRef lengthRef;
+  JsValueRef arrayRef = reinterpret_cast<JsValueRef>(value);
+  CHECK_JSRT(env, JsGetProperty(arrayRef, propertyIdRef, &lengthRef));
+  double sizeInDouble;
+  CHECK_JSRT(env, JsNumberToDouble(lengthRef, &sizeInDouble));
+  *result = static_cast<uint32_t>(sizeInDouble);
+  return napi_ok;
+}
+
+//==============================================================================
+// Methods to compare values
+//==============================================================================
+napi_status napi_strict_equals(napi_env env, napi_value lhs, napi_value rhs, bool *result) {
+  CHECK_ENV_AND_ARG3(env, lhs, rhs, result);
+  JsValueRef object1 = reinterpret_cast<JsValueRef>(lhs);
+  JsValueRef object2 = reinterpret_cast<JsValueRef>(rhs);
+  CHECK_JSRT(env, JsStrictEquals(object1, object2, result));
+  return napi_ok;
+}
+
+//==============================================================================
+// Methods to work with Functions
+//==============================================================================
+
+// The number of arguments that we keep on stack.
+// We use heap if we have more argument.
+constexpr static size_t MaxStackArgCount = 8;
+
+napi_status napi_call_function(
+    napi_env env,
+    napi_value recv,
+    napi_value func,
+    size_t argc,
+    const napi_value *argv,
+    napi_value *result) {
+  CHECK_ENV_AND_ARG(env, recv);
+  if (argc > 0) {
+    CHECK_ARG(env, argv);
+  }
+
+  JsValueRef function = reinterpret_cast<JsValueRef>(func);
+  JsValueArgs args{recv, Span<napi_value>{argv, argc}};
+  JsValueRef returnValue;
+  CHECK_JSRT(env, JsCallFunction(function, args.Data(), static_cast<uint16_t>(args.Size()), &returnValue));
+  if (result != nullptr) {
+    *result = reinterpret_cast<napi_value>(returnValue);
+  }
+  return napi_ok;
+}
+
+napi_status
+napi_new_instance(napi_env env, napi_value constructor, size_t argc, const napi_value *argv, napi_value *result) {
+  CHECK_ENV_AND_ARG2(env, constructor, result);
+  if (argc > 0) {
+    CHECK_ARG(env, argv);
+  }
+  JsValueRef function = reinterpret_cast<JsValueRef>(constructor);
+  napi_value thisArg;
+  CHECK_NAPI(napi_get_undefined(env, &thisArg));
+  JsValueArgs args{thisArg, Span<napi_value>{argv, argc}};
+  CHECK_JSRT(
+      env,
+      JsConstructObject(
+          function, args.Data(), static_cast<uint16_t>(args.Size()), reinterpret_cast<JsValueRef *>(result)));
+  return napi_ok;
+}
+
+napi_status napi_instanceof(napi_env env, napi_value object, napi_value constructor, bool *result) {
+  CHECK_ENV_AND_ARG2(env, object, result);
+  JsValueRef obj = reinterpret_cast<JsValueRef>(object);
+  JsValueRef jsConstructor = reinterpret_cast<JsValueRef>(constructor);
+
+  // FIXME: Remove this type check when we switch to a version of Chakracore
+  // where passing an integer into JsInstanceOf as the constructor parameter
+  // does not cause a segfault. The need for this if-statement is removed in at
+  // least Chakracore 1.4.0, but maybe in an earlier version too.
+  napi_valuetype valuetype;
+  CHECK_NAPI(napi_typeof(env, constructor, &valuetype));
+  if (valuetype != napi_function) {
+    napi_throw_type_error(env, "ERR_NAPI_CONS_FUNCTION", "constructor must be a function");
+
+    return napi_set_last_error(env, napi_invalid_arg);
+  }
+
+  CHECK_JSRT(env, JsInstanceOf(obj, jsConstructor, result));
   return napi_ok;
 }
