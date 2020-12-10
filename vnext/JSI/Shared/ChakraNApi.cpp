@@ -58,9 +58,9 @@
       return napi_set_last_error(env, err);      \
   } while (0)
 
-#define CHECK_JSRT_ERROR_CODE(expr)  \
+#define CHECK_JSRT_ERROR_CODE(expr)       \
   do {                                    \
-    auto result = (expr);              \
+    auto result = (expr);                 \
     if (result != JsErrorCode::JsNoError) \
       return result;                      \
   } while (0)
@@ -284,6 +284,40 @@ class ExternalCallback {
   void *_data;
 };
 
+JsErrorCode JsPropertyIdFromKey(JsValueRef key, JsPropertyIdRef *propertyId) {
+  JsValueType keyType;
+  CHECK_JSRT_ERROR_CODE(JsGetValueType(key, &keyType));
+
+  if (keyType == JsString) {
+    const wchar_t *stringValue;
+    size_t stringLength;
+    CHECK_JSRT_ERROR_CODE(JsStringToPointer(key, &stringValue, &stringLength));
+    CHECK_JSRT_ERROR_CODE(JsGetPropertyIdFromName(stringValue, propertyId));
+  } else if (keyType == JsSymbol) {
+    CHECK_JSRT_ERROR_CODE(JsGetPropertyIdFromSymbol(key, propertyId));
+  } else {
+    return JsErrorCode::JsErrorInvalidArgument;
+  }
+  return JsErrorCode::JsNoError;
+}
+
+JsErrorCode JsPropertyIdFromPropertyDescriptor(const napi_property_descriptor *p, JsPropertyIdRef *propertyId) {
+  if (p->utf8name != nullptr) {
+    return JsCreatePropertyId(p->utf8name, strlen(p->utf8name), propertyId);
+  } else {
+    return JsPropertyIdFromKey(p->name, propertyId);
+  }
+}
+
+JsErrorCode JsNameValueFromPropertyDescriptor(const napi_property_descriptor *p, napi_value *name) {
+  if (p->utf8name != nullptr) {
+    return JsCreateString(p->utf8name, NAPI_AUTO_LENGTH, reinterpret_cast<JsValueRef *>(name));
+  } else {
+    *name = p->name;
+    return JsErrorCode::JsNoError;
+  }
+}
+
 napi_status SetErrorCode(napi_env env, JsValueRef error, napi_value code, const char *codeString) {
   if ((code != nullptr) || (codeString != nullptr)) {
     JsValueRef codeValue = reinterpret_cast<JsValueRef>(code);
@@ -355,6 +389,39 @@ napi_status SetErrorCode(napi_env env, JsValueRef error, napi_value code, const 
     CHECK_JSRT(env, JsSetProperty(error, namePropId, nameValue, true));
   }
   return napi_ok;
+}
+
+napi_status CreatePropertyFunction(
+    napi_env env,
+    napi_value property_name,
+    napi_callback cb,
+    void *callback_data,
+    napi_value *result) try {
+  CHECK_ENV_AND_ARG2(env, property_name, result);
+
+  std::unique_ptr<ExternalCallback> externalCallback{new ExternalCallback(env, cb, callback_data)};
+
+  napi_valuetype nameType;
+  CHECK_NAPI(napi_typeof(env, property_name, &nameType));
+
+  JsValueRef function;
+  if (nameType == napi_string) {
+    JsValueRef name{JS_INVALID_REFERENCE};
+    name = property_name;
+    CHECK_JSRT(env, JsCreateNamedFunction(name, ExternalCallback::Callback, externalCallback.get(), &function));
+  } else {
+    CHECK_JSRT(env, JsCreateFunction(ExternalCallback::Callback, externalCallback.get(), &function));
+  }
+
+  externalCallback->newTarget = function;
+
+  CHECK_JSRT(env, JsSetObjectBeforeCollectCallback(function, externalCallback.get(), ExternalCallback::Finalize));
+  externalCallback.release();
+
+  *result = reinterpret_cast<napi_value>(function);
+  return napi_ok;
+} catch (...) {
+  return napi_set_last_error(env, napi_generic_failure);
 }
 
 } // namespace
@@ -788,7 +855,6 @@ napi_status napi_get_value_string_utf8(napi_env env, napi_value value, char *buf
   return napi_ok;
 }
 
-
 // Copies a JavaScript string into a UTF-16 string buffer. The result is the
 // number of 2-byte code units (excluding the null terminator) copied into buf.
 // A sufficient buffer size should be greater than the length of string,
@@ -854,5 +920,247 @@ napi_status napi_coerce_to_string(napi_env env, napi_value value, napi_value *re
   CHECK_ENV_AND_ARG(env, result);
   JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
   CHECK_JSRT(env, JsConvertValueToString(jsValue, reinterpret_cast<JsValueRef *>(result)));
+  return napi_ok;
+}
+
+//==============================================================================
+// Methods to work with Objects
+//==============================================================================
+
+napi_status napi_get_prototype(napi_env env, napi_value object, napi_value *result) {
+  CHECK_ENV_AND_ARG(env, result);
+  JsValueRef obj = reinterpret_cast<JsValueRef>(object);
+  CHECK_JSRT(env, JsGetPrototype(obj, reinterpret_cast<JsValueRef *>(result)));
+  return napi_ok;
+}
+
+napi_status napi_get_property_names(napi_env env, napi_value object, napi_value *result) {
+  CHECK_ENV_AND_ARG(env, result);
+  JsValueRef obj = reinterpret_cast<JsValueRef>(object);
+  JsValueRef propertyNames{JS_INVALID_REFERENCE};
+  // TODO: [vmoroz] Check the V8 implementation to make sure that this implementation is correct.
+  CHECK_JSRT(env, JsGetOwnPropertyNames(obj, &propertyNames));
+  *result = reinterpret_cast<napi_value>(propertyNames);
+  return napi_ok;
+}
+
+napi_status napi_set_property(napi_env env, napi_value object, napi_value key, napi_value value) {
+  CHECK_ENV_AND_ARG2(env, key, value);
+  JsValueRef obj = reinterpret_cast<JsValueRef>(object);
+  JsPropertyIdRef propertyId{JS_INVALID_REFERENCE};
+  CHECK_JSRT(env, JsPropertyIdFromKey(key, &propertyId));
+  JsValueRef js_value = reinterpret_cast<JsValueRef>(value);
+  CHECK_JSRT(env, JsSetProperty(obj, propertyId, js_value, /*useStrictRules:*/ true));
+  return napi_ok;
+}
+
+napi_status napi_has_property(napi_env env, napi_value object, napi_value key, bool *result) {
+  CHECK_ENV_AND_ARG2(env, key, result);
+  JsPropertyIdRef propertyId{JS_INVALID_REFERENCE};
+  CHECK_JSRT(env, JsPropertyIdFromKey(key, &propertyId));
+  JsValueRef obj = reinterpret_cast<JsValueRef>(object);
+  CHECK_JSRT(env, JsHasProperty(obj, propertyId, result));
+  return napi_ok;
+}
+
+napi_status napi_get_property(napi_env env, napi_value object, napi_value key, napi_value *result) {
+  CHECK_ENV_AND_ARG2(env, key, result);
+  JsValueRef obj = reinterpret_cast<JsValueRef>(object);
+  JsPropertyIdRef propertyId{JS_INVALID_REFERENCE};
+  CHECK_JSRT(env, JsPropertyIdFromKey(key, &propertyId));
+  CHECK_JSRT(env, JsGetProperty(obj, propertyId, reinterpret_cast<JsValueRef *>(result)));
+  return napi_ok;
+}
+
+napi_status napi_delete_property(napi_env env, napi_value object, napi_value key, bool *result) {
+  CHECK_ENV_AND_ARG(env, result);
+  *result = false;
+
+  JsValueRef obj = reinterpret_cast<JsValueRef>(object);
+  JsPropertyIdRef propertyId{JS_INVALID_REFERENCE};
+  CHECK_JSRT(env, JsPropertyIdFromKey(key, &propertyId));
+  JsValueRef deletePropertyResult{JS_INVALID_REFERENCE};
+  CHECK_JSRT(env, JsDeleteProperty(obj, propertyId, false /* isStrictMode */, &deletePropertyResult));
+  CHECK_JSRT(env, JsBooleanToBool(deletePropertyResult, result));
+  return napi_ok;
+}
+
+napi_status napi_has_own_property(napi_env env, napi_value object, napi_value key, bool *result) {
+  CHECK_ENV_AND_ARG(env, result);
+  JsValueRef hasOwnPropertyResult;
+  std::array<JsValueRef, 2> hasOwnPropertyFuncArgs{object, key};
+  CHECK_JSRT(
+      env,
+      JsCallFunction(
+          env->has_own_property_function,
+          hasOwnPropertyFuncArgs.data(),
+          static_cast<unsigned short>(hasOwnPropertyFuncArgs.size()),
+          &hasOwnPropertyResult));
+  CHECK_JSRT(env, JsBooleanToBool(hasOwnPropertyResult, result));
+  return napi_ok;
+}
+
+napi_status napi_set_named_property(napi_env env, napi_value object, const char *utf8name, napi_value value) {
+  CHECK_ENV_AND_ARG(env, value);
+  JsValueRef obj = reinterpret_cast<JsValueRef>(object);
+  JsPropertyIdRef propertyId{JS_INVALID_REFERENCE};
+  CHECK_JSRT(env, JsCreatePropertyId(utf8name, NAPI_AUTO_LENGTH, &propertyId));
+  JsValueRef js_value = reinterpret_cast<JsValueRef>(value);
+  CHECK_JSRT(env, JsSetProperty(obj, propertyId, js_value, true));
+  return napi_ok;
+}
+
+napi_status napi_has_named_property(napi_env env, napi_value object, const char *utf8name, bool *result) {
+  CHECK_ENV_AND_ARG(env, result);
+  JsPropertyIdRef propertyId{JS_INVALID_REFERENCE};
+  CHECK_JSRT(env, JsCreatePropertyId(utf8name, strlen(utf8name), &propertyId));
+  JsValueRef obj = reinterpret_cast<JsValueRef>(object);
+  CHECK_JSRT(env, JsHasProperty(obj, propertyId, result));
+  return napi_ok;
+}
+
+napi_status napi_get_named_property(napi_env env, napi_value object, const char *utf8name, napi_value *result) {
+  CHECK_ENV_AND_ARG(env, result);
+  JsValueRef obj = reinterpret_cast<JsValueRef>(object);
+  JsPropertyIdRef propertyId{JS_INVALID_REFERENCE};
+  CHECK_JSRT(env, JsCreatePropertyId(utf8name, strlen(utf8name), &propertyId));
+  CHECK_JSRT(env, JsGetProperty(obj, propertyId, reinterpret_cast<JsValueRef *>(result)));
+  return napi_ok;
+}
+
+napi_status napi_set_element(napi_env env, napi_value object, uint32_t index, napi_value value) {
+  CHECK_ENV_AND_ARG(env, value);
+  JsValueRef jsIndex{JS_INVALID_REFERENCE};
+  CHECK_JSRT(env, JsIntToNumber(index, &jsIndex));
+  JsValueRef obj = reinterpret_cast<JsValueRef>(object);
+  JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
+  CHECK_JSRT(env, JsSetIndexedProperty(obj, jsIndex, jsValue));
+  return napi_ok;
+}
+
+napi_status napi_has_element(napi_env env, napi_value object, uint32_t index, bool *result) {
+  CHECK_ENV_AND_ARG(env, result);
+  JsValueRef jsIndex{JS_INVALID_REFERENCE};
+  CHECK_JSRT(env, JsIntToNumber(static_cast<int>(index), &jsIndex));
+  JsValueRef obj = reinterpret_cast<JsValueRef>(object);
+  CHECK_JSRT(env, JsHasIndexedProperty(obj, jsIndex, result));
+  return napi_ok;
+}
+
+napi_status napi_get_element(napi_env env, napi_value object, uint32_t index, napi_value *result) {
+  CHECK_ENV_AND_ARG(env, result);
+  JsValueRef jsIndex{JS_INVALID_REFERENCE};
+  CHECK_JSRT(env, JsIntToNumber(static_cast<int>(index), &jsIndex));
+  JsValueRef obj = reinterpret_cast<JsValueRef>(object);
+  CHECK_JSRT(env, JsGetIndexedProperty(obj, jsIndex, reinterpret_cast<JsValueRef *>(result)));
+  return napi_ok;
+}
+
+napi_status napi_delete_element(napi_env env, napi_value object, uint32_t index, bool *result) {
+  CHECK_ENV_AND_ARG(env, result);
+  JsValueRef jsIndex{JS_INVALID_REFERENCE};
+  CHECK_JSRT(env, JsIntToNumber(index, &jsIndex));
+  JsValueRef obj = reinterpret_cast<JsValueRef>(object);
+  CHECK_JSRT(env, JsDeleteIndexedProperty(obj, jsIndex));
+  // TODO: [vmoroz] Check the result value
+  *result = true;
+  return napi_ok;
+}
+
+napi_status napi_define_properties(
+    napi_env env,
+    napi_value object,
+    size_t property_count,
+    const napi_property_descriptor *properties) {
+  CHECK_ENV_AND_ARG(env, object);
+  if (property_count > 0) {
+    CHECK_ARG(env, properties);
+  }
+
+  JsPropertyIdRef configurableProperty{JS_INVALID_REFERENCE};
+  CHECK_JSRT(env, JsGetPropertyIdFromName(L"configurable", &configurableProperty));
+
+  // TODO: [vmoroz] Add cached property ID
+  JsPropertyIdRef enumerableProperty{JS_INVALID_REFERENCE};
+  CHECK_JSRT(env, JsGetPropertyIdFromName(L"enumerable", &enumerableProperty));
+
+  for (size_t i = 0; i < property_count; i++) {
+    const napi_property_descriptor *p = properties + i;
+
+    JsValueRef descriptor{JS_INVALID_REFERENCE};
+    CHECK_JSRT(env, JsCreateObject(&descriptor));
+
+    if (p->attributes & napi_configurable) {
+      // TODO: [vmoroz] Add cached true/false JsValue
+      JsValueRef configurable{JS_INVALID_REFERENCE};
+      CHECK_JSRT(env, JsBoolToBoolean(true, &configurable));
+      CHECK_JSRT(env, JsSetProperty(descriptor, configurableProperty, configurable, true));
+    }
+
+    if (p->attributes & napi_enumerable) {
+      JsValueRef enumerable{JS_INVALID_REFERENCE};
+      CHECK_JSRT(env, JsBoolToBoolean(true, &enumerable));
+      CHECK_JSRT(env, JsSetProperty(descriptor, enumerableProperty, enumerable, true));
+    }
+
+    if (p->getter != nullptr || p->setter != nullptr) {
+      napi_value property_name;
+      CHECK_JSRT(env, JsNameValueFromPropertyDescriptor(p, &property_name));
+
+      if (p->getter != nullptr) {
+        JsPropertyIdRef getProperty;
+        CHECK_JSRT(env, JsGetPropertyIdFromName(L"get", &getProperty));
+        JsValueRef getter;
+        CHECK_NAPI(
+            CreatePropertyFunction(env, property_name, p->getter, p->data, reinterpret_cast<napi_value *>(&getter)));
+        CHECK_JSRT(env, JsSetProperty(descriptor, getProperty, getter, true));
+      }
+
+      if (p->setter != nullptr) {
+        JsPropertyIdRef setProperty;
+        CHECK_JSRT(env, JsGetPropertyIdFromName(L"set", &setProperty));
+        JsValueRef setter;
+        CHECK_NAPI(
+            CreatePropertyFunction(env, property_name, p->setter, p->data, reinterpret_cast<napi_value *>(&setter)));
+        CHECK_JSRT(env, JsSetProperty(descriptor, setProperty, setter, true));
+      }
+    } else if (p->method != nullptr) {
+      napi_value property_name;
+      CHECK_JSRT(env, JsNameValueFromPropertyDescriptor(p, &property_name));
+
+      JsPropertyIdRef valueProperty;
+      CHECK_JSRT(env, JsGetPropertyIdFromName(L"value", &valueProperty));
+      JsValueRef method;
+      CHECK_NAPI(
+          CreatePropertyFunction(env, property_name, p->method, p->data, reinterpret_cast<napi_value *>(&method)));
+      CHECK_JSRT(env, JsSetProperty(descriptor, valueProperty, method, true));
+    } else {
+      RETURN_STATUS_IF_FALSE(env, p->value != nullptr, napi_invalid_arg);
+
+      if (p->attributes & napi_writable) {
+        JsPropertyIdRef writableProperty;
+        CHECK_JSRT(env, JsGetPropertyIdFromName(L"writable", &writableProperty));
+        JsValueRef writable;
+        CHECK_JSRT(env, JsBoolToBoolean(true, &writable));
+        CHECK_JSRT(env, JsSetProperty(descriptor, writableProperty, writable, true));
+      }
+
+      JsPropertyIdRef valueProperty;
+      CHECK_JSRT(env, JsGetPropertyIdFromName(L"value", &valueProperty));
+      CHECK_JSRT(env, JsSetProperty(descriptor, valueProperty, reinterpret_cast<JsValueRef>(p->value), true));
+    }
+
+    JsPropertyIdRef nameProperty;
+    CHECK_JSRT(env, JsPropertyIdFromPropertyDescriptor(p, &nameProperty));
+    bool result;
+    CHECK_JSRT(
+        env,
+        JsDefineProperty(
+            reinterpret_cast<JsValueRef>(object),
+            reinterpret_cast<JsPropertyIdRef>(nameProperty),
+            reinterpret_cast<JsValueRef>(descriptor),
+            &result));
+  }
+
   return napi_ok;
 }
