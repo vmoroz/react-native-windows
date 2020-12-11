@@ -378,6 +378,26 @@ class ExternalCallback {
   void *_data;
 };
 
+// Adapter for NAPI finalizer.
+class FinalizerInfo {
+ public:
+  //ExternalCallback(napi_env env, napi_callback cb, void *data) : _env(env), _cb(cb), _data(data) {}
+
+  // JsObjectBeforeCollectCallback
+  static void CALLBACK Finalize(JsRef ref, void *callbackState) {
+    ExternalCallback *externalCallback = reinterpret_cast<ExternalCallback *>(callbackState);
+    delete externalCallback;
+  }
+
+  // Value for 'new.target'
+  JsValueRef newTarget;
+
+ private:
+  napi_env _env;
+  napi_callback _cb;
+  void *_data;
+};
+
 JsErrorCode JsPropertyIdFromKey(JsValueRef key, JsPropertyIdRef *propertyId) {
   JsValueType keyType;
   CHECK_JSRT_ERROR_CODE(JsGetValueType(key, &keyType));
@@ -1642,7 +1662,7 @@ napi_status napi_wrap(
     void *finalize_hint,
     napi_ref *result) try {
   CHECK_ENV_AND_ARG(env, js_object);
-
+  //TODO: [vmoroz] change wrapping to be based on a symbol property
   JsValueRef value = reinterpret_cast<JsValueRef>(js_object);
 
   JsValueRef wrapper = JS_INVALID_REFERENCE;
@@ -2388,7 +2408,28 @@ napi_status napi_add_finalizer(
     void *native_object,
     napi_finalize finalize_cb,
     void *finalize_hint,
-    napi_ref *result) {}
+    napi_ref *result) {
+  CHECK_ENV_AND_ARG2(env, js_object, finalize_cb, result);
+
+  std::unique_ptr<ExternalCallback> externalCallback{new ExternalCallback(env, cb, callback_data)};
+
+  napi_valuetype nameType;
+  CHECK_NAPI(napi_typeof(env, property_name, &nameType));
+
+  JsValueRef function;
+  if (nameType == napi_string) {
+    JsValueRef name{JS_INVALID_REFERENCE};
+    name = property_name;
+    CHECK_JSRT(env, JsCreateNamedFunction(name, ExternalCallback::Callback, externalCallback.get(), &function));
+  } else {
+    CHECK_JSRT(env, JsCreateFunction(ExternalCallback::Callback, externalCallback.get(), &function));
+  }
+
+  externalCallback->newTarget = function;
+
+  CHECK_JSRT(env, JsSetObjectBeforeCollectCallback(function, externalCallback.get(), ExternalCallback::Finalize));
+  externalCallback.release();
+}
 
 #endif // NAPI_VERSION >= 5
 
