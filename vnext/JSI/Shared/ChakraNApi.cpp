@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+#define NAPI_EXPERIMENTAL
 #include "js_native_api.h"
 #ifdef CHAKRACORE
 #include "ChakraCore.h"
@@ -2322,3 +2323,114 @@ napi_status napi_adjust_external_memory(napi_env env, int64_t change_in_bytes, i
 
   return napi_ok;
 }
+
+#if NAPI_VERSION >= 5
+
+// Dates
+napi_status napi_create_date(napi_env env, double time, napi_value *result) {
+  CHECK_ENV_AND_ARG(env, result);
+
+  JsValueRef global{JS_INVALID_REFERENCE};
+  CHECK_JSRT(env, JsGetGlobalObject(&global));
+
+  JsPropertyIdRef dateConstructorId{JS_INVALID_REFERENCE};
+  CHECK_JSRT(env, JsGetPropertyIdFromName(L"Date", &dateConstructorId));
+
+  JsValueRef dateConstructor{JS_INVALID_REFERENCE};
+  CHECK_JSRT(env, JsGetProperty(global, dateConstructorId, &dateConstructor));
+
+  JsValueRef args[2] = {};
+  CHECK_JSRT(env, JsGetUndefinedValue(&args[0]));
+  CHECK_JSRT(env, JsDoubleToNumber(time, &args[1]));
+  CHECK_JSRT(env, JsConstructObject(dateConstructor, args, 2, reinterpret_cast<JsValueRef *>(result)));
+}
+
+napi_status napi_is_date(napi_env env, napi_value value, bool *is_date) {
+  CHECK_ENV_AND_ARG2(env, value, is_date);
+  
+  JsValueRef global{JS_INVALID_REFERENCE};
+  CHECK_JSRT(env, JsGetGlobalObject(&global));
+
+  JsPropertyIdRef dateConstructorId{JS_INVALID_REFERENCE};
+  CHECK_JSRT(env, JsGetPropertyIdFromName(L"Date", &dateConstructorId));
+
+  JsValueRef dateConstructor{JS_INVALID_REFERENCE};
+  CHECK_JSRT(env, JsGetProperty(global, dateConstructorId, &dateConstructor));
+
+  JsValueRef obj{reinterpret_cast<JsValueRef>(value)};
+  CHECK_JSRT(env, JsInstanceOf(obj, dateConstructor, is_date));
+}
+
+napi_status napi_get_date_value(napi_env env, napi_value value, double *result) {
+  CHECK_ENV_AND_ARG2(env, value, result);
+
+  bool isDate{false};
+  CHECK_NAPI(napi_is_date(env, value, &isDate));
+  RETURN_STATUS_IF_FALSE(env, isDate, napi_date_expected);
+
+  JsPropertyIdRef valueOfId{JS_INVALID_REFERENCE};
+  CHECK_JSRT(env, JsGetPropertyIdFromName(L"valueOf", &valueOfId));
+
+  JsValueRef obj{reinterpret_cast<JsValueRef>(value)};
+  JsValueRef valueOf{JS_INVALID_REFERENCE};
+  CHECK_JSRT(env, JsGetProperty(obj, valueOfId, &valueOf));
+
+  JsValueRef dateValue{JS_INVALID_REFERENCE};
+  CHECK_JSRT(env, JsCallFunction(valueOf, &obj, 1, &dateValue));
+
+  CHECK_JSRT(env, JsNumberToDouble(dateValue, result));
+}
+
+// Add finalizer for pointer
+napi_status napi_add_finalizer(
+    napi_env env,
+    napi_value js_object,
+    void *native_object,
+    napi_finalize finalize_cb,
+    void *finalize_hint,
+    napi_ref *result) {}
+
+#endif // NAPI_VERSION >= 5
+
+#if NAPI_VERSION >= 6
+
+// BigInt
+napi_status napi_create_bigint_int64(napi_env env, int64_t value, napi_value *result) {}
+napi_status napi_create_bigint_uint64(napi_env env, uint64_t value, napi_value *result) {}
+napi_status
+napi_create_bigint_words(napi_env env, int sign_bit, size_t word_count, const uint64_t *words, napi_value *result) {}
+napi_status napi_get_value_bigint_int64(napi_env env, napi_value value, int64_t *result, bool *lossless) {}
+napi_status napi_get_value_bigint_uint64(napi_env env, napi_value value, uint64_t *result, bool *lossless) {}
+napi_status
+napi_get_value_bigint_words(napi_env env, napi_value value, int *sign_bit, size_t *word_count, uint64_t *words) {}
+
+// Object
+napi_status napi_get_all_property_names(
+    napi_env env,
+    napi_value object,
+    napi_key_collection_mode key_mode,
+    napi_key_filter key_filter,
+    napi_key_conversion key_conversion,
+    napi_value *result) {}
+
+// Instance data
+napi_status napi_set_instance_data(napi_env env, void *data, napi_finalize finalize_cb, void *finalize_hint) {}
+
+napi_status napi_get_instance_data(napi_env env, void **data) {}
+#endif // NAPI_VERSION >= 6
+
+#if NAPI_VERSION >= 7
+// ArrayBuffer detaching
+napi_status napi_detach_arraybuffer(napi_env env, napi_value arraybuffer) {}
+
+napi_status napi_is_detached_arraybuffer(napi_env env, napi_value value, bool *result) {}
+#endif // NAPI_VERSION >= 7
+
+#ifdef NAPI_EXPERIMENTAL
+// Type tagging
+napi_status napi_type_tag_object(napi_env env, napi_value value, const napi_type_tag *type_tag) {}
+
+napi_status napi_check_object_type_tag(napi_env env, napi_value value, const napi_type_tag *type_tag, bool *result) {}
+napi_status napi_object_freeze(napi_env env, napi_value object) {}
+napi_status napi_object_seal(napi_env env, napi_value object) {}
+#endif // NAPI_EXPERIMENTAL
