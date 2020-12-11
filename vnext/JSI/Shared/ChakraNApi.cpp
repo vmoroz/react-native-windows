@@ -143,6 +143,17 @@ struct RefInfo {
   uint32_t count;
 };
 
+struct DataViewInfo {
+  JsValueRef dataView;
+  JsValueRef arrayBuffer;
+  size_t byteOffset;
+  size_t byteLength;
+
+  static void CALLBACK Finalize(_In_opt_ void *data) {
+    delete reinterpret_cast<DataViewInfo *>(data);
+  }
+};
+
 // Warning: Keep in-sync with napi_status enum
 static const char *error_messages[] = {
     nullptr,
@@ -237,6 +248,50 @@ JsCopyStringUtf16(_In_ JsValueRef value, _Out_opt_ char16_t *buffer, _In_ size_t
 JsErrorCode JsCreatePropertyId(_In_z_ const char *name, _In_ size_t length, _Out_ JsPropertyIdRef *propertyId) {
   auto str = (length == NAPI_AUTO_LENGTH ? NarrowToWide({name}) : NarrowToWide({name, length}));
   return JsGetPropertyIdFromName(str.data(), propertyId);
+}
+
+
+JsErrorCode JsCreatePromise(JsValueRef *promise, JsValueRef *resolve, JsValueRef *reject) {
+  JsValueRef global{};
+  CHECK_JSRT_ERROR_CODE(JsGetGlobalObject(&global));
+
+  JsPropertyIdRef promiseConstructorId{};
+  CHECK_JSRT_ERROR_CODE(JsGetPropertyIdFromName(L"Promise", &promiseConstructorId));
+
+  JsValueRef promiseConstructor{};
+  CHECK_JSRT_ERROR_CODE(JsGetProperty(global, promiseConstructorId, &promiseConstructor));
+
+  struct CallbackStruct {
+    static JsValueRef CALLBACK Callback(
+        JsValueRef callee,
+        bool isConstructCall,
+        JsValueRef *arguments,
+        unsigned short argumentCount,
+        void *callbackState) {
+      return (reinterpret_cast<CallbackStruct *>(callbackState))
+          ->Callback(callee, isConstructCall, arguments, argumentCount);
+    }
+
+    JsValueRef Callback(JsValueRef callee, bool isConstructCall, JsValueRef *arguments, unsigned short argumentCount) {
+      *resolve = arguments[1];
+      *reject = arguments[2];
+
+      return JS_INVALID_REFERENCE;
+    }
+
+    JsValueRef *resolve{};
+    JsValueRef *reject{};
+  } cbs{resolve, reject};
+
+  JsValueRef callbackFunction{};
+  CHECK_JSRT_ERROR_CODE(JsCreateFunction(&CallbackStruct::Callback, &cbs, &callbackFunction));
+
+  JsValueRef args[2];
+  CHECK_JSRT_ERROR_CODE(JsGetUndefinedValue(&args[0]));
+  args[1] = callbackFunction;
+  CHECK_JSRT_ERROR_CODE(JsConstructObject(promiseConstructor, args, 2, promise));
+
+  return JsErrorCode::JsNoError;
 }
 
 // Callback Info struct as per JSRT native function.
@@ -486,6 +541,23 @@ napi_status SetErrorCode(napi_env env, JsValueRef error, napi_value code, const 
 
     CHECK_JSRT(env, JsSetProperty(error, namePropId, nameValue, true));
   }
+  return napi_ok;
+}
+
+napi_status ConcludeDeferred(napi_env env, napi_deferred deferred, const char *property, napi_value result) {
+  // We do not check if property is OK, because that's not coming from outside.
+  CHECK_ARG(env, deferred);
+  CHECK_ARG(env, result);
+
+  napi_value container, resolver, js_null;
+  napi_ref ref = reinterpret_cast<napi_ref>(deferred);
+
+  CHECK_NAPI(napi_get_reference_value(env, ref, &container));
+  CHECK_NAPI(napi_get_named_property(env, container, property, &resolver));
+  CHECK_NAPI(napi_get_null(env, &js_null));
+  CHECK_NAPI(napi_call_function(env, js_null, resolver, 1, &result, nullptr));
+  CHECK_NAPI(napi_delete_reference(env, ref));
+
   return napi_ok;
 }
 
@@ -1506,7 +1578,8 @@ napi_status napi_define_class(
   std::unique_ptr<ExternalCallback> externalCallback{new ExternalCallback(env, constructor, data)};
 
   JsValueRef jsConstructor;
-  CHECK_JSRT(env, JsCreateNamedFunction(namestring, ExternalCallback::Callback, externalCallback.get(), &jsConstructor));
+  CHECK_JSRT(
+      env, JsCreateNamedFunction(namestring, ExternalCallback::Callback, externalCallback.get(), &jsConstructor));
 
   externalCallback->newTarget = jsConstructor;
 
@@ -1593,8 +1666,7 @@ napi_status napi_wrap(
   }
 
   return napi_ok;
-}
-catch (...) {
+} catch (...) {
   return napi_set_last_error(env, napi_generic_failure);
 }
 
@@ -1646,7 +1718,8 @@ napi_create_external(napi_env env, void *data, napi_finalize finalize_cb, void *
   CHECK_ENV_AND_ARG(env, result);
   std::unique_ptr<ExternalData> externalData{new ExternalData(env, data, finalize_cb, finalize_hint)};
 
-  CHECK_JSRT(env, JsCreateExternalObject(externalData.get(), ExternalData::Finalize, reinterpret_cast<JsValueRef *>(result)));
+  CHECK_JSRT(
+      env, JsCreateExternalObject(externalData.get(), ExternalData::Finalize, reinterpret_cast<JsValueRef *>(result)));
   externalData.release();
 
   return napi_ok;
@@ -1674,7 +1747,7 @@ napi_status napi_create_reference(napi_env env, napi_value value, uint32_t initi
   auto jsValue = reinterpret_cast<JsValueRef>(value);
   std::unique_ptr<RefInfo> info{new RefInfo{jsValue, initial_refcount}};
 
-  //TODO: implement object weak semantic
+  // TODO: implement object weak semantic
   if (info->count != 0) {
     CHECK_JSRT(env, JsAddRef(jsValue, nullptr));
   }
@@ -1859,6 +1932,393 @@ napi_status napi_get_and_clear_last_exception(napi_env env, napi_value *result) 
   } else {
     CHECK_NAPI(napi_get_undefined(env, result));
   }
+
+  return napi_ok;
+}
+
+//==============================================================================
+// Methods to work with array buffers and typed arrays
+//==============================================================================
+
+napi_status napi_is_arraybuffer(napi_env env, napi_value value, bool *result) {
+  CHECK_ENV_AND_ARG2(env, value, result);
+
+  JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
+  JsValueType valueType;
+  CHECK_JSRT(env, JsGetValueType(jsValue, &valueType));
+
+  *result = (valueType == JsArrayBuffer);
+  return napi_ok;
+}
+
+napi_status napi_create_arraybuffer(napi_env env, size_t byte_length, void **data, napi_value *result) {
+  CHECK_ENV_AND_ARG(env, result);
+
+  JsValueRef arrayBuffer;
+  CHECK_JSRT(env, JsCreateArrayBuffer(static_cast<unsigned int>(byte_length), &arrayBuffer));
+
+  if (data != nullptr) {
+    CHECK_JSRT(
+        env,
+        JsGetArrayBufferStorage(
+            arrayBuffer, reinterpret_cast<BYTE **>(data), reinterpret_cast<unsigned int *>(&byte_length)));
+  }
+
+  *result = reinterpret_cast<napi_value>(arrayBuffer);
+  return napi_ok;
+}
+
+napi_status napi_create_external_arraybuffer(
+    napi_env env,
+    void *external_data,
+    size_t byte_length,
+    napi_finalize finalize_cb,
+    void *finalize_hint,
+    napi_value *result) try {
+  CHECK_ENV_AND_ARG(env, result);
+
+  std::unique_ptr<ExternalData> externalData{new ExternalData(env, external_data, finalize_cb, finalize_hint)};
+
+  JsValueRef arrayBuffer;
+  CHECK_JSRT(
+      env,
+      JsCreateExternalArrayBuffer(
+          external_data, static_cast<unsigned int>(byte_length), ExternalData::Finalize, externalData.get(), &arrayBuffer));
+  externalData.release();
+
+  *result = reinterpret_cast<napi_value>(arrayBuffer);
+  return napi_ok;
+} catch (...) {
+  return napi_set_last_error(env, napi_generic_failure);
+}
+
+napi_status napi_get_arraybuffer_info(napi_env env, napi_value arraybuffer, void **data, size_t *byte_length) {
+  CHECK_ENV_AND_ARG(env, arraybuffer);
+
+  BYTE *storageData;
+  unsigned int storageLength;
+  CHECK_JSRT(env, JsGetArrayBufferStorage(reinterpret_cast<JsValueRef>(arraybuffer), &storageData, &storageLength));
+
+  if (data != nullptr) {
+    *data = reinterpret_cast<void *>(storageData);
+  }
+
+  if (byte_length != nullptr) {
+    *byte_length = static_cast<size_t>(storageLength);
+  }
+
+  return napi_ok;
+}
+
+napi_status napi_is_typedarray(napi_env env, napi_value value, bool *result) {
+  CHECK_ENV_AND_ARG2(env, value, result);
+
+  JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
+  JsValueType valueType;
+  CHECK_JSRT(env, JsGetValueType(jsValue, &valueType));
+
+  *result = (valueType == JsTypedArray);
+  return napi_ok;
+}
+
+napi_status napi_create_typedarray(
+    napi_env env,
+    napi_typedarray_type type,
+    size_t length,
+    napi_value arraybuffer,
+    size_t byte_offset,
+    napi_value *result) {
+  CHECK_ENV_AND_ARG2(env, arraybuffer, result);
+
+  JsTypedArrayType jsType;
+  switch (type) {
+    case napi_int8_array:
+      jsType = JsArrayTypeInt8;
+      break;
+    case napi_uint8_array:
+      jsType = JsArrayTypeUint8;
+      break;
+    case napi_uint8_clamped_array:
+      jsType = JsArrayTypeUint8Clamped;
+      break;
+    case napi_int16_array:
+      jsType = JsArrayTypeInt16;
+      break;
+    case napi_uint16_array:
+      jsType = JsArrayTypeUint16;
+      break;
+    case napi_int32_array:
+      jsType = JsArrayTypeInt32;
+      break;
+    case napi_uint32_array:
+      jsType = JsArrayTypeUint32;
+      break;
+    case napi_float32_array:
+      jsType = JsArrayTypeFloat32;
+      break;
+    case napi_float64_array:
+      jsType = JsArrayTypeFloat64;
+      break;
+    default:
+      return napi_set_last_error(env, napi_invalid_arg);
+  }
+
+  JsValueRef jsArrayBuffer = reinterpret_cast<JsValueRef>(arraybuffer);
+
+  CHECK_JSRT(
+      env,
+      JsCreateTypedArray(
+          jsType,
+          jsArrayBuffer,
+          static_cast<unsigned int>(byte_offset),
+          static_cast<unsigned int>(length),
+          reinterpret_cast<JsValueRef *>(result)));
+
+  return napi_ok;
+}
+
+napi_status napi_get_typedarray_info(
+    napi_env env,
+    napi_value typedarray,
+    napi_typedarray_type *type,
+    size_t *length,
+    void **data,
+    napi_value *arraybuffer,
+    size_t *byte_offset) {
+  CHECK_ENV_AND_ARG(env, typedarray);
+
+  JsTypedArrayType jsType;
+  JsValueRef jsArrayBuffer;
+  unsigned int byteOffset;
+  unsigned int byteLength;
+  BYTE *bufferData;
+  unsigned int bufferLength;
+  int elementSize;
+
+  CHECK_JSRT(
+      env,
+      JsGetTypedArrayInfo(reinterpret_cast<JsValueRef>(typedarray), &jsType, &jsArrayBuffer, &byteOffset, &byteLength));
+
+  CHECK_JSRT(
+      env,
+      JsGetTypedArrayStorage(
+          reinterpret_cast<JsValueRef>(typedarray), &bufferData, &bufferLength, &jsType, &elementSize));
+
+  if (type != nullptr) {
+    switch (jsType) {
+      case JsArrayTypeInt8:
+        *type = napi_int8_array;
+        break;
+      case JsArrayTypeUint8:
+        *type = napi_uint8_array;
+        break;
+      case JsArrayTypeUint8Clamped:
+        *type = napi_uint8_clamped_array;
+        break;
+      case JsArrayTypeInt16:
+        *type = napi_int16_array;
+        break;
+      case JsArrayTypeUint16:
+        *type = napi_uint16_array;
+        break;
+      case JsArrayTypeInt32:
+        *type = napi_int32_array;
+        break;
+      case JsArrayTypeUint32:
+        *type = napi_uint32_array;
+        break;
+      case JsArrayTypeFloat32:
+        *type = napi_float32_array;
+        break;
+      case JsArrayTypeFloat64:
+        *type = napi_float64_array;
+        break;
+      default:
+        return napi_set_last_error(env, napi_generic_failure);
+    }
+  }
+
+  if (length != nullptr) {
+    *length = static_cast<size_t>(byteLength / elementSize);
+  }
+
+  if (data != nullptr) {
+    *data = static_cast<uint8_t *>(bufferData);
+  }
+
+  if (arraybuffer != nullptr) {
+    *arraybuffer = reinterpret_cast<napi_value>(jsArrayBuffer);
+  }
+
+  if (byte_offset != nullptr) {
+    *byte_offset = static_cast<size_t>(byteOffset);
+  }
+
+  return napi_ok;
+}
+
+napi_status
+napi_create_dataview(napi_env env, size_t byte_length, napi_value arraybuffer, size_t byte_offset, napi_value *result) {
+  CHECK_ENV_AND_ARG2(env, arraybuffer, result);
+
+  JsValueRef jsArrayBuffer = reinterpret_cast<JsValueRef>(arraybuffer);
+
+  BYTE *unused = nullptr;
+  unsigned int bufferLength = 0;
+
+  CHECK_JSRT(env, JsGetArrayBufferStorage(jsArrayBuffer, &unused, &bufferLength));
+
+  if (byte_length + byte_offset > bufferLength) {
+    napi_throw_range_error(
+        env,
+        "ERR_NAPI_INVALID_DATAVIEW_ARGS",
+        "byte_offset + byte_length should be less than or "
+        "equal to the size in bytes of the array passed in");
+    return napi_set_last_error(env, napi_pending_exception);
+  }
+
+  JsValueRef jsDataView;
+  CHECK_JSRT(
+      env,
+      JsCreateDataView(
+          jsArrayBuffer, static_cast<unsigned int>(byte_offset), static_cast<unsigned int>(byte_length), &jsDataView));
+
+  auto dataViewInfo = new DataViewInfo{jsDataView, jsArrayBuffer, byte_offset, byte_length};
+  CHECK_JSRT(env, JsCreateExternalObject(dataViewInfo, DataViewInfo::Finalize, reinterpret_cast<JsValueRef *>(result)));
+
+  return napi_ok;
+}
+
+napi_status napi_is_dataview(napi_env env, napi_value value, bool *result) {
+  CHECK_ENV_AND_ARG2(env, value, result);
+
+  JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
+  JsValueType valueType;
+  CHECK_JSRT(env, JsGetValueType(jsValue, &valueType));
+
+  *result = (valueType == JsDataView);
+  return napi_ok;
+}
+
+napi_status napi_get_dataview_info(
+    napi_env env,
+    napi_value dataview,
+    size_t *byte_length,
+    void **data,
+    napi_value *arraybuffer,
+    size_t *byte_offset) {
+  CHECK_ENV_AND_ARG(env, dataview);
+
+  BYTE *bufferData = nullptr;
+  unsigned int bufferLength = 0;
+
+  JsValueRef jsExternalObject = reinterpret_cast<JsValueRef>(dataview);
+
+  DataViewInfo *dataViewInfo;
+  CHECK_JSRT(env, JsGetExternalData(jsExternalObject, reinterpret_cast<void **>(&dataViewInfo)));
+
+  CHECK_JSRT(env, JsGetDataViewStorage(dataViewInfo->dataView, &bufferData, &bufferLength));
+
+  if (byte_length != nullptr) {
+    *byte_length = dataViewInfo->byteLength;
+  }
+
+  if (data != nullptr) {
+    *data = static_cast<uint8_t *>(bufferData);
+  }
+
+  if (arraybuffer != nullptr) {
+    *arraybuffer = reinterpret_cast<napi_value>(dataViewInfo->arrayBuffer);
+  }
+
+  if (byte_offset != nullptr) {
+    *byte_offset = dataViewInfo->byteOffset;
+  }
+
+  return napi_ok;
+}
+
+//==============================================================================
+// version management
+//==============================================================================
+napi_status napi_get_version(napi_env env, uint32_t *result) {
+  CHECK_ENV(env);
+  CHECK_ARG(env, result);
+  *result = NAPI_VERSION;
+  return napi_ok;
+}
+
+// Promises
+napi_status napi_create_promise(napi_env env, napi_deferred *deferred, napi_value *promise) {
+  CHECK_ARG(env, deferred);
+  CHECK_ARG(env, promise);
+
+  JsValueRef js_promise, resolve, reject, container;
+  napi_ref ref;
+  napi_value js_deferred;
+
+  CHECK_JSRT(env, JsCreatePromise(&js_promise, &resolve, &reject));
+
+  CHECK_JSRT(env, JsCreateObject(&container));
+  js_deferred = reinterpret_cast<napi_value>(container);
+
+  CHECK_NAPI(napi_set_named_property(env, js_deferred, "resolve", reinterpret_cast<napi_value>(resolve)));
+  CHECK_NAPI(napi_set_named_property(env, js_deferred, "reject", reinterpret_cast<napi_value>(reject)));
+
+  CHECK_NAPI(napi_create_reference(env, js_deferred, 1, &ref));
+
+  *deferred = reinterpret_cast<napi_deferred>(ref);
+  *promise = reinterpret_cast<napi_value>(js_promise);
+
+  return napi_ok;
+}
+
+napi_status napi_resolve_deferred(napi_env env, napi_deferred deferred, napi_value resolution) {
+  return ConcludeDeferred(env, deferred, "resolve", resolution);
+}
+
+napi_status napi_reject_deferred(napi_env env, napi_deferred deferred, napi_value rejection) {
+  return ConcludeDeferred(env, deferred, "reject", rejection);
+}
+
+napi_status napi_is_promise(napi_env env, napi_value value, bool *is_promise) {
+  CHECK_ARG(env, value);
+  CHECK_ARG(env, is_promise);
+
+  napi_value global, promise_ctor;
+
+  CHECK_NAPI(napi_get_global(env, &global));
+  CHECK_NAPI(napi_get_named_property(env, global, "Promise", &promise_ctor));
+  CHECK_NAPI(napi_instanceof(env, value, promise_ctor, is_promise));
+
+  return napi_ok;
+}
+
+// Running a script
+napi_status napi_run_script(napi_env env, napi_value script, napi_value *result) {
+  CHECK_ARG(env, script);
+  CHECK_ARG(env, result);
+
+  JsValueRef scriptVar = reinterpret_cast<JsValueRef>(script);
+
+  const wchar_t *scriptStr;
+  size_t scriptStrLen;
+  CHECK_JSRT(env, JsStringToPointer(scriptVar, &scriptStr, &scriptStrLen));
+  CHECK_JSRT_EXPECTED(
+      env,
+      JsRunScript(scriptStr, ++env->source_context, L"Unknown", reinterpret_cast<JsValueRef *>(result)),
+      napi_string_expected);
+
+  return napi_ok;
+}
+
+// Memory management
+napi_status napi_adjust_external_memory(napi_env env, int64_t change_in_bytes, int64_t *adjusted_value) {
+  CHECK_ARG(env, adjusted_value);
+
+  // TODO(jackhorton): Determine if Chakra needs or is able to do anything here
+  // For now, we can lie and say that we always adjusted more memory
+  *adjusted_value = change_in_bytes;
 
   return napi_ok;
 }
