@@ -19,10 +19,36 @@
 #include <string_view>
 #include <vector>
 
+#define RETURN_STATUS_IF_FALSE2(condition, status) \
+  do {                                             \
+    if (!(condition)) {                            \
+      return SetLastError(status);                 \
+    }                                              \
+  } while (0)
+
+#define CHECK_ARG2(arg) RETURN_STATUS_IF_FALSE2(((arg) != nullptr), napi_invalid_arg)
+
+#define CHECK_JSRT2(expr)       \
+  do {                          \
+    JsErrorCode err = (expr);   \
+    if (err != JsNoError) {     \
+      return SetLastError(err); \
+    }                           \
+  } while (0)
+
+#define CHECK_JSRT_EXPECTED2(expr, expected) \
+  do {                                       \
+    JsErrorCode err = (expr);                \
+    if (err == JsErrorInvalidArgument)       \
+      return SetLastError(expected);         \
+    if (err != JsNoError)                    \
+      return SetLastError(err);              \
+  } while (0)
+
 #define RETURN_STATUS_IF_FALSE(env, condition, status) \
   do {                                                 \
     if (!(condition)) {                                \
-      return napi_set_last_error((env), (status));     \
+      return (env)->SetLastError(status);              \
     }                                                  \
   } while (0)
 
@@ -47,20 +73,20 @@
   CHECK_ENV_AND_ARG2((env), (arg1), (arg2));      \
   CHECK_ARG((env), (arg3))
 
-#define CHECK_JSRT(env, expr)               \
-  do {                                      \
-    JsErrorCode err = (expr);               \
-    if (err != JsNoError)                   \
-      return napi_set_last_error(env, err); \
+#define CHECK_JSRT(env, expr)          \
+  do {                                 \
+    JsErrorCode err = (expr);          \
+    if (err != JsNoError)              \
+      return (env)->SetLastError(err); \
   } while (0)
 
 #define CHECK_JSRT_EXPECTED(env, expr, expected) \
   do {                                           \
     JsErrorCode err = (expr);                    \
     if (err == JsErrorInvalidArgument)           \
-      return napi_set_last_error(env, expected); \
+      return (env)->SetLastError(expected);      \
     if (err != JsNoError)                        \
-      return napi_set_last_error(env, err);      \
+      return (env)->SetLastError(err);           \
   } while (0)
 
 #define CHECK_JSRT_ERROR_CODE(expr)       \
@@ -144,11 +170,8 @@ struct JsRefHolder final {
   JsRef m_ref{JS_INVALID_REFERENCE};
 };
 
-struct Environment
-{
+struct Environment {
   // TODO: [vmoroz] move to private section
-  JsSourceContext source_context = JS_SOURCE_CONTEXT_NONE;
-  napi_extended_error_info last_error{nullptr, nullptr, 0, napi_ok};
   JsValueRef has_own_property_function = JS_INVALID_REFERENCE;
 
   explicit Environment(JsContextRef context) noexcept;
@@ -159,8 +182,17 @@ struct Environment
   void Ref() noexcept;
   void Unref() noexcept;
 
+  void ClearLastError() noexcept;
+  napi_status
+  SetLastError(napi_status errorCode, uint32_t engineErrorCode = 0, void *engineReserved = nullptr) noexcept;
+  napi_status SetLastError(JsErrorCode jsError, void *engineReserved = nullptr) noexcept;
+  napi_status GetLastErrorInfo(const napi_extended_error_info **result) noexcept;
+
+  napi_status RunScript(napi_value script, napi_value *result) noexcept;
+
  private:
   JsRefHolder m_context;
+  napi_extended_error_info m_lastError{nullptr, nullptr, 0, napi_ok};
 
   // We store references in two different lists, depending on whether they have
   // `napi_finalizer` callbacks, because we must first finalize the ones that
@@ -168,6 +200,7 @@ struct Environment
   RefTracker::RefList m_refList;
   RefTracker::RefList m_finalizingRefList;
   int m_refCount{1};
+  JsSourceContext m_sourceContext{JS_SOURCE_CONTEXT_NONE};
 };
 
 } // namespace chakra
@@ -175,55 +208,6 @@ struct Environment
 // Pseudo alias for Environment. It must be fine as long as they have the same size.
 struct napi_env__ : chakra::Environment {};
 static_assert(sizeof(napi_env__) == sizeof(chakra::Environment));
-
-static napi_status napi_set_last_error(
-    napi_env env,
-    napi_status error_code,
-    uint32_t engine_error_code = 0,
-    void *engine_reserved = nullptr) {
-  env->last_error.error_code = error_code;
-  env->last_error.engine_error_code = engine_error_code;
-  env->last_error.engine_reserved = engine_reserved;
-
-  return error_code;
-}
-
-static void napi_clear_last_error(napi_env env) {
-  env->last_error.error_code = napi_ok;
-  env->last_error.engine_error_code = 0;
-  env->last_error.engine_reserved = nullptr;
-}
-
-static napi_status napi_set_last_error(napi_env env, JsErrorCode jsError, void *engine_reserved = nullptr) {
-  napi_status status;
-  switch (jsError) {
-    case JsNoError:
-      status = napi_ok;
-      break;
-    case JsErrorNullArgument:
-    case JsErrorInvalidArgument:
-      status = napi_invalid_arg;
-      break;
-    case JsErrorPropertyNotString:
-      status = napi_string_expected;
-      break;
-    case JsErrorArgumentNotObject:
-      status = napi_object_expected;
-      break;
-    case JsErrorScriptException:
-    case JsErrorInExceptionState:
-      status = napi_pending_exception;
-      break;
-    default:
-      status = napi_generic_failure;
-      break;
-  }
-
-  env->last_error.error_code = status;
-  env->last_error.engine_error_code = jsError;
-  env->last_error.engine_reserved = engine_reserved;
-  return status;
-}
 
 namespace chakra {
 
@@ -258,7 +242,7 @@ struct Finalizer {
   }
 
  public:
-  static Finalizer* New(
+  static Finalizer *New(
       napi_env env,
       napi_finalize finalizeCallback = nullptr,
       void *finalizeData = nullptr,
@@ -362,6 +346,112 @@ void Environment::Unref() noexcept {
   }
 }
 
+void Environment::ClearLastError() noexcept {
+  m_lastError.error_code = napi_ok;
+  m_lastError.engine_error_code = 0;
+  m_lastError.engine_reserved = nullptr;
+}
+
+napi_status Environment::SetLastError(napi_status errorCode, uint32_t engineErrorCode, void *engineReserved) noexcept {
+  m_lastError.error_code = errorCode;
+  m_lastError.engine_error_code = engineErrorCode;
+  m_lastError.engine_reserved = engineReserved;
+
+  return errorCode;
+}
+
+napi_status Environment::SetLastError(JsErrorCode jsError, void *engineReserved) noexcept {
+  napi_status status;
+  switch (jsError) {
+    case JsNoError:
+      status = napi_ok;
+      break;
+    case JsErrorNullArgument:
+    case JsErrorInvalidArgument:
+      status = napi_invalid_arg;
+      break;
+    case JsErrorPropertyNotString:
+      status = napi_string_expected;
+      break;
+    case JsErrorArgumentNotObject:
+      status = napi_object_expected;
+      break;
+    case JsErrorScriptException:
+    case JsErrorInExceptionState:
+      status = napi_pending_exception;
+      break;
+    default:
+      status = napi_generic_failure;
+      break;
+  }
+
+  m_lastError.error_code = status;
+  m_lastError.engine_error_code = jsError;
+  m_lastError.engine_reserved = engineReserved;
+  return status;
+}
+
+napi_status Environment::GetLastErrorInfo(const napi_extended_error_info **result) noexcept {
+  CHECK_ARG2(result);
+
+  // Warning: Keep in-sync with napi_status enum
+  static constexpr const char *s_errorMmessages[] = {
+      nullptr,
+      "Invalid argument",
+      "An object was expected",
+      "A string was expected",
+      "A string or symbol was expected",
+      "A function was expected",
+      "A number was expected",
+      "A boolean was expected",
+      "An array was expected",
+      "Unknown failure",
+      "An exception is pending",
+      "The async work item was canceled",
+      "napi_escape_handle already called on scope",
+      "Invalid handle scope usage",
+      "Invalid callback scope usage",
+      "Thread-safe function queue is full",
+      "Thread-safe function handle is closing",
+      "A BigInt was expected",
+      "A Date was expected",
+      "An ArrayBuffer was expected",
+      "A Detachable ArrayBuffer was expected",
+      "The code would cause a deadlock",
+  };
+
+    // you must update this assert to reference the last message
+  // in the napi_status enum each time a new error message is added.
+  // We don't have a napi_status_last as this would result in an ABI
+  // change each time a message was added.
+  static_assert(
+      std::size(s_errorMmessages) == napi_would_deadlock + 1,
+      "Count of error messages must match count of error values");
+  assert(m_lastError.error_code <= napi_callback_scope_mismatch);
+
+  // Wait until someone requests the last error information to fetch the error message string.
+  m_lastError.error_message = s_errorMmessages[m_lastError.error_code];
+
+  *result = &m_lastError;
+  return napi_ok;
+}
+
+napi_status Environment::RunScript(napi_value script, napi_value *result) noexcept {
+  CHECK_ARG2(script);
+  CHECK_ARG2(result);
+
+  JsValueRef scriptVar = reinterpret_cast<JsValueRef>(script);
+
+  const wchar_t *scriptStr;
+  size_t scriptStrLen;
+  CHECK_JSRT2(JsStringToPointer(scriptVar, &scriptStr, &scriptStrLen));
+  CHECK_JSRT_EXPECTED2(
+      JsRunScript(scriptStr, ++m_sourceContext, L"Unknown", reinterpret_cast<JsValueRef *>(result)),
+      napi_string_expected);
+
+  return napi_ok;
+}
+
 } // namespace chakra
 
 struct RefInfo {
@@ -378,28 +468,6 @@ struct DataViewInfo {
   static void CALLBACK Finalize(_In_opt_ void *data) {
     delete reinterpret_cast<DataViewInfo *>(data);
   }
-};
-
-// Warning: Keep in-sync with napi_status enum
-static const char *error_messages[] = {
-    nullptr,
-    "Invalid argument",
-    "An object was expected",
-    "A string was expected",
-    "A string or symbol was expected",
-    "A function was expected",
-    "A number was expected",
-    "A boolean was expected",
-    "An array was expected",
-    "Unknown failure",
-    "An exception is pending",
-    "The async work item was canceled",
-    "napi_escape_handle already called on scope",
-    "Invalid handle scope usage",
-    "Invalid callback scope usage",
-    "Thread-safe function queue is full",
-    "Thread-safe function handle is closing",
-    "A BigInt was expected",
 };
 
 namespace {
@@ -573,7 +641,7 @@ class ExternalCallback {
     ExternalCallback *externalCallback = reinterpret_cast<ExternalCallback *>(callbackState);
 
     // Make sure any errors encountered last time we were in N-API are gone.
-    napi_clear_last_error(externalCallback->_env);
+    externalCallback->_env->ClearLastError();
 
     CallbackInfo cbInfo;
     cbInfo.thisArg = reinterpret_cast<napi_value>(arguments[0]);
@@ -836,7 +904,7 @@ napi_status CreatePropertyFunction(
   *result = reinterpret_cast<napi_value>(function);
   return napi_ok;
 } catch (...) {
-  return napi_set_last_error(env, napi_generic_failure);
+  return env->SetLastError(napi_generic_failure);
 }
 
 // A span of values that can be used to pass arguments to function.
@@ -900,9 +968,9 @@ namespace {
 
 enum class WrapType { Retrievable, Anonymous };
 
-//TODO: [vmoroz] implement
-//template <WrapType wrapType>
-//inline napi_status Wrap(
+// TODO: [vmoroz] implement
+// template <WrapType wrapType>
+// inline napi_status Wrap(
 //    napi_env env,
 //    napi_value js_object,
 //    void *native_object,
@@ -957,23 +1025,7 @@ enum class WrapType { Retrievable, Anonymous };
 
 napi_status napi_get_last_error_info(napi_env env, const napi_extended_error_info **result) {
   CHECK_ENV(env);
-  CHECK_ARG(env, result);
-
-  // you must update this assert to reference the last message
-  // in the napi_status enum each time a new error message is added.
-  // We don't have a napi_status_last as this would result in an ABI
-  // change each time a message was added.
-  static_assert(
-      std::size(error_messages) == napi_bigint_expected + 1,
-      "Count of error messages must match count of error values");
-  assert(env->last_error.error_code <= napi_callback_scope_mismatch);
-
-  // Wait until someone requests the last error information to fetch the error
-  // message string
-  env->last_error.error_message = error_messages[env->last_error.error_code];
-
-  *result = &env->last_error;
-  return napi_ok;
+  return env->GetLastErrorInfo(result);
 }
 
 //==============================================================================
@@ -1107,7 +1159,7 @@ napi_status napi_create_function(
   *result = reinterpret_cast<napi_value>(function);
   return napi_ok;
 } catch (...) {
-  return napi_set_last_error(env, napi_generic_failure);
+  return env->SetLastError(napi_generic_failure);
 }
 
 napi_status napi_create_error(napi_env env, napi_value code, napi_value msg, napi_value *result) {
@@ -1791,7 +1843,7 @@ napi_status napi_instanceof(napi_env env, napi_value object, napi_value construc
   if (valuetype != napi_function) {
     napi_throw_type_error(env, "ERR_NAPI_CONS_FUNCTION", "constructor must be a function");
 
-    return napi_set_last_error(env, napi_invalid_arg);
+    return env->SetLastError(napi_invalid_arg);
   }
 
   CHECK_JSRT(env, JsInstanceOf(obj, jsConstructor, result));
@@ -1935,7 +1987,7 @@ napi_status napi_define_class(
   *result = reinterpret_cast<napi_value>(constructor);
   return napi_ok;
 } catch (...) {
-  return napi_set_last_error(env, napi_generic_failure);
+  return env->SetLastError(napi_generic_failure);
 }
 
 napi_status napi_wrap(
@@ -1972,7 +2024,7 @@ napi_status napi_wrap(
 
   return napi_ok;
 } catch (...) {
-  return napi_set_last_error(env, napi_generic_failure);
+  return env->SetLastError(napi_generic_failure);
 }
 
 napi_status napi_unwrap(napi_env env, napi_value js_object, void **result) {
@@ -2029,7 +2081,7 @@ napi_create_external(napi_env env, void *data, napi_finalize finalize_cb, void *
 
   return napi_ok;
 } catch (...) {
-  return napi_set_last_error(env, napi_generic_failure);
+  return env->SetLastError(napi_generic_failure);
 }
 
 napi_status napi_get_value_external(napi_env env, napi_value value, void **result) {
@@ -2060,7 +2112,7 @@ napi_status napi_create_reference(napi_env env, napi_value value, uint32_t initi
   *result = reinterpret_cast<napi_ref>(info.release());
   return napi_ok;
 } catch (...) {
-  return napi_set_last_error(env, napi_generic_failure);
+  return env->SetLastError(napi_generic_failure);
 }
 
 // Deletes a reference. The referenced value is released, and may
@@ -2298,7 +2350,7 @@ napi_status napi_create_external_arraybuffer(
   *result = reinterpret_cast<napi_value>(arrayBuffer);
   return napi_ok;
 } catch (...) {
-  return napi_set_last_error(env, napi_generic_failure);
+  return env->SetLastError(napi_generic_failure);
 }
 
 napi_status napi_get_arraybuffer_info(napi_env env, napi_value arraybuffer, void **data, size_t *byte_length) {
@@ -2369,7 +2421,7 @@ napi_status napi_create_typedarray(
       jsType = JsArrayTypeFloat64;
       break;
     default:
-      return napi_set_last_error(env, napi_invalid_arg);
+      return env->SetLastError(napi_invalid_arg);
   }
 
   JsValueRef jsArrayBuffer = reinterpret_cast<JsValueRef>(arraybuffer);
@@ -2443,7 +2495,7 @@ napi_status napi_get_typedarray_info(
         *type = napi_float64_array;
         break;
       default:
-        return napi_set_last_error(env, napi_generic_failure);
+        return env->SetLastError(napi_generic_failure);
     }
   }
 
@@ -2483,7 +2535,7 @@ napi_create_dataview(napi_env env, size_t byte_length, napi_value arraybuffer, s
         "ERR_NAPI_INVALID_DATAVIEW_ARGS",
         "byte_offset + byte_length should be less than or "
         "equal to the size in bytes of the array passed in");
-    return napi_set_last_error(env, napi_pending_exception);
+    return env->SetLastError(napi_pending_exception);
   }
 
   JsValueRef jsDataView;
@@ -2609,20 +2661,8 @@ napi_status napi_is_promise(napi_env env, napi_value value, bool *is_promise) {
 // NAPI: Running a script
 //==============================================================================
 napi_status napi_run_script(napi_env env, napi_value script, napi_value *result) {
-  CHECK_ARG(env, script);
-  CHECK_ARG(env, result);
-
-  JsValueRef scriptVar = reinterpret_cast<JsValueRef>(script);
-
-  const wchar_t *scriptStr;
-  size_t scriptStrLen;
-  CHECK_JSRT(env, JsStringToPointer(scriptVar, &scriptStr, &scriptStrLen));
-  CHECK_JSRT_EXPECTED(
-      env,
-      JsRunScript(scriptStr, ++env->source_context, L"Unknown", reinterpret_cast<JsValueRef *>(result)),
-      napi_string_expected);
-
-  return napi_ok;
+  CHECK_ENV(env);
+  return env->RunScript(script, result);
 }
 
 //==============================================================================
