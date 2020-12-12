@@ -84,6 +84,48 @@
 
 #define STR_AND_LENGTH(str) str, std::size(str) - 1
 
+namespace chakra {
+
+struct RefTracker {
+  RefTracker() = default;
+  virtual ~RefTracker() noexcept {}
+  virtual void Finalize(bool isEnvTeardown) noexcept {}
+
+  using RefList = RefTracker;
+
+  inline void Link(RefList *list) noexcept {
+    m_prev = list;
+    m_next = list->m_next;
+    if (m_next != nullptr) {
+      m_next->m_prev = this;
+    }
+    list->m_next = this;
+  }
+
+  inline void Unlink() noexcept {
+    if (m_prev != nullptr) {
+      m_prev->m_next = m_next;
+    }
+    if (m_next != nullptr) {
+      m_next->m_prev = m_prev;
+    }
+    m_prev = nullptr;
+    m_next = nullptr;
+  }
+
+  static void FinalizeAll(RefList *list) noexcept {
+    while (list->m_next != nullptr) {
+      list->m_next->Finalize(true);
+    }
+  }
+
+ private:
+  RefList *m_next{nullptr};
+  RefList *m_prev{nullptr};
+};
+
+} // namespace chakra
+
 struct napi_env__ {
   JsSourceContext source_context = JS_SOURCE_CONTEXT_NONE;
   napi_extended_error_info last_error{nullptr, nullptr, 0, napi_ok};
@@ -138,6 +180,63 @@ static napi_status napi_set_last_error(napi_env env, JsErrorCode jsError, void *
   env->last_error.engine_reserved = engine_reserved;
   return status;
 }
+
+namespace chakra {
+
+// Adapter for napi_finalize callbacks.
+struct Finalizer {
+  // Some Finalizers are run during shutdown when the napi_env is destroyed,
+  // and some need to keep an explicit reference to the napi_env because they
+  // are run independently.
+  enum class EnvReferenceMode { NoEnvReference, KeepEnvReference };
+
+ protected:
+  Finalizer(
+      napi_env env,
+      napi_finalize finalizeCallback,
+      void *finalizeData,
+      void *finalizeHint,
+      EnvReferenceMode refMode = EnvReferenceMode::NoEnvReference) noexcept
+      : m_env{env},
+        m_finalizeCallback{finalizeCallback},
+        m_finalizeData{finalizeData},
+        m_finalizeHint(finalizeHint),
+        m_hasEnvReference(refMode == EnvReferenceMode::KeepEnvReference) {
+    if (m_hasEnvReference) {
+      m_env->Ref();
+    }
+  }
+
+  ~Finalizer() noexcept {
+    if (m_hasEnvReference) {
+      m_env->Unref();
+    }
+  }
+
+ public:
+  static std::unique_ptr<Finalizer> New(
+      napi_env env,
+      napi_finalize finalizeCallback = nullptr,
+      void *finalizeData = nullptr,
+      void *finalizeHint = nullptr,
+      EnvReferenceMode refMode = EnvReferenceMode::NoEnvReference) noexcept {
+    return std::unique_ptr<Finalizer>{new Finalizer(env, finalizeCallback, finalizeData, finalizeHint, refMode)};
+  }
+
+  static void Delete(Finalizer *finalizer) {
+    delete finalizer;
+  }
+
+ protected:
+  napi_env m_env{nullptr};
+  napi_finalize m_finalizeCallback{nullptr};
+  void *m_finalizeData{nullptr};
+  void *m_finalizeHint{nullptr};
+  bool m_didFinalizeRun{false};
+  bool m_hasEnvReference{false};
+};
+
+} // namespace chakra
 
 struct RefInfo {
   JsValueRef value;
@@ -250,7 +349,6 @@ JsErrorCode JsCreatePropertyId(_In_z_ const char *name, _In_ size_t length, _Out
   auto str = (length == NAPI_AUTO_LENGTH ? NarrowToWide({name}) : NarrowToWide({name, length}));
   return JsGetPropertyIdFromName(str.data(), propertyId);
 }
-
 
 JsErrorCode JsCreatePromise(JsValueRef *promise, JsValueRef *resolve, JsValueRef *reject) {
   JsValueRef global{};
@@ -381,7 +479,7 @@ class ExternalCallback {
 // Adapter for NAPI finalizer.
 class FinalizerInfo {
  public:
-  //ExternalCallback(napi_env env, napi_callback cb, void *data) : _env(env), _cb(cb), _data(data) {}
+  // ExternalCallback(napi_env env, napi_callback cb, void *data) : _env(env), _cb(cb), _data(data) {}
 
   // JsObjectBeforeCollectCallback
   static void CALLBACK Finalize(JsRef ref, void *callbackState) {
@@ -670,6 +768,61 @@ struct JsValueArgs final {
 };
 
 } // namespace
+
+namespace ChakraImpl {
+namespace {
+
+enum class WrapType { Retrievable, Anonymous };
+
+template <WrapType wrapType>
+inline napi_status Wrap(
+    napi_env env,
+    napi_value js_object,
+    void *native_object,
+    napi_finalize finalize_cb,
+    void *finalize_hint,
+    napi_ref *result) {
+  CHECK_ENV_AND_ARG(env)env, js_object);
+
+  // v8::Local<v8::Context> context = env->context();
+
+  JsValueRef value = reinterpret_cast<JsValueRef>(js_object);
+  // RETURN_STATUS_IF_FALSE(env, value->IsObject(), napi_invalid_arg);
+  // v8::Local<v8::Object> obj = value.As<v8::Object>();
+
+  if (wrapType == WrapType::Retrievable) {
+    // If we've already wrapped this object, we error out.
+    RETURN_STATUS_IF_FALSE(
+        env, !obj->HasPrivate(context, NAPI_PRIVATE_KEY(context, wrapper)).FromJust(), napi_invalid_arg);
+  } else if (wrapType == WrapType::Anonymous) {
+    // If no finalize callback is provided, we error out.
+    CHECK_ARG(env, finalize_cb);
+  }
+
+  v8impl::Reference *reference = nullptr;
+  if (result != nullptr) {
+    // The returned reference should be deleted via napi_delete_reference()
+    // ONLY in response to the finalize callback invocation. (If it is deleted
+    // before then, then the finalize callback will never be invoked.)
+    // Therefore a finalize callback is required when returning a reference.
+    CHECK_ARG(env, finalize_cb);
+    reference = v8impl::Reference::New(env, obj, 0, false, finalize_cb, native_object, finalize_hint);
+    *result = reinterpret_cast<napi_ref>(reference);
+  } else {
+    // Create a self-deleting reference.
+    reference = v8impl::Reference::New(
+        env, obj, 0, true, finalize_cb, native_object, finalize_cb == nullptr ? nullptr : finalize_hint);
+  }
+
+  if (wrap_type == retrievable) {
+    CHECK(obj->SetPrivate(context, NAPI_PRIVATE_KEY(context, wrapper), v8::External::New(env->isolate, reference))
+              .FromJust());
+  }
+
+  return GET_RETURN_STATUS(env);
+}
+} // namespace
+} // namespace ChakraImpl
 
 napi_status napi_get_last_error_info(napi_env env, const napi_extended_error_info **result) {
   CHECK_ENV(env);
@@ -1662,7 +1815,7 @@ napi_status napi_wrap(
     void *finalize_hint,
     napi_ref *result) try {
   CHECK_ENV_AND_ARG(env, js_object);
-  //TODO: [vmoroz] change wrapping to be based on a symbol property
+  // TODO: [vmoroz] change wrapping to be based on a symbol property
   JsValueRef value = reinterpret_cast<JsValueRef>(js_object);
 
   JsValueRef wrapper = JS_INVALID_REFERENCE;
@@ -2004,7 +2157,11 @@ napi_status napi_create_external_arraybuffer(
   CHECK_JSRT(
       env,
       JsCreateExternalArrayBuffer(
-          external_data, static_cast<unsigned int>(byte_length), ExternalData::Finalize, externalData.get(), &arrayBuffer));
+          external_data,
+          static_cast<unsigned int>(byte_length),
+          ExternalData::Finalize,
+          externalData.get(),
+          &arrayBuffer));
   externalData.release();
 
   *result = reinterpret_cast<napi_value>(arrayBuffer);
@@ -2367,7 +2524,7 @@ napi_status napi_create_date(napi_env env, double time, napi_value *result) {
 
 napi_status napi_is_date(napi_env env, napi_value value, bool *is_date) {
   CHECK_ENV_AND_ARG2(env, value, is_date);
-  
+
   JsValueRef global{JS_INVALID_REFERENCE};
   CHECK_JSRT(env, JsGetGlobalObject(&global));
 
@@ -2409,26 +2566,8 @@ napi_status napi_add_finalizer(
     napi_finalize finalize_cb,
     void *finalize_hint,
     napi_ref *result) {
-  CHECK_ENV_AND_ARG2(env, js_object, finalize_cb, result);
-
-  std::unique_ptr<ExternalCallback> externalCallback{new ExternalCallback(env, cb, callback_data)};
-
-  napi_valuetype nameType;
-  CHECK_NAPI(napi_typeof(env, property_name, &nameType));
-
-  JsValueRef function;
-  if (nameType == napi_string) {
-    JsValueRef name{JS_INVALID_REFERENCE};
-    name = property_name;
-    CHECK_JSRT(env, JsCreateNamedFunction(name, ExternalCallback::Callback, externalCallback.get(), &function));
-  } else {
-    CHECK_JSRT(env, JsCreateFunction(ExternalCallback::Callback, externalCallback.get(), &function));
-  }
-
-  externalCallback->newTarget = function;
-
-  CHECK_JSRT(env, JsSetObjectBeforeCollectCallback(function, externalCallback.get(), ExternalCallback::Finalize));
-  externalCallback.release();
+  return ChakraImpl::Wrap<ChakraImpl::WrapType::Anonymous>(
+      env, js_object, native_object, finalize_cb, finalize_hint, result);
 }
 
 #endif // NAPI_VERSION >= 5
