@@ -124,13 +124,57 @@ struct RefTracker {
   RefList *m_prev{nullptr};
 };
 
-} // namespace chakra
+struct JsRefHolder final {
+  JsRefHolder(std::nullptr_t = nullptr) noexcept;
+  explicit JsRefHolder(JsRef ref) noexcept;
 
-struct napi_env__ {
+  JsRefHolder(JsRefHolder const &other) noexcept;
+  JsRefHolder(JsRefHolder &&other) noexcept;
+
+  JsRefHolder &operator=(JsRefHolder const &other) noexcept;
+  JsRefHolder &operator=(JsRefHolder &&other) noexcept;
+
+  ~JsRefHolder() noexcept;
+
+  operator JsRef() const noexcept {
+    return m_ref;
+  }
+
+ private:
+  JsRef m_ref{JS_INVALID_REFERENCE};
+};
+
+struct Environment
+{
+  // TODO: [vmoroz] move to private section
   JsSourceContext source_context = JS_SOURCE_CONTEXT_NONE;
   napi_extended_error_info last_error{nullptr, nullptr, 0, napi_ok};
   JsValueRef has_own_property_function = JS_INVALID_REFERENCE;
+
+  explicit Environment(JsContextRef context) noexcept;
+  ~Environment() noexcept;
+
+  JsContextRef Context() const noexcept;
+
+  void Ref() noexcept;
+  void Unref() noexcept;
+
+ private:
+  JsRefHolder m_context;
+
+  // We store references in two different lists, depending on whether they have
+  // `napi_finalizer` callbacks, because we must first finalize the ones that
+  // have such a callback. See `~Environment()` above for details.
+  RefTracker::RefList m_refList;
+  RefTracker::RefList m_finalizingRefList;
+  int m_refCount{1};
 };
+
+} // namespace chakra
+
+// Pseudo alias for Environment. It must be fine as long as they have the same size.
+struct napi_env__ : chakra::Environment {};
+static_assert(sizeof(napi_env__) == sizeof(chakra::Environment));
 
 static napi_status napi_set_last_error(
     napi_env env,
@@ -214,13 +258,13 @@ struct Finalizer {
   }
 
  public:
-  static std::unique_ptr<Finalizer> New(
+  static Finalizer* New(
       napi_env env,
       napi_finalize finalizeCallback = nullptr,
       void *finalizeData = nullptr,
       void *finalizeHint = nullptr,
       EnvReferenceMode refMode = EnvReferenceMode::NoEnvReference) noexcept {
-    return std::unique_ptr<Finalizer>{new Finalizer(env, finalizeCallback, finalizeData, finalizeHint, refMode)};
+    return new Finalizer(env, finalizeCallback, finalizeData, finalizeHint, refMode);
   }
 
   static void Delete(Finalizer *finalizer) {
@@ -235,6 +279,88 @@ struct Finalizer {
   bool m_didFinalizeRun{false};
   bool m_hasEnvReference{false};
 };
+
+//=============================================================================
+// JsRefHolder implementation
+//=============================================================================
+
+JsRefHolder::JsRefHolder(std::nullptr_t) noexcept {}
+
+JsRefHolder::JsRefHolder(JsRef ref) noexcept : m_ref{ref} {
+  if (m_ref) {
+    // TODO: [vmoroz] How to handle error here?
+    JsAddRef(m_ref, nullptr);
+  }
+}
+
+JsRefHolder::JsRefHolder(JsRefHolder const &other) noexcept : m_ref{other.m_ref} {
+  if (m_ref) {
+    // TODO: [vmoroz] How to handle error here?
+    JsAddRef(m_ref, nullptr);
+  }
+}
+
+JsRefHolder::JsRefHolder(JsRefHolder &&other) noexcept : m_ref{std::exchange(other.m_ref, JS_INVALID_REFERENCE)} {}
+
+JsRefHolder &JsRefHolder::operator=(JsRefHolder const &other) noexcept {
+  if (this != &other) {
+    JsRefHolder temp{std::move(*this)};
+    m_ref = other.m_ref;
+    if (m_ref) {
+      // TODO: [vmoroz] How to handle error here?
+      JsAddRef(m_ref, nullptr);
+    }
+  }
+
+  return *this;
+}
+
+JsRefHolder &JsRefHolder::operator=(JsRefHolder &&other) noexcept {
+  if (this != &other) {
+    JsRefHolder temp{std::move(*this)};
+    m_ref = std::exchange(other.m_ref, JS_INVALID_REFERENCE);
+  }
+
+  return *this;
+}
+
+JsRefHolder::~JsRefHolder() noexcept {
+  if (m_ref) {
+    // Clear m_ref before calling JsRelease on it to make sure that we always hold a valid m_ref.
+    // TODO: [vmoroz] How to handle error here?
+    JsRelease(std::exchange(m_ref, JS_INVALID_REFERENCE), nullptr);
+  }
+}
+
+//=============================================================================
+// Environment implementation
+//=============================================================================
+
+Environment::Environment(JsContextRef context) noexcept : m_context{context} {}
+
+Environment::~Environment() noexcept {
+  // First we must finalize those references that have `napi_finalizer`
+  // callbacks. The reason is that addons might store other references which
+  // they delete during their `napi_finalizer` callbacks. If we deleted such
+  // references here first, they would be doubly deleted when the
+  // `napi_finalizer` deleted them subsequently.
+  RefTracker::FinalizeAll(&m_finalizingRefList);
+  RefTracker::FinalizeAll(&m_refList);
+}
+
+JsContextRef Environment::Context() const noexcept {
+  return static_cast<JsRef>(m_context);
+}
+
+void Environment::Ref() noexcept {
+  ++m_refCount;
+}
+
+void Environment::Unref() noexcept {
+  if (--m_refCount == 0) {
+    delete this;
+  }
+}
 
 } // namespace chakra
 
@@ -774,55 +900,60 @@ namespace {
 
 enum class WrapType { Retrievable, Anonymous };
 
-template <WrapType wrapType>
-inline napi_status Wrap(
-    napi_env env,
-    napi_value js_object,
-    void *native_object,
-    napi_finalize finalize_cb,
-    void *finalize_hint,
-    napi_ref *result) {
-  CHECK_ENV_AND_ARG(env)env, js_object);
-
-  // v8::Local<v8::Context> context = env->context();
-
-  JsValueRef value = reinterpret_cast<JsValueRef>(js_object);
-  // RETURN_STATUS_IF_FALSE(env, value->IsObject(), napi_invalid_arg);
-  // v8::Local<v8::Object> obj = value.As<v8::Object>();
-
-  if (wrapType == WrapType::Retrievable) {
-    // If we've already wrapped this object, we error out.
-    RETURN_STATUS_IF_FALSE(
-        env, !obj->HasPrivate(context, NAPI_PRIVATE_KEY(context, wrapper)).FromJust(), napi_invalid_arg);
-  } else if (wrapType == WrapType::Anonymous) {
-    // If no finalize callback is provided, we error out.
-    CHECK_ARG(env, finalize_cb);
-  }
-
-  v8impl::Reference *reference = nullptr;
-  if (result != nullptr) {
-    // The returned reference should be deleted via napi_delete_reference()
-    // ONLY in response to the finalize callback invocation. (If it is deleted
-    // before then, then the finalize callback will never be invoked.)
-    // Therefore a finalize callback is required when returning a reference.
-    CHECK_ARG(env, finalize_cb);
-    reference = v8impl::Reference::New(env, obj, 0, false, finalize_cb, native_object, finalize_hint);
-    *result = reinterpret_cast<napi_ref>(reference);
-  } else {
-    // Create a self-deleting reference.
-    reference = v8impl::Reference::New(
-        env, obj, 0, true, finalize_cb, native_object, finalize_cb == nullptr ? nullptr : finalize_hint);
-  }
-
-  if (wrap_type == retrievable) {
-    CHECK(obj->SetPrivate(context, NAPI_PRIVATE_KEY(context, wrapper), v8::External::New(env->isolate, reference))
-              .FromJust());
-  }
-
-  return GET_RETURN_STATUS(env);
-}
+//TODO: [vmoroz] implement
+//template <WrapType wrapType>
+//inline napi_status Wrap(
+//    napi_env env,
+//    napi_value js_object,
+//    void *native_object,
+//    napi_finalize finalize_cb,
+//    void *finalize_hint,
+//    napi_ref *result) {
+//  CHECK_ENV_AND_ARG(env)env, js_object);
+//
+//  // v8::Local<v8::Context> context = env->context();
+//
+//  JsValueRef value = reinterpret_cast<JsValueRef>(js_object);
+//  // RETURN_STATUS_IF_FALSE(env, value->IsObject(), napi_invalid_arg);
+//  // v8::Local<v8::Object> obj = value.As<v8::Object>();
+//
+//  if (wrapType == WrapType::Retrievable) {
+//    // If we've already wrapped this object, we error out.
+//    RETURN_STATUS_IF_FALSE(
+//        env, !obj->HasPrivate(context, NAPI_PRIVATE_KEY(context, wrapper)).FromJust(), napi_invalid_arg);
+//  } else if (wrapType == WrapType::Anonymous) {
+//    // If no finalize callback is provided, we error out.
+//    CHECK_ARG(env, finalize_cb);
+//  }
+//
+//  v8impl::Reference *reference = nullptr;
+//  if (result != nullptr) {
+//    // The returned reference should be deleted via napi_delete_reference()
+//    // ONLY in response to the finalize callback invocation. (If it is deleted
+//    // before then, then the finalize callback will never be invoked.)
+//    // Therefore a finalize callback is required when returning a reference.
+//    CHECK_ARG(env, finalize_cb);
+//    reference = v8impl::Reference::New(env, obj, 0, false, finalize_cb, native_object, finalize_hint);
+//    *result = reinterpret_cast<napi_ref>(reference);
+//  } else {
+//    // Create a self-deleting reference.
+//    reference = v8impl::Reference::New(
+//        env, obj, 0, true, finalize_cb, native_object, finalize_cb == nullptr ? nullptr : finalize_hint);
+//  }
+//
+//  if (wrap_type == retrievable) {
+//    CHECK(obj->SetPrivate(context, NAPI_PRIVATE_KEY(context, wrapper), v8::External::New(env->isolate, reference))
+//              .FromJust());
+//  }
+//
+//  return GET_RETURN_STATUS(env);
+//}
 } // namespace
 } // namespace ChakraImpl
+
+//==============================================================================
+// NAPI: Getting last error.
+//==============================================================================
 
 napi_status napi_get_last_error_info(napi_env env, const napi_extended_error_info **result) {
   CHECK_ENV(env);
@@ -846,7 +977,7 @@ napi_status napi_get_last_error_info(napi_env env, const napi_extended_error_inf
 }
 
 //==============================================================================
-// Getters for defined singletons
+// NAPI: Getters for defined singletons
 //==============================================================================
 
 napi_status napi_get_undefined(napi_env env, napi_value *result) {
@@ -874,7 +1005,7 @@ napi_status napi_get_boolean(napi_env env, bool value, napi_value *result) {
 }
 
 //==============================================================================
-// Methods to create Primitive types/Objects
+// NAPI: Methods to create Primitive types/Objects
 //==============================================================================
 
 napi_status napi_create_object(napi_env env, napi_value *result) {
@@ -1016,7 +1147,7 @@ napi_status napi_create_range_error(napi_env env, napi_value code, napi_value ms
 }
 
 //==============================================================================
-// Methods to get the native napi_value from Primitive type
+// NAPI: Methods to get the native napi_value from Primitive type
 //==============================================================================
 
 napi_status napi_typeof(napi_env env, napi_value value, napi_valuetype *result) {
@@ -1289,7 +1420,7 @@ napi_status napi_get_value_string_utf16(napi_env env, napi_value value, char16_t
 }
 
 //==============================================================================
-// Methods to coerce values
+// NAPI: Methods to coerce values
 // These APIs may execute user scripts
 //==============================================================================
 
@@ -1322,7 +1453,7 @@ napi_status napi_coerce_to_string(napi_env env, napi_value value, napi_value *re
 }
 
 //==============================================================================
-// Methods to work with Objects
+// NAPI: Methods to work with Objects
 //==============================================================================
 
 napi_status napi_get_prototype(napi_env env, napi_value object, napi_value *result) {
@@ -1564,7 +1695,7 @@ napi_status napi_define_properties(
 }
 
 //==============================================================================
-// Methods to work with Arrays
+// NAPI: Methods to work with Arrays
 //==============================================================================
 napi_status napi_is_array(napi_env env, napi_value value, bool *result) {
   CHECK_ENV_AND_ARG2(env, value, result);
@@ -1589,7 +1720,7 @@ napi_status napi_get_array_length(napi_env env, napi_value value, uint32_t *resu
 }
 
 //==============================================================================
-// Methods to compare values
+// NAPI: Methods to compare values
 //==============================================================================
 napi_status napi_strict_equals(napi_env env, napi_value lhs, napi_value rhs, bool *result) {
   CHECK_ENV_AND_ARG3(env, lhs, rhs, result);
@@ -1600,7 +1731,7 @@ napi_status napi_strict_equals(napi_env env, napi_value lhs, napi_value rhs, boo
 }
 
 //==============================================================================
-// Methods to work with Functions
+// NAPI: Methods to work with Functions
 //==============================================================================
 
 // The number of arguments that we keep on stack.
@@ -1668,7 +1799,7 @@ napi_status napi_instanceof(napi_env env, napi_value object, napi_value construc
 }
 
 //==============================================================================
-// Methods to work with napi_callbacks
+// NAPI: Methods to work with napi_callbacks
 //==============================================================================
 
 // Gets all callback info in a single call. (Ugly, but faster.)
@@ -1732,7 +1863,7 @@ napi_status napi_get_new_target(napi_env env, napi_callback_info cbinfo, napi_va
 }
 
 //==============================================================================
-// Methods to work with external data objects
+// NAPI: Methods to work with external data objects
 //==============================================================================
 
 napi_status napi_define_class(
@@ -1911,7 +2042,7 @@ napi_status napi_get_value_external(napi_env env, napi_value value, void **resul
 }
 
 //==============================================================================
-// Methods to control object lifespan
+// NAPI: Methods to control object lifespan
 //==============================================================================
 
 // Set initial_refcount to 0 for a weak reference, >0 for a strong reference.
@@ -2032,7 +2163,7 @@ napi_escape_handle(napi_env env, napi_escapable_handle_scope scope, napi_value e
 }
 
 //==============================================================================
-// Methods to support error handling
+// NAPI: Methods to support error handling
 //==============================================================================
 
 napi_status napi_throw(napi_env env, napi_value error) {
@@ -2087,7 +2218,7 @@ napi_status napi_is_error(napi_env env, napi_value value, bool *result) {
 }
 
 //==============================================================================
-// Methods to support catching exceptions
+// NAPI: Methods to support catching exceptions
 //==============================================================================
 
 napi_status napi_is_exception_pending(napi_env env, bool *result) {
@@ -2111,7 +2242,7 @@ napi_status napi_get_and_clear_last_exception(napi_env env, napi_value *result) 
 }
 
 //==============================================================================
-// Methods to work with array buffers and typed arrays
+// NAPI: Methods to work with array buffers and typed arrays
 //==============================================================================
 
 napi_status napi_is_arraybuffer(napi_env env, napi_value value, bool *result) {
@@ -2417,7 +2548,7 @@ napi_status napi_get_dataview_info(
 }
 
 //==============================================================================
-// version management
+// NAPI: version management
 //==============================================================================
 napi_status napi_get_version(napi_env env, uint32_t *result) {
   CHECK_ENV(env);
@@ -2426,7 +2557,9 @@ napi_status napi_get_version(napi_env env, uint32_t *result) {
   return napi_ok;
 }
 
-// Promises
+//==============================================================================
+// NAPI: Promises
+//==============================================================================
 napi_status napi_create_promise(napi_env env, napi_deferred *deferred, napi_value *promise) {
   CHECK_ARG(env, deferred);
   CHECK_ARG(env, promise);
@@ -2472,7 +2605,9 @@ napi_status napi_is_promise(napi_env env, napi_value value, bool *is_promise) {
   return napi_ok;
 }
 
-// Running a script
+//==============================================================================
+// NAPI: Running a script
+//==============================================================================
 napi_status napi_run_script(napi_env env, napi_value script, napi_value *result) {
   CHECK_ARG(env, script);
   CHECK_ARG(env, result);
@@ -2490,7 +2625,9 @@ napi_status napi_run_script(napi_env env, napi_value script, napi_value *result)
   return napi_ok;
 }
 
-// Memory management
+//==============================================================================
+// NAPI: Memory management
+//==============================================================================
 napi_status napi_adjust_external_memory(napi_env env, int64_t change_in_bytes, int64_t *adjusted_value) {
   CHECK_ARG(env, adjusted_value);
 
@@ -2503,7 +2640,9 @@ napi_status napi_adjust_external_memory(napi_env env, int64_t change_in_bytes, i
 
 #if NAPI_VERSION >= 5
 
-// Dates
+//==============================================================================
+// NAPI: Dates
+//==============================================================================
 napi_status napi_create_date(napi_env env, double time, napi_value *result) {
   CHECK_ENV_AND_ARG(env, result);
 
@@ -2520,6 +2659,8 @@ napi_status napi_create_date(napi_env env, double time, napi_value *result) {
   CHECK_JSRT(env, JsGetUndefinedValue(&args[0]));
   CHECK_JSRT(env, JsDoubleToNumber(time, &args[1]));
   CHECK_JSRT(env, JsConstructObject(dateConstructor, args, 2, reinterpret_cast<JsValueRef *>(result)));
+
+  return napi_ok;
 }
 
 napi_status napi_is_date(napi_env env, napi_value value, bool *is_date) {
@@ -2536,6 +2677,8 @@ napi_status napi_is_date(napi_env env, napi_value value, bool *is_date) {
 
   JsValueRef obj{reinterpret_cast<JsValueRef>(value)};
   CHECK_JSRT(env, JsInstanceOf(obj, dateConstructor, is_date));
+
+  return napi_ok;
 }
 
 napi_status napi_get_date_value(napi_env env, napi_value value, double *result) {
@@ -2556,8 +2699,11 @@ napi_status napi_get_date_value(napi_env env, napi_value value, double *result) 
   CHECK_JSRT(env, JsCallFunction(valueOf, &obj, 1, &dateValue));
 
   CHECK_JSRT(env, JsNumberToDouble(dateValue, result));
+
+  return napi_ok;
 }
 
+#if 0
 // Add finalizer for pointer
 napi_status napi_add_finalizer(
     napi_env env,
@@ -2566,12 +2712,14 @@ napi_status napi_add_finalizer(
     napi_finalize finalize_cb,
     void *finalize_hint,
     napi_ref *result) {
-  return ChakraImpl::Wrap<ChakraImpl::WrapType::Anonymous>(
-      env, js_object, native_object, finalize_cb, finalize_hint, result);
+  //TODO: [vmoroz] implement
+  //return ChakraImpl::Wrap<ChakraImpl::WrapType::Anonymous>(
+  //    env, js_object, native_object, finalize_cb, finalize_hint, result);
 }
+#endif
 
 #endif // NAPI_VERSION >= 5
-
+#if 0
 #if NAPI_VERSION >= 6
 
 // BigInt
@@ -2614,3 +2762,4 @@ napi_status napi_check_object_type_tag(napi_env env, napi_value value, const nap
 napi_status napi_object_freeze(napi_env env, napi_value object) {}
 napi_status napi_object_seal(napi_env env, napi_value object) {}
 #endif // NAPI_EXPERIMENTAL
+#endif
