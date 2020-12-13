@@ -182,6 +182,9 @@ struct Environment {
   void Ref() noexcept;
   void Unref() noexcept;
 
+  RefTracker::RefList &RefList() noexcept;
+  RefTracker::RefList &FinalizingRefList() noexcept;
+
   void ClearLastError() noexcept;
   napi_status
   SetLastError(napi_status errorCode, uint32_t engineErrorCode = 0, void *engineReserved = nullptr) noexcept;
@@ -251,7 +254,7 @@ struct Finalizer {
     return new Finalizer(env, finalizeCallback, finalizeData, finalizeHint, refMode);
   }
 
-  static void Delete(Finalizer *finalizer) {
+  static void Delete(Finalizer *finalizer) noexcept {
     delete finalizer;
   }
 
@@ -264,193 +267,365 @@ struct Finalizer {
   bool m_hasEnvReference{false};
 };
 
-//=============================================================================
-// JsRefHolder implementation
-//=============================================================================
-
-JsRefHolder::JsRefHolder(std::nullptr_t) noexcept {}
-
-JsRefHolder::JsRefHolder(JsRef ref) noexcept : m_ref{ref} {
-  if (m_ref) {
-    // TODO: [vmoroz] How to handle error here?
-    JsAddRef(m_ref, nullptr);
+// Wrapper around v8impl::Persistent that implements reference counting.
+class RefBase : protected Finalizer, RefTracker {
+ protected:
+  RefBase(
+      napi_env env,
+      uint32_t initialRefCount,
+      bool shouldDeleteSelf,
+      napi_finalize finalizeCallback,
+      void *finalizeData,
+      void *finalizeHint) noexcept
+      : Finalizer{env, finalizeCallback, finalizeData, finalizeHint},
+        m_refCount{initialRefCount},
+        m_shouldDeleteSelf{shouldDeleteSelf} {
+    Link(finalizeCallback == nullptr ? &env->RefList() : &env->FinalizingRefList());
   }
-}
 
-JsRefHolder::JsRefHolder(JsRefHolder const &other) noexcept : m_ref{other.m_ref} {
-  if (m_ref) {
-    // TODO: [vmoroz] How to handle error here?
-    JsAddRef(m_ref, nullptr);
+ public:
+  static RefBase *New(
+      napi_env env,
+      uint32_t initialRefCount,
+      bool shouldDeleteSelf,
+      napi_finalize finalizeCallback,
+      void *finalizeData,
+      void *finalizeHint) noexcept {
+    return new RefBase(env, initialRefCount, shouldDeleteSelf, finalizeCallback, finalizeData, finalizeHint);
   }
-}
 
-JsRefHolder::JsRefHolder(JsRefHolder &&other) noexcept : m_ref{std::exchange(other.m_ref, JS_INVALID_REFERENCE)} {}
+  virtual ~RefBase() noexcept {
+    Unlink();
+  }
 
-JsRefHolder &JsRefHolder::operator=(JsRefHolder const &other) noexcept {
-  if (this != &other) {
-    JsRefHolder temp{std::move(*this)};
-    m_ref = other.m_ref;
+  void *Data() noexcept {
+    return m_finalizeData;
+  }
+
+  // Delete is called in 2 ways. Either from the finalizer or
+  // from one of Unwrap or napi_delete_reference.
+  //
+  // When it is called from Unwrap or napi_delete_reference we only
+  // want to do the delete if the finalizer has already run or
+  // cannot have been queued to run (i.e. the reference count is > 0),
+  // otherwise we may crash when the finalizer does run.
+  // If the finalizer may have been queued and has not already run
+  // delay the delete until the finalizer runs by not doing the delete
+  // and setting m_shouldDeleteSelf to true so that the finalizer will
+  // delete it when it runs.
+  //
+  // The second way this is called is from
+  // the finalizer and m_shouldDeleteSelf is set. In this case we
+  // know we need to do the deletion so just do it.
+  static void Delete(RefBase *reference) noexcept {
+    if ((reference->RefCount() != 0) || (reference->m_shouldDeleteSelf) || (reference->m_didFinalizeRun)) {
+      delete reference;
+    } else {
+      // defer until finalizer runs as
+      // it may alread be queued
+      reference->m_shouldDeleteSelf = true;
+    }
+  }
+
+  uint32_t Ref() noexcept {
+    return ++m_refCount;
+  }
+
+  uint32_t Unref() noexcept {
+    if (m_refCount == 0) {
+      return 0;
+    }
+    return --m_refCount;
+  }
+
+  uint32_t RefCount() NO_COMPETING_THREAD_BEGIN {
+    return m_refCount;
+  }
+
+ protected:
+  void Finalize(bool isEnvTeardown = false) noexcept override {
+    if (m_finalizeCallback != nullptr) {
+      m_finalizeCallback(m_env, m_finalizeData, m_finalizeHint);
+    }
+
+    // this is safe because if a request to delete the reference
+    // is made in the finalize_callback it will defer deletion
+    // to this block and set _delete_self to true
+    if (m_shouldDeleteSelf || isEnvTeardown) {
+      Delete(this);
+    } else {
+      m_didFinalizeRun = true;
+    }
+  }
+
+ private:
+  uint32_t m_refCount;
+  bool m_shouldDeleteSelf;
+};
+
+class Reference : public RefBase {
+ protected:
+  template <typename... Args>
+  Reference(napi_env env, JsValueRef value, Args &&... args) noexcept : RefBase {env, std::forward<Args>(args)...}, m_persistent{value} {
+      // TODO: [vmoroz] Do it all in New
+      if (RefCount() == 0) {
+        JsSetObjectBeforeCollectCallback(value, this, FinalizeCallback);
+        m_hasCollectCallback = true;
+        // TODO: [vmoroz] Make sure that we delete in the callback after that
+      } else {
+        JsAddRef(m_persistent, nullptr);
+      }
+    }
+
+   public:
+    static Reference *New(
+        napi_env env,
+        JsValueRef value,
+        uint32_t initialRefCount,
+        bool shouldDeleteSelf,
+        napi_finalize finalizeCallback = nullptr,
+        void *finalizeData = nullptr,
+        void *finalizeHint = nullptr) noexcept {
+      return new Reference(env, value, initialRefCount, shouldDeleteSelf, finalizeCallback, finalizeData, finalizeHint);
+    }
+
+    uint32_t Ref() noexcept {
+      if (m_persistent) {
+        uint32_t refcount = RefBase::Ref();
+        if (refcount == 1) {
+          JsAddRef(m_persistent, nullptr);
+        }
+        return refcount;
+      }
+
+      return 0;
+    }
+
+    uint32_t Unref() noexcept {
+      uint32_t oldRefCount = RefCount();
+      uint32_t refCount = RefBase::Unref();
+      if (oldRefCount == 1 && refCount == 0) {
+        if (!m_hasCollectCallback) {
+          JsSetObjectBeforeCollectCallback(m_persistent, this, FinalizeCallback);
+          m_hasCollectCallback = true;
+        }
+        JsRelease(m_persistent, nullptr);
+      }
+      return refCount;
+    }
+
+    JsValueRef Get() noexcept {
+      return m_persistent;
+    }
+
+   private:
+    static void FinalizeCallback(_In_ JsRef /*ref*/, _In_opt_ void *callbackState) {
+      Reference *reference = static_cast<Reference *>(callbackState);
+      reference->m_persistent = JS_INVALID_REFERENCE;
+      reference->Finalize();
+    }
+
+   private:
+    JsValueRef m_persistent;
+    bool m_hasCollectCallback{false};
+  };
+
+  //=============================================================================
+  // JsRefHolder implementation
+  //=============================================================================
+
+  JsRefHolder::JsRefHolder(std::nullptr_t) noexcept {}
+
+  JsRefHolder::JsRefHolder(JsRef ref) noexcept : m_ref{ref} {
     if (m_ref) {
       // TODO: [vmoroz] How to handle error here?
       JsAddRef(m_ref, nullptr);
     }
   }
 
-  return *this;
-}
-
-JsRefHolder &JsRefHolder::operator=(JsRefHolder &&other) noexcept {
-  if (this != &other) {
-    JsRefHolder temp{std::move(*this)};
-    m_ref = std::exchange(other.m_ref, JS_INVALID_REFERENCE);
+  JsRefHolder::JsRefHolder(JsRefHolder const &other) noexcept : m_ref{other.m_ref} {
+    if (m_ref) {
+      // TODO: [vmoroz] How to handle error here?
+      JsAddRef(m_ref, nullptr);
+    }
   }
 
-  return *this;
-}
+  JsRefHolder::JsRefHolder(JsRefHolder &&other) noexcept : m_ref{std::exchange(other.m_ref, JS_INVALID_REFERENCE)} {}
 
-JsRefHolder::~JsRefHolder() noexcept {
-  if (m_ref) {
-    // Clear m_ref before calling JsRelease on it to make sure that we always hold a valid m_ref.
-    // TODO: [vmoroz] How to handle error here?
-    JsRelease(std::exchange(m_ref, JS_INVALID_REFERENCE), nullptr);
-  }
-}
+  JsRefHolder &JsRefHolder::operator=(JsRefHolder const &other) noexcept {
+    if (this != &other) {
+      JsRefHolder temp{std::move(*this)};
+      m_ref = other.m_ref;
+      if (m_ref) {
+        // TODO: [vmoroz] How to handle error here?
+        JsAddRef(m_ref, nullptr);
+      }
+    }
 
-//=============================================================================
-// Environment implementation
-//=============================================================================
-
-Environment::Environment(JsContextRef context) noexcept : m_context{context} {}
-
-Environment::~Environment() noexcept {
-  // First we must finalize those references that have `napi_finalizer`
-  // callbacks. The reason is that addons might store other references which
-  // they delete during their `napi_finalizer` callbacks. If we deleted such
-  // references here first, they would be doubly deleted when the
-  // `napi_finalizer` deleted them subsequently.
-  RefTracker::FinalizeAll(&m_finalizingRefList);
-  RefTracker::FinalizeAll(&m_refList);
-}
-
-JsContextRef Environment::Context() const noexcept {
-  return static_cast<JsRef>(m_context);
-}
-
-void Environment::Ref() noexcept {
-  ++m_refCount;
-}
-
-void Environment::Unref() noexcept {
-  if (--m_refCount == 0) {
-    delete this;
-  }
-}
-
-void Environment::ClearLastError() noexcept {
-  m_lastError.error_code = napi_ok;
-  m_lastError.engine_error_code = 0;
-  m_lastError.engine_reserved = nullptr;
-}
-
-napi_status Environment::SetLastError(napi_status errorCode, uint32_t engineErrorCode, void *engineReserved) noexcept {
-  m_lastError.error_code = errorCode;
-  m_lastError.engine_error_code = engineErrorCode;
-  m_lastError.engine_reserved = engineReserved;
-
-  return errorCode;
-}
-
-napi_status Environment::SetLastError(JsErrorCode jsError, void *engineReserved) noexcept {
-  napi_status status;
-  switch (jsError) {
-    case JsNoError:
-      status = napi_ok;
-      break;
-    case JsErrorNullArgument:
-    case JsErrorInvalidArgument:
-      status = napi_invalid_arg;
-      break;
-    case JsErrorPropertyNotString:
-      status = napi_string_expected;
-      break;
-    case JsErrorArgumentNotObject:
-      status = napi_object_expected;
-      break;
-    case JsErrorScriptException:
-    case JsErrorInExceptionState:
-      status = napi_pending_exception;
-      break;
-    default:
-      status = napi_generic_failure;
-      break;
+    return *this;
   }
 
-  m_lastError.error_code = status;
-  m_lastError.engine_error_code = jsError;
-  m_lastError.engine_reserved = engineReserved;
-  return status;
-}
+  JsRefHolder &JsRefHolder::operator=(JsRefHolder &&other) noexcept {
+    if (this != &other) {
+      JsRefHolder temp{std::move(*this)};
+      m_ref = std::exchange(other.m_ref, JS_INVALID_REFERENCE);
+    }
 
-napi_status Environment::GetLastErrorInfo(const napi_extended_error_info **result) noexcept {
-  CHECK_ARG2(result);
+    return *this;
+  }
 
-  // Warning: Keep in-sync with napi_status enum
-  static constexpr const char *s_errorMmessages[] = {
-      nullptr,
-      "Invalid argument",
-      "An object was expected",
-      "A string was expected",
-      "A string or symbol was expected",
-      "A function was expected",
-      "A number was expected",
-      "A boolean was expected",
-      "An array was expected",
-      "Unknown failure",
-      "An exception is pending",
-      "The async work item was canceled",
-      "napi_escape_handle already called on scope",
-      "Invalid handle scope usage",
-      "Invalid callback scope usage",
-      "Thread-safe function queue is full",
-      "Thread-safe function handle is closing",
-      "A BigInt was expected",
-      "A Date was expected",
-      "An ArrayBuffer was expected",
-      "A Detachable ArrayBuffer was expected",
-      "The code would cause a deadlock",
-  };
+  JsRefHolder::~JsRefHolder() noexcept {
+    if (m_ref) {
+      // Clear m_ref before calling JsRelease on it to make sure that we always hold a valid m_ref.
+      // TODO: [vmoroz] How to handle error here?
+      JsRelease(std::exchange(m_ref, JS_INVALID_REFERENCE), nullptr);
+    }
+  }
+
+  //=============================================================================
+  // Environment implementation
+  //=============================================================================
+
+  Environment::Environment(JsContextRef context) noexcept : m_context{context} {}
+
+  Environment::~Environment() noexcept {
+    // First we must finalize those references that have `napi_finalizer`
+    // callbacks. The reason is that addons might store other references which
+    // they delete during their `napi_finalizer` callbacks. If we deleted such
+    // references here first, they would be doubly deleted when the
+    // `napi_finalizer` deleted them subsequently.
+    RefTracker::FinalizeAll(&m_finalizingRefList);
+    RefTracker::FinalizeAll(&m_refList);
+  }
+
+  JsContextRef Environment::Context() const noexcept {
+    return static_cast<JsRef>(m_context);
+  }
+
+  void Environment::Ref() noexcept {
+    ++m_refCount;
+  }
+
+  void Environment::Unref() noexcept {
+    if (--m_refCount == 0) {
+      delete this;
+    }
+  }
+
+  RefTracker::RefList &Environment::RefList() noexcept {
+    return m_refList;
+  }
+
+  RefTracker::RefList &Environment::FinalizingRefList() noexcept {
+    return m_finalizingRefList;
+  }
+
+  void Environment::ClearLastError() noexcept {
+    m_lastError.error_code = napi_ok;
+    m_lastError.engine_error_code = 0;
+    m_lastError.engine_reserved = nullptr;
+  }
+
+  napi_status
+  Environment::SetLastError(napi_status errorCode, uint32_t engineErrorCode, void *engineReserved) noexcept {
+    m_lastError.error_code = errorCode;
+    m_lastError.engine_error_code = engineErrorCode;
+    m_lastError.engine_reserved = engineReserved;
+
+    return errorCode;
+  }
+
+  napi_status Environment::SetLastError(JsErrorCode jsError, void *engineReserved) noexcept {
+    napi_status status;
+    switch (jsError) {
+      case JsNoError:
+        status = napi_ok;
+        break;
+      case JsErrorNullArgument:
+      case JsErrorInvalidArgument:
+        status = napi_invalid_arg;
+        break;
+      case JsErrorPropertyNotString:
+        status = napi_string_expected;
+        break;
+      case JsErrorArgumentNotObject:
+        status = napi_object_expected;
+        break;
+      case JsErrorScriptException:
+      case JsErrorInExceptionState:
+        status = napi_pending_exception;
+        break;
+      default:
+        status = napi_generic_failure;
+        break;
+    }
+
+    m_lastError.error_code = status;
+    m_lastError.engine_error_code = jsError;
+    m_lastError.engine_reserved = engineReserved;
+    return status;
+  }
+
+  napi_status Environment::GetLastErrorInfo(const napi_extended_error_info **result) noexcept {
+    CHECK_ARG2(result);
+
+    // Warning: Keep in-sync with napi_status enum
+    static constexpr const char *s_errorMmessages[] = {
+        nullptr,
+        "Invalid argument",
+        "An object was expected",
+        "A string was expected",
+        "A string or symbol was expected",
+        "A function was expected",
+        "A number was expected",
+        "A boolean was expected",
+        "An array was expected",
+        "Unknown failure",
+        "An exception is pending",
+        "The async work item was canceled",
+        "napi_escape_handle already called on scope",
+        "Invalid handle scope usage",
+        "Invalid callback scope usage",
+        "Thread-safe function queue is full",
+        "Thread-safe function handle is closing",
+        "A BigInt was expected",
+        "A Date was expected",
+        "An ArrayBuffer was expected",
+        "A Detachable ArrayBuffer was expected",
+        "The code would cause a deadlock",
+    };
 
     // you must update this assert to reference the last message
-  // in the napi_status enum each time a new error message is added.
-  // We don't have a napi_status_last as this would result in an ABI
-  // change each time a message was added.
-  static_assert(
-      std::size(s_errorMmessages) == napi_would_deadlock + 1,
-      "Count of error messages must match count of error values");
-  assert(m_lastError.error_code <= napi_callback_scope_mismatch);
+    // in the napi_status enum each time a new error message is added.
+    // We don't have a napi_status_last as this would result in an ABI
+    // change each time a message was added.
+    static_assert(
+        std::size(s_errorMmessages) == napi_would_deadlock + 1,
+        "Count of error messages must match count of error values");
+    assert(m_lastError.error_code <= napi_callback_scope_mismatch);
 
-  // Wait until someone requests the last error information to fetch the error message string.
-  m_lastError.error_message = s_errorMmessages[m_lastError.error_code];
+    // Wait until someone requests the last error information to fetch the error message string.
+    m_lastError.error_message = s_errorMmessages[m_lastError.error_code];
 
-  *result = &m_lastError;
-  return napi_ok;
-}
+    *result = &m_lastError;
+    return napi_ok;
+  }
 
-napi_status Environment::RunScript(napi_value script, napi_value *result) noexcept {
-  CHECK_ARG2(script);
-  CHECK_ARG2(result);
+  napi_status Environment::RunScript(napi_value script, napi_value *result) noexcept {
+    CHECK_ARG2(script);
+    CHECK_ARG2(result);
 
-  JsValueRef scriptVar = reinterpret_cast<JsValueRef>(script);
+    JsValueRef scriptVar = reinterpret_cast<JsValueRef>(script);
 
-  const wchar_t *scriptStr;
-  size_t scriptStrLen;
-  CHECK_JSRT2(JsStringToPointer(scriptVar, &scriptStr, &scriptStrLen));
-  CHECK_JSRT_EXPECTED2(
-      JsRunScript(scriptStr, ++m_sourceContext, L"Unknown", reinterpret_cast<JsValueRef *>(result)),
-      napi_string_expected);
+    const wchar_t *scriptStr;
+    size_t scriptStrLen;
+    CHECK_JSRT2(JsStringToPointer(scriptVar, &scriptStr, &scriptStrLen));
+    CHECK_JSRT_EXPECTED2(
+        JsRunScript(scriptStr, ++m_sourceContext, L"Unknown", reinterpret_cast<JsValueRef *>(result)),
+        napi_string_expected);
 
-  return napi_ok;
-}
+    return napi_ok;
+  }
 
 } // namespace chakra
 
