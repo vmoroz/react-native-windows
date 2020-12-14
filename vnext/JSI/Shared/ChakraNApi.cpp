@@ -178,6 +178,8 @@ struct JsRefHolder final {
   JsRef m_ref{JS_INVALID_REFERENCE};
 };
 
+//enum class WrapType { Retrievable, Anonymous };
+
 struct Environment {
   // TODO: [vmoroz] move to private section
   JsValueRef has_own_property_function = JS_INVALID_REFERENCE;
@@ -198,6 +200,14 @@ struct Environment {
   SetLastError(napi_status errorCode, uint32_t engineErrorCode = 0, void *engineReserved = nullptr) noexcept;
   napi_status SetLastError(JsErrorCode jsError, void *engineReserved = nullptr) noexcept;
   napi_status GetLastErrorInfo(const napi_extended_error_info **result) noexcept;
+
+  // template <WrapType wrapType>
+  // napi_status Wrap(
+  //    napi_value obj,
+  //    void *nativeObject,
+  //    napi_finalize finalizeCallback,
+  //    void *finalizeHint,
+  //    napi_ref *result) noexcept;
 
   napi_status RunScript(napi_value script, napi_value *result) noexcept;
 
@@ -275,6 +285,7 @@ struct Finalizer {
   bool m_hasEnvReference{false};
 };
 
+// TODO: [vmoroz] Separate implementation form the declaration.
 struct Reference : RefTracker {
   // We use std::unique_ptr to avoid memory leaks after allocation.
   friend std::default_delete<Reference>;
@@ -371,14 +382,6 @@ struct Reference : RefTracker {
   }
 
  protected:
-  void Finalize(bool isEnvTeardown) noexcept override {
-    // We delete here if we do not expect the Delete function to run anymore.
-    if (m_shouldDeleteSelf || isEnvTeardown) {
-      delete this;
-    }
-  }
-
- private:
   Reference(JsValueRef value, uint32_t refCount, bool hasBeforeCollectCallback, bool shouldDeleteSelf) noexcept
       : m_value{value},
         m_refCount{refCount},
@@ -397,11 +400,87 @@ struct Reference : RefTracker {
     }
   }
 
+  void Finalize(bool isEnvTeardown) noexcept override {
+    // We delete here if we do not expect the Delete function to run anymore.
+    if (m_shouldDeleteSelf || isEnvTeardown) {
+      delete this;
+    }
+  }
+
  private:
   JsValueRef m_value{JS_INVALID_REFERENCE};
   uint32_t m_refCount{1};
   bool m_hasBeforeCollectCallback{false};
   bool m_shouldDeleteSelf{false};
+};
+
+struct FinalizingReference : Reference {
+  // We use std::unique_ptr to avoid memory leaks after allocation.
+  friend std::default_delete<Reference>;
+
+  static napi_status New(
+      napi_env env,
+      napi_value value,
+      napi_finalize finalizeCallback,
+      void *finalizeData,
+      void *finalizeHint,
+      napi_ref *result) noexcept {
+    CHECK_ENV_AND_ARG2(env, value, finalizeCallback);
+
+    JsValueRef jsValue{reinterpret_cast<JsValueRef>(value)};
+
+    JsValueType jsValueType{JsValueType::JsUndefined};
+    CHECK_JSRT(env, JsGetValueType(jsValue, &jsValueType));
+    if (jsValueType < JsValueType::JsObject) {
+      return env->SetLastError(napi_status::napi_object_expected);
+    }
+
+    // Allocate new Reference and make sure that it is not null.
+    auto ref = std::unique_ptr<FinalizingReference>{new (std::nothrow) FinalizingReference{
+        env,
+        jsValue,
+        /*shouldDeleteSelf:*/ result == nullptr,
+        finalizeCallback,
+        finalizeData,
+        finalizeHint}};
+    RETURN_STATUS_IF_FALSE(env, ref, napi_status::napi_generic_failure);
+
+    CHECK_JSRT(env, JsSetObjectBeforeCollectCallback(jsValue, ref.get(), BeforeCollectCallback));
+
+    env->LinkFinalizingReference(ref.get());
+    if (result) {
+      *result = reinterpret_cast<napi_ref>(ref.release());
+    }
+
+    return napi_status::napi_ok;
+  }
+
+ protected:
+  using Super = Reference;
+
+  FinalizingReference(
+      napi_env env,
+      JsValueRef value,
+      bool shouldDeleteSelf,
+      napi_finalize finalizeCallback,
+      void *finalizeData,
+      void *finalizeHint) noexcept
+      : Super{value, /*refCount:*/ 0, /*hasBeforeCollectCallback:*/ true, shouldDeleteSelf},
+        m_env(env),
+        m_finalizeCallback{finalizeCallback},
+        m_finalizeData{finalizeData},
+        m_finalizeHint{finalizeHint} {}
+
+  void Finalize(bool isEnvTeardown) noexcept override {
+    m_finalizeCallback(m_env, m_finalizeData, m_finalizeHint);
+    Super::Finalize(isEnvTeardown);
+  }
+
+ private:
+  napi_env m_env{nullptr};
+  napi_finalize m_finalizeCallback{nullptr};
+  void *m_finalizeData{nullptr};
+  void *m_finalizeHint{nullptr};
 };
 
 //=============================================================================
@@ -1111,61 +1190,59 @@ struct JsValueArgs final {
 
 } // namespace
 
-namespace ChakraImpl {
+namespace chakra {
 namespace {
+#if 0
+template <WrapType wrapType>
+inline napi_status Wrap(
+    napi_env env,
+    napi_value js_object,
+    void *native_object,
+    napi_finalize finalize_cb,
+    void *finalize_hint,
+    napi_ref *result) {
+  CHECK_ENV_AND_ARG(env)env, js_object);
 
-enum class WrapType { Retrievable, Anonymous };
+  // v8::Local<v8::Context> context = env->context();
 
-// TODO: [vmoroz] implement
-// template <WrapType wrapType>
-// inline napi_status Wrap(
-//    napi_env env,
-//    napi_value js_object,
-//    void *native_object,
-//    napi_finalize finalize_cb,
-//    void *finalize_hint,
-//    napi_ref *result) {
-//  CHECK_ENV_AND_ARG(env)env, js_object);
-//
-//  // v8::Local<v8::Context> context = env->context();
-//
-//  JsValueRef value = reinterpret_cast<JsValueRef>(js_object);
-//  // RETURN_STATUS_IF_FALSE(env, value->IsObject(), napi_invalid_arg);
-//  // v8::Local<v8::Object> obj = value.As<v8::Object>();
-//
-//  if (wrapType == WrapType::Retrievable) {
-//    // If we've already wrapped this object, we error out.
-//    RETURN_STATUS_IF_FALSE(
-//        env, !obj->HasPrivate(context, NAPI_PRIVATE_KEY(context, wrapper)).FromJust(), napi_invalid_arg);
-//  } else if (wrapType == WrapType::Anonymous) {
-//    // If no finalize callback is provided, we error out.
-//    CHECK_ARG(env, finalize_cb);
-//  }
-//
-//  v8impl::Reference *reference = nullptr;
-//  if (result != nullptr) {
-//    // The returned reference should be deleted via napi_delete_reference()
-//    // ONLY in response to the finalize callback invocation. (If it is deleted
-//    // before then, then the finalize callback will never be invoked.)
-//    // Therefore a finalize callback is required when returning a reference.
-//    CHECK_ARG(env, finalize_cb);
-//    reference = v8impl::Reference::New(env, obj, 0, false, finalize_cb, native_object, finalize_hint);
-//    *result = reinterpret_cast<napi_ref>(reference);
-//  } else {
-//    // Create a self-deleting reference.
-//    reference = v8impl::Reference::New(
-//        env, obj, 0, true, finalize_cb, native_object, finalize_cb == nullptr ? nullptr : finalize_hint);
-//  }
-//
-//  if (wrap_type == retrievable) {
-//    CHECK(obj->SetPrivate(context, NAPI_PRIVATE_KEY(context, wrapper), v8::External::New(env->isolate, reference))
-//              .FromJust());
-//  }
-//
-//  return GET_RETURN_STATUS(env);
-//}
+  JsValueRef value = reinterpret_cast<JsValueRef>(js_object);
+  // RETURN_STATUS_IF_FALSE(env, value->IsObject(), napi_invalid_arg);
+  // v8::Local<v8::Object> obj = value.As<v8::Object>();
+
+  if (wrapType == WrapType::Retrievable) {
+    // If we've already wrapped this object, we error out.
+    RETURN_STATUS_IF_FALSE(
+        env, !obj->HasPrivate(context, NAPI_PRIVATE_KEY(context, wrapper)).FromJust(), napi_invalid_arg);
+  } else if (wrapType == WrapType::Anonymous) {
+    // If no finalize callback is provided, we error out.
+    CHECK_ARG(env, finalize_cb);
+  }
+
+  v8impl::Reference *reference = nullptr;
+  if (result != nullptr) {
+    // The returned reference should be deleted via napi_delete_reference()
+    // ONLY in response to the finalize callback invocation. (If it is deleted
+    // before then, then the finalize callback will never be invoked.)
+    // Therefore a finalize callback is required when returning a reference.
+    CHECK_ARG(env, finalize_cb);
+    reference = v8impl::Reference::New(env, obj, 0, false, finalize_cb, native_object, finalize_hint);
+    *result = reinterpret_cast<napi_ref>(reference);
+  } else {
+    // Create a self-deleting reference.
+    reference = v8impl::Reference::New(
+        env, obj, 0, true, finalize_cb, native_object, finalize_cb == nullptr ? nullptr : finalize_hint);
+  }
+
+  if (wrap_type == retrievable) {
+    CHECK(obj->SetPrivate(context, NAPI_PRIVATE_KEY(context, wrapper), v8::External::New(env->isolate, reference))
+              .FromJust());
+  }
+
+  return GET_RETURN_STATUS(env);
+}
+#endif
 } // namespace
-} // namespace ChakraImpl
+} // namespace chakra
 
 //==============================================================================
 // NAPI: Getting last error.
@@ -2828,8 +2905,6 @@ napi_status napi_get_date_value(napi_env env, napi_value value, double *result) 
   return napi_ok;
 }
 
-#if 0
-// Add finalizer for pointer
 napi_status napi_add_finalizer(
     napi_env env,
     napi_value js_object,
@@ -2837,11 +2912,8 @@ napi_status napi_add_finalizer(
     napi_finalize finalize_cb,
     void *finalize_hint,
     napi_ref *result) {
-  //TODO: [vmoroz] implement
-  //return ChakraImpl::Wrap<ChakraImpl::WrapType::Anonymous>(
-  //    env, js_object, native_object, finalize_cb, finalize_hint, result);
+  return chakra::FinalizingReference::New(env, js_object, finalize_cb, native_object, finalize_hint, result);
 }
-#endif
 
 #endif // NAPI_VERSION >= 5
 #if 0
