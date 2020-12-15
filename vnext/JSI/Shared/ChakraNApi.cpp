@@ -639,8 +639,8 @@ napi_status Environment::GetLastErrorInfo(const napi_extended_error_info **resul
       "A BigInt was expected",
       "A Date was expected",
       "An ArrayBuffer was expected",
-      "A Detachable ArrayBuffer was expected",
-      "The code would cause a deadlock",
+      "A detachable ArrayBuffer was expected",
+      "Main thread would deadlock",
   };
 
   // you must update this assert to reference the last message
