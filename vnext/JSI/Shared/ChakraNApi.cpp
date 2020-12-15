@@ -178,7 +178,7 @@ struct JsRefHolder final {
   JsRef m_ref{JS_INVALID_REFERENCE};
 };
 
-//enum class WrapType { Retrievable, Anonymous };
+// enum class WrapType { Retrievable, Anonymous };
 
 struct Environment {
   // TODO: [vmoroz] move to private section
@@ -201,15 +201,13 @@ struct Environment {
   napi_status SetLastError(JsErrorCode jsError, void *engineReserved = nullptr) noexcept;
   napi_status GetLastErrorInfo(const napi_extended_error_info **result) noexcept;
 
-  // template <WrapType wrapType>
-  // napi_status Wrap(
-  //    napi_value obj,
-  //    void *nativeObject,
-  //    napi_finalize finalizeCallback,
-  //    void *finalizeHint,
-  //    napi_ref *result) noexcept;
+  napi_status
+  Wrap(napi_value obj, void *nativeObj, napi_finalize finalizeCallback, void *finalizeHint, napi_ref *result) noexcept;
 
   napi_status RunScript(napi_value script, napi_value *result) noexcept;
+
+ private:
+  JsErrorCode ChakraPointerToString(std::wstring_view value, JsValueRef *result) noexcept;
 
  private:
   JsRefHolder m_context;
@@ -297,9 +295,7 @@ struct Reference : RefTracker {
 
     JsValueType jsValueType{JsValueType::JsUndefined};
     CHECK_JSRT(env, JsGetValueType(jsValue, &jsValueType));
-    if (jsValueType < JsValueType::JsObject) {
-      return env->SetLastError(napi_status::napi_object_expected);
-    }
+    RETURN_STATUS_IF_FALSE(jsValueType >= JsValueType::JsObject, napi_status::napi_object_expected);
 
     // Allocate new Reference and make sure that it is not null.
     auto ref = std::unique_ptr<Reference>{new (std::nothrow) Reference{
@@ -661,6 +657,57 @@ napi_status Environment::GetLastErrorInfo(const napi_extended_error_info **resul
 
   *result = &m_lastError;
   return napi_ok;
+}
+
+JsErrorCode Environment::ChakraPointerToString(std::wstring_view value, JsValueRef *result) noexcept {
+  return JsPointerToString(value.data(), value.size(), result);
+}
+
+napi_status Environment::Wrap(
+    napi_value obj,
+    void *nativeObj,
+    napi_finalize finalizeCallback,
+    void *finalizeHint,
+    napi_ref *result) noexcept {
+  CHECK_ARG(this, obj);
+
+  JsValueRef jsValue{reinterpret_cast<JsValueRef>(obj)};
+
+  JsValueType jsValueType{JsValueType::JsUndefined};
+  CHECK_JSRT(this, JsGetValueType(jsValue, &jsValueType));
+  RETURN_STATUS_IF_FALSE(this, jsValueType == JsValueType::JsObject, napi_status::napi_object_expected);
+
+  // If we've already wrapped this object, we error out.
+  JsValueRef symbolStr{JS_INVALID_REFERENCE};
+  CHECK_JSRT(this, ChakraPointerToString(L"wrapper", &symbolStr));
+  JsValueRef symbol{JS_INVALID_REFERENCE};
+  CHECK_JSRT(this, JsCreateSymbol(symbolStr, &symbol));
+  JsPropertyIdRef propertyId{JS_INVALID_REFERENCE};
+  CHECK_JSRT(this, JsGetPropertyIdFromSymbol(symbol, &propertyId));
+
+  CHECK_JSRT(JsCreateSymbol()
+  RETURN_STATUS_IF_FALSE(
+      env, !obj->HasPrivate(context, NAPI_PRIVATE_KEY(context, wrapper)).FromJust(), napi_invalid_arg);
+
+  v8impl::Reference *reference = nullptr;
+  if (result != nullptr) {
+    // The returned reference should be deleted via napi_delete_reference()
+    // ONLY in response to the finalize callback invocation. (If it is deleted
+    // before then, then the finalize callback will never be invoked.)
+    // Therefore a finalize callback is required when returning a reference.
+    CHECK_ARG(env, finalize_cb);
+    reference = v8impl::Reference::New(env, obj, 0, false, finalize_cb, native_object, finalize_hint);
+    *result = reinterpret_cast<napi_ref>(reference);
+  } else {
+    // Create a self-deleting reference.
+    reference = v8impl::Reference::New(
+        env, obj, 0, true, finalize_cb, native_object, finalize_cb == nullptr ? nullptr : finalize_hint);
+  }
+
+  CHECK(obj->SetPrivate(context, NAPI_PRIVATE_KEY(context, wrapper), v8::External::New(env->isolate, reference))
+            .FromJust());
+
+  return GET_RETURN_STATUS(env);
 }
 
 napi_status Environment::RunScript(napi_value script, napi_value *result) noexcept {
@@ -2221,36 +2268,39 @@ napi_status napi_wrap(
     void *native_object,
     napi_finalize finalize_cb,
     void *finalize_hint,
-    napi_ref *result) try {
-  CHECK_ENV_AND_ARG(env, js_object);
-  // TODO: [vmoroz] change wrapping to be based on a symbol property
-  JsValueRef value = reinterpret_cast<JsValueRef>(js_object);
-
-  JsValueRef wrapper = JS_INVALID_REFERENCE;
-  CHECK_NAPI(FindWrapper(env, value, &wrapper));
-  RETURN_STATUS_IF_FALSE(env, wrapper == JS_INVALID_REFERENCE, napi_invalid_arg);
-
-  std::unique_ptr<ExternalData> externalData{new ExternalData(env, native_object, finalize_cb, finalize_hint)};
-
-  // Create an external object that will hold the external data pointer.
-  JsValueRef external = JS_INVALID_REFERENCE;
-  CHECK_JSRT(env, JsCreateExternalObject(externalData.get(), ExternalData::Finalize, &external));
-  externalData.release();
-
-  // Insert the external object into the value's prototype chain.
-  JsValueRef valuePrototype = JS_INVALID_REFERENCE;
-  CHECK_JSRT(env, JsGetPrototype(value, &valuePrototype));
-  CHECK_JSRT(env, JsSetPrototype(external, valuePrototype));
-  CHECK_JSRT(env, JsSetPrototype(value, external));
-
-  if (result != nullptr) {
-    CHECK_NAPI(napi_create_reference(env, js_object, 0, result));
-  }
-
-  return napi_ok;
-} catch (...) {
-  return env->SetLastError(napi_generic_failure);
+    napi_ref *result) {
+  return CHECKED_ENV(env)->Wrap(js_object, native_object, finalize_cb, finalize_hint, result);
 }
+// try {
+//  CHECK_ENV_AND_ARG(env, js_object);
+//  // TODO: [vmoroz] change wrapping to be based on a symbol property
+//  JsValueRef value = reinterpret_cast<JsValueRef>(js_object);
+//
+//  JsValueRef wrapper = JS_INVALID_REFERENCE;
+//  CHECK_NAPI(FindWrapper(env, value, &wrapper));
+//  RETURN_STATUS_IF_FALSE(env, wrapper == JS_INVALID_REFERENCE, napi_invalid_arg);
+//
+//  std::unique_ptr<ExternalData> externalData{new ExternalData(env, native_object, finalize_cb, finalize_hint)};
+//
+//  // Create an external object that will hold the external data pointer.
+//  JsValueRef external = JS_INVALID_REFERENCE;
+//  CHECK_JSRT(env, JsCreateExternalObject(externalData.get(), ExternalData::Finalize, &external));
+//  externalData.release();
+//
+//  // Insert the external object into the value's prototype chain.
+//  JsValueRef valuePrototype = JS_INVALID_REFERENCE;
+//  CHECK_JSRT(env, JsGetPrototype(value, &valuePrototype));
+//  CHECK_JSRT(env, JsSetPrototype(external, valuePrototype));
+//  CHECK_JSRT(env, JsSetPrototype(value, external));
+//
+//  if (result != nullptr) {
+//    CHECK_NAPI(napi_create_reference(env, js_object, 0, result));
+//  }
+//
+//  return napi_ok;
+//} catch (...) {
+//  return env->SetLastError(napi_generic_failure);
+//}
 
 napi_status napi_unwrap(napi_env env, napi_value js_object, void **result) {
   CHECK_ENV_AND_ARG(env, js_object);
