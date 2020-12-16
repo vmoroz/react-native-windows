@@ -315,23 +315,26 @@ struct Environment {
   napi_status GetDateValue(napi_value value, double *result) noexcept;
 
  private:
-  static JsErrorCode PointerToString(std::wstring_view value, JsValueRef *result) noexcept;
+  static JsErrorCode ChakraPointerToString(std::wstring_view value, JsValueRef *result) noexcept;
 
   template <class TObject, class TPropertyId>
-  static JsErrorCode GetProperty(TObject &&object, TPropertyId &&propertyId, JsValueRef *result) noexcept;
+  static JsErrorCode ChakraGetProperty(TObject &&object, TPropertyId &&propertyId, JsValueRef *result) noexcept;
 
   template <class TObject, class TPropertyId, class TValue>
-  static JsErrorCode SetProperty(TObject &&object, TPropertyId &&propertyId, TValue &&value) noexcept;
+  static JsErrorCode ChakraSetProperty(TObject &&object, TPropertyId &&propertyId, TValue &&value) noexcept;
 
   template <typename TValue>
-  JsErrorCode CreatePropertyDescriptor(TValue &&value, PropertyAttibutes attrs, JsValueRef *result) noexcept;
+  JsErrorCode ChakraCreatePropertyDescriptor(TValue &&value, PropertyAttibutes attrs, JsValueRef *result) noexcept;
 
   template <typename TObject, typename TPropertyId>
-  static JsErrorCode
-  DefineProperty(TObject &&object, TPropertyId &&propertyId, JsValueRef propertyDescriptor, bool *isSucceeded) noexcept;
+  static JsErrorCode ChakraDefineProperty(
+      TObject &&object,
+      TPropertyId &&propertyId,
+      JsValueRef propertyDescriptor,
+      bool *isSucceeded) noexcept;
 
   template <typename TObject, typename TPropertyId, typename TValue>
-  JsErrorCode DefineProperty(
+  JsErrorCode ChakraDefineProperty(
       TObject &&object,
       TPropertyId &&propertyId,
       TValue &&value,
@@ -339,16 +342,16 @@ struct Environment {
       bool *isSucceeded) noexcept;
 
   template <class TObject, class TPropertyId>
-  JsErrorCode HasPrivateProperty(TObject &&object, TPropertyId &&propertyId, bool *result) noexcept;
+  JsErrorCode ChakraHasPrivateProperty(TObject &&object, TPropertyId &&propertyId, bool *result) noexcept;
 
   template <class TObject, class TPropertyId>
-  JsErrorCode GetPrivateProperty(TObject &&object, TPropertyId &&propertyId, JsValueRef *result) noexcept;
+  JsErrorCode ChakraGetPrivateProperty(TObject &&object, TPropertyId &&propertyId, JsValueRef *result) noexcept;
 
   template <class TObject, class TPropertyId, class TValue>
-  JsErrorCode SetPrivateProperty(TObject &&object, TPropertyId &&propertyId, TValue &&value) noexcept;
+  JsErrorCode ChakraSetPrivateProperty(TObject &&object, TPropertyId &&propertyId, TValue &&value) noexcept;
 
   template <typename TFunction, typename... TArgs>
-  static JsErrorCode CallFunction(TFunction &&function, JsValueRef *result, TArgs &&... args) noexcept;
+  static JsErrorCode ChakraCallFunction(TFunction &&function, JsValueRef *result, TArgs &&... args) noexcept;
 
   template <typename TConstructor, typename... TArgs>
   static JsErrorCode ChakraConstructObject(TConstructor &&constructor, JsValueRef *result, TArgs &&... args) noexcept;
@@ -831,7 +834,7 @@ napi_status Environment::GetLastErrorInfo(const napi_extended_error_info **resul
   return napi_ok;
 }
 
-JsErrorCode Environment::PointerToString(std::wstring_view value, JsValueRef *result) noexcept {
+JsErrorCode Environment::ChakraPointerToString(std::wstring_view value, JsValueRef *result) noexcept {
   return JsPointerToString(value.data(), value.size(), result);
 }
 
@@ -871,7 +874,7 @@ napi_status Environment::Wrap(
 
   // If we've already wrapped this object, we error out.
   bool hasHostObjectProperty{};
-  CHECK_JSRT(this, HasPrivateProperty(jsValue, m_propertyId.hostObject, &hasHostObjectProperty));
+  CHECK_JSRT(this, ChakraHasPrivateProperty(jsValue, m_propertyId.hostObject, &hasHostObjectProperty));
   RETURN_STATUS_IF_FALSE(this, !hasHostObjectProperty, napi_invalid_arg);
 
   napi_ref reference{};
@@ -903,7 +906,7 @@ napi_status Environment::Wrap(
 
   JsValueRef external{};
   CHECK_JSRT(this, JsCreateExternalObject(reference, nullptr, &external));
-  CHECK_JSRT(this, SetPrivateProperty(jsValue, m_propertyId.hostObject, external));
+  CHECK_JSRT(this, ChakraSetPrivateProperty(jsValue, m_propertyId.hostObject, external));
 
   return napi_status::napi_ok;
 }
@@ -916,7 +919,7 @@ napi_status Environment::HasOwnProperty(napi_value object, napi_value key, bool 
 
   CHECK_JSRT(
       this,
-      CallFunction(
+      ChakraCallFunction(
           m_value.HasOwnProperty, &jsResult, reinterpret_cast<JsValueRef>(object), reinterpret_cast<JsValueRef>(key)));
   CHECK_JSRT(this, JsBooleanToBool(jsResult, result));
   return napi_status::napi_ok;
@@ -931,8 +934,8 @@ napi_status Environment::CreatePromise(napi_deferred *deferred, napi_value *prom
 
   CHECK_JSRT(this, ChakraCreatePromise(&jsPromise, &jsResolve, &jsReject));
   CHECK_JSRT(this, JsCreateObject(&jsDeferred));
-  CHECK_JSRT(this, SetProperty(jsDeferred, m_propertyId.resolve, jsResolve));
-  CHECK_JSRT(this, SetProperty(jsDeferred, m_propertyId.reject, jsReject));
+  CHECK_JSRT(this, ChakraSetProperty(jsDeferred, m_propertyId.resolve, jsResolve));
+  CHECK_JSRT(this, ChakraSetProperty(jsDeferred, m_propertyId.reject, jsReject));
 
   CHECK_NAPI(Reference::New(static_cast<napi_env>(this), reinterpret_cast<napi_value>(jsDeferred), 1, &deferredRef));
 
@@ -960,8 +963,8 @@ Environment::ConcludeDeferred(napi_deferred deferred, CachedPropertyId propertyI
   napi_ref ref = reinterpret_cast<napi_ref>(deferred);
 
   CHECK_NAPI(GetReferenceValue(ref, &container));
-  CHECK_JSRT(this, GetProperty(container, propertyId, &resolver));
-  CHECK_JSRT(this, CallFunction(resolver, nullptr, m_value.Null, result));
+  CHECK_JSRT(this, ChakraGetProperty(container, propertyId, &resolver));
+  CHECK_JSRT(this, ChakraCallFunction(resolver, nullptr, m_value.Null, result));
   return DeleteReference(ref);
 }
 
@@ -970,7 +973,7 @@ napi_status Environment::IsPromise(napi_value value, bool *is_promise) noexcept 
   CHECK_ARG(this, is_promise);
 
   JsValueRef promiseConstructor{};
-  CHECK_JSRT(this, GetProperty(m_value.Global, m_propertyId.Promise, &promiseConstructor));
+  CHECK_JSRT(this, ChakraGetProperty(m_value.Global, m_propertyId.Promise, &promiseConstructor));
   CHECK_JSRT(this, JsInstanceOf(reinterpret_cast<JsValueRef>(value), promiseConstructor, is_promise));
 
   return napi_ok;
@@ -996,7 +999,7 @@ napi_status Environment::CreateDate(double time, napi_value *result) noexcept {
   CHECK_ARG(this, result);
 
   JsValueRef dateConstructor{};
-  CHECK_JSRT(this, GetProperty(m_value.Global, m_propertyId.Date, &dateConstructor));
+  CHECK_JSRT(this, ChakraGetProperty(m_value.Global, m_propertyId.Date, &dateConstructor));
 
   JsValueRef args[2] = {};
   CHECK_JSRT(this, JsGetUndefinedValue(&args[0]));
@@ -1011,7 +1014,7 @@ napi_status Environment::IsDate(napi_value value, bool *is_date) noexcept {
   CHECK_ARG(this, is_date);
 
   JsValueRef dateConstructor{};
-  CHECK_JSRT(this, GetProperty(m_value.Global, m_propertyId.Date, &dateConstructor));
+  CHECK_JSRT(this, ChakraGetProperty(m_value.Global, m_propertyId.Date, &dateConstructor));
 
   JsValueRef obj{reinterpret_cast<JsValueRef>(value)};
   CHECK_JSRT(this, JsInstanceOf(obj, dateConstructor, is_date));
@@ -1032,7 +1035,7 @@ napi_status Environment::GetDateValue(napi_value value, double *result) noexcept
 
   JsValueRef jsValue{reinterpret_cast<JsValueRef>(value)};
   JsValueRef valueOf{};
-  CHECK_JSRT(this, GetProperty(jsValue, m_propertyId.valueOf, &valueOf));
+  CHECK_JSRT(this, ChakraGetProperty(jsValue, m_propertyId.valueOf, &valueOf));
 
   JsValueRef dateValue{};
   CHECK_JSRT(this, JsCallFunction(valueOf, &jsValue, 1, &dateValue));
@@ -1042,7 +1045,7 @@ napi_status Environment::GetDateValue(napi_value value, double *result) noexcept
 }
 
 template <class TObject, class TPropertyId>
-JsErrorCode Environment::GetProperty(TObject &&object, TPropertyId &&propertyId, JsValueRef *result) noexcept {
+JsErrorCode Environment::ChakraGetProperty(TObject &&object, TPropertyId &&propertyId, JsValueRef *result) noexcept {
   JsValueRef jsObject{};
   JsPropertyIdRef jsPropertyId{};
   CHECK_JSRT_ERROR_CODE(CachedValue::GetValue(std::forward<TObject>(object), &jsObject));
@@ -1051,7 +1054,7 @@ JsErrorCode Environment::GetProperty(TObject &&object, TPropertyId &&propertyId,
 }
 
 template <class TObject, class TPropertyId, class TValue>
-JsErrorCode Environment::SetProperty(TObject &&object, TPropertyId &&propertyId, TValue &&value) noexcept {
+JsErrorCode Environment::ChakraSetProperty(TObject &&object, TPropertyId &&propertyId, TValue &&value) noexcept {
   JsValueRef jsObject{};
   JsPropertyIdRef jsPropertyId{};
   JsValueRef jsValue{};
@@ -1063,24 +1066,24 @@ JsErrorCode Environment::SetProperty(TObject &&object, TPropertyId &&propertyId,
 
 template <typename TValue>
 JsErrorCode
-Environment::CreatePropertyDescriptor(TValue &&value, PropertyAttibutes attrs, JsValueRef *result) noexcept {
+Environment::ChakraCreatePropertyDescriptor(TValue &&value, PropertyAttibutes attrs, JsValueRef *result) noexcept {
   JsValueRef descriptor{};
   CHECK_JSRT_ERROR_CODE(JsCreateObject(&descriptor));
-  CHECK_JSRT_ERROR_CODE(SetProperty(descriptor, m_propertyId.value, std::forward<TValue>(value)));
+  CHECK_JSRT_ERROR_CODE(ChakraSetProperty(descriptor, m_propertyId.value, std::forward<TValue>(value)));
   if (!(attrs & PropertyAttibutes::ReadOnly)) {
-    CHECK_JSRT_ERROR_CODE(SetProperty(descriptor, m_propertyId.writable, m_value.True));
+    CHECK_JSRT_ERROR_CODE(ChakraSetProperty(descriptor, m_propertyId.writable, m_value.True));
   }
   if (!(attrs & PropertyAttibutes::DontEnum)) {
-    CHECK_JSRT_ERROR_CODE(SetProperty(descriptor, m_propertyId.enumerable, m_value.True));
+    CHECK_JSRT_ERROR_CODE(ChakraSetProperty(descriptor, m_propertyId.enumerable, m_value.True));
   }
   if (!(attrs & PropertyAttibutes::DontDelete)) {
-    CHECK_JSRT_ERROR_CODE(SetProperty(descriptor, m_propertyId.configurable, m_value.True));
+    CHECK_JSRT_ERROR_CODE(ChakraSetProperty(descriptor, m_propertyId.configurable, m_value.True));
   }
   return JsErrorCode::JsNoError;
 }
 
 template <typename TObject, typename TPropertyId>
-JsErrorCode Environment::DefineProperty(
+JsErrorCode Environment::ChakraDefineProperty(
     TObject &&object,
     TPropertyId &&propertyId,
     JsValueRef propertyDescriptor,
@@ -1093,15 +1096,16 @@ JsErrorCode Environment::DefineProperty(
 }
 
 template <typename TObject, typename TPropertyId, typename TValue>
-JsErrorCode Environment::DefineProperty(
+JsErrorCode Environment::ChakraDefineProperty(
     TObject &&object,
     TPropertyId &&propertyId,
     TValue &&value,
     PropertyAttibutes attrs,
     bool *isSucceeded) noexcept {
   JsValueRef descriptor{};
-  CHECK_JSRT_ERROR_CODE(CreatePropertyDescriptor(std::forward<TValue>(value), attrs, &descriptor));
-  return DefineProperty(std::forward<TObject>(object), std::forward<TPropertyId>(propertyId), descriptor, isSucceeded);
+  CHECK_JSRT_ERROR_CODE(ChakraCreatePropertyDescriptor(std::forward<TValue>(value), attrs, &descriptor));
+  return ChakraDefineProperty(
+      std::forward<TObject>(object), std::forward<TPropertyId>(propertyId), descriptor, isSucceeded);
 }
 
 /*static*/ JsErrorCode Environment::GetHasOwnPropertyFunction(JsValueRef *result) noexcept {
@@ -1119,7 +1123,7 @@ JsErrorCode Environment::DefineProperty(
 }
 
 template <class TObject, class TPropertyId>
-JsErrorCode Environment::HasPrivateProperty(TObject &&object, TPropertyId &&propertyId, bool *result) noexcept {
+JsErrorCode Environment::ChakraHasPrivateProperty(TObject &&object, TPropertyId &&propertyId, bool *result) noexcept {
   JsValueRef jsObject{};
   JsPropertyIdRef jsPropertyId{};
   JsValueRef descriptor{};
@@ -1137,7 +1141,8 @@ JsErrorCode Environment::HasPrivateProperty(TObject &&object, TPropertyId &&prop
 }
 
 template <class TObject, class TPropertyId>
-JsErrorCode Environment::GetPrivateProperty(TObject &&object, TPropertyId &&propertyId, JsValueRef *result) noexcept {
+JsErrorCode
+Environment::ChakraGetPrivateProperty(TObject &&object, TPropertyId &&propertyId, JsValueRef *result) noexcept {
   JsValueRef jsObject{};
   JsPropertyIdRef jsPropertyId{};
   JsValueRef descriptor{};
@@ -1148,10 +1153,10 @@ JsErrorCode Environment::GetPrivateProperty(TObject &&object, TPropertyId &&prop
 }
 
 template <class TObject, class TPropertyId, class TValue>
-JsErrorCode Environment::SetPrivateProperty(TObject &&object, TPropertyId &&propertyId, TValue &&value) noexcept {
+JsErrorCode Environment::ChakraSetPrivateProperty(TObject &&object, TPropertyId &&propertyId, TValue &&value) noexcept {
   JsValueRef descriptor{};
   bool isSucceeded{false};
-  CHECK_JSRT_ERROR_CODE(DefineProperty(
+  CHECK_JSRT_ERROR_CODE(ChakraDefineProperty(
       std::forward<TObject>(object),
       std::forward<TPropertyId>(propertyId),
       std::forward<TValue>(value),
@@ -1160,7 +1165,7 @@ JsErrorCode Environment::SetPrivateProperty(TObject &&object, TPropertyId &&prop
   if (isSucceeded) {
     return JsErrorCode::JsNoError;
   } else {
-    return SetProperty(
+    return ChakraSetProperty(
         std::forward<TObject>(object), std::forward<TPropertyId>(propertyId), std::forward<TValue>(value));
   }
 }
@@ -1177,7 +1182,8 @@ JsErrorCode InitArgs(TArray &jsArgs, TArg0 &&arg0, TArgs &&... args) noexcept {
 }
 
 template <typename TFunction, typename... TArgs>
-/*static*/ JsErrorCode Environment::CallFunction(TFunction &&function, JsValueRef *result, TArgs &&... args) noexcept {
+/*static*/ JsErrorCode
+Environment::ChakraCallFunction(TFunction &&function, JsValueRef *result, TArgs &&... args) noexcept {
   JsValueRef jsFunction{};
   CHECK_JSRT_ERROR_CODE(CachedValue::GetValue(std::forward<TFunction>(function), &jsFunction));
   std::array<JsValueRef, sizeof...(args)> jsArgs;
@@ -1212,7 +1218,7 @@ JsErrorCode Environment::ChakraCreatePromise(
     _Out_ JsValueRef *resolveFunction,
     _Out_ JsValueRef *rejectFunction) noexcept {
   JsValueRef promiseConstructor{};
-  CHECK_JSRT_ERROR_CODE(GetProperty(m_value.Global, m_propertyId.Promise, &promiseConstructor));
+  CHECK_JSRT_ERROR_CODE(ChakraGetProperty(m_value.Global, m_propertyId.Promise, &promiseConstructor));
 
   // The executor function is to be executed by the constructor during the process of constructing
   // the new Promise object. The executor is custom code that ties an outcome to a promise.
