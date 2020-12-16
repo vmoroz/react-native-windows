@@ -74,7 +74,7 @@
 
 #define CHECKED_ENV(env) ((env) == nullptr) ? napi_invalid_arg : (env)
 
-#define CHECKED_REF(ref) ((ref) == nullptr) ? napi_invalid_arg : reinterpret_cast<chakra::Reference *>(env)
+#define CHECKED_REF(ref) ((ref) == nullptr) ? napi_invalid_arg : reinterpret_cast<chakra::Reference *>(ref)
 
 #define CHECK_ARG(env, arg) RETURN_STATUS_IF_FALSE((env), ((arg) != nullptr), napi_invalid_arg)
 
@@ -293,8 +293,20 @@ struct Environment {
 
   napi_status HasOwnProperty(napi_value object, napi_value key, bool *result) noexcept;
 
+  napi_status CreateReference(napi_value value, uint32_t initialRefCount, napi_ref *result) noexcept;
+  napi_status DeleteReference(napi_ref ref) noexcept;
+  napi_status ReferenceRef(napi_ref ref, uint32_t *result) noexcept;
+  napi_status ReferenceUnref(napi_ref ref, uint32_t *result) noexcept;
+  napi_status GetReferenceValue(napi_ref ref, napi_value *result) noexcept;
+
   napi_status
   Wrap(napi_value obj, void *nativeObj, napi_finalize finalizeCallback, void *finalizeHint, napi_ref *result) noexcept;
+
+  napi_status CreatePromise(napi_deferred *deferred, napi_value *promise) noexcept;
+  napi_status ResolveDeferred(napi_deferred deferred, napi_value resolution) noexcept;
+  napi_status RejectDeferred(napi_deferred deferred, napi_value rejection) noexcept;
+  napi_status ConcludeDeferred(napi_deferred deferred, CachedPropertyId propertyId, napi_value result) noexcept;
+  napi_status IsPromise(napi_value value, bool *is_promise) noexcept;
 
   napi_status RunScript(napi_value script, napi_value *result) noexcept;
 
@@ -338,7 +350,15 @@ struct Environment {
   template <typename TFunction, typename... TArgs>
   static JsErrorCode CallFunction(TFunction &&function, JsValueRef *result, TArgs &&... args) noexcept;
 
+  template <typename TConstructor, typename... TArgs>
+  static JsErrorCode ChakraConstructObject(TConstructor &&constructor, JsValueRef *result, TArgs &&... args) noexcept;
+
   static JsErrorCode GetHasOwnPropertyFunction(JsValueRef *result) noexcept;
+
+  JsErrorCode ChakraCreatePromise(
+      _Out_ JsValueRef *promise,
+      _Out_ JsValueRef *resolveFunction,
+      _Out_ JsValueRef *rejectFunction) noexcept;
 
  private:
   JsRefHolder m_context;
@@ -355,10 +375,13 @@ struct Environment {
   struct PropertyId final {
     CachedPropertyId Date{L"Date"};
     CachedPropertyId Object{L"Object"};
+    CachedPropertyId Promise{L"Promise"};
     CachedPropertyId configurable{L"configurable"};
     CachedPropertyId enumerable{L"enumerable"};
     CachedPropertyId hasOwnProperty{L"hasOwnProperty"};
     CachedPropertyId hostObject{L"hostObject", JsPropertyIdTypeSymbol};
+    CachedPropertyId reject{L"reject"};
+    CachedPropertyId resolve{L"resolve"};
     CachedPropertyId value{L"value"};
     CachedPropertyId valueOf{L"valueOf"};
     CachedPropertyId writable{L"writable"};
@@ -812,6 +835,26 @@ JsErrorCode Environment::PointerToString(std::wstring_view value, JsValueRef *re
   return JsPointerToString(value.data(), value.size(), result);
 }
 
+napi_status Environment::CreateReference(napi_value value, uint32_t initialRefCount, napi_ref *result) noexcept {
+  return Reference::New(static_cast<napi_env>(this), value, initialRefCount, result);
+}
+
+napi_status Environment::DeleteReference(napi_ref ref) noexcept {
+  return CHECKED_REF(ref)->Delete(static_cast<napi_env>(this));
+}
+
+napi_status Environment::ReferenceRef(napi_ref ref, uint32_t *result) noexcept {
+  return CHECKED_REF(ref)->Ref(static_cast<napi_env>(this), result);
+}
+
+napi_status Environment::ReferenceUnref(napi_ref ref, uint32_t *result) noexcept {
+  return CHECKED_REF(ref)->Unref(static_cast<napi_env>(this), result);
+}
+
+napi_status Environment::GetReferenceValue(napi_ref ref, napi_value *result) noexcept {
+  return CHECKED_REF(ref)->Value(static_cast<napi_env>(this), result);
+}
+
 napi_status Environment::Wrap(
     napi_value obj,
     void *nativeObj,
@@ -879,6 +922,60 @@ napi_status Environment::HasOwnProperty(napi_value object, napi_value key, bool 
   return napi_status::napi_ok;
 }
 
+napi_status Environment::CreatePromise(napi_deferred *deferred, napi_value *promise) noexcept {
+  CHECK_ARG(this, deferred);
+  CHECK_ARG(this, promise);
+
+  JsValueRef jsPromise, jsResolve, jsReject, jsDeferred;
+  napi_ref deferredRef;
+
+  CHECK_JSRT(this, ChakraCreatePromise(&jsPromise, &jsResolve, &jsReject));
+  CHECK_JSRT(this, JsCreateObject(&jsDeferred));
+  CHECK_JSRT(this, SetProperty(jsDeferred, m_propertyId.resolve, jsResolve));
+  CHECK_JSRT(this, SetProperty(jsDeferred, m_propertyId.reject, jsReject));
+
+  CHECK_NAPI(Reference::New(static_cast<napi_env>(this), reinterpret_cast<napi_value>(jsDeferred), 1, &deferredRef));
+
+  *deferred = reinterpret_cast<napi_deferred>(deferredRef);
+  *promise = reinterpret_cast<napi_value>(jsPromise);
+
+  return napi_ok;
+}
+
+napi_status Environment::ResolveDeferred(napi_deferred deferred, napi_value resolution) noexcept {
+  return ConcludeDeferred(deferred, m_propertyId.resolve, resolution);
+}
+
+napi_status Environment::RejectDeferred(napi_deferred deferred, napi_value rejection) noexcept {
+  return ConcludeDeferred(deferred, m_propertyId.reject, rejection);
+}
+
+napi_status
+Environment::ConcludeDeferred(napi_deferred deferred, CachedPropertyId propertyId, napi_value result) noexcept {
+  CHECK_ARG(this, deferred);
+  CHECK_ARG(this, result);
+
+  JsValueRef resolver;
+  napi_value container, js_null;
+  napi_ref ref = reinterpret_cast<napi_ref>(deferred);
+
+  CHECK_NAPI(GetReferenceValue(ref, &container));
+  CHECK_JSRT(this, GetProperty(container, propertyId, &resolver));
+  CHECK_JSRT(this, CallFunction(resolver, nullptr, m_value.Null, result));
+  return DeleteReference(ref);
+}
+
+napi_status Environment::IsPromise(napi_value value, bool *is_promise) noexcept {
+  CHECK_ARG(this, value);
+  CHECK_ARG(this, is_promise);
+
+  JsValueRef promiseConstructor{};
+  CHECK_JSRT(this, GetProperty(m_value.Global, m_propertyId.Promise, &promiseConstructor));
+  CHECK_JSRT(this, JsInstanceOf(reinterpret_cast<JsValueRef>(value), promiseConstructor, is_promise));
+
+  return napi_ok;
+}
+
 napi_status Environment::RunScript(napi_value script, napi_value *result) noexcept {
   CHECK_ARG2(script);
   CHECK_ARG2(result);
@@ -893,6 +990,55 @@ napi_status Environment::RunScript(napi_value script, napi_value *result) noexce
       napi_string_expected);
 
   return napi_ok;
+}
+
+napi_status Environment::CreateDate(double time, napi_value *result) noexcept {
+  CHECK_ARG(this, result);
+
+  JsValueRef dateConstructor{};
+  CHECK_JSRT(this, GetProperty(m_value.Global, m_propertyId.Date, &dateConstructor));
+
+  JsValueRef args[2] = {};
+  CHECK_JSRT(this, JsGetUndefinedValue(&args[0]));
+  CHECK_JSRT(this, JsDoubleToNumber(time, &args[1]));
+  CHECK_JSRT(this, JsConstructObject(dateConstructor, args, 2, reinterpret_cast<JsValueRef *>(result)));
+
+  return napi_status::napi_ok;
+}
+
+napi_status Environment::IsDate(napi_value value, bool *is_date) noexcept {
+  CHECK_ARG(this, value);
+  CHECK_ARG(this, is_date);
+
+  JsValueRef dateConstructor{};
+  CHECK_JSRT(this, GetProperty(m_value.Global, m_propertyId.Date, &dateConstructor));
+
+  JsValueRef obj{reinterpret_cast<JsValueRef>(value)};
+  CHECK_JSRT(this, JsInstanceOf(obj, dateConstructor, is_date));
+
+  return napi_status::napi_ok;
+}
+
+napi_status Environment::GetDateValue(napi_value value, double *result) noexcept {
+  CHECK_ARG(this, value);
+  CHECK_ARG(this, result);
+
+  bool isDate{false};
+  CHECK_NAPI(IsDate(value, &isDate));
+  RETURN_STATUS_IF_FALSE(this, isDate, napi_status::napi_date_expected);
+
+  JsPropertyIdRef valueOfId{JS_INVALID_REFERENCE};
+  CHECK_JSRT(this, JsGetPropertyIdFromName(L"valueOf", &valueOfId));
+
+  JsValueRef jsValue{reinterpret_cast<JsValueRef>(value)};
+  JsValueRef valueOf{};
+  CHECK_JSRT(this, GetProperty(jsValue, m_propertyId.valueOf, &valueOf));
+
+  JsValueRef dateValue{};
+  CHECK_JSRT(this, JsCallFunction(valueOf, &jsValue, 1, &dateValue));
+  CHECK_JSRT(this, JsNumberToDouble(dateValue, result));
+
+  return napi_status::napi_ok;
 }
 
 template <class TObject, class TPropertyId>
@@ -1039,53 +1185,66 @@ template <typename TFunction, typename... TArgs>
   return JsCallFunction(jsFunction, jsArgs.data(), static_cast<unsigned short>(jsArgs.size()), result);
 }
 
-napi_status Environment::CreateDate(double time, napi_value *result) noexcept {
-  CHECK_ARG(this, result);
-
-  JsValueRef dateConstructor{};
-  CHECK_JSRT(this, GetProperty(m_value.Global, m_propertyId.Date, &dateConstructor));
-
-  JsValueRef args[2] = {};
-  CHECK_JSRT(this, JsGetUndefinedValue(&args[0]));
-  CHECK_JSRT(this, JsDoubleToNumber(time, &args[1]));
-  CHECK_JSRT(this, JsConstructObject(dateConstructor, args, 2, reinterpret_cast<JsValueRef *>(result)));
-
-  return napi_status::napi_ok;
+template <typename TConstructor, typename... TArgs>
+static JsErrorCode
+Environment::ChakraConstructObject(TConstructor &&constructor, JsValueRef *result, TArgs &&... args) noexcept {
+  JsValueRef jsConstructor{};
+  CHECK_JSRT_ERROR_CODE(CachedValue::GetValue(std::forward<TConstructor>(constructor), &jsConstructor));
+  std::array<JsValueRef, sizeof...(args)> jsArgs;
+  CHECK_JSRT_ERROR_CODE(InitArgs<0>(jsArgs, std::forward<TArgs>(args)...));
+  return JsConstructObject(jsConstructor, jsArgs.data(), static_cast<unsigned short>(jsArgs.size()), result);
 }
 
-napi_status Environment::IsDate(napi_value value, bool *is_date) noexcept {
-  CHECK_ARG(this, value);
-  CHECK_ARG(this,  is_date);
+/// <summary>
+///     Creates a new JavaScript Promise object.
+/// </summary>
+/// <remarks>
+///     Requires an active script context.
+/// </remarks>
+/// <param name="promise">The new Promise object.</param>
+/// <param name="resolveFunction">The function called to resolve the created Promise object.</param>
+/// <param name="rejectFunction">The function called to reject the created Promise object.</param>
+/// <returns>
+///     The code <c>JsNoError</c> if the operation succeeded, a failure code otherwise.
+/// </returns>
+JsErrorCode Environment::ChakraCreatePromise(
+    _Out_ JsValueRef *promise,
+    _Out_ JsValueRef *resolveFunction,
+    _Out_ JsValueRef *rejectFunction) noexcept {
+  JsValueRef promiseConstructor{};
+  CHECK_JSRT_ERROR_CODE(GetProperty(m_value.Global, m_propertyId.Promise, &promiseConstructor));
 
-  JsValueRef dateConstructor{};
-  CHECK_JSRT(this, GetProperty(m_value.Global, m_propertyId.Date, &dateConstructor));
+  // The executor function is to be executed by the constructor during the process of constructing
+  // the new Promise object. The executor is custom code that ties an outcome to a promise.
+  // We return the resolveFunction and rejectFunction given to the executor.
+  // Since the execution is synchronous, we allocate executorData on the callstack.
+  struct ExecutorData {
+    static JsValueRef CALLBACK Callback(
+        JsValueRef callee,
+        bool isConstructCall,
+        JsValueRef *arguments,
+        unsigned short argumentCount,
+        void *callbackState) {
+      return (reinterpret_cast<ExecutorData *>(callbackState))
+          ->Callback(callee, isConstructCall, arguments, argumentCount);
+    }
 
-  JsValueRef obj{reinterpret_cast<JsValueRef>(value)};
-  CHECK_JSRT(this, JsInstanceOf(obj, dateConstructor, is_date));
+    JsValueRef Callback(JsValueRef callee, bool isConstructCall, JsValueRef *arguments, unsigned short argumentCount) {
+      *resolve = arguments[1];
+      *reject = arguments[2];
 
-  return napi_status::napi_ok;
-}
+      return JS_INVALID_REFERENCE;
+    }
 
-napi_status Environment::GetDateValue(napi_value value, double *result) noexcept {
-  CHECK_ARG(this, value);
-  CHECK_ARG(this, result);
+    JsValueRef *resolve{};
+    JsValueRef *reject{};
+  } executorData{resolveFunction, rejectFunction};
 
-  bool isDate{false};
-  CHECK_NAPI(IsDate(value, &isDate));
-  RETURN_STATUS_IF_FALSE(this, isDate, napi_status::napi_date_expected);
+  JsValueRef executorFunction{};
+  CHECK_JSRT_ERROR_CODE(JsCreateFunction(&ExecutorData::Callback, &executorData, &executorFunction));
+  CHECK_JSRT_ERROR_CODE(ChakraConstructObject(promiseConstructor, promise, m_value.Undefined, executorFunction));
 
-  JsPropertyIdRef valueOfId{JS_INVALID_REFERENCE};
-  CHECK_JSRT(this, JsGetPropertyIdFromName(L"valueOf", &valueOfId));
-
-  JsValueRef jsValue{reinterpret_cast<JsValueRef>(value)};
-  JsValueRef valueOf{};
-  CHECK_JSRT(this, GetProperty(jsValue, m_propertyId.valueOf, &valueOf));
-
-  JsValueRef dateValue{};
-  CHECK_JSRT(this, JsCallFunction(valueOf, &jsValue, 1, &dateValue));
-  CHECK_JSRT(this, JsNumberToDouble(dateValue, result));
-
-  return napi_status::napi_ok;
+  return JsErrorCode::JsNoError;
 }
 
 } // namespace chakra
@@ -1178,49 +1337,6 @@ JsCopyStringUtf16(_In_ JsValueRef value, _Out_opt_ char16_t *buffer, _In_ size_t
 JsErrorCode JsCreatePropertyId(_In_z_ const char *name, _In_ size_t length, _Out_ JsPropertyIdRef *propertyId) {
   auto str = (length == NAPI_AUTO_LENGTH ? NarrowToWide({name}) : NarrowToWide({name, length}));
   return JsGetPropertyIdFromName(str.data(), propertyId);
-}
-
-JsErrorCode JsCreatePromise(JsValueRef *promise, JsValueRef *resolve, JsValueRef *reject) {
-  JsValueRef global{};
-  CHECK_JSRT_ERROR_CODE(JsGetGlobalObject(&global));
-
-  JsPropertyIdRef promiseConstructorId{};
-  CHECK_JSRT_ERROR_CODE(JsGetPropertyIdFromName(L"Promise", &promiseConstructorId));
-
-  JsValueRef promiseConstructor{};
-  CHECK_JSRT_ERROR_CODE(JsGetProperty(global, promiseConstructorId, &promiseConstructor));
-
-  struct CallbackStruct {
-    static JsValueRef CALLBACK Callback(
-        JsValueRef callee,
-        bool isConstructCall,
-        JsValueRef *arguments,
-        unsigned short argumentCount,
-        void *callbackState) {
-      return (reinterpret_cast<CallbackStruct *>(callbackState))
-          ->Callback(callee, isConstructCall, arguments, argumentCount);
-    }
-
-    JsValueRef Callback(JsValueRef callee, bool isConstructCall, JsValueRef *arguments, unsigned short argumentCount) {
-      *resolve = arguments[1];
-      *reject = arguments[2];
-
-      return JS_INVALID_REFERENCE;
-    }
-
-    JsValueRef *resolve{};
-    JsValueRef *reject{};
-  } cbs{resolve, reject};
-
-  JsValueRef callbackFunction{};
-  CHECK_JSRT_ERROR_CODE(JsCreateFunction(&CallbackStruct::Callback, &cbs, &callbackFunction));
-
-  JsValueRef args[2];
-  CHECK_JSRT_ERROR_CODE(JsGetUndefinedValue(&args[0]));
-  args[1] = callbackFunction;
-  CHECK_JSRT_ERROR_CODE(JsConstructObject(promiseConstructor, args, 2, promise));
-
-  return JsErrorCode::JsNoError;
 }
 
 // Callback Info struct as per JSRT native function.
@@ -1490,23 +1606,6 @@ napi_status SetErrorCode(napi_env env, JsValueRef error, napi_value code, const 
 
     CHECK_JSRT(env, JsSetProperty(error, namePropId, nameValue, true));
   }
-  return napi_ok;
-}
-
-napi_status ConcludeDeferred(napi_env env, napi_deferred deferred, const char *property, napi_value result) {
-  // We do not check if property is OK, because that's not coming from outside.
-  CHECK_ARG(env, deferred);
-  CHECK_ARG(env, result);
-
-  napi_value container, resolver, js_null;
-  napi_ref ref = reinterpret_cast<napi_ref>(deferred);
-
-  CHECK_NAPI(napi_get_reference_value(env, ref, &container));
-  CHECK_NAPI(napi_get_named_property(env, container, property, &resolver));
-  CHECK_NAPI(napi_get_null(env, &js_null));
-  CHECK_NAPI(napi_call_function(env, js_null, resolver, 1, &result, nullptr));
-  CHECK_NAPI(napi_delete_reference(env, ref));
-
   return napi_ok;
 }
 
@@ -3172,65 +3271,26 @@ napi_status napi_get_version(napi_env env, uint32_t *result) {
   return napi_ok;
 }
 
-//==============================================================================
-// NAPI: Promises
-//==============================================================================
 napi_status napi_create_promise(napi_env env, napi_deferred *deferred, napi_value *promise) {
-  CHECK_ARG(env, deferred);
-  CHECK_ARG(env, promise);
-
-  JsValueRef js_promise, resolve, reject, container;
-  napi_ref ref;
-  napi_value js_deferred;
-
-  CHECK_JSRT(env, JsCreatePromise(&js_promise, &resolve, &reject));
-
-  CHECK_JSRT(env, JsCreateObject(&container));
-  js_deferred = reinterpret_cast<napi_value>(container);
-
-  CHECK_NAPI(napi_set_named_property(env, js_deferred, "resolve", reinterpret_cast<napi_value>(resolve)));
-  CHECK_NAPI(napi_set_named_property(env, js_deferred, "reject", reinterpret_cast<napi_value>(reject)));
-
-  CHECK_NAPI(napi_create_reference(env, js_deferred, 1, &ref));
-
-  *deferred = reinterpret_cast<napi_deferred>(ref);
-  *promise = reinterpret_cast<napi_value>(js_promise);
-
-  return napi_ok;
+  return CHECKED_ENV(env)->CreatePromise(deferred, promise);
 }
 
 napi_status napi_resolve_deferred(napi_env env, napi_deferred deferred, napi_value resolution) {
-  return ConcludeDeferred(env, deferred, "resolve", resolution);
+  return CHECKED_ENV(env)->ResolveDeferred(deferred, resolution);
 }
 
 napi_status napi_reject_deferred(napi_env env, napi_deferred deferred, napi_value rejection) {
-  return ConcludeDeferred(env, deferred, "reject", rejection);
+  return CHECKED_ENV(env)->RejectDeferred(deferred, rejection);
 }
 
 napi_status napi_is_promise(napi_env env, napi_value value, bool *is_promise) {
-  CHECK_ARG(env, value);
-  CHECK_ARG(env, is_promise);
-
-  napi_value global, promise_ctor;
-
-  CHECK_NAPI(napi_get_global(env, &global));
-  CHECK_NAPI(napi_get_named_property(env, global, "Promise", &promise_ctor));
-  CHECK_NAPI(napi_instanceof(env, value, promise_ctor, is_promise));
-
-  return napi_ok;
+  return CHECKED_ENV(env)->IsPromise(value, is_promise);
 }
 
-//==============================================================================
-// NAPI: Running a script
-//==============================================================================
 napi_status napi_run_script(napi_env env, napi_value script, napi_value *result) {
-  CHECK_ENV(env);
-  return env->RunScript(script, result);
+  return CHECKED_ENV(env)->RunScript(script, result);
 }
 
-//==============================================================================
-// NAPI: Memory management
-//==============================================================================
 napi_status napi_adjust_external_memory(napi_env env, int64_t change_in_bytes, int64_t *adjusted_value) {
   CHECK_ARG(env, adjusted_value);
 
