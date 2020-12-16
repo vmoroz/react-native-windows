@@ -274,9 +274,6 @@ struct CachedValue {
 };
 
 struct Environment {
-  // TODO: [vmoroz] move to private section
-  JsValueRef has_own_property_function = JS_INVALID_REFERENCE;
-
   explicit Environment(JsContextRef context) noexcept;
   ~Environment() noexcept;
 
@@ -293,6 +290,8 @@ struct Environment {
   SetLastError(napi_status errorCode, uint32_t engineErrorCode = 0, void *engineReserved = nullptr) noexcept;
   napi_status SetLastError(JsErrorCode jsError, void *engineReserved = nullptr) noexcept;
   napi_status GetLastErrorInfo(const napi_extended_error_info **result) noexcept;
+
+  napi_status HasOwnProperty(napi_value object, napi_value key, bool *result) noexcept;
 
   napi_status
   Wrap(napi_value obj, void *nativeObj, napi_finalize finalizeCallback, void *finalizeHint, napi_ref *result) noexcept;
@@ -333,7 +332,7 @@ struct Environment {
   JsErrorCode SetPrivateProperty(TObject &&object, TPropertyId &&propertyId, TValue &&value) noexcept;
 
   template <typename TFunction, typename... TArgs>
-  static JsErrorCode CallFunction(TFunction &&function, TArgs &&... args, JsValueRef *result) noexcept;
+  static JsErrorCode CallFunction(TFunction &&function, JsValueRef *result, TArgs &&... args) noexcept;
 
   static JsErrorCode GetHasOwnPropertyFunction(JsValueRef *result) noexcept;
 
@@ -564,6 +563,7 @@ struct FinalizingReference : Reference {
   static napi_status New(
       napi_env env,
       napi_value value,
+      bool shouldDeleteSelf,
       napi_finalize finalizeCallback,
       void *finalizeData,
       void *finalizeHint,
@@ -580,21 +580,17 @@ struct FinalizingReference : Reference {
 
     // Allocate new Reference and make sure that it is not null.
     auto ref = std::unique_ptr<FinalizingReference>{new (std::nothrow) FinalizingReference{
-        env,
-        jsValue,
-        /*shouldDeleteSelf:*/ result == nullptr,
-        finalizeCallback,
-        finalizeData,
-        finalizeHint}};
+        env, jsValue, shouldDeleteSelf, finalizeCallback, finalizeData, finalizeHint}};
     RETURN_STATUS_IF_FALSE(env, ref, napi_status::napi_generic_failure);
 
     CHECK_JSRT(env, JsSetObjectBeforeCollectCallback(jsValue, ref.get(), BeforeCollectCallback));
 
     env->LinkFinalizingReference(ref.get());
     if (result) {
-      *result = reinterpret_cast<napi_ref>(ref.release());
+      *result = reinterpret_cast<napi_ref>(ref.get());
     }
 
+    ref.release();
     return napi_status::napi_ok;
   }
 
@@ -816,45 +812,64 @@ napi_status Environment::Wrap(
     napi_finalize finalizeCallback,
     void *finalizeHint,
     napi_ref *result) noexcept {
-  // CHECK_ARG(this, obj);
+  CHECK_ARG(this, obj);
 
-  // JsValueRef jsValue{reinterpret_cast<JsValueRef>(obj)};
+  JsValueRef jsValue{reinterpret_cast<JsValueRef>(obj)};
 
-  // JsValueType jsValueType{JsValueType::JsUndefined};
-  // CHECK_JSRT(this, JsGetValueType(jsValue, &jsValueType));
-  // RETURN_STATUS_IF_FALSE(this, jsValueType == JsValueType::JsObject, napi_status::napi_object_expected);
+  JsValueType jsValueType{JsValueType::JsUndefined};
+  CHECK_JSRT(this, JsGetValueType(jsValue, &jsValueType));
+  RETURN_STATUS_IF_FALSE(this, jsValueType == JsValueType::JsObject, napi_status::napi_object_expected);
 
-  //// If we've already wrapped this object, we error out.
-  // JsValueRef symbolStr{JS_INVALID_REFERENCE};
-  // CHECK_JSRT(this, ChakraPointerToString(L"wrapper", &symbolStr));
-  // JsValueRef symbol{JS_INVALID_REFERENCE};
-  // CHECK_JSRT(this, JsCreateSymbol(symbolStr, &symbol));
-  // JsPropertyIdRef propertyId{JS_INVALID_REFERENCE};
-  // CHECK_JSRT(this, JsGetPropertyIdFromSymbol(symbol, &propertyId));
+  // If we've already wrapped this object, we error out.
+  bool hasHostObjectProperty{};
+  CHECK_JSRT(this, HasPrivateProperty(jsValue, m_propertyId.hostObject, &hasHostObjectProperty));
+  RETURN_STATUS_IF_FALSE(this, !hasHostObjectProperty, napi_invalid_arg);
 
-  // CHECK_JSRT(JsCreateSymbol()
-  // RETURN_STATUS_IF_FALSE(
-  //    env, !obj->HasPrivate(context, NAPI_PRIVATE_KEY(context, wrapper)).FromJust(), napi_invalid_arg);
+  napi_ref reference{};
+  if (result != nullptr) {
+    // The returned reference should be deleted via napi_delete_reference()
+    // ONLY in response to the finalize callback invocation. (If it is deleted
+    // before then, then the finalize callback will never be invoked.)
+    // Therefore a finalize callback is required when returning a reference.
+    CHECK_ARG(this, finalizeCallback);
+    CHECK_NAPI(FinalizingReference::New(
+        static_cast<napi_env>(this),
+        obj,
+        /*shouldDeleteSelf:*/ false,
+        finalizeCallback,
+        nativeObj,
+        finalizeHint,
+        &reference));
+  } else {
+    // Create a self-deleting reference.
+    CHECK_NAPI(FinalizingReference::New(
+        static_cast<napi_env>(this),
+        obj,
+        /*shouldDeleteSelf:*/ true,
+        finalizeCallback,
+        nativeObj,
+        finalizeCallback ? finalizeHint : nullptr,
+        &reference));
+  }
 
-  // v8impl::Reference *reference = nullptr;
-  // if (result != nullptr) {
-  //  // The returned reference should be deleted via napi_delete_reference()
-  //  // ONLY in response to the finalize callback invocation. (If it is deleted
-  //  // before then, then the finalize callback will never be invoked.)
-  //  // Therefore a finalize callback is required when returning a reference.
-  //  CHECK_ARG(env, finalize_cb);
-  //  reference = v8impl::Reference::New(env, obj, 0, false, finalize_cb, native_object, finalize_hint);
-  //  *result = reinterpret_cast<napi_ref>(reference);
-  //} else {
-  //  // Create a self-deleting reference.
-  //  reference = v8impl::Reference::New(
-  //      env, obj, 0, true, finalize_cb, native_object, finalize_cb == nullptr ? nullptr : finalize_hint);
-  //}
+  JsValueRef external{};
+  CHECK_JSRT(this, JsCreateExternalObject(reference, nullptr, &external));
+  CHECK_JSRT(this, SetPrivateProperty(jsValue, m_propertyId.hostObject, external));
 
-  // CHECK(obj->SetPrivate(context, NAPI_PRIVATE_KEY(context, wrapper), v8::External::New(env->isolate, reference))
-  //          .FromJust());
+  return napi_status::napi_ok;
+}
 
-  // return GET_RETURN_STATUS(env);
+napi_status Environment::HasOwnProperty(napi_value object, napi_value key, bool *result) noexcept {
+  CHECK_ARG(this, object);
+  CHECK_ARG(this, key);
+  CHECK_ARG(this, result);
+  JsValueRef jsResult{};
+
+  CHECK_JSRT(
+      this,
+      CallFunction(
+          m_value.HasOwnProperty, &jsResult, reinterpret_cast<JsValueRef>(object), reinterpret_cast<JsValueRef>(key)));
+  CHECK_JSRT(this, JsBooleanToBool(jsResult, result));
   return napi_status::napi_ok;
 }
 
@@ -900,7 +915,7 @@ Environment::CreatePropertyDescriptor(TValue &&value, PropertyAttibutes attrs, J
   JsValueRef descriptor{};
   CHECK_JSRT_ERROR_CODE(JsCreateObject(&descriptor));
   CHECK_JSRT_ERROR_CODE(
-      SetProperty(descriptor, m_propertyId.value, CachedValue::GetValue(std::forward<TValue>(value))));
+      SetProperty(descriptor, m_propertyId.value, std::forward<TValue>(value)));
   if (!(attrs & PropertyAttibutes::ReadOnly)) {
     CHECK_JSRT_ERROR_CODE(SetProperty(descriptor, m_propertyId.writable, m_value.True));
   }
@@ -921,7 +936,7 @@ JsErrorCode Environment::DefineProperty(
     bool *isSucceeded) noexcept {
   JsValueRef jsObject{};
   JsPropertyIdRef jsPropertyId{};
-  CHECK_JSRT_ERROR_CODE(CachedValue::GetValue(std::forward<TValue>(object), &jsObject));
+  CHECK_JSRT_ERROR_CODE(CachedValue::GetValue(std::forward<TObject>(object), &jsObject));
   CHECK_JSRT_ERROR_CODE(CachedPropertyId::GetPropertyId(std::forward<TPropertyId>(propertyId), &jsPropertyId));
   return JsDefineProperty(jsObject, jsPropertyId, propertyDescriptor, isSucceeded);
 }
@@ -996,15 +1011,27 @@ JsErrorCode Environment::SetPrivateProperty(TObject &&object, TPropertyId &&prop
   } else {
     return SetProperty(
         std::forward<TObject>(object), std::forward<TPropertyId>(propertyId), std::forward<TValue>(value));
-  } 
+  }
+}
+
+template <size_t Index, typename TArray>
+JsErrorCode InitArgs(TArray & /*jsArgs*/) noexcept {
+  return JsErrorCode::JsNoError;
+}
+
+template <size_t Index, typename TArray, typename TArg0, typename... TArgs>
+JsErrorCode InitArgs(TArray &jsArgs, TArg0 &&arg0, TArgs &&... args) noexcept {
+  CHECK_JSRT_ERROR_CODE(CachedValue::GetValue(std::forward<TArg0>(arg0), &jsArgs[Index]));
+  return InitArgs<Index + 1>(jsArgs, std::forward<TArgs>(args)...);
 }
 
 template <typename TFunction, typename... TArgs>
-/*static*/ JsErrorCode Environment::CallFunction(TFunction &&function, TArgs &&... args, JsValueRef *result) noexcept {
+/*static*/ JsErrorCode Environment::CallFunction(TFunction &&function, JsValueRef *result, TArgs &&... args) noexcept {
   JsValueRef jsFunction{};
-  CHECK_JSRT_ERROR_CODE(CachedValue::GetValue(std::forward<TFunction>(function), jsFunction));
-  std::array<JsValueRef, sizeof...(args)> jsArgs{CachedValue::GetValue(std::forward<TArgs>(args))...};
-  return JsCallFunction(jsFunction, jsArgs.data(), reinterpret_cast<unsigned short>(jsArgs.size()), result);
+  CHECK_JSRT_ERROR_CODE(CachedValue::GetValue(std::forward<TFunction>(function), &jsFunction));
+  std::array<JsValueRef, sizeof...(args)> jsArgs;
+  CHECK_JSRT_ERROR_CODE(InitArgs<0>(jsArgs, std::forward<TArgs>(args)...));
+  return JsCallFunction(jsFunction, jsArgs.data(), static_cast<unsigned short>(jsArgs.size()), result);
 }
 
 } // namespace chakra
@@ -2120,18 +2147,7 @@ napi_status napi_delete_property(napi_env env, napi_value object, napi_value key
 }
 
 napi_status napi_has_own_property(napi_env env, napi_value object, napi_value key, bool *result) {
-  CHECK_ENV_AND_ARG(env, result);
-  JsValueRef hasOwnPropertyResult;
-  std::array<JsValueRef, 2> hasOwnPropertyFuncArgs{object, key};
-  CHECK_JSRT(
-      env,
-      JsCallFunction(
-          env->has_own_property_function,
-          hasOwnPropertyFuncArgs.data(),
-          static_cast<unsigned short>(hasOwnPropertyFuncArgs.size()),
-          &hasOwnPropertyResult));
-  CHECK_JSRT(env, JsBooleanToBool(hasOwnPropertyResult, result));
-  return napi_ok;
+  return CHECKED_ENV(env)->HasOwnProperty(object, key, result);
 }
 
 napi_status napi_set_named_property(napi_env env, napi_value object, const char *utf8name, napi_value value) {
@@ -3243,7 +3259,8 @@ napi_status napi_add_finalizer(
     napi_finalize finalize_cb,
     void *finalize_hint,
     napi_ref *result) {
-  return chakra::FinalizingReference::New(env, js_object, finalize_cb, native_object, finalize_hint, result);
+  return chakra::FinalizingReference::New(
+      env, js_object, /*shouldDeleteSelf:*/ result == nullptr, finalize_cb, native_object, finalize_hint, result);
 }
 
 #endif // NAPI_VERSION >= 5
