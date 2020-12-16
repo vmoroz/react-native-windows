@@ -19,6 +19,15 @@
 #include <string_view>
 #include <vector>
 
+// Check condition and crash process if it fails.
+#define CHASH_IF_FALSE(condition)             \
+  do {                                        \
+    if (!(condition)) {                       \
+      assert(false && "Failed: " #condition); \
+      *((int *)0) = 1;                        \
+    }                                         \
+  } while (false)
+
 #define RETURN_STATUS_IF_FALSE2(condition, status) \
   do {                                             \
     if (!(condition)) {                            \
@@ -97,11 +106,11 @@
       return (env)->SetLastError(err);           \
   } while (0)
 
-#define CHECK_JSRT_ERROR_CODE(expr)       \
-  do {                                    \
-    auto result = (expr);                 \
-    if (result != JsErrorCode::JsNoError) \
-      return result;                      \
+#define CHECK_JSRT_ERROR_CODE(expr)         \
+  do {                                      \
+    auto result__ = (expr);                 \
+    if (result__ != JsErrorCode::JsNoError) \
+      return result__;                      \
   } while (0)
 
 // This does not call napi_set_last_error because the expression
@@ -178,7 +187,91 @@ struct JsRefHolder final {
   JsRef m_ref{JS_INVALID_REFERENCE};
 };
 
-// enum class WrapType { Retrievable, Anonymous };
+struct CachedPropertyId {
+  CachedPropertyId(std::wstring_view name, JsPropertyIdType propertyIdType = JsPropertyIdTypeString) noexcept
+      : m_name{std::move(name)}, m_propertyIdType{propertyIdType} {}
+
+  JsErrorCode Get(JsPropertyIdRef *result) noexcept {
+    if (m_propertyId == JS_INVALID_REFERENCE) {
+      if (m_propertyIdType == JsPropertyIdTypeString) {
+        CHECK_JSRT_ERROR_CODE(JsGetPropertyIdFromName(m_name.data(), &m_propertyId));
+      } else {
+        CHASH_IF_FALSE(m_propertyIdType == JsPropertyIdTypeSymbol);
+        JsValueRef propertyStr{JS_INVALID_REFERENCE};
+        JsValueRef propertySymbol{JS_INVALID_REFERENCE};
+        CHECK_JSRT_ERROR_CODE(JsPointerToString(m_name.data(), m_name.size(), &propertyStr));
+        CHECK_JSRT_ERROR_CODE(JsCreateSymbol(propertyStr, &propertySymbol));
+        CHECK_JSRT_ERROR_CODE(JsGetPropertyIdFromSymbol(propertySymbol, &m_propertyId));
+      }
+
+      CHECK_JSRT_ERROR_CODE(JsAddRef(m_propertyId, nullptr));
+    }
+
+    *result = m_propertyId;
+    return JsErrorCode::JsNoError;
+  }
+
+  static JsErrorCode GetPropertyId(JsPropertyIdRef propertyId, JsPropertyIdRef *result) noexcept {
+    *result = propertyId;
+    return JsNoError;
+  }
+
+  static JsErrorCode GetPropertyId(CachedPropertyId &propertyId, JsPropertyIdRef *result) noexcept {
+    return propertyId.Get(result);
+  }
+
+ private:
+  JsPropertyIdRef m_propertyId{JS_INVALID_REFERENCE};
+  const std::wstring_view m_name{nullptr};
+  JsPropertyIdType m_propertyIdType;
+};
+
+enum class PropertyAttibutes {
+  None = 0,
+  ReadOnly = 1 << 1,
+  DontEnum = 1 << 2,
+  DontDelete = 1 << 3,
+  Frozen = ReadOnly | DontDelete,
+  DontEnumAndFrozen = DontEnum | Frozen,
+};
+
+constexpr PropertyAttibutes operator&(PropertyAttibutes left, PropertyAttibutes right) {
+  return (PropertyAttibutes)((int)left & (int)right);
+}
+
+constexpr bool operator!(PropertyAttibutes attrs) {
+  return attrs == PropertyAttibutes::None;
+}
+
+struct CachedValue {
+  using GetSimpleValue = decltype(JsGetTrueValue);
+  CachedValue(GetSimpleValue *init) noexcept : m_init{init} {}
+
+  JsErrorCode Get(JsValueRef *result) noexcept {
+    if (m_value == JS_INVALID_REFERENCE) {
+      JsValueRef propertyStr{JS_INVALID_REFERENCE};
+      JsValueRef propertySymbol{JS_INVALID_REFERENCE};
+      CHECK_JSRT_ERROR_CODE(m_init(&m_value));
+      CHECK_JSRT_ERROR_CODE(JsAddRef(m_value, nullptr));
+    }
+
+    *result = m_value;
+    return JsErrorCode::JsNoError;
+  }
+
+  static JsErrorCode GetValue(JsValueRef value, JsValueRef *result) noexcept {
+    *result = value;
+    return JsNoError;
+  }
+
+  static JsErrorCode GetValue(CachedValue &value, JsValueRef *result) noexcept {
+    return value.Get(result);
+  }
+
+ private:
+  JsValueRef m_value{JS_INVALID_REFERENCE};
+  GetSimpleValue *m_init;
+};
 
 struct Environment {
   // TODO: [vmoroz] move to private section
@@ -207,7 +300,42 @@ struct Environment {
   napi_status RunScript(napi_value script, napi_value *result) noexcept;
 
  private:
-  JsErrorCode ChakraPointerToString(std::wstring_view value, JsValueRef *result) noexcept;
+  static JsErrorCode PointerToString(std::wstring_view value, JsValueRef *result) noexcept;
+
+  template <class TObject, class TPropertyId>
+  static JsErrorCode GetProperty(TObject &&object, TPropertyId &&propertyId, JsValueRef *result) noexcept;
+
+  template <class TObject, class TPropertyId, class TValue>
+  static JsErrorCode SetProperty(TObject &&object, TPropertyId &&propertyId, TValue &&value) noexcept;
+
+  template <typename TValue>
+  JsErrorCode CreatePropertyDescriptor(TValue &&value, PropertyAttibutes attrs, JsValueRef *result) noexcept;
+
+  template <typename TObject, typename TPropertyId>
+  static JsErrorCode
+  DefineProperty(TObject &&object, TPropertyId &&propertyId, JsValueRef propertyDescriptor, bool *isSucceeded) noexcept;
+
+  template <typename TObject, typename TPropertyId, typename TValue>
+  JsErrorCode DefineProperty(
+      TObject &&object,
+      TPropertyId &&propertyId,
+      TValue &&value,
+      PropertyAttibutes attrs,
+      bool *isSucceeded) noexcept;
+
+  template <class TObject, class TPropertyId>
+  JsErrorCode HasPrivateProperty(TObject &&object, TPropertyId &&propertyId, bool *result) noexcept;
+
+  template <class TObject, class TPropertyId>
+  JsErrorCode GetPrivateProperty(TObject &&object, TPropertyId &&propertyId, JsValueRef *result) noexcept;
+
+  template <class TObject, class TPropertyId, class TValue>
+  JsErrorCode SetPrivateProperty(TObject &&object, TPropertyId &&propertyId, TValue &&value) noexcept;
+
+  template <typename TFunction, typename... TArgs>
+  static JsErrorCode CallFunction(TFunction &&function, TArgs &&... args, JsValueRef *result) noexcept;
+
+  static JsErrorCode GetHasOwnPropertyFunction(JsValueRef *result) noexcept;
 
  private:
   JsRefHolder m_context;
@@ -220,6 +348,25 @@ struct Environment {
   RefTracker::RefList m_finalizingRefList;
   int m_refCount{1};
   JsSourceContext m_sourceContext{JS_SOURCE_CONTEXT_NONE};
+
+  struct PropertyId final {
+    CachedPropertyId Object{L"Object"};
+    CachedPropertyId configurable{L"configurable"};
+    CachedPropertyId enumerable{L"enumerable"};
+    CachedPropertyId hasOwnProperty{L"hasOwnProperty"};
+    CachedPropertyId hostObject{L"hostObject", JsPropertyIdTypeSymbol};
+    CachedPropertyId value{L"value"};
+    CachedPropertyId writable{L"writable"};
+  } m_propertyId;
+
+  struct Value final {
+    CachedValue False{JsGetTrueValue};
+    CachedValue Global{JsGetGlobalObject};
+    CachedValue Null{JsGetNullValue};
+    CachedValue Undefined{JsGetUndefinedValue};
+    CachedValue True{JsGetTrueValue};
+    CachedValue HasOwnProperty{GetHasOwnPropertyFunction};
+  } m_value;
 };
 
 } // namespace chakra
@@ -295,7 +442,7 @@ struct Reference : RefTracker {
 
     JsValueType jsValueType{JsValueType::JsUndefined};
     CHECK_JSRT(env, JsGetValueType(jsValue, &jsValueType));
-    RETURN_STATUS_IF_FALSE(jsValueType >= JsValueType::JsObject, napi_status::napi_object_expected);
+    RETURN_STATUS_IF_FALSE(env, jsValueType >= JsValueType::JsObject, napi_status::napi_object_expected);
 
     // Allocate new Reference and make sure that it is not null.
     auto ref = std::unique_ptr<Reference>{new (std::nothrow) Reference{
@@ -659,7 +806,7 @@ napi_status Environment::GetLastErrorInfo(const napi_extended_error_info **resul
   return napi_ok;
 }
 
-JsErrorCode Environment::ChakraPointerToString(std::wstring_view value, JsValueRef *result) noexcept {
+JsErrorCode Environment::PointerToString(std::wstring_view value, JsValueRef *result) noexcept {
   return JsPointerToString(value.data(), value.size(), result);
 }
 
@@ -669,45 +816,46 @@ napi_status Environment::Wrap(
     napi_finalize finalizeCallback,
     void *finalizeHint,
     napi_ref *result) noexcept {
-  CHECK_ARG(this, obj);
+  // CHECK_ARG(this, obj);
 
-  JsValueRef jsValue{reinterpret_cast<JsValueRef>(obj)};
+  // JsValueRef jsValue{reinterpret_cast<JsValueRef>(obj)};
 
-  JsValueType jsValueType{JsValueType::JsUndefined};
-  CHECK_JSRT(this, JsGetValueType(jsValue, &jsValueType));
-  RETURN_STATUS_IF_FALSE(this, jsValueType == JsValueType::JsObject, napi_status::napi_object_expected);
+  // JsValueType jsValueType{JsValueType::JsUndefined};
+  // CHECK_JSRT(this, JsGetValueType(jsValue, &jsValueType));
+  // RETURN_STATUS_IF_FALSE(this, jsValueType == JsValueType::JsObject, napi_status::napi_object_expected);
 
-  // If we've already wrapped this object, we error out.
-  JsValueRef symbolStr{JS_INVALID_REFERENCE};
-  CHECK_JSRT(this, ChakraPointerToString(L"wrapper", &symbolStr));
-  JsValueRef symbol{JS_INVALID_REFERENCE};
-  CHECK_JSRT(this, JsCreateSymbol(symbolStr, &symbol));
-  JsPropertyIdRef propertyId{JS_INVALID_REFERENCE};
-  CHECK_JSRT(this, JsGetPropertyIdFromSymbol(symbol, &propertyId));
+  //// If we've already wrapped this object, we error out.
+  // JsValueRef symbolStr{JS_INVALID_REFERENCE};
+  // CHECK_JSRT(this, ChakraPointerToString(L"wrapper", &symbolStr));
+  // JsValueRef symbol{JS_INVALID_REFERENCE};
+  // CHECK_JSRT(this, JsCreateSymbol(symbolStr, &symbol));
+  // JsPropertyIdRef propertyId{JS_INVALID_REFERENCE};
+  // CHECK_JSRT(this, JsGetPropertyIdFromSymbol(symbol, &propertyId));
 
-  CHECK_JSRT(JsCreateSymbol()
-  RETURN_STATUS_IF_FALSE(
-      env, !obj->HasPrivate(context, NAPI_PRIVATE_KEY(context, wrapper)).FromJust(), napi_invalid_arg);
+  // CHECK_JSRT(JsCreateSymbol()
+  // RETURN_STATUS_IF_FALSE(
+  //    env, !obj->HasPrivate(context, NAPI_PRIVATE_KEY(context, wrapper)).FromJust(), napi_invalid_arg);
 
-  v8impl::Reference *reference = nullptr;
-  if (result != nullptr) {
-    // The returned reference should be deleted via napi_delete_reference()
-    // ONLY in response to the finalize callback invocation. (If it is deleted
-    // before then, then the finalize callback will never be invoked.)
-    // Therefore a finalize callback is required when returning a reference.
-    CHECK_ARG(env, finalize_cb);
-    reference = v8impl::Reference::New(env, obj, 0, false, finalize_cb, native_object, finalize_hint);
-    *result = reinterpret_cast<napi_ref>(reference);
-  } else {
-    // Create a self-deleting reference.
-    reference = v8impl::Reference::New(
-        env, obj, 0, true, finalize_cb, native_object, finalize_cb == nullptr ? nullptr : finalize_hint);
-  }
+  // v8impl::Reference *reference = nullptr;
+  // if (result != nullptr) {
+  //  // The returned reference should be deleted via napi_delete_reference()
+  //  // ONLY in response to the finalize callback invocation. (If it is deleted
+  //  // before then, then the finalize callback will never be invoked.)
+  //  // Therefore a finalize callback is required when returning a reference.
+  //  CHECK_ARG(env, finalize_cb);
+  //  reference = v8impl::Reference::New(env, obj, 0, false, finalize_cb, native_object, finalize_hint);
+  //  *result = reinterpret_cast<napi_ref>(reference);
+  //} else {
+  //  // Create a self-deleting reference.
+  //  reference = v8impl::Reference::New(
+  //      env, obj, 0, true, finalize_cb, native_object, finalize_cb == nullptr ? nullptr : finalize_hint);
+  //}
 
-  CHECK(obj->SetPrivate(context, NAPI_PRIVATE_KEY(context, wrapper), v8::External::New(env->isolate, reference))
-            .FromJust());
+  // CHECK(obj->SetPrivate(context, NAPI_PRIVATE_KEY(context, wrapper), v8::External::New(env->isolate, reference))
+  //          .FromJust());
 
-  return GET_RETURN_STATUS(env);
+  // return GET_RETURN_STATUS(env);
+  return napi_status::napi_ok;
 }
 
 napi_status Environment::RunScript(napi_value script, napi_value *result) noexcept {
@@ -724,6 +872,139 @@ napi_status Environment::RunScript(napi_value script, napi_value *result) noexce
       napi_string_expected);
 
   return napi_ok;
+}
+
+template <class TObject, class TPropertyId>
+JsErrorCode Environment::GetProperty(TObject &&object, TPropertyId &&propertyId, JsValueRef *result) noexcept {
+  JsValueRef jsObject{};
+  JsPropertyIdRef jsPropertyId{};
+  CHECK_JSRT_ERROR_CODE(CachedValue::GetValue(std::forward<TObject>(object), &jsObject));
+  CHECK_JSRT_ERROR_CODE(CachedPropertyId::GetPropertyId(std::forward<TPropertyId>(propertyId), &jsPropertyId));
+  return JsGetProperty(jsObject, jsPropertyId, result);
+}
+
+template <class TObject, class TPropertyId, class TValue>
+JsErrorCode Environment::SetProperty(TObject &&object, TPropertyId &&propertyId, TValue &&value) noexcept {
+  JsValueRef jsObject{};
+  JsPropertyIdRef jsPropertyId{};
+  JsValueRef jsValue{};
+  CHECK_JSRT_ERROR_CODE(CachedValue::GetValue(std::forward<TObject>(object), &jsObject));
+  CHECK_JSRT_ERROR_CODE(CachedPropertyId::GetPropertyId(std::forward<TPropertyId>(propertyId), &jsPropertyId));
+  CHECK_JSRT_ERROR_CODE(CachedValue::GetValue(std::forward<TValue>(value), &jsValue));
+  return JsSetProperty(jsObject, jsPropertyId, jsValue, /*useStrictRules:*/ true);
+}
+
+template <typename TValue>
+JsErrorCode
+Environment::CreatePropertyDescriptor(TValue &&value, PropertyAttibutes attrs, JsValueRef *result) noexcept {
+  JsValueRef descriptor{};
+  CHECK_JSRT_ERROR_CODE(JsCreateObject(&descriptor));
+  CHECK_JSRT_ERROR_CODE(
+      SetProperty(descriptor, m_propertyId.value, CachedValue::GetValue(std::forward<TValue>(value))));
+  if (!(attrs & PropertyAttibutes::ReadOnly)) {
+    CHECK_JSRT_ERROR_CODE(SetProperty(descriptor, m_propertyId.writable, m_value.True));
+  }
+  if (!(attrs & PropertyAttibutes::DontEnum)) {
+    CHECK_JSRT_ERROR_CODE(SetProperty(descriptor, m_propertyId.enumerable, m_value.True));
+  }
+  if (!(attrs & PropertyAttibutes::DontDelete)) {
+    CHECK_JSRT_ERROR_CODE(SetProperty(descriptor, m_propertyId.configurable, m_value.True));
+  }
+  return JsErrorCode::JsNoError;
+}
+
+template <typename TObject, typename TPropertyId>
+JsErrorCode Environment::DefineProperty(
+    TObject &&object,
+    TPropertyId &&propertyId,
+    JsValueRef propertyDescriptor,
+    bool *isSucceeded) noexcept {
+  JsValueRef jsObject{};
+  JsPropertyIdRef jsPropertyId{};
+  CHECK_JSRT_ERROR_CODE(CachedValue::GetValue(std::forward<TValue>(object), &jsObject));
+  CHECK_JSRT_ERROR_CODE(CachedPropertyId::GetPropertyId(std::forward<TPropertyId>(propertyId), &jsPropertyId));
+  return JsDefineProperty(jsObject, jsPropertyId, propertyDescriptor, isSucceeded);
+}
+
+template <typename TObject, typename TPropertyId, typename TValue>
+JsErrorCode Environment::DefineProperty(
+    TObject &&object,
+    TPropertyId &&propertyId,
+    TValue &&value,
+    PropertyAttibutes attrs,
+    bool *isSucceeded) noexcept {
+  JsValueRef descriptor{};
+  CHECK_JSRT_ERROR_CODE(CreatePropertyDescriptor(std::forward<TValue>(value), attrs, &descriptor));
+  return DefineProperty(std::forward<TObject>(object), std::forward<TPropertyId>(propertyId), descriptor, isSucceeded);
+}
+
+/*static*/ JsErrorCode Environment::GetHasOwnPropertyFunction(JsValueRef *result) noexcept {
+  JsValueRef global{};
+  JsPropertyIdRef objectPropertyId{};
+  JsValueRef objectCtor{};
+  JsValueRef objectPrototype{};
+  JsPropertyIdRef hasOwnPropertyId{};
+  CHECK_JSRT_ERROR_CODE(JsGetGlobalObject(&global));
+  CHECK_JSRT_ERROR_CODE(JsGetPropertyIdFromName(L"Object", &objectPropertyId));
+  CHECK_JSRT_ERROR_CODE(JsGetProperty(global, objectPropertyId, &objectCtor));
+  CHECK_JSRT_ERROR_CODE(JsGetPrototype(objectCtor, &objectPrototype));
+  CHECK_JSRT_ERROR_CODE(JsGetPropertyIdFromName(L"hasOwnProperty", &hasOwnPropertyId));
+  return JsGetProperty(objectPrototype, hasOwnPropertyId, result);
+}
+
+template <class TObject, class TPropertyId>
+JsErrorCode Environment::HasPrivateProperty(TObject &&object, TPropertyId &&propertyId, bool *result) noexcept {
+  JsValueRef jsObject{};
+  JsPropertyIdRef jsPropertyId{};
+  JsValueRef descriptor{};
+  CHECK_JSRT_ERROR_CODE(CachedValue::GetValue(std::forward<TObject>(object), &jsObject));
+  CHECK_JSRT_ERROR_CODE(CachedPropertyId::GetPropertyId(std::forward<TPropertyId>(propertyId), &jsPropertyId));
+  JsErrorCode err = JsGetOwnPropertyDescriptor(jsObject, jsPropertyId, &descriptor);
+  *result = (err == JsNoError);
+  if (!*result) {
+    // Discard the last error in case if we cannot retrieve the property descriptor.
+    JsValueRef exception{};
+    return JsGetAndClearException(&exception);
+  }
+
+  return JsErrorCode::JsNoError;
+}
+
+template <class TObject, class TPropertyId>
+JsErrorCode Environment::GetPrivateProperty(TObject &&object, TPropertyId &&propertyId, JsValueRef *result) noexcept {
+  JsValueRef jsObject{};
+  JsPropertyIdRef jsPropertyId{};
+  JsValueRef descriptor{};
+  CHECK_JSRT_ERROR_CODE(CachedValue::GetValue(std::forward<TObject>(object), &jsObject));
+  CHECK_JSRT_ERROR_CODE(CachedPropertyId::GetPropertyId(std::forward<TPropertyId>(propertyId), &jsPropertyId));
+  CHECK_JSRT_ERROR_CODE(JsGetOwnPropertyDescriptor(jsObject, jsPropertyId, &descriptor));
+  return GetProperty(descriptor, m_propertyId.value, result);
+}
+
+template <class TObject, class TPropertyId, class TValue>
+JsErrorCode Environment::SetPrivateProperty(TObject &&object, TPropertyId &&propertyId, TValue &&value) noexcept {
+  JsValueRef descriptor{};
+  bool isSucceeded{false};
+  CHECK_JSRT_ERROR_CODE(DefineProperty(
+      std::forward<TObject>(object),
+      std::forward<TPropertyId>(propertyId),
+      std::forward<TValue>(value),
+      PropertyAttibutes::DontEnum,
+      &isSucceeded));
+  if (isSucceeded) {
+    return JsErrorCode::JsNoError;
+  } else {
+    return SetProperty(
+        std::forward<TObject>(object), std::forward<TPropertyId>(propertyId), std::forward<TValue>(value));
+  } 
+}
+
+template <typename TFunction, typename... TArgs>
+/*static*/ JsErrorCode Environment::CallFunction(TFunction &&function, TArgs &&... args, JsValueRef *result) noexcept {
+  JsValueRef jsFunction{};
+  CHECK_JSRT_ERROR_CODE(CachedValue::GetValue(std::forward<TFunction>(function), jsFunction));
+  std::array<JsValueRef, sizeof...(args)> jsArgs{CachedValue::GetValue(std::forward<TArgs>(args))...};
+  return JsCallFunction(jsFunction, jsArgs.data(), reinterpret_cast<unsigned short>(jsArgs.size()), result);
 }
 
 } // namespace chakra
