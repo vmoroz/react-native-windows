@@ -298,6 +298,10 @@ struct Environment {
 
   napi_status RunScript(napi_value script, napi_value *result) noexcept;
 
+  napi_status CreateDate(double time, napi_value *result) noexcept;
+  napi_status IsDate(napi_value value, bool *is_date) noexcept;
+  napi_status GetDateValue(napi_value value, double *result) noexcept;
+
  private:
   static JsErrorCode PointerToString(std::wstring_view value, JsValueRef *result) noexcept;
 
@@ -349,12 +353,14 @@ struct Environment {
   JsSourceContext m_sourceContext{JS_SOURCE_CONTEXT_NONE};
 
   struct PropertyId final {
+    CachedPropertyId Date{L"Date"};
     CachedPropertyId Object{L"Object"};
     CachedPropertyId configurable{L"configurable"};
     CachedPropertyId enumerable{L"enumerable"};
     CachedPropertyId hasOwnProperty{L"hasOwnProperty"};
     CachedPropertyId hostObject{L"hostObject", JsPropertyIdTypeSymbol};
     CachedPropertyId value{L"value"};
+    CachedPropertyId valueOf{L"valueOf"};
     CachedPropertyId writable{L"writable"};
   } m_propertyId;
 
@@ -914,8 +920,7 @@ JsErrorCode
 Environment::CreatePropertyDescriptor(TValue &&value, PropertyAttibutes attrs, JsValueRef *result) noexcept {
   JsValueRef descriptor{};
   CHECK_JSRT_ERROR_CODE(JsCreateObject(&descriptor));
-  CHECK_JSRT_ERROR_CODE(
-      SetProperty(descriptor, m_propertyId.value, std::forward<TValue>(value)));
+  CHECK_JSRT_ERROR_CODE(SetProperty(descriptor, m_propertyId.value, std::forward<TValue>(value)));
   if (!(attrs & PropertyAttibutes::ReadOnly)) {
     CHECK_JSRT_ERROR_CODE(SetProperty(descriptor, m_propertyId.writable, m_value.True));
   }
@@ -1032,6 +1037,56 @@ template <typename TFunction, typename... TArgs>
   std::array<JsValueRef, sizeof...(args)> jsArgs;
   CHECK_JSRT_ERROR_CODE(InitArgs<0>(jsArgs, std::forward<TArgs>(args)...));
   return JsCallFunction(jsFunction, jsArgs.data(), static_cast<unsigned short>(jsArgs.size()), result);
+}
+
+napi_status Environment::CreateDate(double time, napi_value *result) noexcept {
+  CHECK_ARG(this, result);
+
+  JsValueRef dateConstructor{};
+  CHECK_JSRT(this, GetProperty(m_value.Global, m_propertyId.Date, &dateConstructor));
+
+  JsValueRef args[2] = {};
+  CHECK_JSRT(this, JsGetUndefinedValue(&args[0]));
+  CHECK_JSRT(this, JsDoubleToNumber(time, &args[1]));
+  CHECK_JSRT(this, JsConstructObject(dateConstructor, args, 2, reinterpret_cast<JsValueRef *>(result)));
+
+  return napi_status::napi_ok;
+}
+
+napi_status Environment::IsDate(napi_value value, bool *is_date) noexcept {
+  CHECK_ARG(this, value);
+  CHECK_ARG(this,  is_date);
+
+  JsValueRef dateConstructor{};
+  CHECK_JSRT(this, GetProperty(m_value.Global, m_propertyId.Date, &dateConstructor));
+
+  JsValueRef obj{reinterpret_cast<JsValueRef>(value)};
+  CHECK_JSRT(this, JsInstanceOf(obj, dateConstructor, is_date));
+
+  return napi_status::napi_ok;
+}
+
+
+napi_status Environment::GetDateValue(napi_value value, double *result) noexcept {
+  CHECK_ARG(this, value);
+  CHECK_ARG(this, result);
+
+  bool isDate{false};
+  CHECK_NAPI(IsDate(value, &isDate));
+  RETURN_STATUS_IF_FALSE(this, isDate, napi_status::napi_date_expected);
+
+  JsPropertyIdRef valueOfId{JS_INVALID_REFERENCE};
+  CHECK_JSRT(this, JsGetPropertyIdFromName(L"valueOf", &valueOfId));
+
+  JsValueRef jsValue{reinterpret_cast<JsValueRef>(value)};
+  JsValueRef valueOf{};
+  CHECK_JSRT(this, GetProperty(jsValue, m_propertyId.valueOf, &valueOf));
+
+  JsValueRef dateValue{};
+  CHECK_JSRT(this, JsCallFunction(valueOf, &jsValue, 1, &dateValue));
+  CHECK_JSRT(this, JsNumberToDouble(dateValue, result));
+
+  return napi_status::napi_ok;
 }
 
 } // namespace chakra
@@ -3231,25 +3286,7 @@ napi_status napi_is_date(napi_env env, napi_value value, bool *is_date) {
 }
 
 napi_status napi_get_date_value(napi_env env, napi_value value, double *result) {
-  CHECK_ENV_AND_ARG2(env, value, result);
-
-  bool isDate{false};
-  CHECK_NAPI(napi_is_date(env, value, &isDate));
-  RETURN_STATUS_IF_FALSE(env, isDate, napi_date_expected);
-
-  JsPropertyIdRef valueOfId{JS_INVALID_REFERENCE};
-  CHECK_JSRT(env, JsGetPropertyIdFromName(L"valueOf", &valueOfId));
-
-  JsValueRef obj{reinterpret_cast<JsValueRef>(value)};
-  JsValueRef valueOf{JS_INVALID_REFERENCE};
-  CHECK_JSRT(env, JsGetProperty(obj, valueOfId, &valueOf));
-
-  JsValueRef dateValue{JS_INVALID_REFERENCE};
-  CHECK_JSRT(env, JsCallFunction(valueOf, &obj, 1, &dateValue));
-
-  CHECK_JSRT(env, JsNumberToDouble(dateValue, result));
-
-  return napi_ok;
+  return CHECKED_ENV(env)->GetDateValue(value, result);
 }
 
 napi_status napi_add_finalizer(
