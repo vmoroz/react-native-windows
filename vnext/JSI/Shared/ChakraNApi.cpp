@@ -1066,7 +1066,6 @@ napi_status Environment::IsDate(napi_value value, bool *is_date) noexcept {
   return napi_status::napi_ok;
 }
 
-
 napi_status Environment::GetDateValue(napi_value value, double *result) noexcept {
   CHECK_ARG(this, value);
   CHECK_ARG(this, result);
@@ -3244,45 +3243,12 @@ napi_status napi_adjust_external_memory(napi_env env, int64_t change_in_bytes, i
 
 #if NAPI_VERSION >= 5
 
-//==============================================================================
-// NAPI: Dates
-//==============================================================================
 napi_status napi_create_date(napi_env env, double time, napi_value *result) {
-  CHECK_ENV_AND_ARG(env, result);
-
-  JsValueRef global{JS_INVALID_REFERENCE};
-  CHECK_JSRT(env, JsGetGlobalObject(&global));
-
-  JsPropertyIdRef dateConstructorId{JS_INVALID_REFERENCE};
-  CHECK_JSRT(env, JsGetPropertyIdFromName(L"Date", &dateConstructorId));
-
-  JsValueRef dateConstructor{JS_INVALID_REFERENCE};
-  CHECK_JSRT(env, JsGetProperty(global, dateConstructorId, &dateConstructor));
-
-  JsValueRef args[2] = {};
-  CHECK_JSRT(env, JsGetUndefinedValue(&args[0]));
-  CHECK_JSRT(env, JsDoubleToNumber(time, &args[1]));
-  CHECK_JSRT(env, JsConstructObject(dateConstructor, args, 2, reinterpret_cast<JsValueRef *>(result)));
-
-  return napi_ok;
+  return CHECKED_ENV(env)->CreateDate(time, result);
 }
 
 napi_status napi_is_date(napi_env env, napi_value value, bool *is_date) {
-  CHECK_ENV_AND_ARG2(env, value, is_date);
-
-  JsValueRef global{JS_INVALID_REFERENCE};
-  CHECK_JSRT(env, JsGetGlobalObject(&global));
-
-  JsPropertyIdRef dateConstructorId{JS_INVALID_REFERENCE};
-  CHECK_JSRT(env, JsGetPropertyIdFromName(L"Date", &dateConstructorId));
-
-  JsValueRef dateConstructor{JS_INVALID_REFERENCE};
-  CHECK_JSRT(env, JsGetProperty(global, dateConstructorId, &dateConstructor));
-
-  JsValueRef obj{reinterpret_cast<JsValueRef>(value)};
-  CHECK_JSRT(env, JsInstanceOf(obj, dateConstructor, is_date));
-
-  return napi_ok;
+  return CHECKED_ENV(env)->IsDate(value, is_date);
 }
 
 napi_status napi_get_date_value(napi_env env, napi_value value, double *result) {
