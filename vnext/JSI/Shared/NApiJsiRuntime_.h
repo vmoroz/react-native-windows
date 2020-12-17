@@ -3,34 +3,19 @@
 
 #pragma once
 
-#include "ChakraApi.h"
-#include "ChakraRuntimeArgs.h"
+#define NAPI_EXPERIMENTAL
+#include "js_native_api.h"
 
 #include <jsi/jsi.h>
-
-#ifdef CHAKRACORE
-#include "ChakraCore.h"
-#include "ChakraCoreDebugger.h"
-#else
-#ifndef USE_EDGEMODE_JSRT
-#define USE_EDGEMODE_JSRT
-#endif
-#include "jsrt.h"
-#endif
 
 #include <array>
 #include <mutex>
 #include <sstream>
 
-#if !defined(CHAKRACORE)
-class DebugProtocolHandler {};
-class DebugService {};
-#endif
+namespace react::jsi {
 
-namespace Microsoft::JSI {
-
-// Implementation of Chakra JSI Runtime
-class ChakraRuntime : public facebook::jsi::Runtime, ChakraApi, ChakraApi::IExceptionThrower {
+// Implementation of N-API JSI Runtime
+class NapiJsiRuntime : public facebook::jsi::Runtime, ChakraApi, ChakraApi::IExceptionThrower {
  public:
   ChakraRuntime(ChakraRuntimeArgs &&args) noexcept;
   ~ChakraRuntime() noexcept;
