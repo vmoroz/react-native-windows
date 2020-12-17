@@ -36,7 +36,7 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)js_native_api_types.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="$(MSBuildThisFileDirectory)NApiJsiRuntime.h">
+    <ClInclude Include="$(MSBuildThisFileDirectory)NapiJsiRuntime.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -50,7 +50,7 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)ChakraNApi.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="$(MSBuildThisFileDirectory)NApiJsiRuntime.cpp">
+    <ClCompile Include="$(MSBuildThisFileDirectory)NapiJsiRuntime.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
