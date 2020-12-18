@@ -3,8 +3,7 @@
 
 #pragma once
 
-#define NAPI_EXPERIMENTAL
-#include "js_native_api.h"
+#include "NapiApi.h"
 
 #include <jsi/jsi.h>
 
@@ -12,13 +11,23 @@
 #include <mutex>
 #include <sstream>
 
+#define CHECK_NAPI(expr)                            \
+  do {                                              \
+    napi_status temp_error_code_ = (expr);          \
+    if (temp_error_code_ != napi_status::napi_ok) { \
+      ThrowJsException(temp_error_code_);           \
+    }                                               \
+  } while (false)
+
 namespace react::jsi {
 
+struct NapiJsiRuntimeArgs {};
+
 // Implementation of N-API JSI Runtime
-class NapiJsiRuntime : public facebook::jsi::Runtime, ChakraApi, ChakraApi::IExceptionThrower {
+class NapiJsiRuntime : public facebook::jsi::Runtime, NapiApi, NapiApi::IExceptionThrower {
  public:
-  ChakraRuntime(ChakraRuntimeArgs &&args) noexcept;
-  ~ChakraRuntime() noexcept;
+  NapiJsiRuntime(NapiJsiRuntimeArgs &&args) noexcept;
+  ~NapiJsiRuntime() noexcept;
 
 #pragma region Functions_inherited_from_Runtime
 
@@ -135,53 +144,53 @@ class NapiJsiRuntime : public facebook::jsi::Runtime, ChakraApi, ChakraApi::IExc
 #pragma endregion Functions_inherited_from_Runtime
 
  protected:
-  ChakraRuntimeArgs &runtimeArgs() {
+  NapiJsiRuntimeArgs &runtimeArgs() {
     return m_args;
   }
 
- private: //  ChakraApi::IExceptionThrower members
-  [[noreturn]] void ThrowJsExceptionOverride(JsErrorCode errorCode, JsValueRef jsError) override;
-  [[noreturn]] void ThrowNativeExceptionOverride(char const *errorMessage) override;
-  void RewriteErrorMessage(JsValueRef jsError);
+   private: //  ChakraApi::IExceptionThrower members
+   [[noreturn]] void ThrowJsExceptionOverride(napi_status errorCode, napi_value jsError) override;
+   [[noreturn]] void ThrowNativeExceptionOverride(char const *errorMessage) override;
+   void RewriteErrorMessage(napi_value jsError);
 
  private:
-  // ChakraPointerValueView is the base class for ChakraPointerValue.
-  // It holds the JsRef, but unlike the ChakraPointerValue does nothing in the
+  // NapiPointerValueView is the base class for NapiPointerValue.
+  // It holds the napi_ref, but unlike the NapiPointerValue does nothing in the
   // invalidate() method.
   // It is used by the JsiValueView, JsiValueViewArray, and JsiPropNameIDView classes
   // to keep temporary PointerValues on the call stack to avoid extra memory allocations.
-  struct ChakraPointerValueView : PointerValue {
-    ChakraPointerValueView(JsRef jsRef) noexcept : m_jsRef{jsRef} {}
+  struct NapiPointerValueView : PointerValue {
+    NapiPointerValueView(napi_ref jsRef) noexcept : m_jsRef{jsRef} {}
 
-    ChakraPointerValueView(ChakraPointerValueView const &) = delete;
-    ChakraPointerValueView &operator=(ChakraPointerValueView const &) = delete;
+    NapiPointerValueView(NapiPointerValueView const &) = delete;
+    NapiPointerValueView &operator=(NapiPointerValueView const &) = delete;
 
     void invalidate() noexcept override {}
 
-    JsRef GetRef() const noexcept {
+    napi_ref GetRef() const noexcept {
       return m_jsRef;
     }
 
    private:
-    JsRef m_jsRef;
+    napi_ref m_jsRef;
   };
 
-  // ChakraPointerValue is needed for working with Facebook's jsi::Pointer class
+  // NapiPointerValue is needed for working with Facebook's jsi::Pointer class
   // and must only be used for this purpose. Every instance of
-  // ChakraPointerValue should be allocated on the heap and be used as an
+  // NapiPointerValue should be allocated on the heap and be used as an
   // argument to the constructor of jsi::Pointer or one of its derived classes.
   // Pointer makes sure that invalidate(), which frees the heap allocated
-  // ChakraPointerValue, is called upon destruction. Since the constructor of
+  // NapiPointerValue, is called upon destruction. Since the constructor of
   // jsi::Pointer is protected, we usually have to invoke it through
   // jsi::Runtime::make. The code should look something like:
   //
-  //     make<Pointer>(new ChakraPointerValue(...));
+  //     make<Pointer>(new NapiPointerValue(...));
   //
   // or you can use the helper function MakePointer(), as defined below.
-  struct ChakraPointerValue final : ChakraPointerValueView {
-    ChakraPointerValue(JsRef ref) noexcept : ChakraPointerValueView{ref} {
+  struct NapiPointerValue final : NapiPointerValueView {
+    NapiPointerValue(napi_env env, napi_ref ref) noexcept : NapiPointerValueView{ref}, m_env{env} {
       if (ref) {
-        AddRef(ref);
+        CHECK_NAPI(env, napi_reference_ref(env, ref, nullptr));
       }
     }
 
@@ -189,76 +198,72 @@ class NapiJsiRuntime : public facebook::jsi::Runtime, ChakraApi, ChakraApi::IExc
       delete this;
     }
 
+    napi_env GetEnv() const noexcept {
+      return m_env;
+    }
+
    private:
-    // ~ChakraPointerValue() should only be invoked by invalidate().
+    // ~NapiPointerValue() should only be invoked by invalidate().
     // Hence we make it private.
-    ~ChakraPointerValue() noexcept override {
-      if (JsRef ref = GetRef()) {
+    ~NapiPointerValue() noexcept override {
+      if (napi_ref ref = GetRef()) {
         // JSI allows the destructor to be run on a random thread.
         // To handle it correctly we must schedule a task to the thread associated
-        // with the Chakra context. For now we just leak the value.
-        // TODO: Implement proper ref count release if it is called on a wrong thread.
-        JsRelease(ref, nullptr); // We ignore the error until we fix the TODO above.
+        // with the napi_env context. For now we just leak the value.
+        // TODO: [vmoroz] Implement proper ref count release if it is called on a wrong thread.
+        napi_reference_unref(m_env, ref, nullptr); // We ignore the error until we fix the TODO above.
       }
     }
+
+   private:
+    napi_env m_env;
   };
 
   template <typename T, std::enable_if_t<std::is_base_of_v<facebook::jsi::Pointer, T>, int> = 0>
-  static T MakePointer(JsRef ref) {
-    return make<T>(new ChakraPointerValue(ref));
+  T MakePointer(napi_ref ref) {
+    return make<T>(new NapiPointerValue(m_env, ref));
   }
 
-  // The pointer passed to this function must point to a ChakraPointerValue.
-  static ChakraPointerValue *CloneChakraPointerValue(const PointerValue *pointerValue) {
-    return new ChakraPointerValue(static_cast<const ChakraPointerValue *>(pointerValue)->GetRef());
+  template <typename T, std::enable_if_t<std::is_base_of_v<facebook::jsi::Pointer, T>, int> = 0>
+  T MakePointer(napi_value value) {
+    return make<T>(new NapiPointerValue(m_env, NapiApi::CreateReference(env, value)));
   }
 
-  // The jsi::Pointer passed to this function must hold a ChakraPointerValue.
-  static JsRef GetJsRef(const facebook::jsi::Pointer &p) {
-    return static_cast<const ChakraPointerValueView *>(getPointerValue(p))->GetRef();
+  // The pointer passed to this function must point to a NapiPointerValue.
+  static NapiPointerValue *CloneNapiPointerValue(const PointerValue *pointerValue) {
+    return new NapiPointerValue(
+        static_cast<const NapiPointerValue *>(pointerValue)->GetEnv(),
+        static_cast<const NapiPointerValue *>(pointerValue)->GetRef());
+  }
+
+  // The jsi::Pointer passed to this function must hold a NapiPointerValue.
+  static napi_ref GetJsRef(const facebook::jsi::Pointer &p) {
+    return static_cast<const NapiPointerValueView *>(getPointerValue(p))->GetRef();
+  }
+
+  // The jsi::Pointer passed to this function must hold a NapiPointerValue.
+  napi_value GetJsValue(const facebook::jsi::Pointer &p) {
+    return GetReferenceValue(static_cast<const NapiPointerValueView *>(getPointerValue(p))->GetRef());
   }
 
   // These three functions only performs shallow copies.
-  facebook::jsi::Value ToJsiValue(JsValueRef ref);
-  JsValueRef ToJsValueRef(const facebook::jsi::Value &value);
+  facebook::jsi::Value ToJsiValue(napi_ref ref);
+  napi_ref ToNapiRef(const facebook::jsi::Value &value);
 
-  JsValueRef CreateExternalFunction(
-      JsPropertyIdRef name,
-      int32_t paramCount,
-      JsNativeFunction nativeFunction,
-      void *callbackState);
+  napi_ref
+  CreateExternalFunction(napi_value name, int32_t paramCount, napi_callback nativeFunction, void *callbackState);
 
   // Host function helper
-  static JsValueRef CALLBACK HostFunctionCall(
-      JsValueRef callee,
-      bool isConstructCall,
-      JsValueRef *args,
-      unsigned short argCount,
-      void *callbackState);
+  static napi_value HostFunctionCall(napi_env env, napi_callback_info info) noexcept;
 
   // Host object helpers; runtime must be referring to a ChakraRuntime.
-  static JsValueRef CALLBACK HostObjectGetTrap(
-      JsValueRef callee,
-      bool isConstructCall,
-      JsValueRef *args,
-      unsigned short argCount,
-      void *callbackState) noexcept;
+  static napi_value HostObjectGetTrap(napi_env env, napi_callback_info info) noexcept;
 
-  static JsValueRef CALLBACK HostObjectSetTrap(
-      JsValueRef callee,
-      bool isConstructCall,
-      JsValueRef *args,
-      unsigned short argCount,
-      void *callbackState) noexcept;
+  static napi_value HostObjectSetTrap(napi_env env, napi_callback_info info) noexcept;
 
-  static JsValueRef CALLBACK HostObjectOwnKeysTrap(
-      JsValueRef callee,
-      bool isConstructCall,
-      JsValueRef *args,
-      unsigned short argCount,
-      void *callbackState) noexcept;
+  static napi_value HostObjectOwnKeysTrap(napi_env env, napi_callback_info info) noexcept;
 
-  JsValueRef GetHostObjectProxyHandler();
+  napi_value GetHostObjectProxyHandler();
 
   // Evaluate lambda and augment exception messages with the methodName.
   template <typename TLambda>
@@ -276,13 +281,13 @@ class NapiJsiRuntime : public facebook::jsi::Runtime, ChakraApi, ChakraApi::IExc
 
   // Evaluate lambda and convert all exceptions to Chakra engine exceptions.
   template <typename TLambda>
-  JsValueRef HandleCallbackExceptions(TLambda lambda) noexcept {
+  napi_value HandleCallbackExceptions(TLambda lambda) noexcept {
     try {
       try {
         return lambda();
       } catch (facebook::jsi::JSError const &jsError) {
         // This block may throw exceptions
-        SetException(ToJsValueRef(jsError.value()));
+        SetException(ToNapiRef(jsError.value()));
       }
     } catch (std::exception const &ex) {
       SetException(ex.what());
@@ -294,49 +299,49 @@ class NapiJsiRuntime : public facebook::jsi::Runtime, ChakraApi, ChakraApi::IExc
   }
 
   // Promise Helpers
-  static void CALLBACK PromiseContinuationCallback(JsValueRef funcRef, void *callbackState) noexcept;
-  static void CALLBACK
-  PromiseRejectionTrackerCallback(JsValueRef promise, JsValueRef reason, bool handled, void *callbackState);
+  //static void CALLBACK PromiseContinuationCallback(JsValueRef funcRef, void *callbackState) noexcept;
+  //static void CALLBACK
+  //PromiseRejectionTrackerCallback(JsValueRef promise, JsValueRef reason, bool handled, void *callbackState);
 
-  void PromiseContinuation(JsValueRef value) noexcept;
-  void PromiseRejectionTracker(JsValueRef promise, JsValueRef reason, bool handled);
+  //void PromiseContinuation(JsValueRef value) noexcept;
+  //void PromiseRejectionTracker(JsValueRef promise, JsValueRef reason, bool handled);
 
-  void setupNativePromiseContinuation() noexcept;
+  //void setupNativePromiseContinuation() noexcept;
 
   // Memory tracker helpers
-  void setupMemoryTracker() noexcept;
+  //void setupMemoryTracker() noexcept;
 
   // In-proc debugging helpers
-  void startDebuggingIfNeeded();
-  void stopDebuggingIfNeeded();
+  //void startDebuggingIfNeeded();
+  //void stopDebuggingIfNeeded();
 
-  JsErrorCode enableDebugging(
-      JsRuntimeHandle runtime,
-      std::string const &runtimeName,
-      bool breakOnNextLine,
-      uint16_t port,
-      std::unique_ptr<DebugProtocolHandler> &debugProtocolHandler,
-      std::unique_ptr<DebugService> &debugService);
-  void ProcessDebuggerCommandQueue();
+  //JsErrorCode enableDebugging(
+  //    JsRuntimeHandle runtime,
+  //    std::string const &runtimeName,
+  //    bool breakOnNextLine,
+  //    uint16_t port,
+  //    std::unique_ptr<DebugProtocolHandler> &debugProtocolHandler,
+  //    std::unique_ptr<DebugService> &debugService);
+  //void ProcessDebuggerCommandQueue();
 
-  static void CALLBACK ProcessDebuggerCommandQueueCallback(void *callbackState);
+  //static void CALLBACK ProcessDebuggerCommandQueueCallback(void *callbackState);
 
   // Version related helpers
-  static void initRuntimeVersion() noexcept;
-  static uint64_t getRuntimeVersion() {
-    return s_runtimeVersion;
-  }
+  //static void initRuntimeVersion() noexcept;
+  //static uint64_t getRuntimeVersion() {
+  //  return s_runtimeVersion;
+  //}
 
   // Miscellaneous
-  std::unique_ptr<const facebook::jsi::Buffer> generatePreparedScript(
-      const std::string &sourceURL,
-      const facebook::jsi::Buffer &sourceBuffer) noexcept;
-  facebook::jsi::Value evaluateJavaScriptSimple(const facebook::jsi::Buffer &buffer, const std::string &sourceURL);
-  bool evaluateSerializedScript(
-      const facebook::jsi::Buffer &scriptBuffer,
-      const facebook::jsi::Buffer &serializedScriptBuffer,
-      const std::string &sourceURL,
-      JsValueRef *result);
+  //std::unique_ptr<const facebook::jsi::Buffer> generatePreparedScript(
+  //    const std::string &sourceURL,
+  //    const facebook::jsi::Buffer &sourceBuffer) noexcept;
+  //facebook::jsi::Value evaluateJavaScriptSimple(const facebook::jsi::Buffer &buffer, const std::string &sourceURL);
+  //bool evaluateSerializedScript(
+  //    const facebook::jsi::Buffer &scriptBuffer,
+  //    const facebook::jsi::Buffer &serializedScriptBuffer,
+  //    const std::string &sourceURL,
+  //    JsValueRef *result);
 
   enum class PropertyAttibutes {
     None = 0,
@@ -355,36 +360,35 @@ class NapiJsiRuntime : public facebook::jsi::Runtime, ChakraApi, ChakraApi::IExc
     return attrs == PropertyAttibutes::None;
   }
 
-  JsValueRef CreatePropertyDescriptor(JsValueRef value, PropertyAttibutes attrs);
+  napi_value CreatePropertyDescriptor(napi_value value, PropertyAttibutes attrs);
 
   // The number of arguments that we keep on stack.
   // We use heap if we have more argument.
   constexpr static size_t MaxStackArgCount = 8;
 
-  // JsValueArgs helps to optimize passing arguments to Chakra function.
+  // NapiValueArgs helps to optimize passing arguments to NAPI function.
   // If number of arguments is below or equal to MaxStackArgCount,
   // then they are kept on call stack, otherwise arguments are allocated on heap.
-  struct JsValueArgs final {
-    JsValueArgs(ChakraRuntime &rt, facebook::jsi::Value const &firstArg, Span<facebook::jsi::Value const> args);
-    ~JsValueArgs();
-    operator ChakraApi::Span<JsValueRef>();
+  struct NapiValueArgs final {
+    NapiValueArgs(NapiJsiRuntime &rt, facebook::jsi::Value const &firstArg, Span<facebook::jsi::Value const> args);
+    operator NapiApi::Span<napi_value>();
 
    private:
     size_t const m_count{};
-    std::array<JsValueRef, MaxStackArgCount> m_stackArgs{{JS_INVALID_REFERENCE}};
-    std::unique_ptr<JsValueRef[]> const m_heapArgs;
+    std::array<napi_value, MaxStackArgCount> m_stackArgs{{nullptr}};
+    std::unique_ptr<napi_value[]> const m_heapArgs;
   };
 
   // This type represents a view to Value based on JsValueRef.
   // It avoids extra memory allocation by using an in-place storage.
   // It uses ChakraPointerValueView that does nothing in the invalidate() method.
   struct JsiValueView final {
-    JsiValueView(JsValueRef jsValue);
+    JsiValueView(napi_value jsValue);
     ~JsiValueView() noexcept;
     operator facebook::jsi::Value const &() const noexcept;
 
-    using StoreType = std::aligned_storage_t<sizeof(ChakraPointerValueView)>;
-    static facebook::jsi::Value InitValue(JsValueRef jsValue, StoreType *store);
+    using StoreType = std::aligned_storage_t<sizeof(NapiPointerValueView)>;
+    static facebook::jsi::Value InitValue(napi_value jsValue, StoreType *store);
 
    private:
     StoreType m_pointerStore{};
@@ -394,7 +398,7 @@ class NapiJsiRuntime : public facebook::jsi::Runtime, ChakraApi, ChakraApi::IExc
   // This class helps to use stack storage for passing arguments that must be temporary converted from
   // JsValueRef to facebook::jsi::Value.
   struct JsiValueViewArgs final {
-    JsiValueViewArgs(JsValueRef *args, size_t argCount) noexcept;
+    JsiValueViewArgs(napi_value *args, size_t argCount) noexcept;
     facebook::jsi::Value const *Data() const noexcept;
     size_t Size() const noexcept;
 
@@ -409,11 +413,11 @@ class NapiJsiRuntime : public facebook::jsi::Runtime, ChakraApi, ChakraApi::IExc
   // PropNameIDView helps to use the stack storage for temporary conversion from
   // JsPropertyIdRef to facebook::jsi::PropNameID.
   struct PropNameIDView final {
-    PropNameIDView(JsPropertyIdRef propertyId) noexcept;
+    PropNameIDView(napi_value propertyId) noexcept;
     ~PropNameIDView() noexcept;
     operator facebook::jsi::PropNameID const &() const noexcept;
 
-    using StoreType = std::aligned_storage_t<sizeof(ChakraPointerValueView)>;
+    using StoreType = std::aligned_storage_t<sizeof(NapiPointerValueView)>;
 
    private:
     StoreType m_pointerStore{};
@@ -451,8 +455,9 @@ class NapiJsiRuntime : public facebook::jsi::Runtime, ChakraApi, ChakraApi::IExc
   static uint64_t s_runtimeVersion;
 
   // Arguments shared by the specializations
-  ChakraRuntimeArgs m_args;
+  NapiRuntimeArgs m_args;
 
+  napi_env m_env;
   JsRuntimeHandle m_runtime;
   JsRefHolder m_context;
   JsRefHolder m_prevContext;
@@ -483,4 +488,4 @@ class NapiJsiRuntime : public facebook::jsi::Runtime, ChakraApi, ChakraApi::IExc
   constexpr static int DebuggerDefaultPort = 9229;
 };
 
-} // namespace Microsoft::JSI
+} // namespace react::jsi
