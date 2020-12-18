@@ -164,11 +164,11 @@ class NapiJsiRuntime : public facebook::jsi::Runtime, NapiApi, NapiApi::IExcepti
       return m_ref;
     }
 
-    napi_value GetValue() {
+    napi_value GetValue() const {
       return m_napi->GetReferenceValue(m_ref);
     }
 
-    NapiApi* Napi() const noexcept {
+    NapiApi* GetNapi() const noexcept {
       return m_napi;
     }
 
@@ -205,7 +205,7 @@ class NapiJsiRuntime : public facebook::jsi::Runtime, NapiApi, NapiApi::IExcepti
     // Hence we make it private.
     ~NapiPointerValue() noexcept override {
       if (napi_ref ref = GetRef()) {
-        Napi()->DeleteReference(ref);
+        GetNapi()->DeleteReference(ref);
       }
     }
   };
@@ -217,14 +217,13 @@ class NapiJsiRuntime : public facebook::jsi::Runtime, NapiApi, NapiApi::IExcepti
 
   template <typename T, std::enable_if_t<std::is_base_of_v<facebook::jsi::Pointer, T>, int> = 0>
   T MakePointer(napi_value value) {
-    return make<T>(new NapiPointerValue(m_env, NapiApi::CreateReference(env, value)));
+    return make<T>(new NapiPointerValue(m_env, value));
   }
 
   // The pointer passed to this function must point to a NapiPointerValue.
   static NapiPointerValue *CloneNapiPointerValue(const PointerValue *pointerValue) {
-    return new NapiPointerValue(
-        static_cast<const NapiPointerValue *>(pointerValue)->GetEnv(),
-        static_cast<const NapiPointerValue *>(pointerValue)->GetRef());
+    const NapiPointerValue *napiPointerValue = static_cast<const NapiPointerValue *>(pointerValue);
+    return new NapiPointerValue(napiPointerValue->GetNapi(), napiPointerValue->GetValue());
   }
 
   // The jsi::Pointer passed to this function must hold a NapiPointerValue.
@@ -418,40 +417,40 @@ class NapiJsiRuntime : public facebook::jsi::Runtime, NapiApi, NapiApi::IExcepti
  private:
   // Property ID cache to improve execution speed
   struct PropertyId final {
-    JsRefHolder Object;
-    JsRefHolder Proxy;
-    JsRefHolder Symbol;
-    JsRefHolder byteLength;
-    JsRefHolder configurable;
-    JsRefHolder enumerable;
-    JsRefHolder get;
-    JsRefHolder hostFunctionSymbol;
-    JsRefHolder hostObjectSymbol;
-    JsRefHolder length;
-    JsRefHolder message;
-    JsRefHolder ownKeys;
-    JsRefHolder propertyIsEnumerable;
-    JsRefHolder prototype;
-    JsRefHolder set;
-    JsRefHolder toString;
-    JsRefHolder value;
-    JsRefHolder writable;
+    NapiRefHolder Object;
+    NapiRefHolder Proxy;
+    NapiRefHolder Symbol;
+    NapiRefHolder byteLength;
+    NapiRefHolder configurable;
+    NapiRefHolder enumerable;
+    NapiRefHolder get;
+    NapiRefHolder hostFunctionSymbol;
+    NapiRefHolder hostObjectSymbol;
+    NapiRefHolder length;
+    NapiRefHolder message;
+    NapiRefHolder ownKeys;
+    NapiRefHolder propertyIsEnumerable;
+    NapiRefHolder prototype;
+    NapiRefHolder set;
+    NapiRefHolder toString;
+    NapiRefHolder value;
+    NapiRefHolder writable;
   } m_propertyId;
 
-  JsRefHolder m_undefinedValue;
-  JsRefHolder m_proxyConstructor;
-  JsRefHolder m_hostObjectProxyHandler;
+  NapiRefHolder m_undefinedValue;
+  NapiRefHolder m_proxyConstructor;
+  NapiRefHolder m_hostObjectProxyHandler;
 
   static std::once_flag s_runtimeVersionInitFlag;
   static uint64_t s_runtimeVersion;
 
   // Arguments shared by the specializations
-  NapiRuntimeArgs m_args;
+  NapiJsiRuntimeArgs m_args;
 
   napi_env m_env;
-  JsRuntimeHandle m_runtime;
-  JsRefHolder m_context;
-  JsRefHolder m_prevContext;
+  //JsRuntimeHandle m_runtime;
+  //JsRefHolder m_context;
+  //JsRefHolder m_prevContext;
 
   // Set the Chakra API exception thrower on this thread
   ExceptionThrowerHolder m_exceptionThrower{this};
@@ -463,20 +462,20 @@ class NapiJsiRuntime : public facebook::jsi::Runtime, NapiApi, NapiApi::IExcepti
   // which may get created during the execution as that will stop the backing
   // buffer from getting released when the JSValue gets collected.
 
-  // These buffers are kept to serve the source callbacks when evaluating
-  // serialized scripts.
-  std::vector<std::shared_ptr<const facebook::jsi::Buffer>> m_pinnedScripts;
+  //// These buffers are kept to serve the source callbacks when evaluating
+  //// serialized scripts.
+  //std::vector<std::shared_ptr<const facebook::jsi::Buffer>> m_pinnedScripts;
 
-  // These buffers back the external array buffers that we handover to
-  // ChakraCore.
-  std::vector<std::shared_ptr<const facebook::jsi::Buffer>> m_pinnedPreparedScripts;
+  //// These buffers back the external array buffers that we handover to
+  //// ChakraCore.
+  //std::vector<std::shared_ptr<const facebook::jsi::Buffer>> m_pinnedPreparedScripts;
 
-  std::string m_debugRuntimeName;
-  int m_debugPort{0};
-  std::unique_ptr<DebugProtocolHandler> m_debugProtocolHandler;
-  std::unique_ptr<DebugService> m_debugService;
-  constexpr static char DebuggerDefaultRuntimeName[] = "runtime1";
-  constexpr static int DebuggerDefaultPort = 9229;
+  //std::string m_debugRuntimeName;
+  //int m_debugPort{0};
+  //std::unique_ptr<DebugProtocolHandler> m_debugProtocolHandler;
+  //std::unique_ptr<DebugService> m_debugService;
+  //constexpr static char DebuggerDefaultRuntimeName[] = "runtime1";
+  //constexpr static int DebuggerDefaultPort = 9229;
 };
 
 } // namespace react::jsi

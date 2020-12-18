@@ -39,83 +39,84 @@ struct HostFunctionWrapper final {
 } // namespace
 
 NapiJsiRuntime::NapiJsiRuntime(NapiJsiRuntimeArgs &&args) noexcept : m_args{std::move(args)} {
-  JsRuntimeAttributes runtimeAttributes = JsRuntimeAttributeNone;
+  //JsRuntimeAttributes runtimeAttributes = JsRuntimeAttributeNone;
 
-  if (!m_args.enableJITCompilation) {
-    runtimeAttributes = static_cast<JsRuntimeAttributes>(
-        runtimeAttributes | JsRuntimeAttributeDisableNativeCodeGeneration |
-        JsRuntimeAttributeDisableExecutablePageAllocation);
-  }
+  //if (!m_args.enableJITCompilation) {
+  //  runtimeAttributes = static_cast<JsRuntimeAttributes>(
+  //      runtimeAttributes | JsRuntimeAttributeDisableNativeCodeGeneration |
+  //      JsRuntimeAttributeDisableExecutablePageAllocation);
+  //}
 
-  m_runtime = CreateRuntime(runtimeAttributes, nullptr);
+  //m_runtime = CreateRuntime(runtimeAttributes, nullptr);
 
-  setupMemoryTracker();
+  //setupMemoryTracker();
 
-  m_context = JsRefHolder{CreateContext(m_runtime)};
+  //m_context = JsRefHolder{CreateContext(m_runtime)};
 
-  // Note :: We currently assume that the runtime will be created and
-  // exclusively used in a single thread.
-  // Preserve the current context if it is already associated with the thread.
-  m_prevContext = JsRefHolder{GetCurrentContext()};
-  SetCurrentContext(m_context);
+  //// Note :: We currently assume that the runtime will be created and
+  //// exclusively used in a single thread.
+  //// Preserve the current context if it is already associated with the thread.
+  //m_prevContext = JsRefHolder{GetCurrentContext()};
+  //SetCurrentContext(m_context);
 
-  startDebuggingIfNeeded();
+  //startDebuggingIfNeeded();
 
-  setupNativePromiseContinuation();
+  //setupNativePromiseContinuation();
 
-  std::call_once(s_runtimeVersionInitFlag, initRuntimeVersion);
+  //std::call_once(s_runtimeVersionInitFlag, initRuntimeVersion);
 
-  m_propertyId.Object = JsRefHolder{GetPropertyIdFromName(L"Object")};
-  m_propertyId.Proxy = JsRefHolder{GetPropertyIdFromName(L"Proxy")};
-  m_propertyId.Symbol = JsRefHolder{GetPropertyIdFromName(L"Symbol")};
-  m_propertyId.byteLength = JsRefHolder{GetPropertyIdFromName(L"byteLength")};
-  m_propertyId.configurable = JsRefHolder{GetPropertyIdFromName(L"configurable")};
-  m_propertyId.enumerable = JsRefHolder{GetPropertyIdFromName(L"enumerable")};
-  m_propertyId.get = JsRefHolder{GetPropertyIdFromName(L"get")};
-  m_propertyId.hostFunctionSymbol = JsRefHolder{GetPropertyIdFromSymbol(L"hostFunctionSymbol")};
-  m_propertyId.hostObjectSymbol = JsRefHolder{GetPropertyIdFromSymbol(L"hostObjectSymbol")};
-  m_propertyId.length = JsRefHolder{GetPropertyIdFromName(L"length")};
-  m_propertyId.message = JsRefHolder{GetPropertyIdFromName(L"message")};
-  m_propertyId.ownKeys = JsRefHolder{GetPropertyIdFromName(L"ownKeys")};
-  m_propertyId.propertyIsEnumerable = JsRefHolder{GetPropertyIdFromName(L"propertyIsEnumerable")};
-  m_propertyId.prototype = JsRefHolder{GetPropertyIdFromName(L"prototype")};
-  m_propertyId.set = JsRefHolder{GetPropertyIdFromName(L"set")};
-  m_propertyId.toString = JsRefHolder{GetPropertyIdFromName(L"toString")};
-  m_propertyId.value = JsRefHolder{GetPropertyIdFromName(L"value")};
-  m_propertyId.writable = JsRefHolder{GetPropertyIdFromName(L"writable")};
+  //m_propertyId.Object = JsRefHolder{GetPropertyIdFromName(L"Object")};
+  //m_propertyId.Proxy = JsRefHolder{GetPropertyIdFromName(L"Proxy")};
+  //m_propertyId.Symbol = JsRefHolder{GetPropertyIdFromName(L"Symbol")};
+  //m_propertyId.byteLength = JsRefHolder{GetPropertyIdFromName(L"byteLength")};
+  //m_propertyId.configurable = JsRefHolder{GetPropertyIdFromName(L"configurable")};
+  //m_propertyId.enumerable = JsRefHolder{GetPropertyIdFromName(L"enumerable")};
+  //m_propertyId.get = JsRefHolder{GetPropertyIdFromName(L"get")};
+  //m_propertyId.hostFunctionSymbol = JsRefHolder{GetPropertyIdFromSymbol(L"hostFunctionSymbol")};
+  //m_propertyId.hostObjectSymbol = JsRefHolder{GetPropertyIdFromSymbol(L"hostObjectSymbol")};
+  //m_propertyId.length = JsRefHolder{GetPropertyIdFromName(L"length")};
+  //m_propertyId.message = JsRefHolder{GetPropertyIdFromName(L"message")};
+  //m_propertyId.ownKeys = JsRefHolder{GetPropertyIdFromName(L"ownKeys")};
+  //m_propertyId.propertyIsEnumerable = JsRefHolder{GetPropertyIdFromName(L"propertyIsEnumerable")};
+  //m_propertyId.prototype = JsRefHolder{GetPropertyIdFromName(L"prototype")};
+  //m_propertyId.set = JsRefHolder{GetPropertyIdFromName(L"set")};
+  //m_propertyId.toString = JsRefHolder{GetPropertyIdFromName(L"toString")};
+  //m_propertyId.value = JsRefHolder{GetPropertyIdFromName(L"value")};
+  //m_propertyId.writable = JsRefHolder{GetPropertyIdFromName(L"writable")};
 
-  m_undefinedValue = JsRefHolder{GetUndefinedValue()};
+  //m_undefinedValue = JsRefHolder{GetUndefinedValue()};
 }
 
 NapiJsiRuntime::~NapiJsiRuntime() noexcept {
-  m_undefinedValue = {};
-  m_propertyId = {};
-  m_proxyConstructor = {};
-  m_hostObjectProxyHandler = {};
+  //m_undefinedValue = {};
+  //m_propertyId = {};
+  //m_proxyConstructor = {};
+  //m_hostObjectProxyHandler = {};
 
-  stopDebuggingIfNeeded();
+  //stopDebuggingIfNeeded();
 
-  m_context = {};
-  SetCurrentContext(m_prevContext);
-  m_prevContext = {};
+  //m_context = {};
+  //SetCurrentContext(m_prevContext);
+  //m_prevContext = {};
 
-  DisposeRuntime(m_runtime);
+  //DisposeRuntime(m_runtime);
 }
 
-JsValueRef NapiJsiRuntime::CreatePropertyDescriptor(JsValueRef value, PropertyAttibutes attrs) {
-  JsValueRef descriptor = CreateObject();
-  SetProperty(descriptor, m_propertyId.value, value);
-  if (!(attrs & PropertyAttibutes::ReadOnly)) {
-    SetProperty(descriptor, m_propertyId.writable, BoolToBoolean(true));
-  }
-  if (!(attrs & PropertyAttibutes::DontEnum)) {
-    SetProperty(descriptor, m_propertyId.enumerable, BoolToBoolean(true));
-  }
-  if (!(attrs & PropertyAttibutes::DontDelete)) {
-    // The JavaScript 'configurable=true' allows property to be deleted.
-    SetProperty(descriptor, m_propertyId.configurable, BoolToBoolean(true));
-  }
-  return descriptor;
+napi_value NapiJsiRuntime::CreatePropertyDescriptor(napi_value value, PropertyAttibutes attrs) {
+  //JsValueRef descriptor = CreateObject();
+  //SetProperty(descriptor, m_propertyId.value, value);
+  //if (!(attrs & PropertyAttibutes::ReadOnly)) {
+  //  SetProperty(descriptor, m_propertyId.writable, BoolToBoolean(true));
+  //}
+  //if (!(attrs & PropertyAttibutes::DontEnum)) {
+  //  SetProperty(descriptor, m_propertyId.enumerable, BoolToBoolean(true));
+  //}
+  //if (!(attrs & PropertyAttibutes::DontDelete)) {
+  //  // The JavaScript 'configurable=true' allows property to be deleted.
+  //  SetProperty(descriptor, m_propertyId.configurable, BoolToBoolean(true));
+  //}
+  //return descriptor;
+  return {};
 }
 
 #pragma region Functions_inherited_from_Runtime
@@ -123,121 +124,121 @@ JsValueRef NapiJsiRuntime::CreatePropertyDescriptor(JsValueRef value, PropertyAt
 facebook::jsi::Value NapiJsiRuntime::evaluateJavaScript(
     const std::shared_ptr<const facebook::jsi::Buffer> &buffer,
     const std::string &sourceURL) {
-  // Simple evaluate if scriptStore not available as it's risky to utilize the
-  // byte codes without checking the script version.
-  if (!runtimeArgs().scriptStore) {
-    if (!buffer)
-      throw facebook::jsi::JSINativeException("Script buffer is empty!");
-    return evaluateJavaScriptSimple(*buffer, sourceURL);
-  }
+  //// Simple evaluate if scriptStore not available as it's risky to utilize the
+  //// byte codes without checking the script version.
+  //if (!runtimeArgs().scriptStore) {
+  //  if (!buffer)
+  //    throw facebook::jsi::JSINativeException("Script buffer is empty!");
+  //  return evaluateJavaScriptSimple(*buffer, sourceURL);
+  //}
 
-  uint64_t scriptVersion = 0;
-  std::shared_ptr<const facebook::jsi::Buffer> scriptBuffer;
+  //uint64_t scriptVersion = 0;
+  //std::shared_ptr<const facebook::jsi::Buffer> scriptBuffer;
 
-  if (buffer) {
-    scriptBuffer = buffer;
-    scriptVersion = runtimeArgs().scriptStore->getScriptVersion(sourceURL);
-  } else {
-    auto versionedScript = runtimeArgs().scriptStore->getVersionedScript(sourceURL);
-    scriptBuffer = std::move(versionedScript.buffer);
-    scriptVersion = versionedScript.version;
-  }
+  //if (buffer) {
+  //  scriptBuffer = buffer;
+  //  scriptVersion = runtimeArgs().scriptStore->getScriptVersion(sourceURL);
+  //} else {
+  //  auto versionedScript = runtimeArgs().scriptStore->getVersionedScript(sourceURL);
+  //  scriptBuffer = std::move(versionedScript.buffer);
+  //  scriptVersion = versionedScript.version;
+  //}
 
-  if (!scriptBuffer) {
-    throw facebook::jsi::JSINativeException("Script buffer is empty!");
-  }
+  //if (!scriptBuffer) {
+  //  throw facebook::jsi::JSINativeException("Script buffer is empty!");
+  //}
 
-  // Simple evaluate if script version can't be computed.
-  if (scriptVersion == 0) {
-    return evaluateJavaScriptSimple(*scriptBuffer, sourceURL);
-  }
+  //// Simple evaluate if script version can't be computed.
+  //if (scriptVersion == 0) {
+  //  return evaluateJavaScriptSimple(*scriptBuffer, sourceURL);
+  //}
 
-  auto sharedScriptBuffer = std::shared_ptr<const facebook::jsi::Buffer>(std::move(scriptBuffer));
+  //auto sharedScriptBuffer = std::shared_ptr<const facebook::jsi::Buffer>(std::move(scriptBuffer));
 
-  facebook::jsi::ScriptSignature scriptSignature = {sourceURL, scriptVersion};
-  facebook::jsi::JSRuntimeSignature runtimeSignature = {description().c_str(), getRuntimeVersion()};
+  //facebook::jsi::ScriptSignature scriptSignature = {sourceURL, scriptVersion};
+  //facebook::jsi::JSRuntimeSignature runtimeSignature = {description().c_str(), getRuntimeVersion()};
 
-  auto preparedScript =
-      runtimeArgs().preparedScriptStore->tryGetPreparedScript(scriptSignature, runtimeSignature, nullptr);
+  //auto preparedScript =
+  //    runtimeArgs().preparedScriptStore->tryGetPreparedScript(scriptSignature, runtimeSignature, nullptr);
 
-  std::shared_ptr<const facebook::jsi::Buffer> sharedPreparedScript;
-  if (preparedScript) {
-    sharedPreparedScript = std::shared_ptr<const facebook::jsi::Buffer>(std::move(preparedScript));
-  } else {
-    auto genPreparedScript = generatePreparedScript(sourceURL, *sharedScriptBuffer);
-    if (!genPreparedScript)
-      std::terminate(); // Cache generation can't fail unless something really
-                        // wrong. but we should get rid of this abort before
-                        // shipping.
+  //std::shared_ptr<const facebook::jsi::Buffer> sharedPreparedScript;
+  //if (preparedScript) {
+  //  sharedPreparedScript = std::shared_ptr<const facebook::jsi::Buffer>(std::move(preparedScript));
+  //} else {
+  //  auto genPreparedScript = generatePreparedScript(sourceURL, *sharedScriptBuffer);
+  //  if (!genPreparedScript)
+  //    std::terminate(); // Cache generation can't fail unless something really
+  //                      // wrong. but we should get rid of this abort before
+  //                      // shipping.
 
-    sharedPreparedScript = std::shared_ptr<const facebook::jsi::Buffer>(std::move(genPreparedScript));
-    runtimeArgs().preparedScriptStore->persistPreparedScript(
-        sharedPreparedScript, scriptSignature, runtimeSignature, nullptr);
-  }
+  //  sharedPreparedScript = std::shared_ptr<const facebook::jsi::Buffer>(std::move(genPreparedScript));
+  //  runtimeArgs().preparedScriptStore->persistPreparedScript(
+  //      sharedPreparedScript, scriptSignature, runtimeSignature, nullptr);
+  //}
 
-  // We are pinning the buffers which are backing the external array buffers to
-  // the duration of this. This is not good if the external array buffers have a
-  // reduced lifetime compared to the runtime itself. But, it's ok for the script
-  // and prepared script buffer as their lifetime is expected to be same as the
-  // JSI runtime.
-  m_pinnedPreparedScripts.push_back(sharedPreparedScript);
-  m_pinnedScripts.push_back(sharedScriptBuffer);
+  //// We are pinning the buffers which are backing the external array buffers to
+  //// the duration of this. This is not good if the external array buffers have a
+  //// reduced lifetime compared to the runtime itself. But, it's ok for the script
+  //// and prepared script buffer as their lifetime is expected to be same as the
+  //// JSI runtime.
+  //m_pinnedPreparedScripts.push_back(sharedPreparedScript);
+  //m_pinnedScripts.push_back(sharedScriptBuffer);
 
-  JsValueRef result;
-  if (evaluateSerializedScript(*sharedScriptBuffer, *sharedPreparedScript, sourceURL, &result)) {
-    return ToJsiValue(result);
-  }
+  //JsValueRef result;
+  //if (evaluateSerializedScript(*sharedScriptBuffer, *sharedPreparedScript, sourceURL, &result)) {
+  //  return ToJsiValue(result);
+  //}
 
-  // If we reach here, fall back to simple evaluation.
-  return evaluateJavaScriptSimple(*sharedScriptBuffer, sourceURL);
+  //// If we reach here, fall back to simple evaluation.
+  //return evaluateJavaScriptSimple(*sharedScriptBuffer, sourceURL);
 }
 
-struct ChakraPreparedJavaScript final : facebook::jsi::PreparedJavaScript {
-  ChakraPreparedJavaScript(
-      std::string sourceUrl,
-      const std::shared_ptr<const facebook::jsi::Buffer> &sourceBuffer,
-      std::unique_ptr<const facebook::jsi::Buffer> byteCode)
-      : m_sourceUrl{std::move(sourceUrl)}, m_sourceBuffer{sourceBuffer}, m_byteCode{std::move(byteCode)} {}
-
-  const std::string &SourceUrl() const {
-    return m_sourceUrl;
-  }
-
-  const facebook::jsi::Buffer &SourceBuffer() const {
-    return *m_sourceBuffer;
-  }
-
-  const facebook::jsi::Buffer &ByteCode() const {
-    return *m_byteCode;
-  }
-
- private:
-  std::string m_sourceUrl;
-  std::shared_ptr<const facebook::jsi::Buffer> m_sourceBuffer;
-  std::unique_ptr<const facebook::jsi::Buffer> m_byteCode;
-};
-
-std::shared_ptr<const facebook::jsi::PreparedJavaScript> NapiJsiRuntime::prepareJavaScript(
-    const std::shared_ptr<const facebook::jsi::Buffer> &sourceBuffer,
-    std::string sourceURL) {
-  return std::make_shared<ChakraPreparedJavaScript>(
-      sourceURL, sourceBuffer, generatePreparedScript(sourceURL, *sourceBuffer));
-}
-
-facebook::jsi::Value NapiJsiRuntime::evaluatePreparedJavaScript(
-    const std::shared_ptr<const facebook::jsi::PreparedJavaScript> &preparedJS) {
-  const ChakraPreparedJavaScript &chakraPreparedJS = *static_cast<const ChakraPreparedJavaScript *>(preparedJS.get());
-  JsValueRef result;
-  if (evaluateSerializedScript(
-          chakraPreparedJS.SourceBuffer(), chakraPreparedJS.ByteCode(), chakraPreparedJS.SourceUrl(), &result)) {
-    return ToJsiValue(result);
-  } else {
-    return facebook::jsi::Value::undefined();
-  }
-}
+//struct ChakraPreparedJavaScript final : facebook::jsi::PreparedJavaScript {
+//  ChakraPreparedJavaScript(
+//      std::string sourceUrl,
+//      const std::shared_ptr<const facebook::jsi::Buffer> &sourceBuffer,
+//      std::unique_ptr<const facebook::jsi::Buffer> byteCode)
+//      : m_sourceUrl{std::move(sourceUrl)}, m_sourceBuffer{sourceBuffer}, m_byteCode{std::move(byteCode)} {}
+//
+//  const std::string &SourceUrl() const {
+//    return m_sourceUrl;
+//  }
+//
+//  const facebook::jsi::Buffer &SourceBuffer() const {
+//    return *m_sourceBuffer;
+//  }
+//
+//  const facebook::jsi::Buffer &ByteCode() const {
+//    return *m_byteCode;
+//  }
+//
+// private:
+//  std::string m_sourceUrl;
+//  std::shared_ptr<const facebook::jsi::Buffer> m_sourceBuffer;
+//  std::unique_ptr<const facebook::jsi::Buffer> m_byteCode;
+//};
+//
+//std::shared_ptr<const facebook::jsi::PreparedJavaScript> NapiJsiRuntime::prepareJavaScript(
+//    const std::shared_ptr<const facebook::jsi::Buffer> &sourceBuffer,
+//    std::string sourceURL) {
+//  return std::make_shared<ChakraPreparedJavaScript>(
+//      sourceURL, sourceBuffer, generatePreparedScript(sourceURL, *sourceBuffer));
+//}
+//
+//facebook::jsi::Value NapiJsiRuntime::evaluatePreparedJavaScript(
+//    const std::shared_ptr<const facebook::jsi::PreparedJavaScript> &preparedJS) {
+//  const ChakraPreparedJavaScript &chakraPreparedJS = *static_cast<const ChakraPreparedJavaScript *>(preparedJS.get());
+//  JsValueRef result;
+//  if (evaluateSerializedScript(
+//          chakraPreparedJS.SourceBuffer(), chakraPreparedJS.ByteCode(), chakraPreparedJS.SourceUrl(), &result)) {
+//    return ToJsiValue(result);
+//  } else {
+//    return facebook::jsi::Value::undefined();
+//  }
+//}
 
 facebook::jsi::Object NapiJsiRuntime::global() {
-  return MakePointer<facebook::jsi::Object>(m_env, GetGlobalObject(m_env));
+  return MakePointer<facebook::jsi::Object>(GetGlobalObject());
 }
 
 std::string NapiJsiRuntime::description() {

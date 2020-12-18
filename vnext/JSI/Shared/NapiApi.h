@@ -331,7 +331,7 @@ struct NapiApi {
   ///**
   // * @brief Gets the global object in the current script context.
   // */
-  //static JsValueRef GetGlobalObject();
+  napi_value GetGlobalObject();
 
   ///**
   // * @brief Creates a new object.

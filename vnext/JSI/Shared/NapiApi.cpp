@@ -325,11 +325,11 @@ bool NapiApi::GetValueBool(napi_value value) {
 //  return stringValue;
 //}
 //
-///*static*/ napi_ref NapiApi::GetGlobalObject(napi_env env) {
-//  JsValueRef globalObject{JS_INVALID_REFERENCE};
-//  NapiVerifyJsErrorElseThrow(napi_get_global(env, &global));
-//  return globalObject;
-//}
+napi_value NapiApi::GetGlobalObject() {
+  napi_value result{};
+  CHECK_NAPI(napi_get_global(m_env, &result));
+  return result;
+}
 //
 ///*static*/ JsValueRef NapiApi::CreateObject() {
 //  JsValueRef object{JS_INVALID_REFERENCE};
