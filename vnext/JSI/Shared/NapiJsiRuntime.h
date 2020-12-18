@@ -11,14 +11,6 @@
 #include <mutex>
 #include <sstream>
 
-#define CHECK_NAPI(expr)                            \
-  do {                                              \
-    napi_status temp_error_code_ = (expr);          \
-    if (temp_error_code_ != napi_status::napi_ok) { \
-      ThrowJsException(temp_error_code_);           \
-    }                                               \
-  } while (false)
-
 namespace react::jsi {
 
 struct NapiJsiRuntimeArgs {};
@@ -148,10 +140,10 @@ class NapiJsiRuntime : public facebook::jsi::Runtime, NapiApi, NapiApi::IExcepti
     return m_args;
   }
 
-   private: //  ChakraApi::IExceptionThrower members
-   [[noreturn]] void ThrowJsExceptionOverride(napi_status errorCode, napi_value jsError) override;
-   [[noreturn]] void ThrowNativeExceptionOverride(char const *errorMessage) override;
-   void RewriteErrorMessage(napi_value jsError);
+ private: //  ChakraApi::IExceptionThrower members
+  [[noreturn]] void ThrowJsExceptionOverride(napi_status errorCode, napi_value jsError) override;
+  [[noreturn]] void ThrowNativeExceptionOverride(char const *errorMessage) override;
+  void RewriteErrorMessage(napi_value jsError);
 
  private:
   // NapiPointerValueView is the base class for NapiPointerValue.
@@ -160,19 +152,30 @@ class NapiJsiRuntime : public facebook::jsi::Runtime, NapiApi, NapiApi::IExcepti
   // It is used by the JsiValueView, JsiValueViewArray, and JsiPropNameIDView classes
   // to keep temporary PointerValues on the call stack to avoid extra memory allocations.
   struct NapiPointerValueView : PointerValue {
-    NapiPointerValueView(napi_ref jsRef) noexcept : m_jsRef{jsRef} {}
+    NapiPointerValueView(NapiApi *napi, napi_ref ref) noexcept : m_napi{napi}, m_ref{ref} {}
 
     NapiPointerValueView(NapiPointerValueView const &) = delete;
     NapiPointerValueView &operator=(NapiPointerValueView const &) = delete;
 
+    // Intentionally do nothing in the invalidate() method.
     void invalidate() noexcept override {}
 
     napi_ref GetRef() const noexcept {
-      return m_jsRef;
+      return m_ref;
+    }
+
+    napi_value GetValue() {
+      return m_napi->GetReferenceValue(m_ref);
+    }
+
+    NapiApi* Napi() const noexcept {
+      return m_napi;
     }
 
    private:
-    napi_ref m_jsRef;
+    // TODO: [vmoroz] How to make it safe? Is there a way to use weak pointers?
+    NapiApi *m_napi;
+    napi_ref m_ref;
   };
 
   // NapiPointerValue is needed for working with Facebook's jsi::Pointer class
@@ -188,18 +191,13 @@ class NapiJsiRuntime : public facebook::jsi::Runtime, NapiApi, NapiApi::IExcepti
   //
   // or you can use the helper function MakePointer(), as defined below.
   struct NapiPointerValue final : NapiPointerValueView {
-    NapiPointerValue(napi_env env, napi_ref ref) noexcept : NapiPointerValueView{ref}, m_env{env} {
-      if (ref) {
-        CHECK_NAPI(env, napi_reference_ref(env, ref, nullptr));
-      }
+    NapiPointerValue(NapiApi *napi, napi_ref ref) : NapiPointerValueView{napi, ref} {
     }
+
+    NapiPointerValue(NapiApi *napi, napi_value value) noexcept : NapiPointerValueView{napi, napi->CreateReference(value)}{}
 
     void invalidate() noexcept override {
       delete this;
-    }
-
-    napi_env GetEnv() const noexcept {
-      return m_env;
     }
 
    private:
@@ -207,16 +205,9 @@ class NapiJsiRuntime : public facebook::jsi::Runtime, NapiApi, NapiApi::IExcepti
     // Hence we make it private.
     ~NapiPointerValue() noexcept override {
       if (napi_ref ref = GetRef()) {
-        // JSI allows the destructor to be run on a random thread.
-        // To handle it correctly we must schedule a task to the thread associated
-        // with the napi_env context. For now we just leak the value.
-        // TODO: [vmoroz] Implement proper ref count release if it is called on a wrong thread.
-        napi_reference_unref(m_env, ref, nullptr); // We ignore the error until we fix the TODO above.
+        Napi()->DeleteReference(ref);
       }
     }
-
-   private:
-    napi_env m_env;
   };
 
   template <typename T, std::enable_if_t<std::is_base_of_v<facebook::jsi::Pointer, T>, int> = 0>
@@ -299,45 +290,45 @@ class NapiJsiRuntime : public facebook::jsi::Runtime, NapiApi, NapiApi::IExcepti
   }
 
   // Promise Helpers
-  //static void CALLBACK PromiseContinuationCallback(JsValueRef funcRef, void *callbackState) noexcept;
-  //static void CALLBACK
-  //PromiseRejectionTrackerCallback(JsValueRef promise, JsValueRef reason, bool handled, void *callbackState);
+  // static void CALLBACK PromiseContinuationCallback(JsValueRef funcRef, void *callbackState) noexcept;
+  // static void CALLBACK
+  // PromiseRejectionTrackerCallback(JsValueRef promise, JsValueRef reason, bool handled, void *callbackState);
 
-  //void PromiseContinuation(JsValueRef value) noexcept;
-  //void PromiseRejectionTracker(JsValueRef promise, JsValueRef reason, bool handled);
+  // void PromiseContinuation(JsValueRef value) noexcept;
+  // void PromiseRejectionTracker(JsValueRef promise, JsValueRef reason, bool handled);
 
-  //void setupNativePromiseContinuation() noexcept;
+  // void setupNativePromiseContinuation() noexcept;
 
   // Memory tracker helpers
-  //void setupMemoryTracker() noexcept;
+  // void setupMemoryTracker() noexcept;
 
   // In-proc debugging helpers
-  //void startDebuggingIfNeeded();
-  //void stopDebuggingIfNeeded();
+  // void startDebuggingIfNeeded();
+  // void stopDebuggingIfNeeded();
 
-  //JsErrorCode enableDebugging(
+  // JsErrorCode enableDebugging(
   //    JsRuntimeHandle runtime,
   //    std::string const &runtimeName,
   //    bool breakOnNextLine,
   //    uint16_t port,
   //    std::unique_ptr<DebugProtocolHandler> &debugProtocolHandler,
   //    std::unique_ptr<DebugService> &debugService);
-  //void ProcessDebuggerCommandQueue();
+  // void ProcessDebuggerCommandQueue();
 
-  //static void CALLBACK ProcessDebuggerCommandQueueCallback(void *callbackState);
+  // static void CALLBACK ProcessDebuggerCommandQueueCallback(void *callbackState);
 
   // Version related helpers
-  //static void initRuntimeVersion() noexcept;
-  //static uint64_t getRuntimeVersion() {
+  // static void initRuntimeVersion() noexcept;
+  // static uint64_t getRuntimeVersion() {
   //  return s_runtimeVersion;
   //}
 
   // Miscellaneous
-  //std::unique_ptr<const facebook::jsi::Buffer> generatePreparedScript(
+  // std::unique_ptr<const facebook::jsi::Buffer> generatePreparedScript(
   //    const std::string &sourceURL,
   //    const facebook::jsi::Buffer &sourceBuffer) noexcept;
-  //facebook::jsi::Value evaluateJavaScriptSimple(const facebook::jsi::Buffer &buffer, const std::string &sourceURL);
-  //bool evaluateSerializedScript(
+  // facebook::jsi::Value evaluateJavaScriptSimple(const facebook::jsi::Buffer &buffer, const std::string &sourceURL);
+  // bool evaluateSerializedScript(
   //    const facebook::jsi::Buffer &scriptBuffer,
   //    const facebook::jsi::Buffer &serializedScriptBuffer,
   //    const std::string &sourceURL,

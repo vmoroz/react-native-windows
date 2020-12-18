@@ -82,7 +82,7 @@ struct NapiApi {
     NapiRefHolder &operator=(NapiRefHolder &&other) noexcept;
 
     // The class is not copyable.
-    NapiRefHolder &operator=(NapiRefHolder const &other) = 0;
+    NapiRefHolder &operator=(NapiRefHolder const &other) = delete;
     NapiRefHolder(NapiRefHolder const &other) = delete;
 
     ~NapiRefHolder() noexcept;
@@ -142,284 +142,288 @@ struct NapiApi {
   /**
    * @brief Throws JavaScript exception with provided errorCode.
    */
-  [[noreturn]] static void ThrowJsException(JsErrorCode errorCode);
+  [[noreturn]] void ThrowJsException(napi_status errorCode);
 
   /**
    * @brief Throws native exception with provided message.
    */
-  [[noreturn]] static void ThrowNativeException(char const *errorMessage);
+  [[noreturn]] void ThrowNativeException(char const *errorMessage);
+
+  napi_ref CreateReference(napi_value value);
+  void DeleteReference(napi_ref ref);
+  napi_value GetReferenceValue(napi_ref ref);
 
   /**
    * @brief Creates a new runtime.
    */
-  static JsRuntimeHandle CreateRuntime(JsRuntimeAttributes attributes, JsThreadServiceCallback threadService);
+  //static JsRuntimeHandle CreateRuntime(JsRuntimeAttributes attributes, JsThreadServiceCallback threadService);
 
   /**
    * @brief Disposes a runtime.
    */
-  static void DisposeRuntime(JsRuntimeHandle runtime);
+  //static void DisposeRuntime(JsRuntimeHandle runtime);
 
   /**
    * @brief Adds a reference to a garbage collected object.
    */
-  static uint32_t AddRef(JsRef ref);
+  //static uint32_t AddRef(JsRef ref);
 
   /**
    * @brief Releases a reference to a garbage collected object.
    */
-  static uint32_t Release(JsRef ref);
+  //static uint32_t Release(JsRef ref);
 
   /**
    * @brief Creates a script context for running scripts.
    */
-  static JsContextRef CreateContext(JsRuntimeHandle runtime);
+  //static JsContextRef CreateContext(JsRuntimeHandle runtime);
 
   /**
    * @brief Gets the current script context on the thread..
    */
-  JsContextRef GetCurrentContext();
+  //JsContextRef GetCurrentContext();
 
   /**
    * @brief Sets the current script context on the thread.
    */
-  void SetCurrentContext(JsContextRef context);
+  //void SetCurrentContext(JsContextRef context);
 
   /**
    * @brief Gets the property ID associated with the name.
    */
-  static JsPropertyIdRef GetPropertyIdFromName(wchar_t const *name);
+  //static JsPropertyIdRef GetPropertyIdFromName(wchar_t const *name);
 
   /**
    * @brief Gets the property ID associated with the name.
    */
-  static JsPropertyIdRef GetPropertyIdFromName(std::string_view name);
+  //static JsPropertyIdRef GetPropertyIdFromName(std::string_view name);
 
   /**
    * @brief Gets the property ID associated with the string.
    */
-  static JsPropertyIdRef GetPropertyIdFromString(JsValueRef value);
+  //static JsPropertyIdRef GetPropertyIdFromString(JsValueRef value);
 
   /**
    * @brief Gets the name associated with the property ID.
    */
-  static wchar_t const *GetPropertyNameFromId(JsPropertyIdRef propertyId);
+  //static wchar_t const *GetPropertyNameFromId(JsPropertyIdRef propertyId);
 
   /**
    * @brief Gets the string associated with the property ID.
    */
-  static JsValueRef GetPropertyStringFromId(JsPropertyIdRef propertyId);
+  //static JsValueRef GetPropertyStringFromId(JsPropertyIdRef propertyId);
 
   /**
    * @brief Gets the symbol associated with the property ID.
    */
-  static JsValueRef GetSymbolFromPropertyId(JsPropertyIdRef propertyId);
+  //static JsValueRef GetSymbolFromPropertyId(JsPropertyIdRef propertyId);
 
   /**
    * @brief Gets the type of property.
    */
-  static JsPropertyIdType GetPropertyIdType(JsPropertyIdRef propertyId);
+  //static JsPropertyIdType GetPropertyIdType(JsPropertyIdRef propertyId);
 
   /**
    * @brief Gets the property ID associated with the symbol.
    */
-  static JsPropertyIdRef GetPropertyIdFromSymbol(JsValueRef symbol);
+  //static JsPropertyIdRef GetPropertyIdFromSymbol(JsValueRef symbol);
 
   /**
    * @brief Creates symbol and gets the property ID associated with the symbol.
    */
-  static JsPropertyIdRef GetPropertyIdFromSymbol(std::wstring_view symbolDescription);
+  //static JsPropertyIdRef GetPropertyIdFromSymbol(std::wstring_view symbolDescription);
 
   /**
    * @brief Creates a JavaScript symbol.
    */
-  static JsValueRef CreateSymbol(JsValueRef symbolDescription);
+  //static JsValueRef CreateSymbol(JsValueRef symbolDescription);
 
   /**
    * @brief Creates a JavaScript symbol.
    */
-  static JsValueRef CreateSymbol(std::wstring_view symbolDescription);
+  //static JsValueRef CreateSymbol(std::wstring_view symbolDescription);
 
   /**
    * @brief Gets the value of \c undefined in the current script context.
    */
-  static JsValueRef GetUndefinedValue();
+  napi_value GetUndefined();
 
   /**
    * @brief Gets the value of \c null in the current script context.
    */
-  static JsValueRef GetNullValue();
+  napi_value GetNull();
 
   /**
    * @brief Creates a Boolean value from a \c bool value.
    */
-  static JsValueRef BoolToBoolean(bool value);
+  napi_value GetBoolean(bool value);
 
   /**
    * @brief Retrieves the \c bool value of a Boolean value.
    */
-  static bool BooleanToBool(JsValueRef value);
+  bool GetValueBool(napi_value value);
 
-  /**
-   * @brief Gets the JavaScript type of a JsValueRef.
-   */
-  static JsValueType GetValueType(JsValueRef value);
+  ///**
+  // * @brief Gets the JavaScript type of a JsValueRef.
+  // */
+  //napi_valuetype TypeOf(napi_value value);
 
-  /**
-   * @brief Creates a number value from a \c double value.
-   */
-  static JsValueRef DoubleToNumber(double value);
+  ///**
+  // * @brief Creates a number value from a \c double value.
+  // */
+  //static JsValueRef DoubleToNumber(double value);
 
-  /**
-   * @brief Creates a number value from an \c int value.
-   */
-  static JsValueRef IntToNumber(int32_t value);
+  ///**
+  // * @brief Creates a number value from an \c int value.
+  // */
+  //static JsValueRef IntToNumber(int32_t value);
 
-  /**
-   * @brief Retrieves the \c double value of a number value.
-   */
-  static double NumberToDouble(JsValueRef value);
+  ///**
+  // * @brief Retrieves the \c double value of a number value.
+  // */
+  //static double NumberToDouble(JsValueRef value);
 
-  /**
-   * @brief Retrieves the \c int value of a number value.
-   */
-  static int32_t NumberToInt(JsValueRef value);
+  ///**
+  // * @brief Retrieves the \c int value of a number value.
+  // */
+  //static int32_t NumberToInt(JsValueRef value);
 
-  /**
-   * @brief Creates a string value from a string pointer represented as std::wstring_view.
-   */
-  static JsValueRef PointerToString(std::wstring_view value);
+  ///**
+  // * @brief Creates a string value from a string pointer represented as std::wstring_view.
+  // */
+  //static JsValueRef PointerToString(std::wstring_view value);
 
-  // Creates a string value from an ASCII std::string_view.
-  napi_value CreateStringLatin1(std::string_view value);
+  //// Creates a string value from an ASCII std::string_view.
+  //napi_value CreateStringLatin1(std::string_view value);
 
-  // Creates a string value from an UTF-8 std::string_view.
-  napi_value CreateStringUtf8(std::string_view value);
+  //// Creates a string value from an UTF-8 std::string_view.
+  //napi_value CreateStringUtf8(std::string_view value);
 
-  // Creates a string value from an UTF-16 std::u16string_view.
-  napi_value CreateStringUtf16(std::u16string_view value);
+  //// Creates a string value from an UTF-16 std::u16string_view.
+  //napi_value CreateStringUtf16(std::u16string_view value);
 
-  // Get a string representation of property Id
-  std::string PropertyIdToStdString(napi_ref propertyIdRef);
+  //// Get a string representation of property Id
+  //std::string PropertyIdToStdString(napi_ref propertyIdRef);
 
-  // Get value from the napi_reference
-  napi_value GetReferenceValue(napi_ref ref);
+  //// Get value from the napi_reference
+  //napi_value GetReferenceValue(napi_ref ref);
 
-  /**
-   * @brief Retrieves the string pointer of a string value.
-   *
-   * This function retrieves the string pointer of a string value. It will fail with
-   * an exception with \c JsErrorInvalidArgument if the type of the value is not string. The lifetime
-   * of the string returned will be the same as the lifetime of the value it came from, however
-   * the string pointer is not considered a reference to the value (and so will not keep it
-   *from being collected).
-   */
-  static std::wstring_view StringToPointer(JsValueRef string);
+  ///**
+  // * @brief Retrieves the string pointer of a string value.
+  // *
+  // * This function retrieves the string pointer of a string value. It will fail with
+  // * an exception with \c JsErrorInvalidArgument if the type of the value is not string. The lifetime
+  // * of the string returned will be the same as the lifetime of the value it came from, however
+  // * the string pointer is not considered a reference to the value (and so will not keep it
+  // *from being collected).
+  // */
+  //static std::wstring_view StringToPointer(JsValueRef string);
 
-   // Converts the string to the utf8-encoded std::string.
-  std::string StringToStdString(napi_value stringValue);
-  std::string StringToStdString(napi_ref stringRef);
+  // // Converts the string to the utf8-encoded std::string.
+  //std::string StringToStdString(napi_value stringValue);
+  //std::string StringToStdString(napi_ref stringRef);
 
-  /**
-   * @brief Converts the value to string using standard JavaScript semantics.
-   */
-  static JsValueRef ConvertValueToString(JsValueRef value);
+  ///**
+  // * @brief Converts the value to string using standard JavaScript semantics.
+  // */
+  //static JsValueRef ConvertValueToString(JsValueRef value);
 
-  /**
-   * @brief Gets the global object in the current script context.
-   */
-  static JsValueRef GetGlobalObject();
+  ///**
+  // * @brief Gets the global object in the current script context.
+  // */
+  //static JsValueRef GetGlobalObject();
 
-  /**
-   * @brief Creates a new object.
-   */
-  static JsValueRef CreateObject();
+  ///**
+  // * @brief Creates a new object.
+  // */
+  //static JsValueRef CreateObject();
 
-  /**
-   * @brief Creates a new object that stores some external data.
-   */
-  napi_value CreateExternalObject(void *data, napi_finalize finalizeCallback);
+  ///**
+  // * @brief Creates a new object that stores some external data.
+  // */
+  //napi_value CreateExternalObject(void *data, napi_finalize finalizeCallback);
 
-  /**
-   * @brief Creates a new object that stores external data as an std::unique_ptr.
-   */
-  template <typename T>
-  napi_value CreateExternalObject(std::unique_ptr<T> &&data) {
-    napi_value object = CreateExternalObject(data.get(), [](napi_env /*env*/, void *dataToDestroy, void* /*finalizerHint*/) {
-      // We wrap dataToDestroy in a unique_ptr to avoid calling delete explicitly.
-      std::unique_ptr<T> wrapper{static_cast<T *>(dataToDestroy)};
-    });
+  ///**
+  // * @brief Creates a new object that stores external data as an std::unique_ptr.
+  // */
+  //template <typename T>
+  //napi_value CreateExternalObject(std::unique_ptr<T> &&data) {
+  //  napi_value object = CreateExternalObject(data.get(), [](napi_env /*env*/, void *dataToDestroy, void* /*finalizerHint*/) {
+  //    // We wrap dataToDestroy in a unique_ptr to avoid calling delete explicitly.
+  //    std::unique_ptr<T> wrapper{static_cast<T *>(dataToDestroy)};
+  //  });
 
-    // We only call data.release() after the CreateExternalObject succeeds.
-    // Otherwise, when CreateExternalObject fails and an exception is thrown,
-    // the memory that data used to own will be leaked.
-    data.release();
-    return object;
-  }
+  //  // We only call data.release() after the CreateExternalObject succeeds.
+  //  // Otherwise, when CreateExternalObject fails and an exception is thrown,
+  //  // the memory that data used to own will be leaked.
+  //  data.release();
+  //  return object;
+  //}
 
-  /**
-   * @brief Returns the prototype of an object.
-   */
-  static JsValueRef GetPrototype(JsValueRef object);
+  ///**
+  // * @brief Returns the prototype of an object.
+  // */
+  //static JsValueRef GetPrototype(JsValueRef object);
 
-  /**
-   * @brief Performs JavaScript "instanceof" operator test.
-   */
-  static bool InstanceOf(JsValueRef object, JsValueRef constructor);
+  ///**
+  // * @brief Performs JavaScript "instanceof" operator test.
+  // */
+  //static bool InstanceOf(JsValueRef object, JsValueRef constructor);
 
-  /**
-   * @brief Gets an object's property.
-   */
-  static JsValueRef GetProperty(JsValueRef object, JsPropertyIdRef propertyId);
+  ///**
+  // * @brief Gets an object's property.
+  // */
+  //static JsValueRef GetProperty(JsValueRef object, JsPropertyIdRef propertyId);
 
-  /**
-   * @brief Gets the list of all properties on the object.
-   */
-  static JsValueRef GetOwnPropertyNames(JsValueRef object);
+  ///**
+  // * @brief Gets the list of all properties on the object.
+  // */
+  //static JsValueRef GetOwnPropertyNames(JsValueRef object);
 
-  /**
-   * @brief Puts an object's property.
-   */
-  static void SetProperty(JsValueRef object, JsPropertyIdRef propertyId, JsValueRef value);
+  ///**
+  // * @brief Puts an object's property.
+  // */
+  //static void SetProperty(JsValueRef object, JsPropertyIdRef propertyId, JsValueRef value);
 
-  /**
-   * @brief Determines whether an object has a property.
-   */
-  static bool HasProperty(JsValueRef object, JsPropertyIdRef propertyId);
+  ///**
+  // * @brief Determines whether an object has a property.
+  // */
+  //static bool HasProperty(JsValueRef object, JsPropertyIdRef propertyId);
 
-  /**
-   * @brief Defines a new object's own property from a property descriptor.
-   */
-  static bool DefineProperty(JsValueRef object, JsPropertyIdRef propertyId, JsValueRef propertyDescriptor);
+  ///**
+  // * @brief Defines a new object's own property from a property descriptor.
+  // */
+  //static bool DefineProperty(JsValueRef object, JsPropertyIdRef propertyId, JsValueRef propertyDescriptor);
 
-  /**
-   * @brief Retrieve the value at the specified index of an object.
-   */
-  static JsValueRef GetIndexedProperty(JsValueRef object, int32_t index);
+  ///**
+  // * @brief Retrieve the value at the specified index of an object.
+  // */
+  //static JsValueRef GetIndexedProperty(JsValueRef object, int32_t index);
 
-  /**
-   * @brief Set the value at the specified index of an object.
-   */
-  static void SetIndexedProperty(JsValueRef object, int32_t index, JsValueRef value);
+  ///**
+  // * @brief Set the value at the specified index of an object.
+  // */
+  //static void SetIndexedProperty(JsValueRef object, int32_t index, JsValueRef value);
 
-  /**
-   * @brief Compare two JavaScript values for strict equality.
-   */
-  static bool StrictEquals(JsValueRef object1, JsValueRef object2);
+  ///**
+  // * @brief Compare two JavaScript values for strict equality.
+  // */
+  //static bool StrictEquals(JsValueRef object1, JsValueRef object2);
 
-  /**
-   * @brief Retrieves the data from an external object.
-   */
-  static void *GetExternalData(JsValueRef object);
+  ///**
+  // * @brief Retrieves the data from an external object.
+  // */
+  //static void *GetExternalData(JsValueRef object);
 
-  /**
-   * @brief Creates a JavaScript array object.
-   */
-  static JsValueRef CreateArray(size_t length);
+  ///**
+  // * @brief Creates a JavaScript array object.
+  // */
+  //static JsValueRef CreateArray(size_t length);
 
-  /**
-   * @brief Creates a JavaScript ArrayBuffer object.
-   */
-  static JsValueRef CreateArrayBuffer(size_t byteLength);
+  ///**
+  // * @brief Creates a JavaScript ArrayBuffer object.
+  // */
+  //static JsValueRef CreateArrayBuffer(size_t byteLength);
 
   /**
    * @brief A span of values that can be used to pass arguments to function.
@@ -448,36 +452,36 @@ struct NapiApi {
     size_t const m_size;
   };
 
-  /**
-   * @brief Obtains the underlying memory storage used by an \c ArrayBuffer.
-   */
-  Span<std::byte> GetArrayBufferStorage(JsValueRef arrayBuffer);
+  ///**
+  // * @brief Obtains the underlying memory storage used by an \c ArrayBuffer.
+  // */
+  //Span<std::byte> GetArrayBufferStorage(JsValueRef arrayBuffer);
 
-  napi_value CallFunction(napi_value thisArg, napi_value function, Span<napi_value> args);
+  //napi_value CallFunction(napi_value thisArg, napi_value function, Span<napi_value> args);
 
-  napi_value ConstructObject(napi_value constructor, Span<napi_value> args);
+  //napi_value ConstructObject(napi_value constructor, Span<napi_value> args);
 
-  /**
-   * @brief Creates a new JavaScript function with name.
-   */
-  static JsValueRef CreateNamedFunction(JsValueRef name, JsNativeFunction nativeFunction, void *callbackState);
+  ///**
+  // * @brief Creates a new JavaScript function with name.
+  // */
+  //static JsValueRef CreateNamedFunction(JsValueRef name, JsNativeFunction nativeFunction, void *callbackState);
 
-  /**
-   * @brief  Sets the runtime of the current context to an exception state.
-   *
-   * It returns \c false in case if the current context is already in an exception state.
-   */
-  static bool SetException(JsValueRef error) noexcept;
+  ///**
+  // * @brief  Sets the runtime of the current context to an exception state.
+  // *
+  // * It returns \c false in case if the current context is already in an exception state.
+  // */
+  //static bool SetException(JsValueRef error) noexcept;
 
-  /**
-   * @brief  Sets the runtime of the current context to an exception state.
-   */
-  static bool SetException(std::string_view message) noexcept;
+  ///**
+  // * @brief  Sets the runtime of the current context to an exception state.
+  // */
+  //static bool SetException(std::string_view message) noexcept;
 
-  /**
-   * @brief  Sets the runtime of the current context to an exception state.
-   */
-  static bool SetException(std::wstring_view message) noexcept;
+  ///**
+  // * @brief  Sets the runtime of the current context to an exception state.
+  // */
+  //static bool SetException(std::wstring_view message) noexcept;
 
  private:
   napi_env m_env;
