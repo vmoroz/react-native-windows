@@ -12,19 +12,19 @@ namespace react::jsi {
 // NapiApi::JsRefHolder implementation
 //=============================================================================
 
-NapiApi::NapiRefHolder::NapiRefHolder(napi_env env, napi_ref ref) noexcept : m_env{env}, m_ref{ref} {}
+NapiApi::NapiRefHolder::NapiRefHolder(NapiApi *napi, napi_ref ref) noexcept : m_napi{napi}, m_ref{ref} {}
 
-NapiApi::NapiRefHolder::NapiRefHolder(napi_env env, napi_value value) noexcept : m_env{env} {
-  // TODO: [vmoroz] Add CHECK_NAPI
-  napi_create_reference(m_env, value, 1, &m_ref);
+NapiApi::NapiRefHolder::NapiRefHolder(NapiApi *napi, napi_value value) noexcept : m_napi{napi} {
+  m_ref = m_napi->CreateReference(value);
 }
 
 NapiApi::NapiRefHolder::NapiRefHolder(NapiRefHolder &&other) noexcept
-    : m_env{std::exchange(other.m_env, nullptr)}, m_ref{std::exchange(other.m_ref, nullptr)} {}
+    : m_napi{std::exchange(other.m_napi, nullptr)}, m_ref{std::exchange(other.m_ref, nullptr)} {}
 
 NapiApi::NapiRefHolder &NapiApi::NapiRefHolder::operator=(NapiRefHolder &&other) noexcept {
   if (this != &other) {
     NapiRefHolder temp{std::move(*this)};
+    m_napi = std::exchange(other.m_napi, nullptr);
     m_ref = std::exchange(other.m_ref, nullptr);
   }
 
@@ -34,9 +34,20 @@ NapiApi::NapiRefHolder &NapiApi::NapiRefHolder::operator=(NapiRefHolder &&other)
 NapiApi::NapiRefHolder::~NapiRefHolder() noexcept {
   if (m_ref) {
     // Clear m_ref before calling napi_delete_reference on it to make sure that we always hold a valid m_ref.
-    // TODO: [vmoroz] Add CHECK_NAPI
-    napi_delete_reference(m_env, std::exchange(m_ref, nullptr));
+    m_napi->DeleteReference(std::exchange(m_ref, nullptr));
   }
+}
+
+NapiApi::NapiRefHolder::operator napi_ref() const noexcept {
+  return m_ref;
+}
+
+NapiApi::NapiRefHolder::operator napi_value() const {
+  return m_napi->GetReferenceValue(m_ref);
+}
+
+NapiApi::NapiRefHolder::operator bool() const noexcept {
+  return m_ref != nullptr;
 }
 
 //=============================================================================
@@ -49,7 +60,7 @@ NapiApi::NapiRefHolder::~NapiRefHolder() noexcept {
 // NapiApi implementation
 //=============================================================================
 
-[[noreturn]] void NapiApi::ThrowJsException(napi_status errorCode) {
+[[noreturn]] void NapiApi::ThrowJsException(napi_status errorCode) const {
   napi_value jsError{};
   NapiVerifyElseCrash(napi_get_and_clear_last_exception(m_env, &jsError) == napi_ok, "Cannot retrieve JS exception.");
   if (auto thrower = ExceptionThrowerHolder::Get()) {
@@ -61,7 +72,7 @@ NapiApi::NapiRefHolder::~NapiRefHolder() noexcept {
   }
 }
 
-[[noreturn]] void NapiApi::ThrowNativeException(char const *errorMessage) {
+[[noreturn]] void NapiApi::ThrowNativeException(char const *errorMessage) const {
   if (auto thrower = ExceptionThrowerHolder::Get()) {
     thrower->ThrowNativeExceptionOverride(errorMessage);
   } else {
@@ -69,21 +80,37 @@ NapiApi::NapiRefHolder::~NapiRefHolder() noexcept {
   }
 }
 
-napi_ref NapiApi::CreateReference(napi_value value) {
+napi_ref NapiApi::CreateReference(napi_value value) const {
   napi_ref result{};
   CHECK_NAPI(napi_create_reference(m_env, value, 1, &result));
   return result;
 }
 
-void NapiApi::DeleteReference(napi_ref ref) {
+void NapiApi::DeleteReference(napi_ref ref) const {
   // TODO: [vmoroz] make it safe to be called from another thread per JSI spec.
   CHECK_NAPI(napi_delete_reference(m_env, ref));
 }
 
-napi_value NapiApi::GetReferenceValue(napi_ref ref) {
+napi_value NapiApi::GetReferenceValue(napi_ref ref) const {
   napi_value result{};
   CHECK_NAPI(napi_get_reference_value(m_env, ref, &result));
   return result;
+}
+
+bool NapiApi::IsArray(napi_value value) const {
+  bool result{};
+  CHECK_NAPI(napi_is_array(m_env, value, &result));
+  return result;
+}
+
+bool NapiApi::IsArrayBuffer(napi_value value) const {
+  bool result{};
+  CHECK_NAPI(napi_is_arraybuffer(m_env, value, &result));
+  return result;
+}
+
+bool NapiApi::IsFunction(napi_value value) const {
+  return TypeOf(value) == napi_valuetype::napi_function;
 }
 
 ///*static*/ JsRuntimeHandle NapiApi::CreateRuntime(
@@ -205,76 +232,82 @@ napi_value NapiApi::GetReferenceValue(napi_ref ref) {
 //  return CreateSymbol(PointerToString(symbolDescription));
 //}
 
-napi_value NapiApi::GetUndefined() {
+napi_value NapiApi::GetUndefined() const {
   napi_value result{nullptr};
   CHECK_NAPI(napi_get_undefined(m_env, &result));
   return result;
 }
 
-napi_value NapiApi::GetNull() {
+napi_value NapiApi::GetNull() const {
   napi_value result{nullptr};
   CHECK_NAPI(napi_get_null(m_env, &result));
   return result;
 }
 
-napi_value NapiApi::GetBoolean(bool value) {
+napi_value NapiApi::GetBoolean(bool value) const {
   napi_value result{nullptr};
   CHECK_NAPI(napi_get_boolean(m_env, value, &result));
   return result;
 }
 
-bool NapiApi::GetValueBool(napi_value value) {
+bool NapiApi::GetValueBool(napi_value value) const {
   bool result{nullptr};
   CHECK_NAPI(napi_get_value_bool(m_env, value, &result));
   return result;
 }
 
-///*static*/ JsValueType NapiApi::GetValueType(JsValueRef value) {
-//  napi_valuetype result{nullptr};
-//  CHECK_NAPI(napi_get_valuetype(m_env, value, &result));
-//  return result;
-//}
-//
-///*static*/ JsValueRef NapiApi::DoubleToNumber(double value) {
-//  JsValueRef result{JS_INVALID_REFERENCE};
-//  NapiVerifyJsErrorElseThrow(JsDoubleToNumber(value, &result));
-//  return result;
-//}
-//
+napi_valuetype NapiApi::TypeOf(napi_value value) const {
+  napi_valuetype result{};
+  CHECK_NAPI(napi_typeof(m_env, value, &result));
+  return result;
+}
+
+napi_value NapiApi::CreateDouble(double value) const {
+  napi_value result{};
+  CHECK_NAPI(napi_create_double(m_env, value, &result));
+  return result;
+}
+
+napi_value NapiApi::CreateInt32(int32_t value) const {
+  napi_value result{};
+  CHECK_NAPI(napi_create_int32(m_env, value, &result));
+  return result;
+}
+
 ///*static*/ JsValueRef NapiApi::IntToNumber(int32_t value) {
 //  JsValueRef numberValue{JS_INVALID_REFERENCE};
 //  NapiVerifyJsErrorElseThrow(JsIntToNumber(value, &numberValue));
 //  return numberValue;
 //}
-//
-///*static*/ double NapiApi::NumberToDouble(JsValueRef value) {
-//  double doubleValue{0};
-//  NapiVerifyJsErrorElseThrow(JsNumberToDouble(value, &doubleValue));
-//  return doubleValue;
-//}
-//
+
+double NapiApi::GetValueDouble(napi_value value) const {
+  double result{0};
+  CHECK_NAPI(napi_get_value_double(m_env, value, &result));
+  return result;
+}
+
 ///*static*/ int32_t NapiApi::NumberToInt(JsValueRef value) {
 //  int intValue{0};
 //  NapiVerifyJsErrorElseThrow(JsNumberToInt(value, &intValue));
 //  return intValue;
 //}
 //
-// napi_value NapiApi::CreateStringLatin1(std::string_view value) {
-//  NapiVerifyElseThrow(value.data(), "Cannot convert a nullptr to a JS string.");
-//
-//  napi_value result{};
-//  NapiVerifyJsErrorElseThrow(napi_create_string_latin1(m_env, value.data(), value.size(), &result));
-//  return result;
-//}
-//
-// napi_value NapiApi::CreateStringUtf8(std::string_view value) {
-//  NapiVerifyElseThrow(value.data(), "Cannot convert a nullptr to a JS string.");
-//
-//  napi_value result{};
-//  NapiVerifyJsErrorElseThrow(napi_create_string_utf8(m_env, value.data(), value.size(), &result));
-//  return result;
-//}
-//
+napi_value NapiApi::CreateStringLatin1(std::string_view value) const {
+  NapiVerifyElseThrow(value.data(), "Cannot convert a nullptr to a JS string.");
+
+  napi_value result{};
+  NapiVerifyJsErrorElseThrow(napi_create_string_latin1(m_env, value.data(), value.size(), &result));
+  return result;
+}
+
+napi_value NapiApi::CreateStringUtf8(std::string_view value) const {
+  NapiVerifyElseThrow(value.data(), "Cannot convert a nullptr to a JS string.");
+
+  napi_value result{};
+  NapiVerifyJsErrorElseThrow(napi_create_string_utf8(m_env, value.data(), value.size(), &result));
+  return result;
+}
+
 // napi_value NapiApi::CreateStringUtf16(std::u16string_view value) {
 //  NapiVerifyElseThrow(value.data(), "Cannot convert a nullptr to a JS string.");
 //
@@ -282,10 +315,11 @@ bool NapiApi::GetValueBool(napi_value value) {
 //  NapiVerifyJsErrorElseThrow(napi_create_string_utf16(m_env, value.data(), value.size(), &result));
 //  return result;
 //}
-//
-// std::string NapiApi::PropertyIdToStdString(napi_ref propertyIdRef) {
-//  return StringToStdString(propertyIdRef);
-//}
+
+std::string NapiApi::PropertyIdToStdString(napi_value propertyId) const {
+  // TODO: [vmoroz] account for symbol and number property ID
+  return StringToStdString(propertyId);
+}
 //
 // napi_value NapiApi::GetReferenceValue(napi_ref ref) {
 //  napi_value value{};
@@ -300,20 +334,19 @@ bool NapiApi::GetValueBool(napi_value value) {
 //  return {utf16, length};
 //}
 //
-// std::string NapiApi::StringToStdString(napi_value stringValue) {
-//  std::string result;
-//  NapiVerifyElseThrow(
-//      GetValueType(stringValue) == napi_valuetype::napi_string,
-//      "Cannot convert a non JS string ChakraObjectRef to a std::string.");
-//  size_t strLength{};
-//  NapiVerifyJsErrorElseThrow(napi_get_value_string_utf8(m_env, stringValue, nullptr, 0, &strLength));
-//  result.assign(strLength, '\0');
-//  size_t copiedLength{};
-//  NapiVerifyJsErrorElseThrow(
-//      napi_get_value_string_utf8(m_env, stringValue, result.data(), result.capacity(), &copiedLength));
-//  NapiVerifyElseThrow(result.length() == copiedLength, "Unexpected string length");
-//  return result;
-//}
+std::string NapiApi::StringToStdString(napi_value stringValue) const {
+  std::string result;
+  NapiVerifyElseThrow(
+      TypeOf(stringValue) == napi_valuetype::napi_string,
+      "Cannot convert a non JS string ChakraObjectRef to a std::string.");
+  size_t strLength{};
+  CHECK_NAPI(napi_get_value_string_utf8(m_env, stringValue, nullptr, 0, &strLength));
+  result.assign(strLength, '\0');
+  size_t copiedLength{};
+  CHECK_NAPI(napi_get_value_string_utf8(m_env, stringValue, result.data(), result.capacity(), &copiedLength));
+  NapiVerifyElseThrow(result.length() == copiedLength, "Unexpected string length");
+  return result;
+}
 //
 // std::string NapiApi::StringToStdString(napi_ref stringRef) {
 //  return StringToStdString(GetReferenceValue(stringRef));
@@ -324,43 +357,42 @@ bool NapiApi::GetValueBool(napi_value value) {
 //  NapiVerifyJsErrorElseThrow(JsConvertValueToString(value, &stringValue));
 //  return stringValue;
 //}
-//
-napi_value NapiApi::GetGlobalObject() {
+
+napi_value NapiApi::GetGlobalObject() const {
   napi_value result{};
   CHECK_NAPI(napi_get_global(m_env, &result));
   return result;
 }
-//
-///*static*/ JsValueRef NapiApi::CreateObject() {
-//  JsValueRef object{JS_INVALID_REFERENCE};
-//  NapiVerifyJsErrorElseThrow(JsCreateObject(&object));
-//  return object;
-//}
-//
-// napi_value
-// NapiApi::CreateExternalObject(void *data, napi_finalize finalizeCallback) {
-//  napi_value result{};
-//  NapiVerifyJsErrorElseThrow(napi_create_external(m_env, data, finalizeCallback, nullptr, &value));
-//  return result;
-//}
-//
+
+napi_value NapiApi::CreateObject() const {
+  napi_value result{};
+  CHECK_NAPI(napi_create_object(m_env, &result));
+  return result;
+}
+
+napi_value NapiApi::CreateExternalObject(void *data, napi_finalize finalizeCallback) const {
+  napi_value result{};
+  CHECK_NAPI(napi_create_external(m_env, data, finalizeCallback, nullptr, &result));
+  return result;
+}
+
 ///*static*/ JsValueRef NapiApi::GetPrototype(JsValueRef object) {
 //  JsValueRef prototype{JS_INVALID_REFERENCE};
 //  NapiVerifyJsErrorElseThrow(JsGetPrototype(object, &prototype));
 //  return prototype;
 //}
 //
-///*static*/ bool NapiApi::InstanceOf(JsValueRef object, JsValueRef constructor) {
-//  bool result{false};
-//  NapiVerifyJsErrorElseThrow(JsInstanceOf(object, constructor, &result));
-//  return result;
-//}
-//
-///*static*/ JsValueRef NapiApi::GetProperty(JsValueRef object, JsPropertyIdRef propertyId) {
-//  JsValueRef result{JS_INVALID_REFERENCE};
-//  NapiVerifyJsErrorElseThrow(JsGetProperty(object, propertyId, &result));
-//  return result;
-//}
+bool NapiApi::InstanceOf(napi_value object, napi_value constructor) const {
+  bool result{false};
+  CHECK_NAPI(napi_instanceof(m_env, object, constructor, &result));
+  return result;
+}
+
+napi_value NapiApi::GetProperty(napi_value object, napi_value propertyId) const {
+  napi_value result{};
+  CHECK_NAPI(napi_get_property(m_env, object, propertyId, &result));
+  return result;
+}
 //
 ///*static*/ JsValueRef NapiApi::GetOwnPropertyNames(JsValueRef object) {
 //  JsValueRef propertyNames{JS_INVALID_REFERENCE};
@@ -371,20 +403,22 @@ napi_value NapiApi::GetGlobalObject() {
 ///*static*/ void NapiApi::SetProperty(JsValueRef object, JsPropertyIdRef propertyId, JsValueRef value) {
 //  NapiVerifyJsErrorElseThrow(JsSetProperty(object, propertyId, value, /*useStringRules:*/ true));
 //}
-//
-///*static*/ bool NapiApi::HasProperty(JsValueRef object, JsPropertyIdRef propertyId) {
-//  bool hasProperty{false};
-//  NapiVerifyJsErrorElseThrow(JsHasProperty(object, propertyId, &hasProperty));
-//  return hasProperty;
-//}
-//
-///*static*/ bool
-// NapiApi::DefineProperty(JsValueRef object, JsPropertyIdRef propertyId, JsValueRef propertyDescriptor) {
-//  bool isSucceeded{false};
-//  NapiVerifyJsErrorElseThrow(JsDefineProperty(object, propertyId, propertyDescriptor, &isSucceeded));
-//  return isSucceeded;
-//}
-//
+
+void NapiApi::SetProperty(napi_value object, napi_value propertyId, napi_value value) const {
+  CHECK_NAPI(napi_set_property(m_env, object, propertyId, value));
+}
+
+bool NapiApi::HasProperty(napi_value object, napi_value propertyId) const {
+  bool result{};
+  CHECK_NAPI(napi_has_property(m_env, object, propertyId, &result));
+  return result;
+}
+
+void NapiApi::DefineProperty(napi_value object, napi_value propertyId, napi_property_descriptor const &descriptor)
+    const {
+  CHECK_NAPI(napi_define_properties(m_env, object, 1, &descriptor));
+}
+
 ///*static*/ JsValueRef NapiApi::GetIndexedProperty(JsValueRef object, int32_t index) {
 //  JsValueRef result{JS_INVALID_REFERENCE};
 //  NapiVerifyJsErrorElseThrow(JsGetIndexedProperty(object, IntToNumber(index), &result));
@@ -395,18 +429,18 @@ napi_value NapiApi::GetGlobalObject() {
 //  NapiVerifyJsErrorElseThrow(JsSetIndexedProperty(object, IntToNumber(index), value));
 //}
 //
-///*static*/ bool NapiApi::StrictEquals(JsValueRef object1, JsValueRef object2) {
-//  bool result{false};
-//  NapiVerifyJsErrorElseThrow(JsStrictEquals(object1, object2, &result));
-//  return result;
-//}
-//
-///*static*/ void *NapiApi::GetExternalData(JsValueRef object) {
-//  void *data{nullptr};
-//  NapiVerifyJsErrorElseThrow(JsGetExternalData(object, &data));
-//  return data;
-//}
-//
+bool NapiApi::StrictEquals(napi_value left, napi_value right) const {
+  bool result{false};
+  CHECK_NAPI(napi_strict_equals(m_env, left, right, &result));
+  return result;
+}
+
+void *NapiApi::GetExternalData(napi_value object) const {
+  void *result{};
+  CHECK_NAPI(napi_get_value_external(m_env, object, &result));
+  return result;
+}
+
 ///*static*/ JsValueRef NapiApi::CreateArray(size_t length) {
 //  JsValueRef result{JS_INVALID_REFERENCE};
 //  NapiVerifyJsErrorElseThrow(JsCreateArray(static_cast<unsigned int>(length), &result));
@@ -426,25 +460,25 @@ napi_value NapiApi::GetGlobalObject() {
 //  return {reinterpret_cast<std::byte *>(buffer), bufferLength};
 //}
 //
-// napi_value NapiApi::CallFunction(napi_value thisArg, napi_value function, Span<napi_value> args) {
-//  napi_value result{};
-//  NapiVerifyJsErrorElseThrow(napi_call_function(m_env, thisArg, function, args.size(), args.begin(), &result));
-//  return result;
-//}
-//
-// napi_value NapiApi::ConstructObject(napi_value constructor, Span<napi_value> args) {
-//  napi_value result{};
-//  NapiVerifyJsErrorElseThrow(napi_new_instance(m_env, constructor, args.size(), args.begin(), &result));
-//  return result;
-//}
-//
-///*static*/ JsValueRef
-// NapiApi::CreateNamedFunction(JsValueRef name, JsNativeFunction nativeFunction, void *callbackState) {
-//  JsValueRef function{JS_INVALID_REFERENCE};
-//  NapiVerifyJsErrorElseThrow(JsCreateNamedFunction(name, nativeFunction, callbackState, &function));
-//  return function;
-//}
-//
+napi_value NapiApi::CallFunction(napi_value thisArg, napi_value function, Span<napi_value> args) const {
+  napi_value result{};
+  CHECK_NAPI(napi_call_function(m_env, thisArg, function, args.size(), args.begin(), &result));
+  return result;
+}
+
+napi_value NapiApi::ConstructObject(napi_value constructor, Span<napi_value> args) const {
+  napi_value result{};
+  CHECK_NAPI(napi_new_instance(m_env, constructor, args.size(), args.begin(), &result));
+  return result;
+}
+
+napi_value NapiApi::CreateFunction(const char *utf8Name, size_t nameLength, napi_callback callback, void *callbackData)
+    const {
+  napi_value result{};
+  CHECK_NAPI(napi_create_function(m_env, utf8Name, nameLength, callback, callbackData, &result));
+  return result;
+}
+
 ///*static*/ bool NapiApi::SetException(JsValueRef error) noexcept {
 //  // This method must not throw. We return false in case of error.
 //  return JsSetException(error) == JsNoError;

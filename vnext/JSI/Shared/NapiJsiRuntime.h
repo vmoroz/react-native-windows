@@ -141,9 +141,9 @@ class NapiJsiRuntime : public facebook::jsi::Runtime, NapiApi, NapiApi::IExcepti
   }
 
  private: //  ChakraApi::IExceptionThrower members
-  [[noreturn]] void ThrowJsExceptionOverride(napi_status errorCode, napi_value jsError) override;
-  [[noreturn]] void ThrowNativeExceptionOverride(char const *errorMessage) override;
-  void RewriteErrorMessage(napi_value jsError);
+  [[noreturn]] void ThrowJsExceptionOverride(napi_status errorCode, napi_value jsError) const override;
+  [[noreturn]] void ThrowNativeExceptionOverride(char const *errorMessage) const override;
+  void RewriteErrorMessage(napi_value jsError) const;
 
  private:
   // NapiPointerValueView is the base class for NapiPointerValue.
@@ -227,20 +227,20 @@ class NapiJsiRuntime : public facebook::jsi::Runtime, NapiApi, NapiApi::IExcepti
   }
 
   // The jsi::Pointer passed to this function must hold a NapiPointerValue.
-  static napi_ref GetJsRef(const facebook::jsi::Pointer &p) {
+  static napi_ref GetNapiRef(const facebook::jsi::Pointer &p) {
     return static_cast<const NapiPointerValueView *>(getPointerValue(p))->GetRef();
   }
 
   // The jsi::Pointer passed to this function must hold a NapiPointerValue.
-  napi_value GetJsValue(const facebook::jsi::Pointer &p) {
-    return GetReferenceValue(static_cast<const NapiPointerValueView *>(getPointerValue(p))->GetRef());
+  static napi_value GetNapiValue(const facebook::jsi::Pointer &p) {
+    return static_cast<const NapiPointerValueView *>(getPointerValue(p))->GetValue();
   }
 
   // These three functions only performs shallow copies.
-  facebook::jsi::Value ToJsiValue(napi_ref ref);
-  napi_ref ToNapiRef(const facebook::jsi::Value &value);
+  facebook::jsi::Value ToJsiValue(napi_value value) const;
+  napi_value ToNapiValue(const facebook::jsi::Value &value);
 
-  napi_ref
+  napi_value
   CreateExternalFunction(napi_value name, int32_t paramCount, napi_callback nativeFunction, void *callbackState);
 
   // Host function helper
@@ -360,7 +360,7 @@ class NapiJsiRuntime : public facebook::jsi::Runtime, NapiApi, NapiApi::IExcepti
   // If number of arguments is below or equal to MaxStackArgCount,
   // then they are kept on call stack, otherwise arguments are allocated on heap.
   struct NapiValueArgs final {
-    NapiValueArgs(NapiJsiRuntime &rt, facebook::jsi::Value const &firstArg, Span<facebook::jsi::Value const> args);
+    NapiValueArgs(NapiJsiRuntime &rt, Span<facebook::jsi::Value const> args);
     operator NapiApi::Span<napi_value>();
 
    private:
@@ -436,6 +436,10 @@ class NapiJsiRuntime : public facebook::jsi::Runtime, NapiApi, NapiApi::IExcepti
     NapiRefHolder value;
     NapiRefHolder writable;
   } m_propertyId;
+
+  struct CachecValue final {
+    NapiRefHolder Error;
+  } m_value;
 
   NapiRefHolder m_undefinedValue;
   NapiRefHolder m_proxyConstructor;
