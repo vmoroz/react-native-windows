@@ -425,10 +425,10 @@ void NapiApi::DefineProperty(napi_value object, napi_value propertyId, napi_prop
 //  return result;
 //}
 //
-///*static*/ void NapiApi::SetIndexedProperty(JsValueRef object, int32_t index, JsValueRef value) {
-//  NapiVerifyJsErrorElseThrow(JsSetIndexedProperty(object, IntToNumber(index), value));
-//}
-//
+void NapiApi::SetElement(napi_value object, uint32_t index, napi_value value) const {
+  CHECK_NAPI(napi_set_element(m_env, object, index, value));
+}
+
 bool NapiApi::StrictEquals(napi_value left, napi_value right) const {
   bool result{false};
   CHECK_NAPI(napi_strict_equals(m_env, left, right, &result));
@@ -441,12 +441,12 @@ void *NapiApi::GetExternalData(napi_value object) const {
   return result;
 }
 
-///*static*/ JsValueRef NapiApi::CreateArray(size_t length) {
-//  JsValueRef result{JS_INVALID_REFERENCE};
-//  NapiVerifyJsErrorElseThrow(JsCreateArray(static_cast<unsigned int>(length), &result));
-//  return result;
-//}
-//
+napi_value NapiApi::CreateArray(size_t length) const {
+  napi_value result{};
+  CHECK_NAPI(napi_create_array_with_length(m_env, length, &result));
+  return result;
+}
+
 ///*static*/ JsValueRef NapiApi::CreateArrayBuffer(size_t byteLength) {
 //  JsValueRef result{JS_INVALID_REFERENCE};
 //  NapiVerifyJsErrorElseThrow(JsCreateArrayBuffer(static_cast<unsigned int>(byteLength), &result));
@@ -479,27 +479,13 @@ napi_value NapiApi::CreateFunction(const char *utf8Name, size_t nameLength, napi
   return result;
 }
 
-///*static*/ bool NapiApi::SetException(JsValueRef error) noexcept {
-//  // This method must not throw. We return false in case of error.
-//  return JsSetException(error) == JsNoError;
-//}
-//
-///*static*/ bool NapiApi::SetException(std::string_view message) noexcept try {
-//  JsValueRef error{JS_INVALID_REFERENCE};
-//  NapiVerifyJsErrorElseThrow(JsCreateError(PointerToString(message), &error));
-//  return SetException(error);
-//} catch (...) {
-//  // This method must not throw. We return false in case of error.
-//  return false;
-//}
-//
-///*static*/ bool NapiApi::SetException(std::wstring_view message) noexcept try {
-//  JsValueRef error{JS_INVALID_REFERENCE};
-//  NapiVerifyJsErrorElseThrow(JsCreateError(PointerToString(message), &error));
-//  return SetException(error);
-//} catch (...) {
-//  // This method must not throw. We return false in case of error.
-//  return false;
-//}
+bool NapiApi::SetException(napi_value error) const noexcept {
+  // This method must not throw. We return false in case of error.
+  return napi_throw(m_env, error) == napi_status::napi_ok;
+}
+
+bool NapiApi::SetException(std::string_view message) const noexcept {
+  return napi_throw_error(m_env, "Unknown", message.data()) == napi_status::napi_ok;
+}
 
 } // namespace react::jsi

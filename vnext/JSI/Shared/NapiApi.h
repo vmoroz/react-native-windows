@@ -36,6 +36,14 @@
     }                                           \
   } while (false)
 
+// Check condition and throw native exception if it fails.
+#define CHECK_ELSE_THROW(rt, condition, message) \
+  do {                                          \
+    if (!(condition)) {                         \
+      rt->ThrowNativeException(message);            \
+    }                                           \
+  } while (false)
+
 // Evaluate expression and throw JS exception if it fails.
 #define NapiVerifyJsErrorElseThrow(expression)      \
   do {                                              \
@@ -412,7 +420,7 @@ struct NapiApi {
   ///**
   // * @brief Set the value at the specified index of an object.
   // */
-  // static void SetIndexedProperty(JsValueRef object, int32_t index, JsValueRef value);
+  void SetElement(napi_value object, uint32_t index, napi_value value) const;
 
   ///**
   // * @brief Compare two JavaScript values for strict equality.
@@ -427,7 +435,7 @@ struct NapiApi {
   ///**
   // * @brief Creates a JavaScript array object.
   // */
-  // static JsValueRef CreateArray(size_t length);
+  napi_value CreateArray(size_t length) const;
 
   ///**
   // * @brief Creates a JavaScript ArrayBuffer object.
@@ -472,22 +480,17 @@ struct NapiApi {
 
   napi_value CreateFunction(const char *utf8Name, size_t nameLength, napi_callback callback, void *callbackData) const;
 
-  ///**
-  // * @brief  Sets the runtime of the current context to an exception state.
-  // *
-  // * It returns \c false in case if the current context is already in an exception state.
-  // */
-  // static bool SetException(JsValueRef error) noexcept;
+  /**
+   * @brief  Sets the runtime of the current context to an exception state.
+   *
+   * It returns \c false in case if the current context is already in an exception state.
+   */
+  bool SetException(napi_value error) const noexcept;
 
-  ///**
-  // * @brief  Sets the runtime of the current context to an exception state.
-  // */
-  // static bool SetException(std::string_view message) noexcept;
-
-  ///**
-  // * @brief  Sets the runtime of the current context to an exception state.
-  // */
-  // static bool SetException(std::wstring_view message) noexcept;
+  /**
+   * @brief  Sets the runtime of the current context to an exception state.
+   */
+   bool SetException(std::string_view message) const noexcept;
 
  private:
   napi_env m_env;

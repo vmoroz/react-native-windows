@@ -147,12 +147,12 @@ class NapiJsiRuntime : public facebook::jsi::Runtime, NapiApi, NapiApi::IExcepti
 
  private:
   // NapiPointerValueView is the base class for NapiPointerValue.
-  // It holds the napi_ref, but unlike the NapiPointerValue does nothing in the
-  // invalidate() method.
-  // It is used by the JsiValueView, JsiValueViewArray, and JsiPropNameIDView classes
+  // It holds either napi_value or napi_ref. It does nothing in the invalidate() method.
+  // It is used directly by the JsiValueView, JsiValueViewArray, and JsiPropNameIDView classes
   // to keep temporary PointerValues on the call stack to avoid extra memory allocations.
+  // In that case it is assumed that it holds a napi_value
   struct NapiPointerValueView : PointerValue {
-    NapiPointerValueView(NapiApi *napi, napi_ref ref) noexcept : m_napi{napi}, m_ref{ref} {}
+    NapiPointerValueView(NapiApi const *napi, void *valueOrRef) noexcept : m_napi{napi}, m_valueOrRef{valueOrRef} {}
 
     NapiPointerValueView(NapiPointerValueView const &) = delete;
     NapiPointerValueView &operator=(NapiPointerValueView const &) = delete;
@@ -160,22 +160,18 @@ class NapiJsiRuntime : public facebook::jsi::Runtime, NapiApi, NapiApi::IExcepti
     // Intentionally do nothing in the invalidate() method.
     void invalidate() noexcept override {}
 
-    napi_ref GetRef() const noexcept {
-      return m_ref;
+    virtual napi_value GetValue() const {
+      return reinterpret_cast<napi_value>(m_valueOrRef);
     }
 
-    napi_value GetValue() const {
-      return m_napi->GetReferenceValue(m_ref);
-    }
-
-    NapiApi* GetNapi() const noexcept {
+    NapiApi const *GetNapi() const noexcept {
       return m_napi;
     }
 
    private:
-    // TODO: [vmoroz] How to make it safe? Is there a way to use weak pointers?
-    NapiApi *m_napi;
-    napi_ref m_ref;
+    // TODO: [vmoroz] How to make it safe to hold the m_api? Is there a way to use weak pointers?
+    NapiApi const *m_napi;
+    void *m_valueOrRef;
   };
 
   // NapiPointerValue is needed for working with Facebook's jsi::Pointer class
@@ -191,10 +187,18 @@ class NapiJsiRuntime : public facebook::jsi::Runtime, NapiApi, NapiApi::IExcepti
   //
   // or you can use the helper function MakePointer(), as defined below.
   struct NapiPointerValue final : NapiPointerValueView {
-    NapiPointerValue(NapiApi *napi, napi_ref ref) : NapiPointerValueView{napi, ref} {
+    NapiPointerValue(NapiApi const *napi, napi_ref ref) : NapiPointerValueView{napi, ref} {}
+
+    NapiPointerValue(NapiApi const *napi, napi_value value) noexcept
+        : NapiPointerValueView{napi, napi->CreateReference(value)} {}
+
+    napi_value GetValue() const override {
+      return GetNapi()->GetReferenceValue(GetRef());
     }
 
-    NapiPointerValue(NapiApi *napi, napi_value value) noexcept : NapiPointerValueView{napi, napi->CreateReference(value)}{}
+    napi_ref GetRef() const {
+      return reinterpret_cast<napi_ref>(NapiPointerValueView::GetValue());
+    }
 
     void invalidate() noexcept override {
       delete this;
@@ -211,13 +215,13 @@ class NapiJsiRuntime : public facebook::jsi::Runtime, NapiApi, NapiApi::IExcepti
   };
 
   template <typename T, std::enable_if_t<std::is_base_of_v<facebook::jsi::Pointer, T>, int> = 0>
-  T MakePointer(napi_ref ref) {
-    return make<T>(new NapiPointerValue(m_env, ref));
+  T MakePointer(napi_ref ref) const {
+    return make<T>(new NapiPointerValue(this, ref));
   }
 
   template <typename T, std::enable_if_t<std::is_base_of_v<facebook::jsi::Pointer, T>, int> = 0>
-  T MakePointer(napi_value value) {
-    return make<T>(new NapiPointerValue(m_env, value));
+  T MakePointer(napi_value value) const {
+    return make<T>(new NapiPointerValue(this, value));
   }
 
   // The pointer passed to this function must point to a NapiPointerValue.
@@ -227,18 +231,13 @@ class NapiJsiRuntime : public facebook::jsi::Runtime, NapiApi, NapiApi::IExcepti
   }
 
   // The jsi::Pointer passed to this function must hold a NapiPointerValue.
-  static napi_ref GetNapiRef(const facebook::jsi::Pointer &p) {
-    return static_cast<const NapiPointerValueView *>(getPointerValue(p))->GetRef();
-  }
-
-  // The jsi::Pointer passed to this function must hold a NapiPointerValue.
   static napi_value GetNapiValue(const facebook::jsi::Pointer &p) {
     return static_cast<const NapiPointerValueView *>(getPointerValue(p))->GetValue();
   }
 
   // These three functions only performs shallow copies.
   facebook::jsi::Value ToJsiValue(napi_value value) const;
-  napi_value ToNapiValue(const facebook::jsi::Value &value);
+  napi_value ToNapiValue(const facebook::jsi::Value &value) const;
 
   napi_value
   CreateExternalFunction(napi_value name, int32_t paramCount, napi_callback nativeFunction, void *callbackState);
@@ -257,32 +256,32 @@ class NapiJsiRuntime : public facebook::jsi::Runtime, NapiApi, NapiApi::IExcepti
 
   // Evaluate lambda and augment exception messages with the methodName.
   template <typename TLambda>
-  static auto RunInMethodContext(char const *methodName, TLambda lambda) {
+  auto RunInMethodContext(char const *methodName, TLambda lambda) {
     try {
       return lambda();
     } catch (facebook::jsi::JSError const &) {
       throw; // do not augment the JSError exceptions.
     } catch (std::exception const &ex) {
-      ChakraThrow((std::string{"Exception in "} + methodName + ": " + ex.what()).c_str());
+      NapiThrow((std::string{"Exception in "} + methodName + ": " + ex.what()).c_str());
     } catch (...) {
-      ChakraThrow((std::string{"Exception in "} + methodName + ": <unknown>").c_str());
+      NapiThrow((std::string{"Exception in "} + methodName + ": <unknown>").c_str());
     }
   }
 
   // Evaluate lambda and convert all exceptions to Chakra engine exceptions.
   template <typename TLambda>
-  napi_value HandleCallbackExceptions(TLambda lambda) noexcept {
+  napi_value HandleCallbackExceptions(TLambda lambda) const noexcept {
     try {
       try {
         return lambda();
       } catch (facebook::jsi::JSError const &jsError) {
         // This block may throw exceptions
-        SetException(ToNapiRef(jsError.value()));
+        SetException(ToNapiValue(jsError.value()));
       }
     } catch (std::exception const &ex) {
       SetException(ex.what());
     } catch (...) {
-      SetException(L"Unexpected error");
+      SetException("Unexpected error");
     }
 
     return m_undefinedValue;
@@ -352,6 +351,26 @@ class NapiJsiRuntime : public facebook::jsi::Runtime, NapiApi, NapiApi::IExcepti
 
   napi_value CreatePropertyDescriptor(napi_value value, PropertyAttibutes attrs);
 
+  // Keep CallstackSize elements on the callstack, otherwise allocate memory in heap.
+  template <typename T, size_t CallstackSize>
+  struct SmallBuffer final {
+    SmallBuffer(size_t size) noexcept
+        : m_size{size}, m_heapData{m_size > CallstackSize ? std::make_unique<T[]>(m_size) : nullptr} {}
+
+    T *Data() noexcept {
+      return m_heapData ? m_heapData.get() : m_stackData.data();
+    }
+
+    size_t Size() const noexcept {
+      return m_size;
+    }
+
+   private:
+    size_t const m_size{};
+    std::array<T, CallstackSize> m_stackData{};
+    std::unique_ptr<T[]> const m_heapData{};
+  };
+
   // The number of arguments that we keep on stack.
   // We use heap if we have more argument.
   constexpr static size_t MaxStackArgCount = 8;
@@ -365,20 +384,19 @@ class NapiJsiRuntime : public facebook::jsi::Runtime, NapiApi, NapiApi::IExcepti
 
    private:
     size_t const m_count{};
-    std::array<napi_value, MaxStackArgCount> m_stackArgs{{nullptr}};
-    std::unique_ptr<napi_value[]> const m_heapArgs;
+    SmallBuffer<napi_value, MaxStackArgCount> m_args;
   };
 
   // This type represents a view to Value based on JsValueRef.
   // It avoids extra memory allocation by using an in-place storage.
   // It uses ChakraPointerValueView that does nothing in the invalidate() method.
   struct JsiValueView final {
-    JsiValueView(napi_value jsValue);
+    JsiValueView(NapiApi *napi, napi_value jsValue);
     ~JsiValueView() noexcept;
     operator facebook::jsi::Value const &() const noexcept;
 
     using StoreType = std::aligned_storage_t<sizeof(NapiPointerValueView)>;
-    static facebook::jsi::Value InitValue(napi_value jsValue, StoreType *store);
+    static facebook::jsi::Value InitValue(NapiApi *napi, napi_value jsValue, StoreType *store);
 
    private:
     StoreType m_pointerStore{};
@@ -388,22 +406,20 @@ class NapiJsiRuntime : public facebook::jsi::Runtime, NapiApi, NapiApi::IExcepti
   // This class helps to use stack storage for passing arguments that must be temporary converted from
   // JsValueRef to facebook::jsi::Value.
   struct JsiValueViewArgs final {
-    JsiValueViewArgs(napi_value *args, size_t argCount) noexcept;
-    facebook::jsi::Value const *Data() const noexcept;
+    JsiValueViewArgs(NapiApi *napi, Span<napi_value> args) noexcept;
+    facebook::jsi::Value const *Data() noexcept;
     size_t Size() const noexcept;
 
    private:
     size_t const m_size{};
-    std::array<JsiValueView::StoreType, MaxStackArgCount> m_stackPointerStore{};
-    std::array<facebook::jsi::Value, MaxStackArgCount> m_stackArgs{};
-    std::unique_ptr<JsiValueView::StoreType[]> const m_heapPointerStore{};
-    std::unique_ptr<facebook::jsi::Value[]> const m_heapArgs{};
+    SmallBuffer<JsiValueView::StoreType, MaxStackArgCount> m_pointerStore{0};
+    SmallBuffer<facebook::jsi::Value, MaxStackArgCount> m_args{0};
   };
 
   // PropNameIDView helps to use the stack storage for temporary conversion from
   // JsPropertyIdRef to facebook::jsi::PropNameID.
   struct PropNameIDView final {
-    PropNameIDView(napi_value propertyId) noexcept;
+    PropNameIDView(NapiApi *napi, napi_value propertyId) noexcept;
     ~PropNameIDView() noexcept;
     operator facebook::jsi::PropNameID const &() const noexcept;
 
@@ -452,9 +468,9 @@ class NapiJsiRuntime : public facebook::jsi::Runtime, NapiApi, NapiApi::IExcepti
   NapiJsiRuntimeArgs m_args;
 
   napi_env m_env;
-  //JsRuntimeHandle m_runtime;
-  //JsRefHolder m_context;
-  //JsRefHolder m_prevContext;
+  // JsRuntimeHandle m_runtime;
+  // JsRefHolder m_context;
+  // JsRefHolder m_prevContext;
 
   // Set the Chakra API exception thrower on this thread
   ExceptionThrowerHolder m_exceptionThrower{this};
@@ -468,18 +484,18 @@ class NapiJsiRuntime : public facebook::jsi::Runtime, NapiApi, NapiApi::IExcepti
 
   //// These buffers are kept to serve the source callbacks when evaluating
   //// serialized scripts.
-  //std::vector<std::shared_ptr<const facebook::jsi::Buffer>> m_pinnedScripts;
+  // std::vector<std::shared_ptr<const facebook::jsi::Buffer>> m_pinnedScripts;
 
   //// These buffers back the external array buffers that we handover to
   //// ChakraCore.
-  //std::vector<std::shared_ptr<const facebook::jsi::Buffer>> m_pinnedPreparedScripts;
+  // std::vector<std::shared_ptr<const facebook::jsi::Buffer>> m_pinnedPreparedScripts;
 
-  //std::string m_debugRuntimeName;
-  //int m_debugPort{0};
-  //std::unique_ptr<DebugProtocolHandler> m_debugProtocolHandler;
-  //std::unique_ptr<DebugService> m_debugService;
-  //constexpr static char DebuggerDefaultRuntimeName[] = "runtime1";
-  //constexpr static int DebuggerDefaultPort = 9229;
+  // std::string m_debugRuntimeName;
+  // int m_debugPort{0};
+  // std::unique_ptr<DebugProtocolHandler> m_debugProtocolHandler;
+  // std::unique_ptr<DebugService> m_debugService;
+  // constexpr static char DebuggerDefaultRuntimeName[] = "runtime1";
+  // constexpr static int DebuggerDefaultPort = 9229;
 };
 
 } // namespace react::jsi
