@@ -27,6 +27,7 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)ChakraRuntimeFactory.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)ChakraRuntime.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)js_native_api.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)js_native_api_ext.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)js_native_api_types.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)NapiApi.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)NapiJsiRuntime.h" />

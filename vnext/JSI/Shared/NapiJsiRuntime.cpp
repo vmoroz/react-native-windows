@@ -196,49 +196,51 @@ facebook::jsi::Value NapiJsiRuntime::evaluateJavaScript(
   // return evaluateJavaScriptSimple(*sharedScriptBuffer, sourceURL);
 }
 
-// struct ChakraPreparedJavaScript final : facebook::jsi::PreparedJavaScript {
-//  ChakraPreparedJavaScript(
-//      std::string sourceUrl,
-//      const std::shared_ptr<const facebook::jsi::Buffer> &sourceBuffer,
-//      std::unique_ptr<const facebook::jsi::Buffer> byteCode)
-//      : m_sourceUrl{std::move(sourceUrl)}, m_sourceBuffer{sourceBuffer}, m_byteCode{std::move(byteCode)} {}
-//
-//  const std::string &SourceUrl() const {
-//    return m_sourceUrl;
-//  }
-//
-//  const facebook::jsi::Buffer &SourceBuffer() const {
-//    return *m_sourceBuffer;
-//  }
-//
-//  const facebook::jsi::Buffer &ByteCode() const {
-//    return *m_byteCode;
-//  }
-//
-// private:
-//  std::string m_sourceUrl;
-//  std::shared_ptr<const facebook::jsi::Buffer> m_sourceBuffer;
-//  std::unique_ptr<const facebook::jsi::Buffer> m_byteCode;
-//};
-//
-// std::shared_ptr<const facebook::jsi::PreparedJavaScript> NapiJsiRuntime::prepareJavaScript(
-//    const std::shared_ptr<const facebook::jsi::Buffer> &sourceBuffer,
-//    std::string sourceURL) {
-//  return std::make_shared<ChakraPreparedJavaScript>(
-//      sourceURL, sourceBuffer, generatePreparedScript(sourceURL, *sourceBuffer));
-//}
-//
-// facebook::jsi::Value NapiJsiRuntime::evaluatePreparedJavaScript(
-//    const std::shared_ptr<const facebook::jsi::PreparedJavaScript> &preparedJS) {
-//  const ChakraPreparedJavaScript &chakraPreparedJS = *static_cast<const ChakraPreparedJavaScript *>(preparedJS.get());
-//  JsValueRef result;
-//  if (evaluateSerializedScript(
-//          chakraPreparedJS.SourceBuffer(), chakraPreparedJS.ByteCode(), chakraPreparedJS.SourceUrl(), &result)) {
-//    return ToJsiValue(result);
-//  } else {
-//    return facebook::jsi::Value::undefined();
-//  }
-//}
+ struct NapiPreparedJavaScript final : facebook::jsi::PreparedJavaScript {
+  NapiPreparedJavaScript(
+      std::string sourceUrl,
+      const std::shared_ptr<const facebook::jsi::Buffer> &sourceBuffer,
+      std::unique_ptr<const facebook::jsi::Buffer> byteCode)
+      : m_sourceUrl{std::move(sourceUrl)}, m_sourceBuffer{sourceBuffer}, m_byteCode{std::move(byteCode)} {}
+
+  const std::string &SourceUrl() const {
+    return m_sourceUrl;
+  }
+
+  const facebook::jsi::Buffer &SourceBuffer() const {
+    return *m_sourceBuffer;
+  }
+
+  const facebook::jsi::Buffer &ByteCode() const {
+    return *m_byteCode;
+  }
+
+ private:
+  std::string m_sourceUrl;
+  std::shared_ptr<const facebook::jsi::Buffer> m_sourceBuffer;
+  std::unique_ptr<const facebook::jsi::Buffer> m_byteCode;
+};
+
+ std::shared_ptr<const facebook::jsi::PreparedJavaScript> NapiJsiRuntime::prepareJavaScript(
+    const std::shared_ptr<const facebook::jsi::Buffer> &sourceBuffer,
+    std::string sourceURL) {
+  return std::make_shared<NapiPreparedJavaScript>(
+      sourceURL, sourceBuffer, nullptr /*generatePreparedScript(sourceURL, *sourceBuffer)*/);
+}
+
+ facebook::jsi::Value NapiJsiRuntime::evaluatePreparedJavaScript(
+    const std::shared_ptr<const facebook::jsi::PreparedJavaScript> &preparedJS) {
+  /*const ChakraPreparedJavaScript &chakraPreparedJS = *static_cast<const ChakraPreparedJavaScript *>(preparedJS.get());
+  JsValueRef result;
+  if (evaluateSerializedScript(
+          chakraPreparedJS.SourceBuffer(), chakraPreparedJS.ByteCode(), chakraPreparedJS.SourceUrl(), &result)) {
+    return ToJsiValue(result);
+  } else {
+    return facebook::jsi::Value::undefined();
+  }*/
+
+  return facebook::jsi::Value::undefined();
+ }
 
 facebook::jsi::Object NapiJsiRuntime::global() {
   return MakePointer<facebook::jsi::Object>(GetGlobalObject());

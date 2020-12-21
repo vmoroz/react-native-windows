@@ -2,7 +2,7 @@
 // Licensed under the MIT License.
 
 #define NAPI_EXPERIMENTAL
-#include "js_native_api.h"
+#include "js_native_api_ext.h"
 #ifdef CHAKRACORE
 #include "ChakraCore.h"
 #else
@@ -504,6 +504,13 @@ struct Environment {
   napi_status ObjectFreeze(napi_value object) noexcept;
 
   napi_status ObjectSeal(napi_value object) noexcept;
+
+
+  napi_status EvaluateSerializedScript(
+      napiext_buffer scriptBuffer,
+      napiext_buffer serializedScriptBuffer,
+      const char *sourceUrl,
+      napi_value *result) noexcept;
 
  private:
   static JsErrorCode ChakraPointerToString(std::wstring_view value, JsValueRef *result) noexcept;
@@ -3410,6 +3417,30 @@ napi_status Environment::ObjectSeal(napi_value object) noexcept { // TODO: [vmor
 
 #endif // NAPI_EXPERIMENTAL
 
+napi_status Environment::EvaluateSerializedScript(
+    napiext_buffer scriptBuffer,
+    napiext_buffer serializedScriptBuffer,
+    const char* sourceUrl,
+    napi_value *result) noexcept {
+  //std::wstring script16 =
+  //    Microsoft::Common::Unicode::Utf8ToUtf16(reinterpret_cast<const char *>(scriptBuffer.data()), scriptBuffer.size());
+  //std::wstring url16 = Microsoft::Common::Unicode::Utf8ToUtf16(sourceURL);
+
+  //// Note:: Bytecode caching on UWP is untested yet.
+  //JsErrorCode errorCode = JsRunSerializedScript(
+  //    script16.c_str(), const_cast<uint8_t *>(serializedScriptBuffer.data()), 0, url16.c_str(), result);
+
+  //if (errorCode == JsNoError) {
+  //  return true;
+  //} else if (errorCode == JsErrorBadSerializedScript) {
+  //  return false;
+  //} else {
+  //  ChakraVerifyJsErrorElseThrow(errorCode);
+  //  return true;
+  //}
+  return napi_ok;
+}
+
 } // namespace chakra
 
 //=============================================================================
@@ -3643,6 +3674,10 @@ napi_status napi_call_function(
 napi_status
 napi_new_instance(napi_env env, napi_value constructor, size_t argc, const napi_value *argv, napi_value *result) {
   return CHECKED_ENV(env)->NewInstance(constructor, argc, argv, result);
+}
+
+napi_status napi_instanceof(napi_env env, napi_value object, napi_value constructor, bool *result) {
+  return CHECKED_ENV(env)->InstanceOf(object, constructor, result);
 }
 
 napi_status napi_get_cb_info(
@@ -3970,3 +4005,13 @@ napi_status napi_object_seal(napi_env env, napi_value object) {
 }
 
 #endif // NAPI_EXPERIMENTAL
+
+NAPI_EXTERN napi_status napiext_evaluate_serialized_script(
+    napi_env env,
+    napiext_buffer scriptBuffer,
+    napiext_buffer serializedScriptBuffer,
+    const char *sourceUrl,
+    napi_value *result) {
+  return CHECKED_ENV(env)->EvaluateSerializedScript(
+      scriptBuffer, serializedScriptBuffer, sourceUrl, result);
+}
