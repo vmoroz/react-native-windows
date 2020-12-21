@@ -13,12 +13,14 @@
 
 namespace react::jsi {
 
+std::unique_ptr<facebook::jsi::Runtime> MakeNapiJsiRuntime(napi_env env) noexcept;
+
 struct NapiJsiRuntimeArgs {};
 
 // Implementation of N-API JSI Runtime
 class NapiJsiRuntime : public facebook::jsi::Runtime, NapiApi, NapiApi::IExceptionThrower {
  public:
-  NapiJsiRuntime(NapiJsiRuntimeArgs &&args) noexcept;
+  NapiJsiRuntime(napi_env env) noexcept;
   ~NapiJsiRuntime() noexcept;
 
 #pragma region Functions_inherited_from_Runtime

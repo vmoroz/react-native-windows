@@ -38,7 +38,7 @@ struct HostFunctionWrapper final {
 
 } // namespace
 
-NapiJsiRuntime::NapiJsiRuntime(NapiJsiRuntimeArgs &&args) noexcept : m_args{std::move(args)} {
+NapiJsiRuntime::NapiJsiRuntime(napi_env env) noexcept {
   // JsRuntimeAttributes runtimeAttributes = JsRuntimeAttributeNone;
 
   // if (!m_args.enableJITCompilation) {
@@ -124,7 +124,6 @@ napi_value NapiJsiRuntime::CreatePropertyDescriptor(napi_value value, PropertyAt
 facebook::jsi::Value NapiJsiRuntime::evaluateJavaScript(
     const std::shared_ptr<const facebook::jsi::Buffer> &buffer,
     const std::string &sourceURL) {
-
   return facebook::jsi::Value{};
 
   //// Simple evaluate if scriptStore not available as it's risky to utilize the
@@ -196,7 +195,7 @@ facebook::jsi::Value NapiJsiRuntime::evaluateJavaScript(
   // return evaluateJavaScriptSimple(*sharedScriptBuffer, sourceURL);
 }
 
- struct NapiPreparedJavaScript final : facebook::jsi::PreparedJavaScript {
+struct NapiPreparedJavaScript final : facebook::jsi::PreparedJavaScript {
   NapiPreparedJavaScript(
       std::string sourceUrl,
       const std::shared_ptr<const facebook::jsi::Buffer> &sourceBuffer,
@@ -221,14 +220,14 @@ facebook::jsi::Value NapiJsiRuntime::evaluateJavaScript(
   std::unique_ptr<const facebook::jsi::Buffer> m_byteCode;
 };
 
- std::shared_ptr<const facebook::jsi::PreparedJavaScript> NapiJsiRuntime::prepareJavaScript(
+std::shared_ptr<const facebook::jsi::PreparedJavaScript> NapiJsiRuntime::prepareJavaScript(
     const std::shared_ptr<const facebook::jsi::Buffer> &sourceBuffer,
     std::string sourceURL) {
   return std::make_shared<NapiPreparedJavaScript>(
       sourceURL, sourceBuffer, nullptr /*generatePreparedScript(sourceURL, *sourceBuffer)*/);
 }
 
- facebook::jsi::Value NapiJsiRuntime::evaluatePreparedJavaScript(
+facebook::jsi::Value NapiJsiRuntime::evaluatePreparedJavaScript(
     const std::shared_ptr<const facebook::jsi::PreparedJavaScript> &preparedJS) {
   /*const ChakraPreparedJavaScript &chakraPreparedJS = *static_cast<const ChakraPreparedJavaScript *>(preparedJS.get());
   JsValueRef result;
@@ -240,7 +239,7 @@ facebook::jsi::Value NapiJsiRuntime::evaluateJavaScript(
   }*/
 
   return facebook::jsi::Value::undefined();
- }
+}
 
 facebook::jsi::Object NapiJsiRuntime::global() {
   return MakePointer<facebook::jsi::Object>(GetGlobalObject());
@@ -510,7 +509,7 @@ facebook::jsi::Value
 NapiJsiRuntime::callAsConstructor(const facebook::jsi::Function &func, const facebook::jsi::Value *args, size_t count) {
   // TODO: [vmoroz] Fix it
   return ToJsiValue(nullptr);
-  //return ToJsiValue(ConstructObject(GetNapiValue(func), NapiValueArgs{*this, Span{args, count}}));
+  // return ToJsiValue(ConstructObject(GetNapiValue(func), NapiValueArgs{*this, Span{args, count}}));
 }
 
 facebook::jsi::Runtime::ScopeState *NapiJsiRuntime::pushScope() {
@@ -609,7 +608,7 @@ napi_value NapiJsiRuntime::ToNapiValue(const facebook::jsi::Value &value) const 
   } else if (value.isNumber()) {
     return CreateDouble(value.getNumber());
   } else if (value.isSymbol()) {
-    return GetNapiValue(value.getSymbol(*const_cast<NapiJsiRuntime*>(this)));
+    return GetNapiValue(value.getSymbol(*const_cast<NapiJsiRuntime *>(this)));
   } else if (value.isString()) {
     return GetNapiValue(value.getString(*const_cast<NapiJsiRuntime *>(this)));
   } else if (value.isObject()) {
@@ -899,11 +898,15 @@ NapiJsiRuntime::PropNameIDView::operator facebook::jsi::PropNameID const &() con
 // NapiJsiRuntime miscellaneous
 //===========================================================================
 
-//std::once_flag NapiJsiRuntime::s_runtimeVersionInitFlag;
-//uint64_t NapiJsiRuntime::s_runtimeVersion = 0;
+// std::once_flag NapiJsiRuntime::s_runtimeVersionInitFlag;
+// uint64_t NapiJsiRuntime::s_runtimeVersion = 0;
 //
-//std::unique_ptr<facebook::jsi::Runtime> makeChakraRuntime(ChakraRuntimeArgs &&args) noexcept {
+// std::unique_ptr<facebook::jsi::Runtime> makeChakraRuntime(ChakraRuntimeArgs &&args) noexcept {
 //  return std::make_unique<NapiJsiRuntime>(std::move(args));
 //}
+
+std::unique_ptr<facebook::jsi::Runtime> MakeNapiJsiRuntime(napi_env env) noexcept {
+  return std::make_unique<NapiJsiRuntime>(env);
+}
 
 } // namespace react::jsi

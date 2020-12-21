@@ -19,6 +19,9 @@
 #include <string_view>
 #include <vector>
 
+#include "ChakraNapi.h"
+#include "ChakraRuntimeArgs.h"
+
 [[noreturn]] void CrashWithAccessViolation() noexcept {
   *((int *)0) = 1;
   __fastfail(FAST_FAIL_INVALID_ARG);
@@ -237,7 +240,8 @@ struct CachedValue {
 };
 
 struct Environment {
-  explicit Environment(JsContextRef context) noexcept;
+  explicit Environment(Microsoft::JSI::ChakraRuntimeArgs &&args) noexcept;
+  //explicit Environment(JsContextRef context) noexcept;
   ~Environment() noexcept;
 
   JsContextRef Context() const noexcept;
@@ -597,6 +601,11 @@ struct Environment {
     CachedValue HasOwnProperty{GetHasOwnPropertyFunction};
   } m_value;
 };
+
+
+napi_env MakeChakraNapiEnv(Microsoft::JSI::ChakraRuntimeArgs &&args) noexcept {
+  return reinterpret_cast<napi_env>(new Environment(std::move(args)));
+}
 
 } // namespace chakra
 
@@ -1242,7 +1251,7 @@ struct DataViewInfo {
 // Environment implementation
 //=============================================================================
 
-Environment::Environment(JsContextRef context) noexcept : m_context{context} {}
+Environment::Environment(Microsoft::JSI::ChakraRuntimeArgs &&args) noexcept {}
 
 Environment::~Environment() noexcept {
   // First we must finalize those references that have `napi_finalizer`

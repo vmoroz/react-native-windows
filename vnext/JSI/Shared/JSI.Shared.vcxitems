@@ -23,6 +23,7 @@
   <ItemGroup>
     <ClInclude Include="$(MSBuildThisFileDirectory)ByteArrayBuffer.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)ChakraApi.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)ChakraNapi.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)ChakraRuntimeArgs.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)ChakraRuntimeFactory.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)ChakraRuntime.h" />
