@@ -28,7 +28,7 @@
 }
 
 // Check condition and crash process if it fails.
-#define CHASH_IF_FALSE(condition)             \
+#define CRASH_IF_FALSE(condition)             \
   do {                                        \
     if (!(condition)) {                       \
       assert(false && "Failed: " #condition); \
@@ -162,7 +162,7 @@ struct CachedPropertyId {
       if (m_propertyIdType == JsPropertyIdTypeString) {
         CHECK_JSRT_ERROR_CODE(JsGetPropertyIdFromName(m_name.data(), &m_propertyId));
       } else {
-        CHASH_IF_FALSE(m_propertyIdType == JsPropertyIdTypeSymbol);
+        CRASH_IF_FALSE(m_propertyIdType == JsPropertyIdTypeSymbol);
         JsValueRef propertyStr{JS_INVALID_REFERENCE};
         JsValueRef propertySymbol{JS_INVALID_REFERENCE};
         CHECK_JSRT_ERROR_CODE(JsPointerToString(m_name.data(), m_name.size(), &propertyStr));
@@ -3385,12 +3385,12 @@ napi_status Environment::AddFinalizer(
 
 napi_status Environment::CreateBigIntInt64(int64_t value, napi_value *result) noexcept {
   // TODO: [vmoroz] Implement
-  CHASH_IF_FALSE(false);
+  CRASH_IF_FALSE(false);
 }
 
 napi_status Environment::CreateBigIntUInt64(uint64_t value, napi_value *result) noexcept {
   // TODO: [vmoroz] Implement
-  CHASH_IF_FALSE(false);
+  CRASH_IF_FALSE(false);
 }
 
 napi_status Environment::CreateBigIntWords(
@@ -3398,21 +3398,21 @@ napi_status Environment::CreateBigIntWords(
     size_t word_count,
     const uint64_t *words,
     napi_value *result) noexcept { // TODO: [vmoroz] Implement
-  CHASH_IF_FALSE(false);
+  CRASH_IF_FALSE(false);
 }
 
 napi_status Environment::GetValueBigIntInt64(
     napi_value value,
     int64_t *result,
     bool *isLossless) noexcept { // TODO: [vmoroz] Implement
-  CHASH_IF_FALSE(false);
+  CRASH_IF_FALSE(false);
 }
 
 napi_status Environment::GetValueBigIntUInt64(
     napi_value value,
     uint64_t *result,
     bool *isLossless) noexcept { // TODO: [vmoroz] Implement
-  CHASH_IF_FALSE(false);
+  CRASH_IF_FALSE(false);
 }
 
 napi_status Environment::GetValueBigIntWords(
@@ -3420,7 +3420,7 @@ napi_status Environment::GetValueBigIntWords(
     int *signBit,
     size_t *wordCount,
     uint64_t *words) noexcept { // TODO: [vmoroz] Implement
-  CHASH_IF_FALSE(false);
+  CRASH_IF_FALSE(false);
 }
 
 napi_status Environment::GetAllPropertyNames(
@@ -3429,18 +3429,18 @@ napi_status Environment::GetAllPropertyNames(
     napi_key_filter keyFilter,
     napi_key_conversion keyConversion,
     napi_value *result) noexcept { // TODO: [vmoroz] Implement
-  CHASH_IF_FALSE(false);
+  CRASH_IF_FALSE(false);
 }
 
 napi_status Environment::SetInstanceData(
     void *data,
     napi_finalize finalizeCallback,
     void *finalizeHint) noexcept { // TODO: [vmoroz] Implement
-  CHASH_IF_FALSE(false);
+  CRASH_IF_FALSE(false);
 }
 
 napi_status Environment::GetInstanceData(void **data) noexcept { // TODO: [vmoroz] Implement
-  CHASH_IF_FALSE(false);
+  CRASH_IF_FALSE(false);
 }
 
 #endif // NAPI_VERSION >= 6
@@ -3448,11 +3448,11 @@ napi_status Environment::GetInstanceData(void **data) noexcept { // TODO: [vmoro
 #if NAPI_VERSION >= 7
 
 napi_status Environment::DetachArrayBuffer(napi_value arrayBuffer) noexcept { // TODO: [vmoroz] Implement
-  CHASH_IF_FALSE(false);
+  CRASH_IF_FALSE(false);
 }
 
 napi_status Environment::IsDetachedArrayBuffer(napi_value value, bool *result) noexcept { // TODO: [vmoroz] Implement
-  CHASH_IF_FALSE(false);
+  CRASH_IF_FALSE(false);
 }
 
 #endif // NAPI_VERSION >= 7
@@ -3462,22 +3462,22 @@ napi_status Environment::IsDetachedArrayBuffer(napi_value value, bool *result) n
 napi_status Environment::TypeTagObject(
     napi_value value,
     const napi_type_tag *typeTag) noexcept { // TODO: [vmoroz] Implement
-  CHASH_IF_FALSE(false);
+  CRASH_IF_FALSE(false);
 }
 
 napi_status Environment::CheckObjectTypeTag(
     napi_value value,
     const napi_type_tag *typeTag,
     bool *result) noexcept { // TODO: [vmoroz] Implement
-  CHASH_IF_FALSE(false);
+  CRASH_IF_FALSE(false);
 }
 
 napi_status Environment::ObjectFreeze(napi_value object) noexcept { // TODO: [vmoroz] Implement
-  CHASH_IF_FALSE(false);
+  CRASH_IF_FALSE(false);
 }
 
 napi_status Environment::ObjectSeal(napi_value object) noexcept { // TODO: [vmoroz] Implement
-  CHASH_IF_FALSE(false);
+  CRASH_IF_FALSE(false);
 }
 
 #endif // NAPI_EXPERIMENTAL
