@@ -1046,17 +1046,14 @@ JsErrorCode JsCopyString(
     _Out_opt_ char *buffer,
     _In_ size_t bufferSize,
     _Out_opt_ size_t *length,
-    UINT codePage = CP_UTF8) {
+    UINT codePage = CP_UTF8) noexcept {
   const wchar_t *stringValue;
   size_t stringLength;
   CHECK_JSRT_ERROR_CODE(JsStringToPointer(value, &stringValue, &stringLength));
 
-  if (length != nullptr) {
-    *length = stringLength;
-  }
-
-  if (buffer != nullptr) {
-    int result = ::WideCharToMultiByte(
+  int result = 0;
+  if (stringLength != 0) {
+    result = ::WideCharToMultiByte(
         codePage,
         0,
         stringValue,
@@ -1065,7 +1062,10 @@ JsErrorCode JsCopyString(
         static_cast<int>(bufferSize),
         nullptr,
         nullptr);
-    assert(result != 0);
+  }
+
+  if (length != nullptr) {
+    *length = static_cast<size_t>(result);
   }
 
   return JsErrorCode::JsNoError;

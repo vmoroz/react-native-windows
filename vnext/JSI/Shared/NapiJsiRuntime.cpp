@@ -436,16 +436,12 @@ facebook::jsi::Value NapiJsiRuntime::call(
     const facebook::jsi::Value &jsThis,
     const facebook::jsi::Value *args,
     size_t count) {
-  // TODO: [vmoroz] Fix it
-  // return ToJsiValue(CallFunction(ToNapiValue(jsThis), GetNapiValue(func), NapiValueArgs{*this, Span{args, count}}));
-  return facebook::jsi::Value{};
+  return ToJsiValue(CallFunction(ToNapiValue(jsThis), GetNapiValue(func), NapiValueArgs(*this, Span(args, count))));
 }
 
 facebook::jsi::Value
 NapiJsiRuntime::callAsConstructor(const facebook::jsi::Function &func, const facebook::jsi::Value *args, size_t count) {
-  // TODO: [vmoroz] Fix it
-  return ToJsiValue(nullptr);
-  // return ToJsiValue(ConstructObject(GetNapiValue(func), NapiValueArgs{*this, Span{args, count}}));
+  return ToJsiValue(ConstructObject(GetNapiValue(func), NapiValueArgs(*this, Span(args, count))));
 }
 
 facebook::jsi::Runtime::ScopeState *NapiJsiRuntime::pushScope() {
