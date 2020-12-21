@@ -74,6 +74,7 @@ namespace react::jsi {
  * Currently we only wrap up functions that are needed to implement the JSI API.
  */
 struct NapiApi {
+  explicit NapiApi(napi_env env) noexcept;
   /**
    * @brief A smart pointer for napi_ref.
    *

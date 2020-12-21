@@ -38,7 +38,7 @@ struct HostFunctionWrapper final {
 
 } // namespace
 
-NapiJsiRuntime::NapiJsiRuntime(napi_env env) noexcept {
+NapiJsiRuntime::NapiJsiRuntime(napi_env env) noexcept : NapiApi{env}, m_env{env} {
   // JsRuntimeAttributes runtimeAttributes = JsRuntimeAttributeNone;
 
   // if (!m_args.enableJITCompilation) {
@@ -124,75 +124,11 @@ napi_value NapiJsiRuntime::CreatePropertyDescriptor(napi_value value, PropertyAt
 facebook::jsi::Value NapiJsiRuntime::evaluateJavaScript(
     const std::shared_ptr<const facebook::jsi::Buffer> &buffer,
     const std::string &sourceURL) {
-  return facebook::jsi::Value{};
-
-  //// Simple evaluate if scriptStore not available as it's risky to utilize the
-  //// byte codes without checking the script version.
-  // if (!runtimeArgs().scriptStore) {
-  //  if (!buffer)
-  //    throw facebook::jsi::JSINativeException("Script buffer is empty!");
-  //  return evaluateJavaScriptSimple(*buffer, sourceURL);
-  //}
-
-  // uint64_t scriptVersion = 0;
-  // std::shared_ptr<const facebook::jsi::Buffer> scriptBuffer;
-
-  // if (buffer) {
-  //  scriptBuffer = buffer;
-  //  scriptVersion = runtimeArgs().scriptStore->getScriptVersion(sourceURL);
-  //} else {
-  //  auto versionedScript = runtimeArgs().scriptStore->getVersionedScript(sourceURL);
-  //  scriptBuffer = std::move(versionedScript.buffer);
-  //  scriptVersion = versionedScript.version;
-  //}
-
-  // if (!scriptBuffer) {
-  //  throw facebook::jsi::JSINativeException("Script buffer is empty!");
-  //}
-
-  //// Simple evaluate if script version can't be computed.
-  // if (scriptVersion == 0) {
-  //  return evaluateJavaScriptSimple(*scriptBuffer, sourceURL);
-  //}
-
-  // auto sharedScriptBuffer = std::shared_ptr<const facebook::jsi::Buffer>(std::move(scriptBuffer));
-
-  // facebook::jsi::ScriptSignature scriptSignature = {sourceURL, scriptVersion};
-  // facebook::jsi::JSRuntimeSignature runtimeSignature = {description().c_str(), getRuntimeVersion()};
-
-  // auto preparedScript =
-  //    runtimeArgs().preparedScriptStore->tryGetPreparedScript(scriptSignature, runtimeSignature, nullptr);
-
-  // std::shared_ptr<const facebook::jsi::Buffer> sharedPreparedScript;
-  // if (preparedScript) {
-  //  sharedPreparedScript = std::shared_ptr<const facebook::jsi::Buffer>(std::move(preparedScript));
-  //} else {
-  //  auto genPreparedScript = generatePreparedScript(sourceURL, *sharedScriptBuffer);
-  //  if (!genPreparedScript)
-  //    std::terminate(); // Cache generation can't fail unless something really
-  //                      // wrong. but we should get rid of this abort before
-  //                      // shipping.
-
-  //  sharedPreparedScript = std::shared_ptr<const facebook::jsi::Buffer>(std::move(genPreparedScript));
-  //  runtimeArgs().preparedScriptStore->persistPreparedScript(
-  //      sharedPreparedScript, scriptSignature, runtimeSignature, nullptr);
-  //}
-
-  //// We are pinning the buffers which are backing the external array buffers to
-  //// the duration of this. This is not good if the external array buffers have a
-  //// reduced lifetime compared to the runtime itself. But, it's ok for the script
-  //// and prepared script buffer as their lifetime is expected to be same as the
-  //// JSI runtime.
-  // m_pinnedPreparedScripts.push_back(sharedPreparedScript);
-  // m_pinnedScripts.push_back(sharedScriptBuffer);
-
-  // JsValueRef result;
-  // if (evaluateSerializedScript(*sharedScriptBuffer, *sharedPreparedScript, sourceURL, &result)) {
-  //  return ToJsiValue(result);
-  //}
-
-  //// If we reach here, fall back to simple evaluation.
-  // return evaluateJavaScriptSimple(*sharedScriptBuffer, sourceURL);
+  napi_value script{};
+  napi_value result{};
+  CHECK_NAPI(napi_create_string_utf8(m_env, reinterpret_cast<const char*>(buffer->data()), buffer->size(), &script));
+  CHECK_NAPI(napi_run_script(m_env, script, &result));
+  return ToJsiValue(result);
 }
 
 struct NapiPreparedJavaScript final : facebook::jsi::PreparedJavaScript {

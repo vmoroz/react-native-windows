@@ -241,7 +241,6 @@ struct CachedValue {
 
 struct Environment {
   explicit Environment(Microsoft::JSI::ChakraRuntimeArgs &&args) noexcept;
-  //explicit Environment(JsContextRef context) noexcept;
   ~Environment() noexcept;
 
   JsContextRef Context() const noexcept;
@@ -566,7 +565,11 @@ struct Environment {
       _Out_ JsValueRef *rejectFunction) noexcept;
 
  private:
+  Microsoft::JSI::ChakraRuntimeArgs m_args;
+  JsRuntimeHandle m_runtime;
   JsRefHolder m_context;
+  JsRefHolder m_prevContext;
+
   napi_extended_error_info m_lastError{nullptr, nullptr, 0, napi_ok};
 
   // We store references in two different lists, depending on whether they have
@@ -681,9 +684,9 @@ struct Reference : RefTracker {
 
     JsValueRef jsValue{reinterpret_cast<JsValueRef>(value)};
 
-    JsValueType jsValueType{JsValueType::JsUndefined};
-    CHECK_ENV_JSRT(env, JsGetValueType(jsValue, &jsValueType));
-    RETURN_ENV_STATUS_IF_FALSE(env, jsValueType >= JsValueType::JsObject, napi_status::napi_object_expected);
+    //JsValueType jsValueType{JsValueType::JsUndefined};
+    //CHECK_ENV_JSRT(env, JsGetValueType(jsValue, &jsValueType));
+    //RETURN_ENV_STATUS_IF_FALSE(env, jsValueType >= JsValueType::JsObject, napi_status::napi_object_expected);
 
     // Allocate new Reference and make sure that it is not null.
     auto ref = std::unique_ptr<Reference>{new (std::nothrow) Reference{
@@ -1030,7 +1033,7 @@ std::wstring NarrowToWide(std::string_view value, UINT codePage = CP_UTF8) {
   std::wstring wstr(requiredSize, 0);
   int result = ::MultiByteToWideChar(codePage, 0, value.data(), static_cast<int>(value.size()), &wstr[0], requiredSize);
   assert(result != 0);
-  return std::move(wstr);
+  return wstr;
 }
 
 JsErrorCode JsCreateString(_In_ const char *content, _In_ size_t length, _Out_ JsValueRef *value) {
@@ -1251,7 +1254,60 @@ struct DataViewInfo {
 // Environment implementation
 //=============================================================================
 
-Environment::Environment(Microsoft::JSI::ChakraRuntimeArgs &&args) noexcept {}
+Environment::Environment(Microsoft::JSI::ChakraRuntimeArgs &&args) noexcept : m_args{std::move(args)} {
+  JsRuntimeAttributes runtimeAttributes = JsRuntimeAttributeNone;
+
+  if (!m_args.enableJITCompilation) {
+    runtimeAttributes = static_cast<JsRuntimeAttributes>(
+        runtimeAttributes | JsRuntimeAttributeDisableNativeCodeGeneration |
+        JsRuntimeAttributeDisableExecutablePageAllocation);
+  }
+
+  // TODO: [vmoroz] add error handling
+  JsCreateRuntime(runtimeAttributes, nullptr, &m_runtime);
+
+  //setupMemoryTracker();
+
+  JsValueRef context{};
+  JsCreateContext(m_runtime, &context);
+  m_context = JsRefHolder{context};
+
+  // Note :: We currently assume that the runtime will be created and
+  // exclusively used in a single thread.
+  // Preserve the current context if it is already associated with the thread.
+  JsValueRef currentContext{};
+  JsGetCurrentContext(&currentContext);
+  m_prevContext = JsRefHolder{currentContext};
+
+  JsSetCurrentContext(context);
+
+  //startDebuggingIfNeeded();
+
+  //setupNativePromiseContinuation();
+
+  //std::call_once(s_runtimeVersionInitFlag, initRuntimeVersion);
+
+  //m_propertyId.Object = JsRefHolder{GetPropertyIdFromName(L"Object")};
+  //m_propertyId.Proxy = JsRefHolder{GetPropertyIdFromName(L"Proxy")};
+  //m_propertyId.Symbol = JsRefHolder{GetPropertyIdFromName(L"Symbol")};
+  //m_propertyId.byteLength = JsRefHolder{GetPropertyIdFromName(L"byteLength")};
+  //m_propertyId.configurable = JsRefHolder{GetPropertyIdFromName(L"configurable")};
+  //m_propertyId.enumerable = JsRefHolder{GetPropertyIdFromName(L"enumerable")};
+  //m_propertyId.get = JsRefHolder{GetPropertyIdFromName(L"get")};
+  //m_propertyId.hostFunctionSymbol = JsRefHolder{GetPropertyIdFromSymbol(L"hostFunctionSymbol")};
+  //m_propertyId.hostObjectSymbol = JsRefHolder{GetPropertyIdFromSymbol(L"hostObjectSymbol")};
+  //m_propertyId.length = JsRefHolder{GetPropertyIdFromName(L"length")};
+  //m_propertyId.message = JsRefHolder{GetPropertyIdFromName(L"message")};
+  //m_propertyId.ownKeys = JsRefHolder{GetPropertyIdFromName(L"ownKeys")};
+  //m_propertyId.propertyIsEnumerable = JsRefHolder{GetPropertyIdFromName(L"propertyIsEnumerable")};
+  //m_propertyId.prototype = JsRefHolder{GetPropertyIdFromName(L"prototype")};
+  //m_propertyId.set = JsRefHolder{GetPropertyIdFromName(L"set")};
+  //m_propertyId.toString = JsRefHolder{GetPropertyIdFromName(L"toString")};
+  //m_propertyId.value = JsRefHolder{GetPropertyIdFromName(L"value")};
+  //m_propertyId.writable = JsRefHolder{GetPropertyIdFromName(L"writable")};
+
+  //m_undefinedValue = JsRefHolder{GetUndefinedValue()};
+}
 
 Environment::~Environment() noexcept {
   // First we must finalize those references that have `napi_finalizer`

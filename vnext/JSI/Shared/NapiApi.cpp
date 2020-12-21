@@ -8,6 +8,8 @@
 
 namespace react::jsi {
 
+NapiApi::NapiApi(napi_env env) noexcept : m_env{env} {}
+
 //=============================================================================
 // NapiApi::JsRefHolder implementation
 //=============================================================================
