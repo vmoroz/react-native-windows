@@ -53,33 +53,27 @@ NapiApi::NapiRefHolder::operator bool() const noexcept {
 }
 
 //=============================================================================
-// NapiApi::ExceptionThrowerHolder implementation
-//=============================================================================
-
-/*static*/ thread_local NapiApi::IExceptionThrower *NapiApi::ExceptionThrowerHolder::tls_exceptionThrower{nullptr};
-
-//=============================================================================
 // NapiApi implementation
 //=============================================================================
 
 [[noreturn]] void NapiApi::ThrowJsException(napi_status errorCode) const {
   napi_value jsError{};
   NapiVerifyElseCrash(napi_get_and_clear_last_exception(m_env, &jsError) == napi_ok, "Cannot retrieve JS exception.");
-  if (auto thrower = ExceptionThrowerHolder::Get()) {
-    thrower->ThrowJsExceptionOverride(errorCode, jsError);
-  } else {
-    std::ostringstream errorString;
-    errorString << "A call to NAPI API returned error code 0x" << std::hex << errorCode << '.';
-    throw std::exception(errorString.str().c_str());
-  }
+  ThrowJsExceptionOverride(errorCode, jsError);
 }
 
 [[noreturn]] void NapiApi::ThrowNativeException(char const *errorMessage) const {
-  if (auto thrower = ExceptionThrowerHolder::Get()) {
-    thrower->ThrowNativeExceptionOverride(errorMessage);
-  } else {
-    throw std::exception(errorMessage);
-  }
+  ThrowNativeExceptionOverride(errorMessage);
+}
+
+[[noreturn]] void NapiApi::ThrowJsExceptionOverride(napi_status errorCode, napi_value /*jsError*/) const {
+  std::ostringstream errorString;
+  errorString << "A call to NAPI API returned error code 0x" << std::hex << errorCode << '.';
+  throw std::exception(errorString.str().c_str());
+}
+
+[[noreturn]] void NapiApi::ThrowNativeExceptionOverride(char const *errorMessage) const {
+  throw std::exception(errorMessage);
 }
 
 napi_ref NapiApi::CreateReference(napi_value value) const {
@@ -212,17 +206,13 @@ napi_value NapiApi::GetPropertyIdFromName(std::string_view name) const {
 //  return type;
 //}
 //
-///*static*/ JsPropertyIdRef NapiApi::GetPropertyIdFromSymbol(JsValueRef symbol) {
-//  JsPropertyIdRef propertyId{JS_INVALID_REFERENCE};
-//  NapiVerifyJsErrorElseThrow(JsGetPropertyIdFromSymbol(symbol, &propertyId));
-//  return propertyId;
-//}
-//
-///*static*/ JsPropertyIdRef NapiApi::GetPropertyIdFromSymbol(std::wstring_view symbolDescription) {
-//  JsPropertyIdRef propertyId{JS_INVALID_REFERENCE};
-//  NapiVerifyJsErrorElseThrow(JsGetPropertyIdFromSymbol(CreateSymbol(symbolDescription), &propertyId));
-//  return propertyId;
-//}
+
+napi_value NapiApi::GetPropertyIdFromSymbol(std::string_view symbolDescription) const {
+  napi_value result{};
+  napi_value description = CreateStringUtf8(symbolDescription);
+  CHECK_NAPI(napi_create_symbol(m_env, description, &result));
+  return result;
+}
 //
 ///*static*/ JsValueRef NapiApi::CreateSymbol(JsValueRef symbolDescription) {
 //  JsValueRef symbol{JS_INVALID_REFERENCE};
@@ -345,7 +335,7 @@ std::string NapiApi::StringToStdString(napi_value stringValue) const {
   CHECK_NAPI(napi_get_value_string_utf8(m_env, stringValue, nullptr, 0, &strLength));
   result.assign(strLength, '\0');
   size_t copiedLength{};
-  CHECK_NAPI(napi_get_value_string_utf8(m_env, stringValue, result.data(), result.capacity(), &copiedLength));
+  CHECK_NAPI(napi_get_value_string_utf8(m_env, stringValue, result.data(), result.length() + 1, &copiedLength));
   NapiVerifyElseThrow(result.length() == copiedLength, "Unexpected string length");
   return result;
 }

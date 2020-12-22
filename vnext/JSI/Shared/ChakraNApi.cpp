@@ -284,6 +284,11 @@ struct Environment {
   napi_status CreateStringUtf16(const char16_t *str, size_t length, napi_value *result) noexcept;
   napi_status CreateSymbol(napi_value description, napi_value *result) noexcept;
 
+  napi_status GetUniqueString(napi_value str, napi_value *result) noexcept;
+  napi_status GetUniqueStringLatin1(const char *str, size_t length, napi_value *result) noexcept;
+  napi_status GetUniqueStringUtf8(const char *str, size_t length, napi_value *result) noexcept;
+  napi_status GetUniqueStringUtf16(const char16_t *str, size_t length, napi_value *result) noexcept;
+
   napi_status
   CreateFunction(const char *utf8Name, size_t length, napi_callback callback, void *data, napi_value *result) noexcept;
 
@@ -611,6 +616,31 @@ struct Environment {
     CachedValue HasOwnProperty{GetHasOwnPropertyFunction};
     CachedValue PropertyIsEnumerable{GetPropertyIsEnumerable};
   } m_value;
+
+  struct UniqueString {
+    napi_value value;
+    std::wstring_view stringView;
+  };
+
+  static void CALLBACK FinalizeUniqueString(_In_ JsRef ref, _In_opt_ void *callbackState) {
+    UniqueString* uniqueStr{};
+    Environment *env = reinterpret_cast<Environment *>(callbackState);
+    const auto it = env->m_uniqueStrings.find(reinterpret_cast<napi_value>(ref));
+    if (it != env->m_uniqueStrings.end()) {
+      uniqueStr = it->second;
+      env->m_uniqueStrings.erase(it);
+
+      const auto indexIt = env->m_uniqueStringIndex.find(uniqueStr->stringView);
+      if (indexIt != env->m_uniqueStringIndex.end()) {
+        env->m_uniqueStringIndex.erase(indexIt);
+      }
+
+      delete uniqueStr;
+    }
+  }
+
+  std::unordered_map<napi_value, UniqueString *> m_uniqueStrings;
+  std::unordered_map<std::wstring_view, UniqueString *> m_uniqueStringIndex;
 };
 
 napi_env MakeChakraNapiEnv(Microsoft::JSI::ChakraRuntimeArgs &&args) noexcept {
@@ -1494,7 +1524,8 @@ JsErrorCode Environment::ChakraGetProperty(TObject &&object, TPropertyId &&prope
 template <class TObject, class TPropertyId>
 JsErrorCode Environment::ChakraGetBoolProperty(TObject &&object, TPropertyId &&propertyId, bool *result) noexcept {
   JsValueRef value{};
-  CHECK_JSRT_ERROR_CODE(ChakraGetProperty(std::forward<TObject>(object), std::forward<TPropertyId>(propertyId), &value));
+  CHECK_JSRT_ERROR_CODE(
+      ChakraGetProperty(std::forward<TObject>(object), std::forward<TPropertyId>(propertyId), &value));
   return JsBooleanToBool(value, result);
 }
 
@@ -1899,6 +1930,96 @@ napi_status Environment::CreateSymbol(napi_value description, napi_value *result
   CHECK_ARG(result);
   JsValueRef js_description = reinterpret_cast<JsValueRef>(description);
   CHECK_JSRT(JsCreateSymbol(js_description, reinterpret_cast<JsValueRef *>(result)));
+  return napi_ok;
+}
+
+napi_status Environment::GetUniqueString(napi_value str, napi_value *result) noexcept {
+  // Search using fast path
+  const auto it = m_uniqueStrings.find(str);
+  if (it != m_uniqueStrings.end()) {
+    *result = str;
+    return napi_ok;
+  }
+
+  // Search using slow path
+  JsValueRef jsStr = reinterpret_cast<JsValueRef>(str);
+  const wchar_t *strValue{};
+  size_t strLength{};
+  CHECK_JSRT(JsStringToPointer(jsStr, &strValue, &strLength));
+  const auto indexIt = m_uniqueStringIndex.find(std::wstring_view(strValue, strLength));
+  if (indexIt != m_uniqueStringIndex.end()) {
+    *result = indexIt->second->value;
+    return napi_ok;
+  }
+
+  // Add new unique string
+  auto uniqueStr = std::unique_ptr<UniqueString>(new UniqueString{str, std::wstring_view(strValue, strLength)});
+  m_uniqueStrings.try_emplace(*result, uniqueStr.get());
+  m_uniqueStringIndex.try_emplace(std::wstring_view(strValue, strLength), uniqueStr.get());
+
+  CHECK_JSRT(JsSetObjectBeforeCollectCallback(jsStr, this, FinalizeUniqueString));
+  uniqueStr.release();
+
+  *result = str;
+  return napi_ok;
+}
+
+napi_status Environment::GetUniqueStringLatin1(const char *str, size_t length, napi_value *result) noexcept {
+  std::wstring wstr =
+      (length == NAPI_AUTO_LENGTH) ? NarrowToWide({str}, CP_LATIN1) : NarrowToWide({str, length}, CP_LATIN1);
+
+  const auto indexIt = m_uniqueStringIndex.find(wstr);
+  if (indexIt != m_uniqueStringIndex.end()) {
+    *result = indexIt->second->value;
+    return napi_ok;
+  }
+
+  // Add new unique string
+  CHECK_JSRT(JsPointerToString(wstr.data(), wstr.size(), reinterpret_cast<JsValueRef *>(result)));
+  const wchar_t *strValue{};
+  size_t strLength{};
+  CHECK_JSRT(JsStringToPointer(reinterpret_cast<JsValueRef>(*result), &strValue, &strLength));
+  auto uniqueStr = std::unique_ptr<UniqueString>(new UniqueString{*result, std::wstring_view(strValue, strLength)});
+  m_uniqueStrings.try_emplace(*result, uniqueStr.get());
+  m_uniqueStringIndex.try_emplace(std::wstring_view(strValue, strLength), uniqueStr.release());
+  return napi_ok;
+}
+
+napi_status Environment::GetUniqueStringUtf8(const char *str, size_t length, napi_value *result) noexcept {
+  std::wstring wstr = (length == NAPI_AUTO_LENGTH) ? NarrowToWide({str}) : NarrowToWide({str, length});
+
+  const auto indexIt = m_uniqueStringIndex.find(std::wstring_view(wstr));
+  if (indexIt != m_uniqueStringIndex.end()) {
+    *result = indexIt->second->value;
+    return napi_ok;
+  }
+
+  // Add new unique string
+  CHECK_JSRT(JsPointerToString(wstr.data(), wstr.size(), reinterpret_cast<JsValueRef *>(result)));
+  const wchar_t *strValue{};
+  size_t strLength{};
+  CHECK_JSRT(JsStringToPointer(reinterpret_cast<JsValueRef>(*result), &strValue, &strLength));
+  auto uniqueStr = std::unique_ptr<UniqueString>(new UniqueString{*result, std::wstring_view(strValue, strLength)});
+  m_uniqueStrings.try_emplace(*result, uniqueStr.get());
+  m_uniqueStringIndex.try_emplace(std::wstring_view(strValue, strLength), uniqueStr.release());
+  return napi_ok;
+}
+
+napi_status Environment::GetUniqueStringUtf16(const char16_t *str, size_t length, napi_value *result) noexcept {
+  const auto indexIt = m_uniqueStringIndex.find(std::wstring_view(reinterpret_cast<const wchar_t *>(str), length));
+  if (indexIt != m_uniqueStringIndex.end()) {
+    *result = indexIt->second->value;
+    return napi_ok;
+  }
+
+  // Add new unique string
+  CHECK_NAPI(CreateStringUtf16(str, length, result));
+  const wchar_t *strValue{};
+  size_t strLength{};
+  CHECK_JSRT(JsStringToPointer(reinterpret_cast<JsValueRef>(*result), &strValue, &strLength));
+  auto uniqueStr = std::unique_ptr<UniqueString>(new UniqueString{*result, std::wstring_view(strValue, strLength)});
+  m_uniqueStrings.try_emplace(*result, uniqueStr.get());
+  m_uniqueStringIndex.try_emplace(std::wstring_view(strValue, strLength), uniqueStr.release());
   return napi_ok;
 }
 
@@ -4210,6 +4331,8 @@ napi_status napi_object_seal(napi_env env, napi_value object) {
 
 #endif // NAPI_EXPERIMENTAL
 
+#pragma region NAPI extensions
+
 NAPI_EXTERN napi_status napiext_evaluate_serialized_script(
     napi_env env,
     napiext_buffer scriptBuffer,
@@ -4218,3 +4341,24 @@ NAPI_EXTERN napi_status napiext_evaluate_serialized_script(
     napi_value *result) {
   return CHECKED_ENV(env)->EvaluateSerializedScript(scriptBuffer, serializedScriptBuffer, sourceUrl, result);
 }
+
+NAPI_EXTERN napi_status napiext_get_unique_string(napi_env env, napi_value str, napi_value *result) {
+  return CHECKED_ENV(env)->GetUniqueString(str, result);
+}
+
+NAPI_EXTERN napi_status
+napiext_get_unique_string_latin1(napi_env env, const char *str, size_t length, napi_value *result) {
+  return CHECKED_ENV(env)->GetUniqueStringLatin1(str, length, result);
+}
+
+NAPI_EXTERN napi_status
+napiext_get_unique_string_utf8(napi_env env, const char *str, size_t length, napi_value *result) {
+  return CHECKED_ENV(env)->GetUniqueStringUtf8(str, length, result);
+}
+
+NAPI_EXTERN napi_status
+napiext_get_unique_string_utf16(napi_env env, const char16_t *str, size_t length, napi_value *result) {
+  return CHECKED_ENV(env)->GetUniqueStringUtf16(str, length, result);
+}
+
+#pragma endregion

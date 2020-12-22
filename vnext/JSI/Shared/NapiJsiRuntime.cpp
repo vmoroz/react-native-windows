@@ -72,8 +72,8 @@ NapiJsiRuntime::NapiJsiRuntime(napi_env env) noexcept : NapiApi{env}, m_env{env}
   m_propertyId.configurable = NapiRefHolder{this, GetPropertyIdFromName("configurable")};
   m_propertyId.enumerable = NapiRefHolder{this, GetPropertyIdFromName("enumerable")};
   m_propertyId.get = NapiRefHolder{this, GetPropertyIdFromName("get")};
-  m_propertyId.hostFunctionSymbol = NapiRefHolder{this, GetPropertyIdFromName("hostFunctionSymbo")};
-  m_propertyId.hostObjectSymbol = NapiRefHolder{this, GetPropertyIdFromName("hostObjectSymbo")};
+  m_propertyId.hostFunctionSymbol = NapiRefHolder{this, GetPropertyIdFromSymbol("hostFunctionSymbol")};
+  m_propertyId.hostObjectSymbol = NapiRefHolder{this, GetPropertyIdFromSymbol("hostObjectSymbol")};
   m_propertyId.length = NapiRefHolder{this, GetPropertyIdFromName("length")};
   m_propertyId.message = NapiRefHolder{this, GetPropertyIdFromName("message")};
   m_propertyId.ownKeys = NapiRefHolder{this, GetPropertyIdFromName("ownKeys")};
@@ -84,26 +84,7 @@ NapiJsiRuntime::NapiJsiRuntime(napi_env env) noexcept : NapiApi{env}, m_env{env}
   m_propertyId.value = NapiRefHolder{this, GetPropertyIdFromName("value")};
   m_propertyId.writable = NapiRefHolder{this, GetPropertyIdFromName("writable")};
 
-  // m_propertyId.Object = JsRefHolder{GetPropertyIdFromName(L"Object")};
-  // m_propertyId.Proxy = JsRefHolder{GetPropertyIdFromName(L"Proxy")};
-  // m_propertyId.Symbol = JsRefHolder{GetPropertyIdFromName(L"Symbol")};
-  // m_propertyId.byteLength = JsRefHolder{GetPropertyIdFromName(L"byteLength")};
-  // m_propertyId.configurable = JsRefHolder{GetPropertyIdFromName(L"configurable")};
-  // m_propertyId.enumerable = JsRefHolder{GetPropertyIdFromName(L"enumerable")};
-  // m_propertyId.get = JsRefHolder{GetPropertyIdFromName(L"get")};
-  // m_propertyId.hostFunctionSymbol = JsRefHolder{GetPropertyIdFromSymbol(L"hostFunctionSymbol")};
-  // m_propertyId.hostObjectSymbol = JsRefHolder{GetPropertyIdFromSymbol(L"hostObjectSymbol")};
-  // m_propertyId.length = JsRefHolder{GetPropertyIdFromName(L"length")};
-  // m_propertyId.message = JsRefHolder{GetPropertyIdFromName(L"message")};
-  // m_propertyId.ownKeys = JsRefHolder{GetPropertyIdFromName(L"ownKeys")};
-  // m_propertyId.propertyIsEnumerable = JsRefHolder{GetPropertyIdFromName(L"propertyIsEnumerable")};
-  // m_propertyId.prototype = JsRefHolder{GetPropertyIdFromName(L"prototype")};
-  // m_propertyId.set = JsRefHolder{GetPropertyIdFromName(L"set")};
-  // m_propertyId.toString = JsRefHolder{GetPropertyIdFromName(L"toString")};
-  // m_propertyId.value = JsRefHolder{GetPropertyIdFromName(L"value")};
-  // m_propertyId.writable = JsRefHolder{GetPropertyIdFromName(L"writable")};
-
-  // m_undefinedValue = JsRefHolder{GetUndefinedValue()};
+  m_undefinedValue = NapiRefHolder{this, GetUndefined()};
 }
 
 NapiJsiRuntime::~NapiJsiRuntime() noexcept {
@@ -293,7 +274,7 @@ facebook::jsi::Object NapiJsiRuntime::createObject(std::shared_ptr<facebook::jsi
 
 std::shared_ptr<facebook::jsi::HostObject> NapiJsiRuntime::getHostObject(const facebook::jsi::Object &obj) {
   napi_value hostObjectHolder = GetProperty(GetNapiValue(obj), m_propertyId.hostObjectSymbol);
-  if (TypeOf(hostObjectHolder) == napi_valuetype::napi_object) {
+  if (TypeOf(hostObjectHolder) == napi_valuetype::napi_external) {
     return *static_cast<std::shared_ptr<facebook::jsi::HostObject> *>(GetExternalData(hostObjectHolder));
   } else {
     throw facebook::jsi::JSINativeException("getHostObject() can only be called with HostObjects.");
@@ -302,7 +283,7 @@ std::shared_ptr<facebook::jsi::HostObject> NapiJsiRuntime::getHostObject(const f
 
 facebook::jsi::HostFunctionType &NapiJsiRuntime::getHostFunction(const facebook::jsi::Function &func) {
   napi_value hostFunctionHolder = GetProperty(GetNapiValue(func), m_propertyId.hostFunctionSymbol);
-  if (TypeOf(hostFunctionHolder) == napi_valuetype::napi_object) {
+  if (TypeOf(hostFunctionHolder) == napi_valuetype::napi_external) {
     return static_cast<HostFunctionWrapper *>(GetExternalData(hostFunctionHolder))->GetHostFunction();
   } else {
     throw facebook::jsi::JSINativeException("getHostFunction() can only be called with HostFunction.");
@@ -609,16 +590,14 @@ napi_value NapiJsiRuntime::CreateExternalFunction(
   size_t argCount{};
   napi_get_cb_info(env, info, &argCount, nullptr, nullptr, reinterpret_cast<void **>(&jsiRuntime));
   return jsiRuntime->HandleCallbackExceptions([&]() {
-    // args[0] - the Proxy handler object (this) (unused).
-    // args[1] - the Proxy target object.
-    // args[2] - the name of the property to set.
-    // args[3] - the Proxy object (unused).
-    CHECK_ELSE_THROW(jsiRuntime, argCount == 4, "HostObjectGetTrap() requires 4 arguments.");
+    // args[0] - the Proxy target object.
+    // args[1] - the name of the property to set.
+    // args[2] - the Proxy object (unused).
+    CHECK_ELSE_THROW(jsiRuntime, argCount == 3, "HostObjectGetTrap() requires 3 arguments.");
     auto napiArgs = SmallBuffer<napi_value, MaxStackArgCount>{argCount};
-    auto thisArg = napi_value{};
     napi_get_cb_info(env, info, &argCount, napiArgs.Data(), nullptr, nullptr);
-    const napi_value target = napiArgs.Data()[1];
-    const napi_value propertyName = napiArgs.Data()[2];
+    const napi_value target = napiArgs.Data()[0];
+    const napi_value propertyName = napiArgs.Data()[1];
     napi_valuetype propertyIdType = jsiRuntime->TypeOf(propertyName);
     if (propertyIdType == napi_valuetype::napi_string) {
       auto const &hostObject =
@@ -648,24 +627,22 @@ napi_value NapiJsiRuntime::CreateExternalFunction(
   size_t argCount{};
   napi_get_cb_info(env, info, &argCount, nullptr, nullptr, reinterpret_cast<void **>(&jsiRuntime));
   return jsiRuntime->HandleCallbackExceptions([&]() {
-    // args[0] - the Proxy handler object (this) (unused).
-    // args[1] - the Proxy target object.
-    // args[2] - the name of the property to set.
-    // args[3] - the new value of the property to set.
-    // args[4] - the Proxy object (unused).
-    CHECK_ELSE_THROW(jsiRuntime, argCount == 5, "HostObjectSetTrap() requires 5 arguments.");
+    // args[0] - the Proxy target object.
+    // args[1] - the name of the property to set.
+    // args[2] - the new value of the property to set.
+    // args[3] - the Proxy object (unused).
+    CHECK_ELSE_THROW(jsiRuntime, argCount == 4, "HostObjectSetTrap() requires 4 arguments.");
 
     auto napiArgs = SmallBuffer<napi_value, MaxStackArgCount>{argCount};
-    auto thisArg = napi_value{};
     napi_get_cb_info(env, info, &argCount, napiArgs.Data(), nullptr, nullptr);
 
-    const napi_value target = napiArgs.Data()[1];
-    const napi_value propertyName = napiArgs.Data()[2];
+    const napi_value target = napiArgs.Data()[0];
+    const napi_value propertyName = napiArgs.Data()[1];
     if (jsiRuntime->TypeOf(propertyName) == napi_valuetype::napi_string) {
       auto const &hostObject =
           *static_cast<std::shared_ptr<facebook::jsi::HostObject> *>(jsiRuntime->GetExternalData(target));
       const PropNameIDView propertyId{jsiRuntime, propertyName};
-      const JsiValueView value{jsiRuntime, napiArgs.Data()[3]};
+      const JsiValueView value{jsiRuntime, napiArgs.Data()[2]};
       jsiRuntime->RunInMethodContext("HostObject::set", [&]() { hostObject->set(*jsiRuntime, propertyId, value); });
     }
 
@@ -678,15 +655,13 @@ napi_value NapiJsiRuntime::CreateExternalFunction(
   size_t argCount{};
   napi_get_cb_info(env, info, &argCount, nullptr, nullptr, reinterpret_cast<void **>(&jsiRuntime));
   return jsiRuntime->HandleCallbackExceptions([&]() {
-    // args[0] - the Proxy handler object (this) (unused).
-    // args[1] - the Proxy target object.
-    CHECK_ELSE_THROW(jsiRuntime, argCount == 2, "HostObjectOwnKeysTrap() requires 2 arguments.");
+    // args[0] - the Proxy target object.
+    CHECK_ELSE_THROW(jsiRuntime, argCount == 1, "HostObjectOwnKeysTrap() requires 1 arguments.");
 
     auto napiArgs = SmallBuffer<napi_value, MaxStackArgCount>{argCount};
-    auto thisArg = napi_value{};
     napi_get_cb_info(env, info, &argCount, napiArgs.Data(), nullptr, nullptr);
 
-    const napi_value target = napiArgs.Data()[1];
+    const napi_value target = napiArgs.Data()[0];
     auto const &hostObject =
         *static_cast<std::shared_ptr<facebook::jsi::HostObject> *>(jsiRuntime->GetExternalData(target));
 
@@ -696,7 +671,10 @@ napi_value NapiJsiRuntime::CreateExternalFunction(
     std::unordered_set<napi_value> dedupedOwnKeys{};
     dedupedOwnKeys.reserve(ownKeys.size());
     for (facebook::jsi::PropNameID const &key : ownKeys) {
-      dedupedOwnKeys.insert(GetNapiValue(key));
+      //TODO: [vmoroz] Make it part of PropNameID
+      napi_value uniqueKey{};
+      napiext_get_unique_string(jsiRuntime->m_env, jsiRuntime->GetNapiValue(key), &uniqueKey);
+      dedupedOwnKeys.insert(uniqueKey);
     }
 
     const napi_value result = jsiRuntime->CreateArray(dedupedOwnKeys.size());
@@ -713,8 +691,8 @@ napi_value NapiJsiRuntime::CreateExternalFunction(
 napi_value NapiJsiRuntime::GetHostObjectProxyHandler() {
   if (!m_hostObjectProxyHandler) {
     const napi_value handler = CreateObject();
-    SetProperty(handler, m_propertyId.get, CreateExternalFunction(m_propertyId.get, 2, HostObjectGetTrap, this));
-    SetProperty(handler, m_propertyId.set, CreateExternalFunction(m_propertyId.set, 3, HostObjectSetTrap, this));
+    SetProperty(handler, m_propertyId.get, CreateExternalFunction(m_propertyId.get, 3, HostObjectGetTrap, this));
+    SetProperty(handler, m_propertyId.set, CreateExternalFunction(m_propertyId.set, 4, HostObjectSetTrap, this));
     SetProperty(
         handler, m_propertyId.ownKeys, CreateExternalFunction(m_propertyId.ownKeys, 1, HostObjectOwnKeysTrap, this));
     m_hostObjectProxyHandler = NapiRefHolder{this, handler};

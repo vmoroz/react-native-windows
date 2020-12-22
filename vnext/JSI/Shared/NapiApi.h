@@ -5,6 +5,7 @@
 
 #define NAPI_EXPERIMENTAL
 #include "js_native_api.h"
+#include "js_native_api_ext.h"
 
 #include <cassert>
 #include <cstddef>
@@ -38,10 +39,10 @@
 
 // Check condition and throw native exception if it fails.
 #define CHECK_ELSE_THROW(rt, condition, message) \
-  do {                                          \
-    if (!(condition)) {                         \
-      rt->ThrowNativeException(message);            \
-    }                                           \
+  do {                                           \
+    if (!(condition)) {                          \
+      rt->ThrowNativeException(message);         \
+    }                                            \
   } while (false)
 
 // Evaluate expression and throw JS exception if it fails.
@@ -106,49 +107,9 @@ struct NapiApi {
     napi_ref m_ref{};
   };
 
-  /**
-   * @brief Interface that helps override the exception being thrown.
-   *
-   * The ChakraApi uses the ExceptionThrowerHolder to retrieve the ExceptionThrower
-   * instance from the current thread.
-   */
-  struct IExceptionThrower {
-    /**
-     * @brief Throws an exception based on the errorCore.
-     *
-     * The base implementation throws the generic std::exception.
-     * The method can be overridden in derived class to provide more specific exceptions.
-     */
-    [[noreturn]] virtual void ThrowJsExceptionOverride(napi_status errorCode, napi_value jsError) const = 0;
+  [[noreturn]] virtual void ThrowJsExceptionOverride(napi_status errorCode, napi_value jsError) const;
 
-    /**
-     * @brief Throws an exception with the provided errorMessage.
-     *
-     * The base implementation throws the generic std::exception.
-     * The method can be overridden in derived class to provide more specific exceptions.
-     */
-    [[noreturn]] virtual void ThrowNativeExceptionOverride(char const *errorMessage) const = 0;
-  };
-
-  /**
-   * @brief A RAII class to hold IExceptionThrower instance in the thread local variable.
-   */
-  struct ExceptionThrowerHolder final {
-    ExceptionThrowerHolder(IExceptionThrower *exceptionThrower) noexcept
-        : m_previous{std::exchange(tls_exceptionThrower, exceptionThrower)} {}
-
-    ~ExceptionThrowerHolder() noexcept {
-      tls_exceptionThrower = m_previous;
-    }
-
-    static IExceptionThrower *Get() noexcept {
-      return tls_exceptionThrower;
-    }
-
-   private:
-    static thread_local IExceptionThrower *tls_exceptionThrower;
-    IExceptionThrower *const m_previous;
-  };
+  [[noreturn]] virtual void ThrowNativeExceptionOverride(char const *errorMessage) const;
 
   /**
    * @brief Throws JavaScript exception with provided errorCode.
@@ -235,14 +196,9 @@ struct NapiApi {
   // static JsPropertyIdType GetPropertyIdType(JsPropertyIdRef propertyId);
 
   /**
-   * @brief Gets the property ID associated with the symbol.
-   */
-  // static JsPropertyIdRef GetPropertyIdFromSymbol(JsValueRef symbol);
-
-  /**
    * @brief Creates symbol and gets the property ID associated with the symbol.
    */
-  // static JsPropertyIdRef GetPropertyIdFromSymbol(std::wstring_view symbolDescription);
+  napi_value GetPropertyIdFromSymbol(std::string_view symbolDescription) const;
 
   /**
    * @brief Creates a JavaScript symbol.
@@ -385,7 +341,7 @@ struct NapiApi {
   // */
   // static JsValueRef GetPrototype(JsValueRef object);
 
- bool InstanceOf(napi_value object, napi_value constructor) const;
+  bool InstanceOf(napi_value object, napi_value constructor) const;
 
   /**
    * @brief Gets an object's property.
@@ -491,7 +447,7 @@ struct NapiApi {
   /**
    * @brief  Sets the runtime of the current context to an exception state.
    */
-   bool SetException(std::string_view message) const noexcept;
+  bool SetException(std::string_view message) const noexcept;
 
  private:
   napi_env m_env;

@@ -18,7 +18,7 @@ std::unique_ptr<facebook::jsi::Runtime> MakeNapiJsiRuntime(napi_env env) noexcep
 struct NapiJsiRuntimeArgs {};
 
 // Implementation of N-API JSI Runtime
-class NapiJsiRuntime : public facebook::jsi::Runtime, NapiApi, NapiApi::IExceptionThrower {
+class NapiJsiRuntime : public facebook::jsi::Runtime, NapiApi {
  public:
   NapiJsiRuntime(napi_env env) noexcept;
   ~NapiJsiRuntime() noexcept;
@@ -66,8 +66,6 @@ class NapiJsiRuntime : public facebook::jsi::Runtime, NapiApi, NapiApi::IExcepti
 
   std::string symbolToString(const facebook::jsi::Symbol &s) override;
 
-  // Despite its name, createPropNameIDFromAscii is the same function as
-  // createStringFromUtf8.
   facebook::jsi::String createStringFromAscii(const char *str, size_t length) override;
   facebook::jsi::String createStringFromUtf8(const uint8_t *utf8, size_t length) override;
   std::string utf8(const facebook::jsi::String &str) override;
@@ -228,7 +226,7 @@ class NapiJsiRuntime : public facebook::jsi::Runtime, NapiApi, NapiApi::IExcepti
 
   // The pointer passed to this function must point to a NapiPointerValue.
   static NapiPointerValue *CloneNapiPointerValue(const PointerValue *pointerValue) {
-    const NapiPointerValue *napiPointerValue = static_cast<const NapiPointerValue *>(pointerValue);
+    auto napiPointerValue = static_cast<const NapiPointerValueView *>(pointerValue);
     return new NapiPointerValue(napiPointerValue->GetNapi(), napiPointerValue->GetValue());
   }
 
@@ -473,9 +471,6 @@ class NapiJsiRuntime : public facebook::jsi::Runtime, NapiApi, NapiApi::IExcepti
   // JsRuntimeHandle m_runtime;
   // JsRefHolder m_context;
   // JsRefHolder m_prevContext;
-
-  // Set the Chakra API exception thrower on this thread
-  ExceptionThrowerHolder m_exceptionThrower{this};
 
   // Note: For simplicity, We are pinning the script and serialized script
   // buffers in the facebook::jsi::Runtime instance assuming as these buffers
