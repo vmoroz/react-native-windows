@@ -508,7 +508,6 @@ struct Environment {
 
   napi_status ObjectSeal(napi_value object) noexcept;
 
-
   napi_status EvaluateSerializedScript(
       napiext_buffer scriptBuffer,
       napiext_buffer serializedScriptBuffer,
@@ -520,6 +519,9 @@ struct Environment {
 
   template <class TObject, class TPropertyId>
   static JsErrorCode ChakraGetProperty(TObject &&object, TPropertyId &&propertyId, JsValueRef *result) noexcept;
+
+  template <class TObject, class TPropertyId>
+  JsErrorCode ChakraGetBoolProperty(TObject &&object, TPropertyId &&propertyId, bool *result) noexcept;
 
   template <class TObject, class TPropertyId, class TValue>
   static JsErrorCode ChakraSetProperty(TObject &&object, TPropertyId &&propertyId, TValue &&value) noexcept;
@@ -557,7 +559,10 @@ struct Environment {
   template <typename TConstructor, typename... TArgs>
   static JsErrorCode ChakraConstructObject(TConstructor &&constructor, JsValueRef *result, TArgs &&... args) noexcept;
 
+  static JsErrorCode GetObjectConstructor(JsValueRef *result) noexcept;
+  static JsErrorCode GetObjectPrototype(JsValueRef *result) noexcept;
   static JsErrorCode GetHasOwnPropertyFunction(JsValueRef *result) noexcept;
+  static JsErrorCode GetPropertyIsEnumerable(JsValueRef *result) noexcept;
 
   JsErrorCode ChakraCreatePromise(
       _Out_ JsValueRef *promise,
@@ -588,6 +593,8 @@ struct Environment {
     CachedPropertyId enumerable{L"enumerable"};
     CachedPropertyId hasOwnProperty{L"hasOwnProperty"};
     CachedPropertyId hostObject{L"hostObject", JsPropertyIdTypeSymbol};
+    CachedPropertyId propertyIsEnumerable{L"propertyIsEnumerable"};
+    CachedPropertyId prototype{L"prototype"};
     CachedPropertyId reject{L"reject"};
     CachedPropertyId resolve{L"resolve"};
     CachedPropertyId value{L"value"};
@@ -602,9 +609,9 @@ struct Environment {
     CachedValue Undefined{JsGetUndefinedValue};
     CachedValue True{JsGetTrueValue};
     CachedValue HasOwnProperty{GetHasOwnPropertyFunction};
+    CachedValue PropertyIsEnumerable{GetPropertyIsEnumerable};
   } m_value;
 };
-
 
 napi_env MakeChakraNapiEnv(Microsoft::JSI::ChakraRuntimeArgs &&args) noexcept {
   return reinterpret_cast<napi_env>(new Environment(std::move(args)));
@@ -684,9 +691,9 @@ struct Reference : RefTracker {
 
     JsValueRef jsValue{reinterpret_cast<JsValueRef>(value)};
 
-    //JsValueType jsValueType{JsValueType::JsUndefined};
-    //CHECK_ENV_JSRT(env, JsGetValueType(jsValue, &jsValueType));
-    //RETURN_ENV_STATUS_IF_FALSE(env, jsValueType >= JsValueType::JsObject, napi_status::napi_object_expected);
+    // JsValueType jsValueType{JsValueType::JsUndefined};
+    // CHECK_ENV_JSRT(env, JsGetValueType(jsValue, &jsValueType));
+    // RETURN_ENV_STATUS_IF_FALSE(env, jsValueType >= JsValueType::JsObject, napi_status::napi_object_expected);
 
     // Allocate new Reference and make sure that it is not null.
     auto ref = std::unique_ptr<Reference>{new (std::nothrow) Reference{
@@ -1266,7 +1273,7 @@ Environment::Environment(Microsoft::JSI::ChakraRuntimeArgs &&args) noexcept : m_
   // TODO: [vmoroz] add error handling
   JsCreateRuntime(runtimeAttributes, nullptr, &m_runtime);
 
-  //setupMemoryTracker();
+  // setupMemoryTracker();
 
   JsValueRef context{};
   JsCreateContext(m_runtime, &context);
@@ -1281,32 +1288,32 @@ Environment::Environment(Microsoft::JSI::ChakraRuntimeArgs &&args) noexcept : m_
 
   JsSetCurrentContext(context);
 
-  //startDebuggingIfNeeded();
+  // startDebuggingIfNeeded();
 
-  //setupNativePromiseContinuation();
+  // setupNativePromiseContinuation();
 
-  //std::call_once(s_runtimeVersionInitFlag, initRuntimeVersion);
+  // std::call_once(s_runtimeVersionInitFlag, initRuntimeVersion);
 
-  //m_propertyId.Object = JsRefHolder{GetPropertyIdFromName(L"Object")};
-  //m_propertyId.Proxy = JsRefHolder{GetPropertyIdFromName(L"Proxy")};
-  //m_propertyId.Symbol = JsRefHolder{GetPropertyIdFromName(L"Symbol")};
-  //m_propertyId.byteLength = JsRefHolder{GetPropertyIdFromName(L"byteLength")};
-  //m_propertyId.configurable = JsRefHolder{GetPropertyIdFromName(L"configurable")};
-  //m_propertyId.enumerable = JsRefHolder{GetPropertyIdFromName(L"enumerable")};
-  //m_propertyId.get = JsRefHolder{GetPropertyIdFromName(L"get")};
-  //m_propertyId.hostFunctionSymbol = JsRefHolder{GetPropertyIdFromSymbol(L"hostFunctionSymbol")};
-  //m_propertyId.hostObjectSymbol = JsRefHolder{GetPropertyIdFromSymbol(L"hostObjectSymbol")};
-  //m_propertyId.length = JsRefHolder{GetPropertyIdFromName(L"length")};
-  //m_propertyId.message = JsRefHolder{GetPropertyIdFromName(L"message")};
-  //m_propertyId.ownKeys = JsRefHolder{GetPropertyIdFromName(L"ownKeys")};
-  //m_propertyId.propertyIsEnumerable = JsRefHolder{GetPropertyIdFromName(L"propertyIsEnumerable")};
-  //m_propertyId.prototype = JsRefHolder{GetPropertyIdFromName(L"prototype")};
-  //m_propertyId.set = JsRefHolder{GetPropertyIdFromName(L"set")};
-  //m_propertyId.toString = JsRefHolder{GetPropertyIdFromName(L"toString")};
-  //m_propertyId.value = JsRefHolder{GetPropertyIdFromName(L"value")};
-  //m_propertyId.writable = JsRefHolder{GetPropertyIdFromName(L"writable")};
+  // m_propertyId.Object = JsRefHolder{GetPropertyIdFromName(L"Object")};
+  // m_propertyId.Proxy = JsRefHolder{GetPropertyIdFromName(L"Proxy")};
+  // m_propertyId.Symbol = JsRefHolder{GetPropertyIdFromName(L"Symbol")};
+  // m_propertyId.byteLength = JsRefHolder{GetPropertyIdFromName(L"byteLength")};
+  // m_propertyId.configurable = JsRefHolder{GetPropertyIdFromName(L"configurable")};
+  // m_propertyId.enumerable = JsRefHolder{GetPropertyIdFromName(L"enumerable")};
+  // m_propertyId.get = JsRefHolder{GetPropertyIdFromName(L"get")};
+  // m_propertyId.hostFunctionSymbol = JsRefHolder{GetPropertyIdFromSymbol(L"hostFunctionSymbol")};
+  // m_propertyId.hostObjectSymbol = JsRefHolder{GetPropertyIdFromSymbol(L"hostObjectSymbol")};
+  // m_propertyId.length = JsRefHolder{GetPropertyIdFromName(L"length")};
+  // m_propertyId.message = JsRefHolder{GetPropertyIdFromName(L"message")};
+  // m_propertyId.ownKeys = JsRefHolder{GetPropertyIdFromName(L"ownKeys")};
+  // m_propertyId.propertyIsEnumerable = JsRefHolder{GetPropertyIdFromName(L"propertyIsEnumerable")};
+  // m_propertyId.prototype = JsRefHolder{GetPropertyIdFromName(L"prototype")};
+  // m_propertyId.set = JsRefHolder{GetPropertyIdFromName(L"set")};
+  // m_propertyId.toString = JsRefHolder{GetPropertyIdFromName(L"toString")};
+  // m_propertyId.value = JsRefHolder{GetPropertyIdFromName(L"value")};
+  // m_propertyId.writable = JsRefHolder{GetPropertyIdFromName(L"writable")};
 
-  //m_undefinedValue = JsRefHolder{GetUndefinedValue()};
+  // m_undefinedValue = JsRefHolder{GetUndefinedValue()};
 }
 
 Environment::~Environment() noexcept {
@@ -1484,6 +1491,13 @@ JsErrorCode Environment::ChakraGetProperty(TObject &&object, TPropertyId &&prope
   return JsGetProperty(jsObject, jsPropertyId, result);
 }
 
+template <class TObject, class TPropertyId>
+JsErrorCode Environment::ChakraGetBoolProperty(TObject &&object, TPropertyId &&propertyId, bool *result) noexcept {
+  JsValueRef value{};
+  CHECK_JSRT_ERROR_CODE(ChakraGetProperty(std::forward<TObject>(object), std::forward<TPropertyId>(propertyId), &value));
+  return JsBooleanToBool(value, result);
+}
+
 template <class TObject, class TPropertyId, class TValue>
 JsErrorCode Environment::ChakraSetProperty(TObject &&object, TPropertyId &&propertyId, TValue &&value) noexcept {
   JsValueRef jsObject{};
@@ -1539,18 +1553,34 @@ JsErrorCode Environment::ChakraDefineProperty(
       std::forward<TObject>(object), std::forward<TPropertyId>(propertyId), descriptor, isSucceeded);
 }
 
-/*static*/ JsErrorCode Environment::GetHasOwnPropertyFunction(JsValueRef *result) noexcept {
+/*static*/ JsErrorCode Environment::GetObjectConstructor(JsValueRef *result) noexcept {
   JsValueRef global{};
   JsPropertyIdRef objectPropertyId{};
-  JsValueRef objectCtor{};
-  JsValueRef objectPrototype{};
-  JsPropertyIdRef hasOwnPropertyId{};
   CHECK_JSRT_ERROR_CODE(JsGetGlobalObject(&global));
   CHECK_JSRT_ERROR_CODE(JsGetPropertyIdFromName(L"Object", &objectPropertyId));
-  CHECK_JSRT_ERROR_CODE(JsGetProperty(global, objectPropertyId, &objectCtor));
-  CHECK_JSRT_ERROR_CODE(JsGetPrototype(objectCtor, &objectPrototype));
+  return JsGetProperty(global, objectPropertyId, result);
+}
+
+/*static*/ JsErrorCode Environment::GetObjectPrototype(JsValueRef *result) noexcept {
+  JsValueRef objectCtor{};
+  CHECK_JSRT_ERROR_CODE(GetObjectConstructor(&objectCtor));
+  return JsGetPrototype(objectCtor, result);
+}
+
+/*static*/ JsErrorCode Environment::GetHasOwnPropertyFunction(JsValueRef *result) noexcept {
+  JsValueRef objectPrototype{};
+  JsPropertyIdRef hasOwnPropertyId{};
+  CHECK_JSRT_ERROR_CODE(GetObjectPrototype(&objectPrototype));
   CHECK_JSRT_ERROR_CODE(JsGetPropertyIdFromName(L"hasOwnProperty", &hasOwnPropertyId));
   return JsGetProperty(objectPrototype, hasOwnPropertyId, result);
+}
+
+/*static*/ JsErrorCode Environment::GetPropertyIsEnumerable(JsValueRef *result) noexcept {
+  JsValueRef objectPrototype{};
+  JsPropertyIdRef propertyIsEnumerableId;
+  CHECK_JSRT_ERROR_CODE(GetObjectPrototype(&objectPrototype));
+  CHECK_JSRT_ERROR_CODE(JsGetPropertyIdFromName(L"propertyIsEnumerable", &propertyIsEnumerableId));
+  return JsGetProperty(objectPrototype, propertyIsEnumerableId, result);
 }
 
 template <class TObject, class TPropertyId>
@@ -2250,13 +2280,12 @@ napi_status Environment::GetPrototype(napi_value object, napi_value *result) noe
 }
 
 napi_status Environment::GetPropertyNames(napi_value object, napi_value *result) noexcept {
-  CHECK_ARG(result);
-  JsValueRef obj = reinterpret_cast<JsValueRef>(object);
-  JsValueRef propertyNames{JS_INVALID_REFERENCE};
-  // TODO: [vmoroz] Check the V8 implementation to make sure that this implementation is correct.
-  CHECK_JSRT(JsGetOwnPropertyNames(obj, &propertyNames));
-  *result = reinterpret_cast<napi_value>(propertyNames);
-  return napi_ok;
+  return GetAllPropertyNames(
+      object,
+      napi_key_collection_mode::napi_key_include_prototypes,
+      napi_key_filter(napi_key_filter::napi_key_enumerable | napi_key_filter::napi_key_skip_symbols),
+      napi_key_conversion::napi_key_numbers_to_strings,
+      result);
 }
 
 napi_status Environment::SetProperty(napi_value object, napi_value key, napi_value value) noexcept {
@@ -3427,9 +3456,118 @@ napi_status Environment::GetAllPropertyNames(
     napi_value object,
     napi_key_collection_mode keyMode,
     napi_key_filter keyFilter,
-    napi_key_conversion keyConversion,
-    napi_value *result) noexcept { // TODO: [vmoroz] Implement
-  CRASH_IF_FALSE(false);
+    napi_key_conversion /*keyConversion*/,
+    napi_value *result) noexcept {
+  // We currently do not handle the keyConversion
+  // Chakra API seems not be able to provide numeric property names.
+
+  JsValueRef jsObj = reinterpret_cast<JsValueRef>(object);
+  std::vector<JsValueRef> allPropertyNames;
+
+  auto checkDescriptorFilter = [&](JsValueRef descriptor, napi_key_filter checkFilter, bool *result) -> napi_status {
+    if (*result && (keyFilter & checkFilter)) {
+      bool isWritable{};
+      CHECK_JSRT(ChakraGetBoolProperty(descriptor, m_propertyId.writable, &isWritable));
+      if (!isWritable) {
+        *result = false;
+      }
+    }
+
+    return napi_ok;
+  };
+
+  auto isPropertyDescriptorAccepted = [&](JsPropertyIdRef propId, bool *result) -> napi_status {
+    JsValueRef descriptor{};
+    CHECK_JSRT(JsGetOwnPropertyDescriptor(jsObj, propId, &descriptor));
+    *result = true;
+    CHECK_NAPI(checkDescriptorFilter(descriptor, napi_key_writable, result));
+    CHECK_NAPI(checkDescriptorFilter(descriptor, napi_key_enumerable, result));
+    CHECK_NAPI(checkDescriptorFilter(descriptor, napi_key_configurable, result));
+    return napi_ok;
+  };
+
+  bool useDescriptorFilter = (keyFilter & (napi_key_writable | napi_key_enumerable | napi_key_configurable)) != 0;
+
+  for (;;) {
+    if ((keyFilter & napi_key_skip_strings) == 0) {
+      JsValueRef propertyNames{};
+      uint32_t propertyNamesSize{};
+      CHECK_JSRT(JsGetOwnPropertyNames(jsObj, &propertyNames));
+      CHECK_NAPI(GetArrayLength(reinterpret_cast<napi_value>(propertyNames), &propertyNamesSize));
+      if (propertyNamesSize > allPropertyNames.size() / 2) {
+        allPropertyNames.reserve(allPropertyNames.size() + propertyNamesSize);
+      }
+      for (uint32_t i = 0; i < propertyNamesSize; ++i) {
+        JsValueRef propName{}, index{};
+        CHECK_JSRT(JsIntToNumber(i, &index));
+        CHECK_JSRT(JsGetIndexedProperty(propertyNames, index, &propName));
+        if (useDescriptorFilter) {
+          JsPropertyIdRef propId{};
+          const wchar_t *strValue{};
+          size_t strLength{};
+          bool isAccepted{};
+          CHECK_JSRT(JsStringToPointer(propName, &strValue, &strLength));
+          CHECK_JSRT(JsGetPropertyIdFromName(strValue, &propId));
+          CHECK_NAPI(isPropertyDescriptorAccepted(propId, &isAccepted));
+          if (!isAccepted) {
+            continue;
+          }
+        }
+        allPropertyNames.push_back(propName);
+      }
+    }
+
+    if ((keyFilter & napi_key_skip_symbols) == 0) {
+      JsValueRef propertySymbols{};
+      uint32_t propertySymbolsSize{};
+      CHECK_JSRT(JsGetOwnPropertySymbols(jsObj, &propertySymbols));
+      CHECK_NAPI(GetArrayLength(reinterpret_cast<napi_value>(propertySymbols), &propertySymbolsSize));
+      if (propertySymbolsSize > allPropertyNames.size() / 2) {
+        allPropertyNames.reserve(allPropertyNames.size() + propertySymbolsSize);
+      }
+      for (uint32_t i = 0; i < propertySymbolsSize; ++i) {
+        JsValueRef propSymbol{}, index{};
+        CHECK_JSRT(JsIntToNumber(i, &index));
+        CHECK_JSRT(JsGetIndexedProperty(propertySymbols, index, &propSymbol));
+        if (useDescriptorFilter) {
+          JsPropertyIdRef propId{};
+          bool isAccepted{};
+          CHECK_JSRT(JsGetPropertyIdFromSymbol(propSymbol, &propId));
+          CHECK_NAPI(isPropertyDescriptorAccepted(propId, &isAccepted));
+          if (!isAccepted) {
+            continue;
+          }
+        }
+        allPropertyNames.push_back(propSymbol);
+      }
+    }
+
+    JsValueRef jsPrototype{};
+    CHECK_JSRT(ChakraGetProperty(jsObj, m_propertyId.prototype, &jsPrototype));
+    if (jsPrototype == nullptr) {
+      break;
+    }
+
+    jsObj = jsPrototype;
+    JsValueType objType{};
+    CHECK_JSRT(JsGetValueType(jsObj, &objType));
+
+    if (keyMode == napi_key_collection_mode::napi_key_own_only || objType == JsValueType::JsUndefined) {
+      break;
+    }
+  }
+
+  JsValueRef resultArray{};
+  uint32_t resultSize = static_cast<unsigned int>(allPropertyNames.size());
+  CHECK_JSRT(JsCreateArray(resultSize, &resultArray));
+  for (uint32_t i = 0; i < resultSize; ++i) {
+    JsValueRef index{};
+    CHECK_JSRT(JsIntToNumber(i, &index));
+    CHECK_JSRT(JsSetIndexedProperty(resultArray, index, allPropertyNames[i]));
+  }
+
+  *result = reinterpret_cast<napi_value>(resultArray);
+  return napi_status::napi_ok;
 }
 
 napi_status Environment::SetInstanceData(
@@ -3485,17 +3623,18 @@ napi_status Environment::ObjectSeal(napi_value object) noexcept { // TODO: [vmor
 napi_status Environment::EvaluateSerializedScript(
     napiext_buffer scriptBuffer,
     napiext_buffer serializedScriptBuffer,
-    const char* sourceUrl,
+    const char *sourceUrl,
     napi_value *result) noexcept {
-  //std::wstring script16 =
-  //    Microsoft::Common::Unicode::Utf8ToUtf16(reinterpret_cast<const char *>(scriptBuffer.data()), scriptBuffer.size());
-  //std::wstring url16 = Microsoft::Common::Unicode::Utf8ToUtf16(sourceURL);
+  // std::wstring script16 =
+  //    Microsoft::Common::Unicode::Utf8ToUtf16(reinterpret_cast<const char *>(scriptBuffer.data()),
+  //    scriptBuffer.size());
+  // std::wstring url16 = Microsoft::Common::Unicode::Utf8ToUtf16(sourceURL);
 
   //// Note:: Bytecode caching on UWP is untested yet.
-  //JsErrorCode errorCode = JsRunSerializedScript(
+  // JsErrorCode errorCode = JsRunSerializedScript(
   //    script16.c_str(), const_cast<uint8_t *>(serializedScriptBuffer.data()), 0, url16.c_str(), result);
 
-  //if (errorCode == JsNoError) {
+  // if (errorCode == JsNoError) {
   //  return true;
   //} else if (errorCode == JsErrorBadSerializedScript) {
   //  return false;
@@ -4077,6 +4216,5 @@ NAPI_EXTERN napi_status napiext_evaluate_serialized_script(
     napiext_buffer serializedScriptBuffer,
     const char *sourceUrl,
     napi_value *result) {
-  return CHECKED_ENV(env)->EvaluateSerializedScript(
-      scriptBuffer, serializedScriptBuffer, sourceUrl, result);
+  return CHECKED_ENV(env)->EvaluateSerializedScript(scriptBuffer, serializedScriptBuffer, sourceUrl, result);
 }
