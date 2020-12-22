@@ -156,13 +156,13 @@ bool NapiApi::IsFunction(napi_value value) const {
 ///*static*/ void NapiApi::SetCurrentContext(JsContextRef context) {
 //  NapiVerifyJsErrorElseThrow(JsSetCurrentContext(context));
 //}
-//
-///*static*/ JsPropertyIdRef NapiApi::GetPropertyIdFromName(wchar_t const *name) {
-//  JsPropertyIdRef propertyId{JS_INVALID_REFERENCE};
-//  NapiVerifyJsErrorElseThrow(JsGetPropertyIdFromName(name, &propertyId));
-//  return propertyId;
-//}
-//
+
+napi_value NapiApi::GetPropertyIdFromName(std::string_view name) const {
+  napi_value propertyId{};
+  CHECK_NAPI(napi_create_string_utf8(m_env, name.data(), name.size(), &propertyId));
+  return propertyId;
+}
+
 ///*static*/ JsPropertyIdRef NapiApi::GetPropertyIdFromString(JsValueRef value) {
 //  return GetPropertyIdFromName(StringToPointer(value).data());
 //}

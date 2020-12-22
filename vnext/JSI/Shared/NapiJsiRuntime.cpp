@@ -65,6 +65,25 @@ NapiJsiRuntime::NapiJsiRuntime(napi_env env) noexcept : NapiApi{env}, m_env{env}
 
   // std::call_once(s_runtimeVersionInitFlag, initRuntimeVersion);
 
+  m_propertyId.Object = NapiRefHolder{this, GetPropertyIdFromName("Object")};
+  m_propertyId.Proxy = NapiRefHolder{this, GetPropertyIdFromName("Proxy")};
+  m_propertyId.Symbol = NapiRefHolder{this, GetPropertyIdFromName("Symbol")};
+  m_propertyId.byteLength = NapiRefHolder{this, GetPropertyIdFromName("byteLength")};
+  m_propertyId.configurable = NapiRefHolder{this, GetPropertyIdFromName("configurable")};
+  m_propertyId.enumerable = NapiRefHolder{this, GetPropertyIdFromName("enumerable")};
+  m_propertyId.get = NapiRefHolder{this, GetPropertyIdFromName("get")};
+  m_propertyId.hostFunctionSymbol = NapiRefHolder{this, GetPropertyIdFromName("hostFunctionSymbo")};
+  m_propertyId.hostObjectSymbol = NapiRefHolder{this, GetPropertyIdFromName("hostObjectSymbo")};
+  m_propertyId.length = NapiRefHolder{this, GetPropertyIdFromName("length")};
+  m_propertyId.message = NapiRefHolder{this, GetPropertyIdFromName("message")};
+  m_propertyId.ownKeys = NapiRefHolder{this, GetPropertyIdFromName("ownKeys")};
+  m_propertyId.propertyIsEnumerable = NapiRefHolder{this, GetPropertyIdFromName("propertyIsEnumerable")};
+  m_propertyId.prototype = NapiRefHolder{this, GetPropertyIdFromName("prototype")};
+  m_propertyId.set = NapiRefHolder{this, GetPropertyIdFromName("set")};
+  m_propertyId.toString = NapiRefHolder{this, GetPropertyIdFromName("toString")};
+  m_propertyId.value = NapiRefHolder{this, GetPropertyIdFromName("value")};
+  m_propertyId.writable = NapiRefHolder{this, GetPropertyIdFromName("writable")};
+
   // m_propertyId.Object = JsRefHolder{GetPropertyIdFromName(L"Object")};
   // m_propertyId.Proxy = JsRefHolder{GetPropertyIdFromName(L"Proxy")};
   // m_propertyId.Symbol = JsRefHolder{GetPropertyIdFromName(L"Symbol")};
@@ -126,7 +145,7 @@ facebook::jsi::Value NapiJsiRuntime::evaluateJavaScript(
     const std::string &sourceURL) {
   napi_value script{};
   napi_value result{};
-  CHECK_NAPI(napi_create_string_utf8(m_env, reinterpret_cast<const char*>(buffer->data()), buffer->size(), &script));
+  CHECK_NAPI(napi_create_string_utf8(m_env, reinterpret_cast<const char *>(buffer->data()), buffer->size(), &script));
   CHECK_NAPI(napi_run_script(m_env, script, &result));
   return ToJsiValue(result);
 }

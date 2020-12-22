@@ -202,7 +202,7 @@ struct NapiApi {
   /**
    * @brief Gets the property ID associated with the name.
    */
-  // static JsPropertyIdRef GetPropertyIdFromName(wchar_t const *name);
+  napi_value GetPropertyIdFromName(std::string_view name) const;
 
   /**
    * @brief Gets the property ID associated with the name.
