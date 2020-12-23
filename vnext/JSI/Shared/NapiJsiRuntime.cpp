@@ -793,7 +793,7 @@ NapiJsiRuntime::JsiValueView::InitValue(NapiApi *napi, napi_value value, StoreTy
 //===========================================================================
 
 NapiJsiRuntime::JsiValueViewArgs::JsiValueViewArgs(NapiApi *napi, Span<napi_value> args) noexcept
-    : m_pointerStore{args.size()}, m_args{args.size()} {
+    : m_size{args.size()}, m_pointerStore{args.size()}, m_args{args.size()} {
   JsiValueView::StoreType *pointerStore = m_pointerStore.Data();
   facebook::jsi::Value *const jsiArgs = m_args.Data();
   for (uint32_t i = 0; i < m_size; ++i) {
