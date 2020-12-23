@@ -156,25 +156,39 @@ struct NapiPreparedJavaScript final : facebook::jsi::PreparedJavaScript {
   std::unique_ptr<const facebook::jsi::Buffer> m_byteCode;
 };
 
+std::unique_ptr<facebook::jsi::Buffer> NapiJsiRuntime::GeneratePreparedScript(
+    facebook::jsi::Buffer const &sourceBuffer) {
+  size_t bufferSize{};
+  CHECK_NAPI(
+      napiext_serialize_script(m_env, reinterpret_cast<const char *>(sourceBuffer.data()), nullptr, &bufferSize));
+  auto buffer = std::string(bufferSize, '\0');
+  CHECK_NAPI(napiext_serialize_script(
+      m_env,
+      reinterpret_cast<const char *>(sourceBuffer.data()),
+      reinterpret_cast<uint8_t *>(buffer.data()),
+      &bufferSize));
+
+  return std::make_unique<facebook::jsi::StringBuffer>(std::move(buffer));
+}
+
 std::shared_ptr<const facebook::jsi::PreparedJavaScript> NapiJsiRuntime::prepareJavaScript(
     const std::shared_ptr<const facebook::jsi::Buffer> &sourceBuffer,
     std::string sourceURL) {
   return std::make_shared<NapiPreparedJavaScript>(
-      sourceURL, sourceBuffer, nullptr /*generatePreparedScript(sourceURL, *sourceBuffer)*/);
+      std::move(sourceURL), sourceBuffer, GeneratePreparedScript(*sourceBuffer));
 }
 
 facebook::jsi::Value NapiJsiRuntime::evaluatePreparedJavaScript(
     const std::shared_ptr<const facebook::jsi::PreparedJavaScript> &preparedJS) {
-  /*const ChakraPreparedJavaScript &chakraPreparedJS = *static_cast<const ChakraPreparedJavaScript *>(preparedJS.get());
-  JsValueRef result;
-  if (evaluateSerializedScript(
-          chakraPreparedJS.SourceBuffer(), chakraPreparedJS.ByteCode(), chakraPreparedJS.SourceUrl(), &result)) {
-    return ToJsiValue(result);
-  } else {
-    return facebook::jsi::Value::undefined();
-  }*/
-
-  return facebook::jsi::Value::undefined();
+  auto napiPreparedJS = static_cast<const NapiPreparedJavaScript *>(preparedJS.get());
+  napi_value result{};
+  CHECK_NAPI(napiext_run_serialized_script(
+      m_env,
+      reinterpret_cast<const char *>(napiPreparedJS->SourceBuffer().data()),
+      const_cast<uint8_t *>(napiPreparedJS->ByteCode().data()),
+      napiPreparedJS->SourceUrl().c_str(),
+      &result));
+  return ToJsiValue(result);
 }
 
 facebook::jsi::Object NapiJsiRuntime::global() {
@@ -671,7 +685,7 @@ napi_value NapiJsiRuntime::CreateExternalFunction(
     std::unordered_set<napi_value> dedupedOwnKeys{};
     dedupedOwnKeys.reserve(ownKeys.size());
     for (facebook::jsi::PropNameID const &key : ownKeys) {
-      //TODO: [vmoroz] Make it part of PropNameID
+      // TODO: [vmoroz] Make it part of PropNameID
       napi_value uniqueKey{};
       napiext_get_unique_string(jsiRuntime->m_env, jsiRuntime->GetNapiValue(key), &uniqueKey);
       dedupedOwnKeys.insert(uniqueKey);

@@ -6,14 +6,8 @@
 
 EXTERN_C_START
 
-typedef struct napiext_buffer__ *napiext_buffer;
-
-NAPI_EXTERN napi_status napiext_evaluate_serialized_script(
-    napi_env env,
-    napiext_buffer scriptBuffer,
-    napiext_buffer serializedScriptBuffer,
-    const char *sourceUrl,
-    napi_value *result);
+// TODO: [vmoroz] Add SAL annotations
+// TODO: [vmoroz] API docs
 
 NAPI_EXTERN napi_status napiext_get_unique_string(napi_env env, napi_value str, napi_value *result);
 
@@ -25,6 +19,16 @@ napiext_get_unique_string_utf8(napi_env env, const char *str, size_t length, nap
 
 NAPI_EXTERN napi_status
 napiext_get_unique_string_utf16(napi_env env, const char16_t *str, size_t length, napi_value *result);
+
+NAPI_EXTERN napi_status
+napiext_serialize_script(napi_env env, const char *script, uint8_t *buffer, size_t *buffer_size);
+
+NAPI_EXTERN napi_status napiext_run_serialized_script(
+    napi_env env,
+    const char *script,
+    uint8_t *buffer,
+    const char *source_url,
+    napi_value *result);
 
 EXTERN_C_END
 

@@ -513,11 +513,10 @@ struct Environment {
 
   napi_status ObjectSeal(napi_value object) noexcept;
 
-  napi_status EvaluateSerializedScript(
-      napiext_buffer scriptBuffer,
-      napiext_buffer serializedScriptBuffer,
-      const char *sourceUrl,
-      napi_value *result) noexcept;
+  napi_status SerializeScript(const char *script, uint8_t *buffer, size_t *bufferSize) noexcept;
+
+  napi_status
+  RunSerializedScript(const char *script, uint8_t *buffer, const char *sourceUrl, napi_value *result) noexcept;
 
  private:
   static JsErrorCode ChakraPointerToString(std::wstring_view value, JsValueRef *result) noexcept;
@@ -623,7 +622,7 @@ struct Environment {
   };
 
   static void CALLBACK FinalizeUniqueString(_In_ JsRef ref, _In_opt_ void *callbackState) {
-    UniqueString* uniqueStr{};
+    UniqueString *uniqueStr{};
     Environment *env = reinterpret_cast<Environment *>(callbackState);
     const auto it = env->m_uniqueStrings.find(reinterpret_cast<napi_value>(ref));
     if (it != env->m_uniqueStrings.end()) {
@@ -3741,28 +3740,30 @@ napi_status Environment::ObjectSeal(napi_value object) noexcept { // TODO: [vmor
 
 #endif // NAPI_EXPERIMENTAL
 
-napi_status Environment::EvaluateSerializedScript(
-    napiext_buffer scriptBuffer,
-    napiext_buffer serializedScriptBuffer,
+napi_status Environment::SerializeScript(const char *script, uint8_t *buffer, size_t *bufferSize) noexcept {
+  const std::wstring utf16Script = NarrowToWide({script});
+
+  unsigned long bytecodeSize{};
+  CHECK_JSRT(JsSerializeScript(utf16Script.c_str(), nullptr, &bytecodeSize));
+  if (buffer) {
+    RETURN_STATUS_IF_FALSE(*bufferSize >= bytecodeSize, napi_status::napi_invalid_arg);
+    CHECK_JSRT(JsSerializeScript(utf16Script.c_str(), buffer, &bytecodeSize));
+  }
+
+  *bufferSize = static_cast<size_t>(bytecodeSize);
+  return napi_status::napi_ok;
+}
+
+napi_status Environment::RunSerializedScript(
+    const char *script,
+    uint8_t *buffer,
     const char *sourceUrl,
     napi_value *result) noexcept {
-  // std::wstring script16 =
-  //    Microsoft::Common::Unicode::Utf8ToUtf16(reinterpret_cast<const char *>(scriptBuffer.data()),
-  //    scriptBuffer.size());
-  // std::wstring url16 = Microsoft::Common::Unicode::Utf8ToUtf16(sourceURL);
+  const std::wstring utf16Script = NarrowToWide({script});
+  const std::wstring utf16SourceUrl = NarrowToWide({sourceUrl});
 
-  //// Note:: Bytecode caching on UWP is untested yet.
-  // JsErrorCode errorCode = JsRunSerializedScript(
-  //    script16.c_str(), const_cast<uint8_t *>(serializedScriptBuffer.data()), 0, url16.c_str(), result);
-
-  // if (errorCode == JsNoError) {
-  //  return true;
-  //} else if (errorCode == JsErrorBadSerializedScript) {
-  //  return false;
-  //} else {
-  //  ChakraVerifyJsErrorElseThrow(errorCode);
-  //  return true;
-  //}
+  CHECK_JSRT(JsRunSerializedScript(
+      utf16Script.c_str(), buffer, ++m_sourceContext, utf16SourceUrl.c_str(), reinterpret_cast<JsValueRef *>(result)));
   return napi_ok;
 }
 
@@ -4333,15 +4334,6 @@ napi_status napi_object_seal(napi_env env, napi_value object) {
 
 #pragma region NAPI extensions
 
-NAPI_EXTERN napi_status napiext_evaluate_serialized_script(
-    napi_env env,
-    napiext_buffer scriptBuffer,
-    napiext_buffer serializedScriptBuffer,
-    const char *sourceUrl,
-    napi_value *result) {
-  return CHECKED_ENV(env)->EvaluateSerializedScript(scriptBuffer, serializedScriptBuffer, sourceUrl, result);
-}
-
 NAPI_EXTERN napi_status napiext_get_unique_string(napi_env env, napi_value str, napi_value *result) {
   return CHECKED_ENV(env)->GetUniqueString(str, result);
 }
@@ -4359,6 +4351,20 @@ napiext_get_unique_string_utf8(napi_env env, const char *str, size_t length, nap
 NAPI_EXTERN napi_status
 napiext_get_unique_string_utf16(napi_env env, const char16_t *str, size_t length, napi_value *result) {
   return CHECKED_ENV(env)->GetUniqueStringUtf16(str, length, result);
+}
+
+NAPI_EXTERN napi_status
+napiext_serialize_script(napi_env env, const char *script, uint8_t *buffer, size_t *buffer_size) {
+  return CHECKED_ENV(env)->SerializeScript(script, buffer, buffer_size);
+}
+
+NAPI_EXTERN napi_status napiext_run_serialized_script(
+    napi_env env,
+    const char *script,
+    uint8_t *buffer,
+    const char *source_url,
+    napi_value *result) {
+  return CHECKED_ENV(env)->RunSerializedScript(script, buffer, source_url, result);
 }
 
 #pragma endregion
