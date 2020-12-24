@@ -2493,41 +2493,63 @@ napi_status Environment::GetNamedProperty(napi_value object, const char *utf8Nam
 }
 
 napi_status Environment::SetElement(napi_value object, uint32_t index, napi_value value) noexcept {
+  CHECK_ARG(object);
   CHECK_ARG(value);
-  JsValueRef jsIndex{JS_INVALID_REFERENCE};
-  CHECK_JSRT(JsIntToNumber(index, &jsIndex));
   JsValueRef obj = reinterpret_cast<JsValueRef>(object);
   JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
+  JsValueRef jsIndex{};
+  if (index < static_cast<uint32_t>((std::numeric_limits<int32_t>::max)())) {
+    CHECK_JSRT(JsIntToNumber(static_cast<int32_t>(index), &jsIndex));
+  } else {
+    CHECK_JSRT(JsDoubleToNumber(static_cast<double>(index), &jsIndex));
+  }
   CHECK_JSRT(JsSetIndexedProperty(obj, jsIndex, jsValue));
   return napi_ok;
 }
 
 napi_status Environment::HasElement(napi_value object, uint32_t index, bool *result) noexcept {
+  CHECK_ARG(object);
   CHECK_ARG(result);
-  JsValueRef jsIndex{JS_INVALID_REFERENCE};
-  CHECK_JSRT(JsIntToNumber(static_cast<int>(index), &jsIndex));
   JsValueRef obj = reinterpret_cast<JsValueRef>(object);
+  JsValueRef jsIndex{};
+  if (index < static_cast<uint32_t>((std::numeric_limits<int32_t>::max)())) {
+    CHECK_JSRT(JsIntToNumber(static_cast<int32_t>(index), &jsIndex));
+  } else {
+    CHECK_JSRT(JsDoubleToNumber(static_cast<double>(index), &jsIndex));
+  }
   CHECK_JSRT(JsHasIndexedProperty(obj, jsIndex, result));
   return napi_ok;
 }
 
 napi_status Environment::GetElement(napi_value object, uint32_t index, napi_value *result) noexcept {
+  CHECK_ARG(object);
   CHECK_ARG(result);
-  JsValueRef jsIndex{JS_INVALID_REFERENCE};
-  CHECK_JSRT(JsIntToNumber(static_cast<int>(index), &jsIndex));
   JsValueRef obj = reinterpret_cast<JsValueRef>(object);
+  JsValueRef jsIndex{};
+  if (index < static_cast<uint32_t>((std::numeric_limits<int32_t>::max)())) {
+    CHECK_JSRT(JsIntToNumber(static_cast<int32_t>(index), &jsIndex));
+  } else {
+    CHECK_JSRT(JsDoubleToNumber(static_cast<double>(index), &jsIndex));
+  }
   CHECK_JSRT(JsGetIndexedProperty(obj, jsIndex, reinterpret_cast<JsValueRef *>(result)));
   return napi_ok;
 }
 
 napi_status Environment::DeleteElement(napi_value object, uint32_t index, bool *result) noexcept {
-  JsValueRef jsIndex{};
+  CHECK_ARG(object);
+  JsValueRef jsIndex{}, element{};
   JsValueRef obj = reinterpret_cast<JsValueRef>(object);
-  CHECK_JSRT(JsIntToNumber(index, &jsIndex));
+  JsValueType elementType{};
+  if (index < static_cast<uint32_t>((std::numeric_limits<int32_t>::max)())) {
+    CHECK_JSRT(JsIntToNumber(static_cast<int32_t>(index), &jsIndex));
+  } else {
+    CHECK_JSRT(JsDoubleToNumber(static_cast<double>(index), &jsIndex));
+  }
   CHECK_JSRT(JsDeleteIndexedProperty(obj, jsIndex));
   if (result) {
-    // TODO: [vmoroz] Check the result value
-    *result = true;
+    CHECK_JSRT(JsGetIndexedProperty(obj, jsIndex, &element));
+    CHECK_JSRT(JsGetValueType(element, &elementType));
+    *result = elementType == JsValueType::JsUndefined;
   }
   return napi_ok;
 }

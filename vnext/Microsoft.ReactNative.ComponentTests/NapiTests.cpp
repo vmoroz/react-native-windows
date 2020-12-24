@@ -3,6 +3,7 @@
 
 #define NAPI_EXPERIMENTAL
 #include "NapiTests.h"
+#include <limits>
 
 // Check condition and crash process if it fails.
 #define CHECK_ELSE_CRASH(condition, message)               \
@@ -13,17 +14,17 @@
     }                                                      \
   } while (false)
 
-#define EXPECT_NAPI_OK(expr)                        \
-  do {                                          \
-    napi_status temp_status_ = (expr);          \
-    if (temp_status_ != napi_status::napi_ok) { \
-      AssertNapiException(env, temp_status_, #expr);    \
-    }                                           \
+#define EXPECT_NAPI_OK(expr)                         \
+  do {                                               \
+    napi_status temp_status_ = (expr);               \
+    if (temp_status_ != napi_status::napi_ok) {      \
+      AssertNapiException(env, temp_status_, #expr); \
+    }                                                \
   } while (false)
 
 namespace napi {
 
-void AssertNapiException(napi_env env, napi_status errorCode, const char* exprStr) {
+void AssertNapiException(napi_env env, napi_status errorCode, const char *exprStr) {
   napi_value jsError{};
   CHECK_ELSE_CRASH(napi_get_and_clear_last_exception(env, &jsError) == napi_ok, "Cannot retrieve JS exception.");
   FAIL() << exprStr << "\n error code: " << errorCode;
@@ -43,12 +44,17 @@ napi_value NapiTestBase::Function(const std::string &code) {
   return Eval(("(" + code + ")").c_str());
 }
 
-bool NapiTestBase::CallBoolFunction(std::initializer_list<napi_value> args, const std::string &code) {
-  bool result{};
-  napi_value undefined{}, booleanResult{};
+napi_value NapiTestBase::CallFunction(std::initializer_list<napi_value> args, const std::string &code) {
+  napi_value result{}, undefined{}, booleanResult{};
   napi_value func = Function(code);
   EXPECT_NAPI_OK(napi_get_undefined(env, &undefined));
-  EXPECT_NAPI_OK(napi_call_function(env, undefined, func, args.size(), args.begin(), &booleanResult));
+  EXPECT_NAPI_OK(napi_call_function(env, undefined, func, args.size(), args.begin(), &result));
+  return result;
+}
+
+bool NapiTestBase::CallBoolFunction(std::initializer_list<napi_value> args, const std::string &code) {
+  bool result{};
+  napi_value booleanResult = CallFunction(args, code);
   EXPECT_NAPI_OK(napi_get_value_bool(env, booleanResult, &result));
   return result;
 }
@@ -100,11 +106,12 @@ TEST_P(NapiTest, ArrayTest) {
     ];
   )");
 
-  napi_value global{}, array{}, element{}, newArray{}, arrayCtor{}, array2{};
+  napi_value undefined{}, global{}, array{}, element{}, newArray{}, arrayCtor{}, array2{}, valueFive{};
   napi_valuetype elementType{};
-  bool isArray{}, hasElement{};
+  bool isArray{}, hasElement{}, isDeleted{};
   uint32_t arrayLength{};
 
+  EXPECT_NAPI_OK(napi_get_undefined(env, &undefined));
   EXPECT_NAPI_OK(napi_get_global(env, &global));
   EXPECT_NAPI_OK(napi_get_named_property(env, global, "array", &array));
 
@@ -168,6 +175,33 @@ TEST_P(NapiTest, ArrayTest) {
 
   EXPECT_TRUE(CallBoolFunction({array2}, "function(array2) { return array2.length == 4; }"));
   EXPECT_TRUE(CallBoolFunction({array2}, "function(array2) { return !(2 in array2); }"));
+
+  EXPECT_NAPI_OK(napi_delete_element(env, array2, 1, &isDeleted));
+  EXPECT_TRUE(isDeleted);
+  EXPECT_NAPI_OK(napi_delete_element(env, array2, 1, &isDeleted));
+  EXPECT_TRUE(isDeleted); // deletion succeeded as long as the element is undefined.
+
+  EXPECT_TRUE(CallFunction({array2}, "function(array2) { Object.freeze(array2); }"));
+
+  EXPECT_NAPI_OK(napi_delete_element(env, array2, 0, &isDeleted));
+  EXPECT_FALSE(isDeleted);
+  EXPECT_NAPI_OK(napi_delete_element(env, array2, 1, &isDeleted));
+  EXPECT_TRUE(isDeleted); // deletion succeeded as long as the element is undefined.
+
+  // Check when (index > int32) max(int32) + 2 = 2,147,483,650
+  EXPECT_NAPI_OK(napi_create_int32(env, 5, &valueFive));
+  EXPECT_NAPI_OK(napi_set_element(env, array, 2'147'483'650u, valueFive));
+  EXPECT_TRUE(CheckStrictEqual(valueFive, "array[2147483650]"));
+
+  EXPECT_NAPI_OK(napi_has_element(env, array, 2'147'483'650u, &hasElement));
+  EXPECT_TRUE(hasElement);
+
+  EXPECT_NAPI_OK(napi_get_element(env, array, 2'147'483'650u, &element));
+  EXPECT_TRUE(CheckStrictEqual(element, "5"));
+
+  EXPECT_NAPI_OK(napi_delete_element(env, array, 2'147'483'650u, &isDeleted));
+  EXPECT_TRUE(isDeleted);
+  EXPECT_TRUE(CheckStrictEqual(undefined, "array[2147483650]"));
 }
 
 INSTANTIATE_TEST_CASE_P(NapiEnv, NapiTest, ::testing::ValuesIn(napiEnvGenerators()));

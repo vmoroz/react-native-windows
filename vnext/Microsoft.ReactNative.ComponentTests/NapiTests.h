@@ -35,6 +35,7 @@ struct NapiTestBase : ::testing::TestWithParam<NapiEnvFactory> {
   NapiTestBase() : factory(GetParam()), env(factory()) {}
   napi_value Eval(const char *code);
   napi_value Function(const std::string &code);
+  napi_value CallFunction(std::initializer_list<napi_value> args, const std::string &code);
   bool CallBoolFunction(std::initializer_list<napi_value> args, const std::string &code);
   bool CheckEqual(napi_value value, const std::string &jsValue);
   bool CheckStrictEqual(napi_value value, const std::string &jsValue);
