@@ -152,10 +152,12 @@
     <ClCompile Include="JsiArgumentReaderTest.cpp" />
     <ClCompile Include="JsiReaderTest.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="NapiTests.cpp" />
     <ClCompile Include="pch/pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
     <ClInclude Include="CommonReaderTest.h" />
+    <ClInclude Include="NapiTests.h" />
     <ClInclude Include="pch/pch.h" />
     <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsi\jsi\test\testlib.cpp">
       <!--

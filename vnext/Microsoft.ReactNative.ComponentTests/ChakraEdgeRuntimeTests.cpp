@@ -2,11 +2,12 @@
 // Licensed under the MIT license.
 
 #include <gtest/gtest.h>
+#include "ChakraNapi.h"
 #include "ChakraRuntimeArgs.h"
 #include "ChakraRuntimeFactory.h"
-#include "jsi/test/testlib.h"
-#include "ChakraNapi.h"
 #include "NapiJsiRuntime.h"
+#include "NapiTests.h"
+#include "jsi/test/testlib.h"
 
 using namespace Microsoft::JSI;
 
@@ -26,3 +27,14 @@ std::vector<RuntimeFactory> runtimeGenerators() {
 }
 
 } // namespace facebook::jsi
+
+namespace napi {
+
+std::vector<NapiEnvFactory> napiEnvGenerators() {
+  return {NapiEnvFactory{[]() -> napi_env {
+    ChakraRuntimeArgs args{};
+    return chakra::MakeChakraNapiEnv(std::move(args));
+  }}};
+}
+
+} // namespace napi

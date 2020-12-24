@@ -1,0 +1,44 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
+#pragma once
+
+#include <functional>
+#include <vector>
+
+#include <gtest/gtest.h>
+#include <js_native_api_ext.h>
+
+namespace napi {
+
+using NapiEnvFactory = std::function<napi_env()>;
+
+std::vector<NapiEnvFactory> napiEnvGenerators();
+
+struct NapiException : std::exception {
+  NapiException() {}
+  NapiException(std::string what) : m_what(std::move(what)) {}
+
+  virtual const char *what() const noexcept override {
+    return m_what.c_str();
+  }
+
+  virtual ~NapiException() {}
+
+ protected:
+  std::string m_what;
+};
+
+[[noreturn]] void ThrowNapiException(napi_env env, napi_status errorCode);
+
+struct NapiTestBase : ::testing::TestWithParam<NapiEnvFactory> {
+  NapiTestBase() : factory(GetParam()), env(factory()) {}
+  napi_value eval(const char *code);
+  napi_value function(const std::string &code);
+  bool checkValue(napi_value value, const std::string &jsValue);
+
+  NapiEnvFactory factory;
+  napi_env env;
+};
+
+} // namespace napi
