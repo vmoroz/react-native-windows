@@ -2521,13 +2521,14 @@ napi_status Environment::GetElement(napi_value object, uint32_t index, napi_valu
 }
 
 napi_status Environment::DeleteElement(napi_value object, uint32_t index, bool *result) noexcept {
-  CHECK_ARG(result);
-  JsValueRef jsIndex{JS_INVALID_REFERENCE};
-  CHECK_JSRT(JsIntToNumber(index, &jsIndex));
+  JsValueRef jsIndex{};
   JsValueRef obj = reinterpret_cast<JsValueRef>(object);
+  CHECK_JSRT(JsIntToNumber(index, &jsIndex));
   CHECK_JSRT(JsDeleteIndexedProperty(obj, jsIndex));
-  // TODO: [vmoroz] Check the result value
-  *result = true;
+  if (result) {
+    // TODO: [vmoroz] Check the result value
+    *result = true;
+  }
   return napi_ok;
 }
 

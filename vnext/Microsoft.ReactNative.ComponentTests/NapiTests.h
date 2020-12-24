@@ -33,9 +33,11 @@ struct NapiException : std::exception {
 
 struct NapiTestBase : ::testing::TestWithParam<NapiEnvFactory> {
   NapiTestBase() : factory(GetParam()), env(factory()) {}
-  napi_value eval(const char *code);
-  napi_value function(const std::string &code);
-  bool checkValue(napi_value value, const std::string &jsValue);
+  napi_value Eval(const char *code);
+  napi_value Function(const std::string &code);
+  bool CallBoolFunction(std::initializer_list<napi_value> args, const std::string &code);
+  bool CheckEqual(napi_value value, const std::string &jsValue);
+  bool CheckStrictEqual(napi_value value, const std::string &jsValue);
 
   NapiEnvFactory factory;
   napi_env env;
