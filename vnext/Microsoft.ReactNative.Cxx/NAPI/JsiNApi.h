@@ -9,8 +9,8 @@
 #include <map>
 #include <mutex>
 #include "Crash.h"
-#include "jsi/jsi.h"
 #include "js_native_api.h"
+#include "jsi/jsi.h"
 #include "winrt/Microsoft.ReactNative.h"
 
 namespace winrt::Microsoft::ReactNative {
