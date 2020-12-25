@@ -95,6 +95,25 @@
 
 namespace chakra {
 
+template <typename T, size_t CallstackSize>
+struct SmallBuffer final {
+  SmallBuffer(size_t size) noexcept
+      : m_size{size}, m_heapData{m_size > CallstackSize ? std::make_unique<T[]>(m_size) : nullptr} {}
+
+  T *Data() noexcept {
+    return m_heapData ? m_heapData.get() : m_stackData.data();
+  }
+
+  size_t Size() const noexcept {
+    return m_size;
+  }
+
+ private:
+  size_t const m_size{};
+  std::array<T, CallstackSize> m_stackData{};
+  std::unique_ptr<T[]> const m_heapData{};
+};
+
 struct RefTracker {
   RefTracker() = default;
   virtual ~RefTracker() noexcept {}
@@ -1057,7 +1076,6 @@ class FinalizerInfo {
 };
 
 namespace {
-constexpr UINT CP_LATIN1 = 28591;
 
 std::wstring NarrowToWide(std::string_view value, UINT codePage = CP_UTF8) {
   if (value.size() == 0) {
@@ -1113,13 +1131,18 @@ JsCopyStringUtf16(_In_ JsValueRef value, _Out_opt_ char16_t *buffer, _In_ size_t
   size_t stringLength;
   CHECK_JSRT_ERROR_CODE(JsStringToPointer(value, &stringValue, &stringLength));
 
-  if (length != nullptr) {
-    *length = stringLength;
-  }
+  if (buffer == nullptr) {
+    if (length != nullptr) {
+      *length = stringLength;
+    }
+  } else {
+    size_t copied = (std::min)(bufferSize, stringLength);
+    if (length != nullptr) {
+      *length = copied;
+    }
 
-  if (buffer != nullptr) {
     static_assert(sizeof(char16_t) == sizeof(wchar_t));
-    memcpy_s(buffer, bufferSize, stringValue, stringLength * sizeof(wchar_t));
+    memcpy_s(buffer, bufferSize * sizeof(wchar_t), stringValue, copied * sizeof(wchar_t));
   }
 
   return JsErrorCode::JsNoError;
@@ -1905,10 +1928,20 @@ napi_status Environment::CreateInt64(int64_t value, napi_value *result) noexcept
 }
 
 napi_status Environment::CreateStringLatin1(const char *str, size_t length, napi_value *result) noexcept {
+  CHECK_ARG(str);
   CHECK_ARG(result);
-  std::wstring wstr =
-      (length == NAPI_AUTO_LENGTH) ? NarrowToWide({str}, CP_LATIN1) : NarrowToWide({str, length}, CP_LATIN1);
-  CHECK_JSRT(JsPointerToString(wstr.data(), wstr.size(), reinterpret_cast<JsValueRef *>(result)));
+  if (length == NAPI_AUTO_LENGTH) {
+    length = strlen(str);
+  }
+
+  // The Latin1 encoding is the 256 characters of the extended ASCII set.
+  // To convert it to UTF-16 we just expand each character to two bytes.
+  auto buffer = SmallBuffer<wchar_t, 256>(length + 1);
+  for (size_t i = 0; i < length; ++i) {
+    buffer.Data()[i] = static_cast<wchar_t>(static_cast<uint8_t>(str[i]));
+  }
+  buffer.Data()[length] = 0;
+  CHECK_JSRT(JsPointerToString(buffer.Data(), buffer.Size() - 1, reinterpret_cast<JsValueRef *>(result)));
   return napi_ok;
 }
 
@@ -1964,23 +1997,35 @@ napi_status Environment::GetUniqueString(napi_value str, napi_value *result) noe
 }
 
 napi_status Environment::GetUniqueStringLatin1(const char *str, size_t length, napi_value *result) noexcept {
-  std::wstring wstr =
-      (length == NAPI_AUTO_LENGTH) ? NarrowToWide({str}, CP_LATIN1) : NarrowToWide({str, length}, CP_LATIN1);
+  CHECK_ARG(str);
+  CHECK_ARG(result);
+  if (length == NAPI_AUTO_LENGTH) {
+    length = strlen(str);
+  }
+  // The Latin1 encoding is the 256 characters of the extended ASCII set.
+  // To convert it to UTF-16 we just expand each character to two bytes.
+  auto buffer = SmallBuffer<wchar_t, 256>(length + 1);
+  for (size_t i = 0; i < length; ++i) {
+    buffer.Data()[i] = static_cast<wchar_t>(str[i]);
+  }
 
-  const auto indexIt = m_uniqueStringIndex.find(wstr);
+  const auto indexIt = m_uniqueStringIndex.find(std::wstring_view(buffer.Data(), buffer.Size()));
   if (indexIt != m_uniqueStringIndex.end()) {
     *result = indexIt->second->value;
     return napi_ok;
   }
 
   // Add new unique string
-  CHECK_JSRT(JsPointerToString(wstr.data(), wstr.size(), reinterpret_cast<JsValueRef *>(result)));
+  CHECK_JSRT(JsPointerToString(buffer.Data(), buffer.Size(), reinterpret_cast<JsValueRef *>(result)));
+
+  // Index the string buffer associated with the string.
   const wchar_t *strValue{};
   size_t strLength{};
   CHECK_JSRT(JsStringToPointer(reinterpret_cast<JsValueRef>(*result), &strValue, &strLength));
   auto uniqueStr = std::unique_ptr<UniqueString>(new UniqueString{*result, std::wstring_view(strValue, strLength)});
   m_uniqueStrings.try_emplace(*result, uniqueStr.get());
   m_uniqueStringIndex.try_emplace(std::wstring_view(strValue, strLength), uniqueStr.release());
+  //TODO: add GC hook to remove items
   return napi_ok;
 }
 
@@ -2197,64 +2242,37 @@ napi_status Environment::GetValueBool(napi_value value, bool *result) noexcept {
 // number of bytes (excluding the null terminator) copied into buf.
 // A sufficient buffer size should be greater than the length of string,
 // reserving space for null terminator.
-// If bufsize is insufficient, the string will be truncated and null terminated.
-// If buf is NULL, this method returns the length of the string (in bytes)
+// If bufSize is insufficient, the string will be truncated and null terminated.
+// If buf is nullptr, this method returns the length of the string (in bytes)
 // via the result parameter.
-// The result argument is optional unless buf is NULL.
+// The result argument is optional unless buf is nullptr.
 napi_status Environment::GetValueStringLatin1(napi_value value, char *buf, size_t bufSize, size_t *result) noexcept {
   CHECK_ARG(value);
-
   JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
 
+  // The Latin1 encoding is the 256 characters of the extended ASCII set.
+  // To convert from UTF-16 we just narrow each character to 8-bits.
+  // If the UTF-16 character value was more than 255 we output question mark '?'.
+
+  const char16_t *stringValue{};
+  size_t stringLength{};
+  CHECK_JSRT(JsStringToPointer(jsValue, reinterpret_cast<const wchar_t **>(&stringValue), &stringLength));
   if (!buf) {
     CHECK_ARG(result);
-    CHECK_JSRT_EXPECTED(JsCopyString(jsValue, nullptr, 0, result, CP_LATIN1), napi_string_expected);
+    *result = stringLength;
   } else {
-    size_t count = 0;
-    CHECK_JSRT_EXPECTED(JsCopyString(jsValue, nullptr, 0, &count), napi_string_expected);
-
-    if (bufSize <= count) {
-      // if bufsize == count there is no space for null terminator
-      // Slow path: must implement truncation here.
-      std::unique_ptr<char[]> fullBuffer{new char[count]};
-      // CHAKRA_VERIFY(fullBuffer != nullptr);
-
-      CHECK_JSRT_EXPECTED(JsCopyString(jsValue, fullBuffer.get(), count, nullptr), napi_string_expected);
-      memmove(buf, fullBuffer.get(), sizeof(char) * bufSize);
-      fullBuffer.reset();
-
-      // Truncate string to the start of the last codepoint
-      if (bufSize > 0 && (((buf[bufSize - 1] & 0x80) == 0) || UTF8_MULTIBYTE_START(buf[bufSize - 1]))) {
-        // Last byte is a single byte codepoint or
-        // starts a multibyte codepoint
-        bufSize -= 1;
-      } else if (bufSize > 1 && UTF8_MULTIBYTE_START(buf[bufSize - 2])) {
-        // Second last byte starts a multibyte codepoint,
-        bufSize -= 2;
-      } else if (bufSize > 2 && UTF8_MULTIBYTE_START(buf[bufSize - 3])) {
-        // Third last byte starts a multibyte codepoint
-        bufSize -= 3;
-      } else if (bufSize > 3 && UTF8_MULTIBYTE_START(buf[bufSize - 4])) {
-        // Fourth last byte starts a multibyte codepoint
-        bufSize -= 4;
+    RETURN_ENV_STATUS_IF_FALSE(this, bufSize > 0, napi_invalid_arg);
+    size_t lengthToCopy = (std::min)(stringLength, bufSize - 1);
+    for (size_t i = 0; i < lengthToCopy; ++i) {
+      if (char16_t ch16 = stringValue[i]; ch16 < 256) {
+        buf[i] = static_cast<char>(ch16);
+      } else {
+        buf[i] = '?';
       }
-
-      buf[bufSize] = '\0';
-
-      if (result) {
-        *result = bufSize;
-      }
-
-      return napi_ok;
     }
-
-    // Fast path, result fits in the buffer
-    CHECK_JSRT_EXPECTED(JsCopyString(jsValue, buf, bufSize - 1, &count), napi_string_expected);
-
-    buf[count] = 0;
-
-    if (result != nullptr) {
-      *result = count;
+    buf[lengthToCopy] = '\0';
+    if (result) {
+      *result = lengthToCopy;
     }
   }
 
@@ -2339,23 +2357,15 @@ napi_status Environment::GetValueStringUtf8(napi_value value, char *buf, size_t 
 // The result argument is optional unless buf is NULL.
 napi_status Environment::GetValueStringUtf16(napi_value value, char16_t *buf, size_t bufSize, size_t *result) noexcept {
   CHECK_ARG(value);
-
   JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
 
   if (!buf) {
     CHECK_ARG(result);
-
     CHECK_JSRT_EXPECTED(JsCopyStringUtf16(jsValue, nullptr, 0, result), napi_string_expected);
   } else {
     size_t copied = 0;
     CHECK_JSRT_EXPECTED(JsCopyStringUtf16(jsValue, buf, bufSize - 1, &copied), napi_string_expected);
-
-    if (copied < bufSize - 1) {
-      buf[copied] = 0;
-    } else {
-      buf[bufSize - 1] = 0;
-    }
-
+    buf[copied] = 0;
     if (result != nullptr) {
       *result = copied;
     }

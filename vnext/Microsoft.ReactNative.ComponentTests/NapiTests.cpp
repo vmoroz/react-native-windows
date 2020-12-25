@@ -89,6 +89,173 @@ TEST_P(NapiTest, RunScriptTest) {
   EXPECT_EQ(intValue, 1);
 }
 
+TEST_P(NapiTest, StringTest) {
+  auto TestLatin1 = [&](napi_value value) {
+    char buffer[128];
+    size_t bufferSize = 128;
+    size_t copied{};
+    napi_value result{};
+
+    EXPECT_NAPI_OK(napi_get_value_string_latin1(env, value, buffer, bufferSize, &copied));
+    EXPECT_NAPI_OK(napi_create_string_latin1(env, buffer, copied, &result));
+
+    return result;
+  };
+
+  auto TestUtf8 = [&](napi_value value) {
+    char buffer[128];
+    size_t bufferSize = 128;
+    size_t copied{};
+    napi_value result{};
+
+    EXPECT_NAPI_OK(napi_get_value_string_utf8(env, value, buffer, bufferSize, &copied));
+    EXPECT_NAPI_OK(napi_create_string_utf8(env, buffer, copied, &result));
+
+    return result;
+  };
+
+  auto TestUtf16 = [&](napi_value value) {
+    char16_t buffer[128];
+    size_t bufferSize = 128;
+    size_t copied{};
+    napi_value result{};
+
+    EXPECT_NAPI_OK(napi_get_value_string_utf16(env, value, buffer, bufferSize, &copied));
+    EXPECT_NAPI_OK(napi_create_string_utf16(env, buffer, copied, &result));
+
+    return result;
+  };
+
+  auto TestLatin1Insufficient = [&](napi_value value) {
+    char buffer[4];
+    size_t bufferSize = 4;
+    size_t copied{};
+    napi_value result{};
+
+    EXPECT_NAPI_OK(napi_get_value_string_latin1(env, value, buffer, bufferSize, &copied));
+    EXPECT_NAPI_OK(napi_create_string_latin1(env, buffer, copied, &result));
+
+    return result;
+  };
+
+  auto TestUtf8Insufficient = [&](napi_value value) {
+    char buffer[4];
+    size_t bufferSize = 4;
+    size_t copied{};
+    napi_value result{};
+
+    EXPECT_NAPI_OK(napi_get_value_string_utf8(env, value, buffer, bufferSize, &copied));
+    EXPECT_NAPI_OK(napi_create_string_utf8(env, buffer, copied, &result));
+
+    return result;
+  };
+
+  auto TestUtf16Insufficient = [&](napi_value value) {
+    char16_t buffer[4];
+    size_t bufferSize = 4;
+    size_t copied{};
+    napi_value result{};
+
+    EXPECT_NAPI_OK(napi_get_value_string_utf16(env, value, buffer, bufferSize, &copied));
+    EXPECT_NAPI_OK(napi_create_string_utf16(env, buffer, copied, &result));
+    return result;
+  };
+
+  auto Utf16Length = [&](napi_value value) {
+    size_t length{};
+    napi_value result{};
+    EXPECT_NAPI_OK(napi_get_value_string_utf16(env, value, nullptr, 0, &length));
+    EXPECT_NAPI_OK(napi_create_uint32(env, (uint32_t)length, &result));
+    return result;
+  };
+
+  auto Utf8Length = [&](napi_value value) {
+    size_t length{};
+    napi_value result{};
+    EXPECT_NAPI_OK(napi_get_value_string_utf8(env, value, nullptr, 0, &length));
+    EXPECT_NAPI_OK(napi_create_uint32(env, (uint32_t)length, &result));
+    return result;
+  };
+
+  Eval(R"(
+    empty = '';
+    str1 = 'hello world';
+    str2 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    str3 = '?!@#$%^&*()_+-=[]{}/.,<>\'"\\';
+    str4 = '¡¢£¤¥¦§¨©ª«¬­®¯°±²³´µ¶·¸¹º»¼½¾¿';
+    str5 = 'ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþ';
+    str6 = '\u{2003}\u{2101}\u{2001}\u{202}\u{2011}';
+  )");
+
+  napi_value global{}, empty{}, str1{}, str2{}, str3{}, str4{}, str5{}, str6{};
+  EXPECT_NAPI_OK(napi_get_global(env, &global));
+  EXPECT_NAPI_OK(napi_get_named_property(env, global, "empty", &empty));
+  EXPECT_NAPI_OK(napi_get_named_property(env, global, "str1", &str1));
+  EXPECT_NAPI_OK(napi_get_named_property(env, global, "str2", &str2));
+  EXPECT_NAPI_OK(napi_get_named_property(env, global, "str3", &str3));
+  EXPECT_NAPI_OK(napi_get_named_property(env, global, "str4", &str4));
+  EXPECT_NAPI_OK(napi_get_named_property(env, global, "str5", &str5));
+  EXPECT_NAPI_OK(napi_get_named_property(env, global, "str6", &str6));
+
+  EXPECT_TRUE(CheckStrictEqual(TestLatin1(empty), "empty"));
+  EXPECT_TRUE(CheckStrictEqual(TestUtf8(empty), "empty"));
+  EXPECT_TRUE(CheckStrictEqual(TestUtf16(empty), "empty"));
+  EXPECT_TRUE(CheckStrictEqual(Utf16Length(empty), "0"));
+  EXPECT_TRUE(CheckStrictEqual(Utf8Length(empty), "0"));
+
+  EXPECT_TRUE(CheckStrictEqual(TestLatin1(str1), "str1"));
+  EXPECT_TRUE(CheckStrictEqual(TestUtf8(str1), "str1"));
+  EXPECT_TRUE(CheckStrictEqual(TestUtf16(str1), "str1"));
+  EXPECT_TRUE(CheckStrictEqual(TestLatin1Insufficient(str1), "str1.slice(0, 3)"));
+  EXPECT_TRUE(CheckStrictEqual(TestUtf8Insufficient(str1), "str1.slice(0, 3)"));
+  EXPECT_TRUE(CheckStrictEqual(TestUtf16Insufficient(str1), "str1.slice(0, 3)"));
+  EXPECT_TRUE(CheckStrictEqual(Utf16Length(str1), "11"));
+  EXPECT_TRUE(CheckStrictEqual(Utf8Length(str1), "11"));
+
+  EXPECT_TRUE(CheckStrictEqual(TestLatin1(str2), "str2"));
+  EXPECT_TRUE(CheckStrictEqual(TestUtf8(str2), "str2"));
+  EXPECT_TRUE(CheckStrictEqual(TestUtf16(str2), "str2"));
+  EXPECT_TRUE(CheckStrictEqual(TestLatin1Insufficient(str2), "str2.slice(0, 3)"));
+  EXPECT_TRUE(CheckStrictEqual(TestUtf8Insufficient(str2), "str2.slice(0, 3)"));
+  EXPECT_TRUE(CheckStrictEqual(TestUtf16Insufficient(str2), "str2.slice(0, 3)"));
+  EXPECT_TRUE(CheckStrictEqual(Utf16Length(str2), "62"));
+  EXPECT_TRUE(CheckStrictEqual(Utf8Length(str2), "62"));
+
+  EXPECT_TRUE(CheckStrictEqual(TestLatin1(str3), "str3"));
+  EXPECT_TRUE(CheckStrictEqual(TestUtf8(str3), "str3"));
+  EXPECT_TRUE(CheckStrictEqual(TestUtf16(str3), "str3"));
+  EXPECT_TRUE(CheckStrictEqual(TestLatin1Insufficient(str3), "str3.slice(0, 3)"));
+  EXPECT_TRUE(CheckStrictEqual(TestUtf8Insufficient(str3), "str3.slice(0, 3)"));
+  EXPECT_TRUE(CheckStrictEqual(TestUtf16Insufficient(str3), "str3.slice(0, 3)"));
+  EXPECT_TRUE(CheckStrictEqual(Utf16Length(str3), "27"));
+  EXPECT_TRUE(CheckStrictEqual(Utf8Length(str3), "27"));
+
+  EXPECT_TRUE(CheckStrictEqual(TestLatin1(str4), "str4"));
+  EXPECT_TRUE(CheckStrictEqual(TestUtf8(str4), "str4"));
+  EXPECT_TRUE(CheckStrictEqual(TestUtf16(str4), "str4"));
+  EXPECT_TRUE(CheckStrictEqual(TestLatin1Insufficient(str4), "str4.slice(0, 3)"));
+  EXPECT_TRUE(CheckStrictEqual(TestUtf8Insufficient(str4), "str4.slice(0, 1)"));
+  EXPECT_TRUE(CheckStrictEqual(TestUtf16Insufficient(str4), "str4.slice(0, 3)"));
+  EXPECT_TRUE(CheckStrictEqual(Utf16Length(str4), "31"));
+  EXPECT_TRUE(CheckStrictEqual(Utf8Length(str4), "62"));
+
+  EXPECT_TRUE(CheckStrictEqual(TestLatin1(str5), "str5"));
+  EXPECT_TRUE(CheckStrictEqual(TestUtf8(str5), "str5"));
+  EXPECT_TRUE(CheckStrictEqual(TestUtf16(str5), "str5"));
+  EXPECT_TRUE(CheckStrictEqual(TestLatin1Insufficient(str5), "str5.slice(0, 3)"));
+  EXPECT_TRUE(CheckStrictEqual(TestUtf8Insufficient(str5), "str5.slice(0, 1)"));
+  EXPECT_TRUE(CheckStrictEqual(TestUtf16Insufficient(str5), "str5.slice(0, 3)"));
+  EXPECT_TRUE(CheckStrictEqual(Utf16Length(str5), "63"));
+  EXPECT_TRUE(CheckStrictEqual(Utf8Length(str5), "126"));
+
+  EXPECT_TRUE(CheckStrictEqual(TestUtf8(str6), "str6"));
+  EXPECT_TRUE(CheckStrictEqual(TestUtf16(str6), "str6"));
+  EXPECT_TRUE(CheckStrictEqual(TestUtf8Insufficient(str6), "str6.slice(0, 1)"));
+  EXPECT_TRUE(CheckStrictEqual(TestUtf16Insufficient(str6), "str6.slice(0, 3)"));
+  EXPECT_TRUE(CheckStrictEqual(Utf16Length(str6), "5"));
+  EXPECT_TRUE(CheckStrictEqual(Utf8Length(str6), "14"));
+}
+
 TEST_P(NapiTest, ArrayTest) {
   Eval(R"(
     array = [
