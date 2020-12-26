@@ -1960,8 +1960,8 @@ napi_status Environment::CreateStringUtf16(const char16_t *str, size_t length, n
 
 napi_status Environment::CreateSymbol(napi_value description, napi_value *result) noexcept {
   CHECK_ARG(result);
-  JsValueRef js_description = reinterpret_cast<JsValueRef>(description);
-  CHECK_JSRT(JsCreateSymbol(js_description, reinterpret_cast<JsValueRef *>(result)));
+  JsValueRef jsDescription = reinterpret_cast<JsValueRef>(description);
+  CHECK_JSRT(JsCreateSymbol(jsDescription, reinterpret_cast<JsValueRef *>(result)));
   return napi_ok;
 }
 
@@ -2325,6 +2325,7 @@ napi_status Environment::GetValueStringUtf8(napi_value value, char *buf, size_t 
         bufSize -= 4;
       }
 
+      //TODO: [vmoroz] it seems that we write after the buffer: fix it.
       buf[bufSize] = '\0';
 
       if (result) {

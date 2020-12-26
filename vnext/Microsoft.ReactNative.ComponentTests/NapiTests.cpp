@@ -25,9 +25,17 @@
 namespace napi {
 
 void AssertNapiException(napi_env env, napi_status errorCode, const char *exprStr) {
-  napi_value jsError{};
-  CHECK_ELSE_CRASH(napi_get_and_clear_last_exception(env, &jsError) == napi_ok, "Cannot retrieve JS exception.");
-  FAIL() << exprStr << "\n error code: " << errorCode;
+  napi_value error{}, errorMessage{};
+  size_t messageSize{};
+  const napi_extended_error_info *extendedErrorInfo{};
+  napi_get_last_error_info(env, &extendedErrorInfo);
+  CHECK_ELSE_CRASH(napi_get_and_clear_last_exception(env, &error) == napi_ok, "Cannot retrieve JS exception.");
+  napi_get_named_property(env, error, "message", &errorMessage);
+  napi_get_value_string_utf8(env, errorMessage, nullptr, 0, &messageSize);
+  std::string messageStr(messageSize, '\0');
+  napi_get_value_string_utf8(env, errorMessage, messageStr.data(), messageSize + 1, nullptr);
+  FAIL() << exprStr << "\n message: " << messageStr << "\n error code: " << errorCode
+         << "\n code message: " << extendedErrorInfo->error_message;
 }
 
 napi_value NapiTestBase::Eval(const char *code) {
@@ -65,6 +73,10 @@ bool NapiTestBase::CheckEqual(napi_value value, const std::string &jsValue) {
 
 bool NapiTestBase::CheckStrictEqual(napi_value value, const std::string &jsValue) {
   return CallBoolFunction({value}, "function(value) { return value === " + jsValue + "; }");
+}
+
+bool NapiTestBase::CheckStrictEqual(const std::string &left, const std::string &right) {
+  return CallBoolFunction({}, "function() { return " + left + " === " + right + "; }");
 }
 
 } // namespace napi
@@ -369,6 +381,43 @@ TEST_P(NapiTest, ArrayTest) {
   EXPECT_NAPI_OK(napi_delete_element(env, array, 2'147'483'650u, &isDeleted));
   EXPECT_TRUE(isDeleted);
   EXPECT_TRUE(CheckStrictEqual(undefined, "array[2147483650]"));
+}
+
+TEST_P(NapiTest, SymbolTest) {
+  auto New = [&](const char *value = nullptr) {
+    napi_value description{}, symbol{};
+    if (value) {
+      EXPECT_NAPI_OK(napi_create_string_utf8(env, value, NAPI_AUTO_LENGTH, &description));
+    }
+    EXPECT_NAPI_OK(napi_create_symbol(env, description, &symbol));
+    return symbol;
+  };
+
+  const napi_value sym = New("test");
+  EXPECT_TRUE(CallBoolFunction({sym}, "function(sym) { return sym.toString() === 'Symbol(test)'; }"));
+
+  const napi_value fooSym = New("foo");
+  const napi_value otherSym = New("bar");
+  CallFunction({fooSym, otherSym}, R"(
+    function(fooSym, otherSym) {
+      myObj = {};
+      myObj.foo = 'bar';
+      myObj[fooSym] = 'baz';
+      myObj[otherSym] = 'bing';
+    })");
+  EXPECT_TRUE(CallBoolFunction({}, "function() { return myObj.foo === 'bar'; }"));
+  EXPECT_TRUE(CallBoolFunction({fooSym}, "function(fooSym) { return myObj[fooSym] === 'baz'; }"));
+  EXPECT_TRUE(CallBoolFunction({otherSym}, "function(otherSym) { return myObj[otherSym] === 'bing'; }"));
+  EXPECT_TRUE(CallBoolFunction({otherSym}, "function(otherSym) { return myObj[otherSym] === 'bing'; }"));
+
+  const napi_value sym1 = New();
+  const napi_value sym2 = New();
+  EXPECT_TRUE(CallBoolFunction({sym1, sym2}, "function(sym1, sym2) { return sym1 !== sym2; }"));
+  const napi_value fooSym1 = New("foo");
+  const napi_value fooSym2 = New("foo");
+  EXPECT_TRUE(CallBoolFunction({fooSym1, fooSym2}, "function(sym1, sym2) { return sym1 !== sym2; }"));
+  const napi_value barSym = New("bar");
+  EXPECT_TRUE(CallBoolFunction({fooSym1, barSym}, "function(sym1, sym2) { return sym1 !== sym2; }"));
 }
 
 INSTANTIATE_TEST_CASE_P(NapiEnv, NapiTest, ::testing::ValuesIn(napiEnvGenerators()));
