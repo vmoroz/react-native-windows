@@ -865,7 +865,6 @@ struct FinalizingReference : Reference {
       void *finalizeHint,
       napi_ref *result) noexcept {
     CHECK_ENV_ARG(env, value);
-    CHECK_ENV_ARG(env, finalizeCallback);
 
     JsValueRef jsValue{reinterpret_cast<JsValueRef>(value)};
 
@@ -891,6 +890,10 @@ struct FinalizingReference : Reference {
     return napi_status::napi_ok;
   }
 
+  void *Data() {
+    return m_finalizeData;
+  }
+
  protected:
   using Super = Reference;
 
@@ -908,7 +911,9 @@ struct FinalizingReference : Reference {
         m_finalizeHint{finalizeHint} {}
 
   void Finalize(bool isEnvTeardown) noexcept override {
-    m_finalizeCallback(m_env, m_finalizeData, m_finalizeHint);
+    if (m_finalizeCallback) {
+      m_finalizeCallback(m_env, m_finalizeData, m_finalizeHint);
+    }
     Super::Finalize(isEnvTeardown);
   }
 
@@ -1577,6 +1582,7 @@ Environment::ChakraCreatePropertyDescriptor(TValue &&value, PropertyAttibutes at
   if (!(attrs & PropertyAttibutes::DontDelete)) {
     CHECK_JSRT_ERROR_CODE(ChakraSetProperty(descriptor, m_propertyId.configurable, m_value.True));
   }
+  *result = descriptor;
   return JsErrorCode::JsNoError;
 }
 
@@ -1638,32 +1644,26 @@ JsErrorCode Environment::ChakraDefineProperty(
 
 template <class TObject, class TPropertyId>
 JsErrorCode Environment::ChakraHasPrivateProperty(TObject &&object, TPropertyId &&propertyId, bool *result) noexcept {
-  JsValueRef jsObject{};
+  JsValueRef jsObject{}, descriptor{};
   JsPropertyIdRef jsPropertyId{};
-  JsValueRef descriptor{};
+  JsValueType descriptorType{};
   CHECK_JSRT_ERROR_CODE(CachedValue::GetValue(std::forward<TObject>(object), &jsObject));
   CHECK_JSRT_ERROR_CODE(CachedPropertyId::GetPropertyId(std::forward<TPropertyId>(propertyId), &jsPropertyId));
-  JsErrorCode err = JsGetOwnPropertyDescriptor(jsObject, jsPropertyId, &descriptor);
-  *result = (err == JsNoError);
-  if (!*result) {
-    // Discard the last error in case if we cannot retrieve the property descriptor.
-    JsValueRef exception{};
-    return JsGetAndClearException(&exception);
-  }
-
+  CHECK_JSRT_ERROR_CODE(JsGetOwnPropertyDescriptor(jsObject, jsPropertyId, &descriptor));
+  CHECK_JSRT_ERROR_CODE(JsGetValueType(descriptor, &descriptorType));
+  *result = descriptorType == JsValueType::JsObject;
   return JsErrorCode::JsNoError;
 }
 
 template <class TObject, class TPropertyId>
 JsErrorCode
 Environment::ChakraGetPrivateProperty(TObject &&object, TPropertyId &&propertyId, JsValueRef *result) noexcept {
-  JsValueRef jsObject{};
+  JsValueRef jsObject{}, descriptor{};
   JsPropertyIdRef jsPropertyId{};
-  JsValueRef descriptor{};
   CHECK_JSRT_ERROR_CODE(CachedValue::GetValue(std::forward<TObject>(object), &jsObject));
   CHECK_JSRT_ERROR_CODE(CachedPropertyId::GetPropertyId(std::forward<TPropertyId>(propertyId), &jsPropertyId));
   CHECK_JSRT_ERROR_CODE(JsGetOwnPropertyDescriptor(jsObject, jsPropertyId, &descriptor));
-  return GetProperty(descriptor, m_propertyId.value, result);
+  return ChakraGetProperty(descriptor, m_propertyId.value, result);
 }
 
 template <class TObject, class TPropertyId, class TValue>
@@ -2025,7 +2025,7 @@ napi_status Environment::GetUniqueStringLatin1(const char *str, size_t length, n
   auto uniqueStr = std::unique_ptr<UniqueString>(new UniqueString{*result, std::wstring_view(strValue, strLength)});
   m_uniqueStrings.try_emplace(*result, uniqueStr.get());
   m_uniqueStringIndex.try_emplace(std::wstring_view(strValue, strLength), uniqueStr.release());
-  //TODO: add GC hook to remove items
+  // TODO: add GC hook to remove items
   return napi_ok;
 }
 
@@ -2325,7 +2325,7 @@ napi_status Environment::GetValueStringUtf8(napi_value value, char *buf, size_t 
         bufSize -= 4;
       }
 
-      //TODO: [vmoroz] it seems that we write after the buffer: fix it.
+      // TODO: [vmoroz] it seems that we write after the buffer: fix it.
       buf[bufSize] = '\0';
 
       if (result) {
@@ -2914,6 +2914,7 @@ napi_status Environment::Wrap(
         nativeObj,
         finalizeHint,
         &reference));
+    *result = reference;
   } else {
     // Create a self-deleting reference.
     CHECK_NAPI(FinalizingReference::New(
@@ -2934,16 +2935,17 @@ napi_status Environment::Wrap(
 }
 
 napi_status Environment::Unwrap(napi_value js_object, void **result) noexcept {
-  // TODO: [vmoroz] Implement
-  // CHECK_ARG(js_object);
-  // CHECK_ARG(result);
+  CHECK_ARG(js_object);
+  CHECK_ARG(result);
 
-  // JsValueRef value = reinterpret_cast<JsValueRef>(js_object);
+  JsValueRef jsValue = reinterpret_cast<JsValueRef>(js_object);
 
-  // ExternalData *externalData = nullptr;
-  // CHECK_NAPI(Unwrap(env, value, &externalData));
+  JsValueRef wrapper;
+  FinalizingReference *finalizingReferece{};
+  CHECK_JSRT(ChakraGetPrivateProperty(jsValue, m_propertyId.hostObject, &wrapper));
+  CHECK_JSRT(JsGetExternalData(wrapper, reinterpret_cast<void **>(&finalizingReferece)));
 
-  //*result = (externalData != nullptr ? externalData->Data() : nullptr);
+  *result = (finalizingReferece != nullptr ? finalizingReferece->Data() : nullptr);
 
   return napi_ok;
 }
