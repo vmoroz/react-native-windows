@@ -40,7 +40,10 @@ struct NapiTestBase : ::testing::TestWithParam<NapiEnvFactory> {
   bool CheckEqual(napi_value value, const std::string &jsValue);
   bool CheckStrictEqual(napi_value value, const std::string &jsValue);
   bool CheckStrictEqual(const std::string &left, const std::string &right);
+  bool CheckDeepStrictEqual(napi_value value, const std::string &jsValue);
+  bool CheckDeepStrictEqual(const std::string &left, const std::string &right);
 
+  protected:
   NapiEnvFactory factory;
   napi_env env;
 };

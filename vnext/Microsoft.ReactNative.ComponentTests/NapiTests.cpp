@@ -22,6 +22,16 @@
     }                                                \
   } while (false)
 
+#define EXPECT_NAPI_NOT_OK(expr, msg)           \
+  do {                                          \
+    napi_status temp_status_ = (expr);          \
+    if (temp_status_ == napi_status::napi_ok) { \
+      FAIL() << msg << " " << #expr;            \
+    } else {                                    \
+      ClearNapiException(env);                  \
+    }                                           \
+  } while (false)
+
 namespace napi {
 
 void AssertNapiException(napi_env env, napi_status errorCode, const char *exprStr) {
@@ -36,6 +46,11 @@ void AssertNapiException(napi_env env, napi_status errorCode, const char *exprSt
   napi_get_value_string_utf8(env, errorMessage, messageStr.data(), messageSize + 1, nullptr);
   FAIL() << exprStr << "\n message: " << messageStr << "\n error code: " << errorCode
          << "\n code message: " << extendedErrorInfo->error_message;
+}
+
+void ClearNapiException(napi_env env) {
+  napi_value error{};
+  CHECK_ELSE_CRASH(napi_get_and_clear_last_exception(env, &error) == napi_ok, "Cannot retrieve JS exception.");
 }
 
 napi_value NapiTestBase::Eval(const char *code) {
@@ -79,7 +94,113 @@ bool NapiTestBase::CheckStrictEqual(const std::string &left, const std::string &
   return CallBoolFunction({}, "function() { return " + left + " === " + right + "; }");
 }
 
+static const std::string deepEqualFunc = R"JS(function(left, right) {
+    function check(left, right) {
+      if (left === right) {
+        return true;
+      }
+      if (typeof left !== typeof right) {
+        return false;
+      }
+      if (Array.isArray(left)) {
+        return Array.isArray(right) && checkArray(left, right);
+      }
+      if (typeof left === 'number') {
+        return isNaN(left) && isNaN(right);
+      }
+      if (typeof left === 'object') {
+        return checkObject(left, right);
+      }
+      return false;
+    }
+
+    function checkArray(left, right) {
+      if (left.length !== right.length) {
+        return false;
+      }
+      for (let i = 0; i < left.length; ++i) {
+        if (!check(left[i], right[i])) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    function checkObject(left, right) {
+      const leftNames = Object.getOwnPropertyNames(left);
+      const rightNames = Object.getOwnPropertyNames(right);
+      if (leftNames.length !== rightNames.length) {
+        return false;
+      }
+      for (let i = 0; i < leftNames.length; ++i) {
+        if (!check(left[leftNames[i]], right[leftNames[i]])) {
+          return false;
+        }
+      }
+      const leftSymbols = Object.getOwnPropertySymbols(left);
+      const rightSymbols = Object.getOwnPropertySymbols(right);
+      if (leftSymbols.length !== rightSymbols.length) {
+        return false;
+      }
+      for (let i = 0; i < leftSymbols.length; ++i) {
+        if (!check(left[leftSymbols[i]], right[leftSymbols[i]])) {
+          return false;
+        }
+      }
+      return check(Object.getPrototypeOf(left), Object.getPrototypeOf(right));
+    }
+
+    return check(left, right);
+  })JS";
+
+bool NapiTestBase::CheckDeepStrictEqual(napi_value value, const std::string &jsValue) {
+  return CallBoolFunction({value}, "function(value) { return " + deepEqualFunc + "(value, " + jsValue + "); }");
+}
+
+bool NapiTestBase::CheckDeepStrictEqual(const std::string &left, const std::string &right) {
+  return CallBoolFunction({}, "function() { return " + deepEqualFunc + "(" + left + ", " + right + "); }");
+}
+
 } // namespace napi
+
+// void add_returned_status(
+//    napi_env env,
+//    const char *key,
+//    napi_value object,
+//    char *expected_message,
+//    napi_status expected_status,
+//    napi_status actual_status) {
+//  char napi_message_string[100] = "";
+//  napi_value prop_value;
+//
+//  if (actual_status != expected_status) {
+//    snprintf(napi_message_string, sizeof(napi_message_string), "Invalid status [%d]", actual_status);
+//  }
+//
+//  NAPI_CALL_RETURN_VOID(
+//      env,
+//      napi_create_string_utf8(
+//          env,
+//          (actual_status == expected_status ? expected_message : napi_message_string),
+//          NAPI_AUTO_LENGTH,
+//          &prop_value));
+//  NAPI_CALL_RETURN_VOID(env, napi_set_named_property(env, object, key, prop_value));
+//}
+//
+// void add_last_status(napi_env env, const char *key, napi_value return_value) {
+//  napi_value prop_value;
+//  const napi_extended_error_info *p_last_error;
+//  NAPI_CALL_RETURN_VOID(env, napi_get_last_error_info(env, &p_last_error));
+//
+//  NAPI_CALL_RETURN_VOID(
+//      env,
+//      napi_create_string_utf8(
+//          env,
+//          (p_last_error->error_message == NULL ? "napi_ok" : p_last_error->error_message),
+//          NAPI_AUTO_LENGTH,
+//          &prop_value));
+//  NAPI_CALL_RETURN_VOID(env, napi_set_named_property(env, return_value, key, prop_value));
+//}
 
 using namespace napi;
 
@@ -418,6 +539,322 @@ TEST_P(NapiTest, SymbolTest) {
   EXPECT_TRUE(CallBoolFunction({fooSym1, fooSym2}, "function(sym1, sym2) { return sym1 !== sym2; }"));
   const napi_value barSym = New("bar");
   EXPECT_TRUE(CallBoolFunction({fooSym1, barSym}, "function(sym1, sym2) { return sym1 !== sym2; }"));
+}
+
+TEST_P(NapiTest, ObjectTest) {
+  int test_value = 3;
+
+  auto Get = [&](napi_value object, const char *strKey) {
+    napi_value result{}, key{};
+    EXPECT_NAPI_OK(napi_create_string_utf8(env, strKey, NAPI_AUTO_LENGTH, &key));
+    EXPECT_NAPI_OK(napi_get_property(env, object, key, &result));
+    return result;
+  };
+
+  auto GetNamed = [&](napi_value object, const char *utf8Name) {
+    napi_value result{};
+    EXPECT_NAPI_OK(napi_get_named_property(env, object, utf8Name, &result));
+    return result;
+  };
+
+  auto GetPropertyNames = [&](napi_value object) {
+    napi_value result{};
+    EXPECT_NAPI_OK(napi_get_property_names(env, object, &result));
+    return result;
+  };
+
+  auto GetSymbolNames = [&](napi_value object) {
+    napi_value result{};
+    EXPECT_NAPI_OK(napi_get_all_property_names(
+        env, object, napi_key_include_prototypes, napi_key_skip_strings, napi_key_numbers_to_strings, &result));
+    return result;
+  };
+
+  auto Set = [&](napi_value object, napi_value key, napi_value value) {
+    EXPECT_NAPI_OK(napi_set_property(env, object, key, value));
+    return true;
+  };
+
+  auto SetNamed = [&](napi_value object, const char *utf8Name, napi_value value) {
+    EXPECT_NAPI_OK(napi_set_named_property(env, object, utf8Name, value));
+    return true;
+  };
+
+  auto Has = [&](napi_value object, const char *strKey) {
+    bool result{};
+    napi_value key{};
+    EXPECT_NAPI_OK(napi_create_string_utf8(env, strKey, NAPI_AUTO_LENGTH, &key));
+    EXPECT_NAPI_OK(napi_has_property(env, object, key, &result));
+    return result;
+  };
+
+  auto HasNamed = [&](napi_value object, const char *utf8Name) {
+    bool result{};
+    EXPECT_NAPI_OK(napi_has_named_property(env, object, utf8Name, &result));
+    return result;
+  };
+
+  auto HasOwn = [&](napi_value object, napi_value key) {
+    bool result{};
+    EXPECT_NAPI_OK(napi_has_own_property(env, object, key, &result));
+    return result;
+  };
+
+  auto Delete = [&](napi_value object, napi_value key) {
+    bool result{};
+    EXPECT_NAPI_OK(napi_delete_property(env, object, key, &result));
+    return result;
+  };
+
+  auto New = [&]() {
+    napi_value result{};
+    EXPECT_NAPI_OK(napi_create_object(env, &result));
+
+    napi_value num;
+    EXPECT_NAPI_OK(napi_create_int32(env, 987654321, &num));
+
+    EXPECT_NAPI_OK(napi_set_named_property(env, result, "test_number", num));
+
+    napi_value str;
+    const char *str_val = "test string";
+    size_t str_len = strlen(str_val);
+    EXPECT_NAPI_OK(napi_create_string_utf8(env, str_val, str_len, &str));
+
+    EXPECT_NAPI_OK(napi_set_named_property(env, result, "test_string", str));
+
+    return result;
+  };
+
+  auto Inflate = [&](napi_value obj) {
+    napi_value propertynames;
+    EXPECT_NAPI_OK(napi_get_property_names(env, obj, &propertynames));
+
+    uint32_t length;
+    EXPECT_NAPI_OK(napi_get_array_length(env, propertynames, &length));
+
+    for (uint32_t i = 0; i < length; i++) {
+      napi_value property_str;
+      EXPECT_NAPI_OK(napi_get_element(env, propertynames, i, &property_str));
+
+      napi_value value;
+      EXPECT_NAPI_OK(napi_get_property(env, obj, property_str, &value));
+
+      double double_val;
+      EXPECT_NAPI_OK(napi_get_value_double(env, value, &double_val));
+      EXPECT_NAPI_OK(napi_create_double(env, double_val + 1, &value));
+      EXPECT_NAPI_OK(napi_set_property(env, obj, property_str, value));
+    }
+
+    return obj;
+  };
+
+  auto Wrap = [&](napi_value obj) {
+    EXPECT_NAPI_OK(napi_wrap(env, obj, &test_value, nullptr, nullptr, nullptr));
+    return nullptr;
+  };
+
+  auto Unwrap = [&](napi_value obj) {
+    void *data{};
+    EXPECT_NAPI_OK(napi_unwrap(env, obj, &data));
+
+    bool is_expected = (data != nullptr && *(int *)data == 3);
+    return is_expected;
+  };
+#if 0
+  auto TestSetProperty=[&]() {
+    napi_status status;
+    napi_value object, key, value;
+
+    EXPECT_NAPI_OK(napi_create_object(env, &object));
+    EXPECT_NAPI_OK(napi_create_string_utf8(env, "", NAPI_AUTO_LENGTH, &key));
+    EXPECT_NAPI_OK(napi_create_object(env, &value));
+
+    status = napi_set_property(nullptr, object, key, value);
+
+    add_returned_status(env, "envIsNull", object, "Invalid argument", napi_invalid_arg, status);
+
+    napi_set_property(env, NULL, key, value);
+
+    add_last_status(env, "objectIsNull", object);
+
+    napi_set_property(env, object, NULL, value);
+
+    add_last_status(env, "keyIsNull", object);
+
+    napi_set_property(env, object, key, NULL);
+
+    add_last_status(env, "valueIsNull", object);
+
+    return object;
+  }
+
+  static napi_value TestHasProperty(napi_env env, napi_callback_info info) {
+    napi_status status;
+    napi_value object, key;
+    bool result;
+
+    NAPI_CALL(env, napi_create_object(env, &object));
+
+    NAPI_CALL(env, napi_create_string_utf8(env, "", NAPI_AUTO_LENGTH, &key));
+
+    status = napi_has_property(NULL, object, key, &result);
+
+    add_returned_status(env, "envIsNull", object, "Invalid argument", napi_invalid_arg, status);
+
+    napi_has_property(env, NULL, key, &result);
+
+    add_last_status(env, "objectIsNull", object);
+
+    napi_has_property(env, object, NULL, &result);
+
+    add_last_status(env, "keyIsNull", object);
+
+    napi_has_property(env, object, key, NULL);
+
+    add_last_status(env, "resultIsNull", object);
+
+    return object;
+  }
+
+  static napi_value TestGetProperty(napi_env env, napi_callback_info info) {
+    napi_status status;
+    napi_value object, key, result;
+
+    NAPI_CALL(env, napi_create_object(env, &object));
+
+    NAPI_CALL(env, napi_create_string_utf8(env, "", NAPI_AUTO_LENGTH, &key));
+
+    NAPI_CALL(env, napi_create_object(env, &result));
+
+    status = napi_get_property(NULL, object, key, &result);
+
+    add_returned_status(env, "envIsNull", object, "Invalid argument", napi_invalid_arg, status);
+
+    napi_get_property(env, NULL, key, &result);
+
+    add_last_status(env, "objectIsNull", object);
+
+    napi_get_property(env, object, NULL, &result);
+
+    add_last_status(env, "keyIsNull", object);
+
+    napi_get_property(env, object, key, NULL);
+
+    add_last_status(env, "resultIsNull", object);
+
+    return object;
+  }
+
+  static napi_value TestFreeze(napi_env env, napi_callback_info info) {
+    size_t argc = 1;
+    napi_value args[1];
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, args, NULL, NULL));
+
+    napi_value object = args[0];
+    NAPI_CALL(env, napi_object_freeze(env, object));
+
+    return object;
+  }
+
+  static napi_value TestSeal(napi_env env, napi_callback_info info) {
+    size_t argc = 1;
+    napi_value args[1];
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, args, NULL, NULL));
+
+    napi_value object = args[0];
+    NAPI_CALL(env, napi_object_seal(env, object));
+
+    return object;
+  }
+
+  // We create two type tags. They are basically 128-bit UUIDs.
+  static const napi_type_tag type_tags[2] = {
+      {0xdaf987b3cc62481a, 0xb745b0497f299531}, {0xbb7936c374084d9b, 0xa9548d0762eeedb9}};
+
+  static napi_value TypeTaggedInstance(napi_env env, napi_callback_info info) {
+    size_t argc = 1;
+    uint32_t type_index;
+    napi_value instance, which_type;
+
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, &which_type, NULL, NULL));
+    NAPI_CALL(env, napi_get_value_uint32(env, which_type, &type_index));
+    NAPI_CALL(env, napi_create_object(env, &instance));
+    NAPI_CALL(env, napi_type_tag_object(env, instance, &type_tags[type_index]));
+
+    return instance;
+  }
+
+  auto CheckTypeTag = [&](napi_env env, napi_callback_info info) {
+    size_t argc = 2;
+    bool result;
+    napi_value argv[2], js_result;
+    uint32_t type_index;
+
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, NULL, NULL));
+    NAPI_CALL(env, napi_get_value_uint32(env, argv[0], &type_index));
+    NAPI_CALL(env, napi_check_object_type_tag(env, argv[1], &type_tags[type_index], &result));
+    NAPI_CALL(env, napi_get_boolean(env, result, &js_result));
+
+    return js_result;
+  }
+#endif
+
+  napi_value object = CallFunction({}, R"(
+    function () {
+      object = {
+        hello : 'world',
+        array : [ 1, 94, 'str', 12.321, {test : 'obj in arr'} ],
+        newObject : {test : 'obj in obj'}
+      };
+      return object;
+    }
+  )");
+
+  EXPECT_TRUE(CheckStrictEqual(Get(object, "hello"), "'world'"));
+  EXPECT_TRUE(CheckStrictEqual(GetNamed(object, "hello"), "'world'"));
+  EXPECT_TRUE(CheckDeepStrictEqual(Get(object, "array"), "[ 1, 94, 'str', 12.321, {test : 'obj in arr'} ]"));
+  EXPECT_TRUE(CheckDeepStrictEqual(Get(object, "newObject"), "{test : 'obj in obj'}"));
+
+  EXPECT_TRUE(Has(object, "hello"));
+  EXPECT_TRUE(HasNamed(object, "hello"));
+  EXPECT_TRUE(Has(object, "array"));
+  EXPECT_TRUE(Has(object, "newObject"));
+
+  napi_value newObject = New();
+  EXPECT_TRUE(Has(newObject, "test_number"));
+  EXPECT_TRUE(CallBoolFunction({newObject}, "function(newObject) { return newObject.test_number === 987654321; }"));
+  EXPECT_TRUE(CallBoolFunction({newObject}, "function(newObject) { return newObject.test_string === 'test string'; }"));
+
+  // Verify that napi_get_property() walks the prototype chain.
+  napi_value obj = CallFunction({}, R"(
+    function() {
+      function MyObject() {
+        this.foo = 42;
+        this.bar = 43;
+      }
+
+      MyObject.prototype.bar = 44;
+      MyObject.prototype.baz = 45;
+
+      return new MyObject();
+    }
+  )");
+
+  EXPECT_TRUE(CheckStrictEqual(Get(obj, "foo"), "42"));
+  EXPECT_TRUE(CheckStrictEqual(Get(obj, "bar"), "43"));
+  EXPECT_TRUE(CheckStrictEqual(Get(obj, "baz"), "45"));
+  EXPECT_TRUE(CheckStrictEqual(Get(obj, "toString"), "Object.prototype.toString"));
+
+  // Verify that napi_has_own_property() fails if property is not a name.
+  napi_value notNames = CallFunction({}, R"(function () { return [ true, false, null, undefined, {}, [], 0, 1, () => {} ]; })");
+
+  uint32_t notNamesLength{};
+  EXPECT_NAPI_OK(napi_get_array_length(env, notNames, &notNamesLength));
+  for (uint32_t i = 0; i < notNamesLength; ++i) {
+    napi_value key{};
+    EXPECT_NAPI_OK(napi_get_element(env, notNames, i, &key));
+    EXPECT_FALSE(HasOwn(obj, key));
+  }
 }
 
 INSTANTIATE_TEST_CASE_P(NapiEnv, NapiTest, ::testing::ValuesIn(napiEnvGenerators()));
