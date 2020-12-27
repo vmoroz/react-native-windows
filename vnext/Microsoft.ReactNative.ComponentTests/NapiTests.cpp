@@ -148,6 +148,8 @@ void add_last_status(napi_env env, const char *key, napi_value return_value) {
 
 #define EXPECT_JS_THROWS(expr) EXPECT_TRUE(CheckThrows(expr))
 
+#define EXPECT_JS_TRUE(expr) EXPECT_TRUE(CheckEqual(expr, "true"))
+
 namespace napi {
 
 void AssertNapiException(napi_env env, napi_status errorCode, const char *exprStr) {
@@ -200,6 +202,10 @@ bool NapiTestBase::CallBoolFunction(std::initializer_list<napi_value> args, cons
 
 bool NapiTestBase::CheckEqual(napi_value value, const std::string &jsValue) {
   return CallBoolFunction({value}, "function(value) { return value == " + jsValue + "; }");
+}
+
+bool NapiTestBase::CheckEqual(const std::string &left, const std::string &right) {
+  return CallBoolFunction({}, "function() { return " + left + " == " + right + "; }");
 }
 
 bool NapiTestBase::CheckStrictEqual(napi_value value, const std::string &jsValue) {
@@ -424,46 +430,19 @@ napi_value NapiTestBase::ObjectSeal(napi_value object) {
   return object;
 }
 
-} // namespace napi
+napi_value NapiTestBase::DefineClass(
+    const char *utf8Name,
+    size_t nameLength,
+    napi_callback constructor,
+    void *data,
+    size_t propertyCount,
+    const napi_property_descriptor *properties) {
+  napi_value result{};
+  EXPECT_NAPI_OK(napi_define_class(env, utf8Name, nameLength, constructor, data, propertyCount, properties, &result));
+  return result;
+}
 
-// void add_returned_status(
-//    napi_env env,
-//    const char *key,
-//    napi_value object,
-//    char *expected_message,
-//    napi_status expected_status,
-//    napi_status actual_status) {
-//  char napi_message_string[100] = "";
-//  napi_value prop_value;
-//
-//  if (actual_status != expected_status) {
-//    snprintf(napi_message_string, sizeof(napi_message_string), "Invalid status [%d]", actual_status);
-//  }
-//
-//  NAPI_CALL_RETURN_VOID(
-//      env,
-//      napi_create_string_utf8(
-//          env,
-//          (actual_status == expected_status ? expected_message : napi_message_string),
-//          NAPI_AUTO_LENGTH,
-//          &prop_value));
-//  NAPI_CALL_RETURN_VOID(env, napi_set_named_property(env, object, key, prop_value));
-//}
-//
-// void add_last_status(napi_env env, const char *key, napi_value return_value) {
-//  napi_value prop_value;
-//  const napi_extended_error_info *p_last_error;
-//  NAPI_CALL_RETURN_VOID(env, napi_get_last_error_info(env, &p_last_error));
-//
-//  NAPI_CALL_RETURN_VOID(
-//      env,
-//      napi_create_string_utf8(
-//          env,
-//          (p_last_error->error_message == nullptr ? "napi_ok" : p_last_error->error_message),
-//          NAPI_AUTO_LENGTH,
-//          &prop_value));
-//  NAPI_CALL_RETURN_VOID(env, napi_set_named_property(env, return_value, key, prop_value));
-//}
+} // namespace napi
 
 using namespace napi;
 
@@ -1580,6 +1559,216 @@ TEST_P(NapiTest, ObjectTest) {
     EXPECT_DEEP_STRICT_EQ(NullGetAllPropertyNames(), "expectedForElement");
     EXPECT_DEEP_STRICT_EQ(NullGetPrototype(), "expectedForElement");
   }
+}
+
+TEST_P(NapiTest, ConstructorTest) {
+  static double value_ = 1;
+  static double static_value_ = 10;
+
+  auto TestDefineClass = [](napi_env env, napi_callback_info info) -> napi_value {
+    napi_status status;
+    napi_value result, return_value;
+
+    auto NullTestDefineClass = [](napi_env /*env*/, napi_callback_info /*info*/) -> napi_value { return nullptr; };
+
+    napi_property_descriptor property_descriptor = {
+        "TestDefineClass",
+        nullptr,
+        NullTestDefineClass,
+        nullptr,
+        nullptr,
+        nullptr,
+        napi_property_attributes(napi_enumerable | napi_static),
+        nullptr};
+
+    NAPI_CALL(env, napi_create_object(env, &return_value));
+
+    status = napi_define_class(
+        nullptr, "TrackedFunction", NAPI_AUTO_LENGTH, NullTestDefineClass, nullptr, 1, &property_descriptor, &result);
+
+    add_returned_status(env, "envIsNull", return_value, "Invalid argument", napi_invalid_arg, status);
+
+    napi_define_class(env, nullptr, NAPI_AUTO_LENGTH, NullTestDefineClass, nullptr, 1, &property_descriptor, &result);
+    add_last_status(env, "nameIsNull", return_value);
+
+    napi_define_class(env, "TrackedFunction", NAPI_AUTO_LENGTH, nullptr, nullptr, 1, &property_descriptor, &result);
+    add_last_status(env, "cbIsNull", return_value);
+
+    napi_define_class(
+        env, "TrackedFunction", NAPI_AUTO_LENGTH, NullTestDefineClass, nullptr, 1, &property_descriptor, &result);
+    add_last_status(env, "cbDataIsNull", return_value);
+
+    napi_define_class(env, "TrackedFunction", NAPI_AUTO_LENGTH, NullTestDefineClass, nullptr, 1, nullptr, &result);
+    add_last_status(env, "propertiesIsNull", return_value);
+
+    napi_define_class(
+        env, "TrackedFunction", NAPI_AUTO_LENGTH, NullTestDefineClass, nullptr, 1, &property_descriptor, nullptr);
+    add_last_status(env, "resultIsNull", return_value);
+
+    return return_value;
+  };
+
+  auto GetValue = [](napi_env env, napi_callback_info info) -> napi_value {
+    size_t argc = 0;
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, nullptr, nullptr, nullptr));
+
+    NAPI_ASSERT(env, argc == 0, "Wrong number of arguments");
+
+    napi_value number;
+    NAPI_CALL(env, napi_create_double(env, value_, &number));
+
+    return number;
+  };
+
+  auto SetValue = [](napi_env env, napi_callback_info info) -> napi_value {
+    size_t argc = 1;
+    napi_value args[1];
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, args, nullptr, nullptr));
+
+    NAPI_ASSERT(env, argc == 1, "Wrong number of arguments");
+
+    NAPI_CALL(env, napi_get_value_double(env, args[0], &value_));
+
+    return nullptr;
+  };
+
+  auto Echo = [](napi_env env, napi_callback_info info) -> napi_value {
+    size_t argc = 1;
+    napi_value args[1] = {};
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, args, nullptr, nullptr));
+
+    NAPI_ASSERT(env, argc == 1, "Wrong number of arguments");
+
+    return args[0];
+  };
+
+  auto New = [](napi_env env, napi_callback_info info) -> napi_value {
+    napi_value _this;
+    NAPI_CALL(env, napi_get_cb_info(env, info, nullptr, nullptr, &_this, nullptr));
+
+    return _this;
+  };
+
+  auto GetStaticValue = [](napi_env env, napi_callback_info info) -> napi_value {
+    size_t argc = 0;
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, nullptr, nullptr, nullptr));
+
+    NAPI_ASSERT(env, argc == 0, "Wrong number of arguments");
+
+    napi_value number;
+    NAPI_CALL(env, napi_create_double(env, static_value_, &number));
+
+    return number;
+  };
+
+  auto NewExtra = [](napi_env env, napi_callback_info info) -> napi_value {
+    napi_value thisArg{};
+    NAPI_CALL(env, napi_get_cb_info(env, info, nullptr, nullptr, &thisArg, nullptr));
+    return thisArg;
+  };
+
+  napi_value cons = DefineClass("MyObject_Extra", 8, NewExtra, nullptr, 0, nullptr);
+
+  napi_value number = CreateDouble(1);
+
+  napi_property_descriptor properties[] = {
+      {"echo", nullptr, Echo, nullptr, nullptr, nullptr, napi_enumerable, nullptr},
+      {"readwriteValue",
+       nullptr,
+       nullptr,
+       nullptr,
+       nullptr,
+       number,
+       napi_property_attributes(napi_enumerable | napi_writable),
+       nullptr},
+      {"readonlyValue", nullptr, nullptr, nullptr, nullptr, number, napi_enumerable, nullptr},
+      {"hiddenValue", nullptr, nullptr, nullptr, nullptr, number, napi_default, nullptr},
+      {"readwriteAccessor1", nullptr, nullptr, GetValue, SetValue, nullptr, napi_default, nullptr},
+      {"readwriteAccessor2", nullptr, nullptr, GetValue, SetValue, nullptr, napi_writable, nullptr},
+      {"readonlyAccessor1", nullptr, nullptr, GetValue, nullptr, nullptr, napi_default, nullptr},
+      {"readonlyAccessor2", nullptr, nullptr, GetValue, nullptr, nullptr, napi_writable, nullptr},
+      {"staticReadonlyAccessor1",
+       nullptr,
+       nullptr,
+       GetStaticValue,
+       nullptr,
+       nullptr,
+       napi_property_attributes(napi_default | napi_static),
+       nullptr},
+      {"constructorName",
+       nullptr,
+       nullptr,
+       nullptr,
+       nullptr,
+       cons,
+       napi_property_attributes(napi_enumerable | napi_static),
+       nullptr},
+      {"TestDefineClass",
+       nullptr,
+       TestDefineClass,
+       nullptr,
+       nullptr,
+       nullptr,
+       napi_property_attributes(napi_enumerable | napi_static),
+       nullptr},
+  };
+
+  cons = DefineClass("MyObject", NAPI_AUTO_LENGTH, New, nullptr, sizeof(properties) / sizeof(*properties), properties);
+
+  // Testing api calls for a constructor that defines properties
+  napi_value TestConstructor = CallFunction({cons}, "(cons) => TestConstructor = cons");
+  napi_value test_object = Eval("test_object = new TestConstructor()");
+
+  EXPECT_STRICT_EQ("test_object.echo('hello')", "'hello'");
+
+  Eval("test_object.readwriteValue = 1");
+  EXPECT_STRICT_EQ("test_object.readwriteValue", "1");
+  Eval("test_object.readwriteValue = 2");
+  EXPECT_STRICT_EQ("test_object.readwriteValue", "2");
+
+  EXPECT_JS_THROWS("test_object.readonlyValue = 3");
+
+  EXPECT_JS_TRUE("test_object.hiddenValue");
+
+  // Properties with napi_enumerable attribute should be enumerable.
+  Eval(R"(
+    propertyNames = [];
+    for (const name in test_object) {
+      propertyNames.push(name);
+    })");
+
+  EXPECT_JS_TRUE("propertyNames.includes('echo')");
+  EXPECT_JS_TRUE("propertyNames.includes('readwriteValue')");
+  EXPECT_JS_TRUE("propertyNames.includes('readonlyValue')");
+  EXPECT_JS_TRUE("!propertyNames.includes('hiddenValue')");
+  EXPECT_JS_TRUE("!propertyNames.includes('readwriteAccessor1')");
+  EXPECT_JS_TRUE("!propertyNames.includes('readwriteAccessor2')");
+  EXPECT_JS_TRUE("!propertyNames.includes('readonlyAccessor1')");
+  EXPECT_JS_TRUE("!propertyNames.includes('readonlyAccessor2')");
+
+  // The napi_writable attribute should be ignored for accessors.
+  Eval("test_object.readwriteAccessor1 = 1");
+  EXPECT_STRICT_EQ("test_object.readwriteAccessor1", "1");
+  EXPECT_STRICT_EQ("test_object.readonlyAccessor1", "1");
+  EXPECT_JS_THROWS("test_object.readonlyAccessor1 = 3");
+  Eval("test_object.readwriteAccessor2 = 2");
+  EXPECT_STRICT_EQ("test_object.readwriteAccessor2", "2");
+  EXPECT_STRICT_EQ("test_object.readonlyAccessor2", "2");
+  EXPECT_JS_THROWS("test_object.readonlyAccessor2 = 3");
+
+  // Validate that static properties are on the class as opposed to the instance.
+  EXPECT_STRICT_EQ("TestConstructor.staticReadonlyAccessor1", "10");
+  EXPECT_STRICT_EQ("test_object.staticReadonlyAccessor1", "undefined");
+
+  // Verify that passing NULL to napi_define_class() results in the correct error.
+  EXPECT_DEEP_STRICT_EQ("TestConstructor.TestDefineClass()", R"({
+    envIsNull: 'Invalid argument',
+    nameIsNull: 'Invalid argument',
+    cbIsNull: 'Invalid argument',
+    cbDataIsNull: 'napi_ok',
+    propertiesIsNull: 'Invalid argument',
+    resultIsNull: 'Invalid argument'
+  })");
 }
 
 INSTANTIATE_TEST_CASE_P(NapiEnv, NapiTest, ::testing::ValuesIn(napiEnvGenerators()));

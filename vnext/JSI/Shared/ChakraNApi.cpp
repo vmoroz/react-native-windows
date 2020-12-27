@@ -2886,9 +2886,12 @@ napi_status Environment::DefineClass(
     size_t propertyCount,
     const napi_property_descriptor *properties,
     napi_value *result) noexcept {
-  // return env->SetLastError(napi_generic_failure);
-
+  CHECK_ARG(utf8Name);
+  CHECK_ARG(constructor);
   CHECK_ARG(result);
+  if (propertyCount > 0) {
+    CHECK_ARG(properties);
+  }
 
   napi_value nameString;
   CHECK_NAPI(CreateStringUtf8(utf8Name, length, &nameString));
@@ -2936,7 +2939,7 @@ napi_status Environment::DefineClass(
 
   if (staticPropertyCount > 0) {
     CHECK_NAPI(DefineProperties(
-        reinterpret_cast<napi_value>(constructor), staticDescriptors.size(), staticDescriptors.data()));
+        reinterpret_cast<napi_value>(jsConstructor), staticDescriptors.size(), staticDescriptors.data()));
   }
 
   if (instancePropertyCount > 0) {
@@ -2944,7 +2947,7 @@ napi_status Environment::DefineClass(
         reinterpret_cast<napi_value>(prototype), instanceDescriptors.size(), instanceDescriptors.data()));
   }
 
-  *result = reinterpret_cast<napi_value>(constructor);
+  *result = reinterpret_cast<napi_value>(jsConstructor);
   return napi_ok;
 }
 
