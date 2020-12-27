@@ -5,6 +5,108 @@
 #include "NapiTests.h"
 #include <limits>
 
+// Empty value so that macros here are able to return NULL or void
+#define NAPI_RETVAL_NOTHING // Intentionally blank #define
+
+#define GET_AND_THROW_LAST_ERROR(env)                                                            \
+  do {                                                                                           \
+    const napi_extended_error_info *error_info;                                                  \
+    napi_get_last_error_info((env), &error_info);                                                \
+    bool is_pending;                                                                             \
+    napi_is_exception_pending((env), &is_pending);                                               \
+    /* If an exception is already pending, don't rethrow it */                                   \
+    if (!is_pending) {                                                                           \
+      const char *error_message =                                                                \
+          error_info->error_message != NULL ? error_info->error_message : "empty error message"; \
+      napi_throw_error((env), NULL, error_message);                                              \
+    }                                                                                            \
+  } while (0)
+
+#define NAPI_ASSERT_BASE(env, assertion, message, ret_val)                          \
+  do {                                                                              \
+    if (!(assertion)) {                                                             \
+      napi_throw_error((env), NULL, "assertion (" #assertion ") failed: " message); \
+      return ret_val;                                                               \
+    }                                                                               \
+  } while (0)
+
+// Returns NULL on failed assertion.
+// This is meant to be used inside napi_callback methods.
+#define NAPI_ASSERT(env, assertion, message) NAPI_ASSERT_BASE(env, assertion, message, NULL)
+
+// Returns empty on failed assertion.
+// This is meant to be used inside functions with void return type.
+#define NAPI_ASSERT_RETURN_VOID(env, assertion, message) NAPI_ASSERT_BASE(env, assertion, message, NAPI_RETVAL_NOTHING)
+
+#define NAPI_CALL_BASE(env, the_call, ret_val) \
+  do {                                         \
+    if ((the_call) != napi_ok) {               \
+      GET_AND_THROW_LAST_ERROR((env));         \
+      return ret_val;                          \
+    }                                          \
+  } while (0)
+
+// Returns NULL if the_call doesn't return napi_ok.
+#define NAPI_CALL(env, the_call) NAPI_CALL_BASE(env, the_call, nullptr)
+
+// Returns empty if the_call doesn't return napi_ok.
+#define NAPI_CALL_RETURN_VOID(env, the_call) NAPI_CALL_BASE(env, the_call, NAPI_RETVAL_NOTHING)
+
+#define DECLARE_NAPI_PROPERTY(name, func) \
+  { (name), NULL, (func), NULL, NULL, NULL, napi_default, NULL }
+
+#define DECLARE_NAPI_GETTER(name, func) \
+  { (name), NULL, NULL, (func), NULL, NULL, napi_default, NULL }
+
+void add_returned_status(
+    napi_env env,
+    const char *key,
+    napi_value object,
+    const char *expected_message,
+    napi_status expected_status,
+    napi_status actual_status);
+
+void add_last_status(napi_env env, const char *key, napi_value return_value);
+
+void add_returned_status(
+    napi_env env,
+    const char *key,
+    napi_value object,
+    const char *expected_message,
+    napi_status expected_status,
+    napi_status actual_status) {
+  char napi_message_string[100] = "";
+  napi_value prop_value;
+
+  if (actual_status != expected_status) {
+    snprintf(napi_message_string, sizeof(napi_message_string), "Invalid status [%d]", actual_status);
+  }
+
+  NAPI_CALL_RETURN_VOID(
+      env,
+      napi_create_string_utf8(
+          env,
+          (actual_status == expected_status ? expected_message : napi_message_string),
+          NAPI_AUTO_LENGTH,
+          &prop_value));
+  NAPI_CALL_RETURN_VOID(env, napi_set_named_property(env, object, key, prop_value));
+}
+
+void add_last_status(napi_env env, const char *key, napi_value return_value) {
+  napi_value prop_value;
+  const napi_extended_error_info *p_last_error;
+  NAPI_CALL_RETURN_VOID(env, napi_get_last_error_info(env, &p_last_error));
+
+  NAPI_CALL_RETURN_VOID(
+      env,
+      napi_create_string_utf8(
+          env,
+          (p_last_error->error_message == NULL ? "napi_ok" : p_last_error->error_message),
+          NAPI_AUTO_LENGTH,
+          &prop_value));
+  NAPI_CALL_RETURN_VOID(env, napi_set_named_property(env, return_value, key, prop_value));
+}
+
 // Check condition and crash process if it fails.
 #define CHECK_ELSE_CRASH(condition, message)               \
   do {                                                     \
@@ -43,6 +145,8 @@
 #define EXPECT_STRICT_EQ(left, right) EXPECT_TRUE(CheckStrictEqual(left, right))
 
 #define EXPECT_DEEP_STRICT_EQ(left, right) EXPECT_TRUE(CheckDeepStrictEqual(left, right))
+
+#define EXPECT_JS_THROWS(expr) EXPECT_TRUE(CheckThrows(expr))
 
 namespace napi {
 
@@ -173,6 +277,24 @@ bool NapiTestBase::CheckDeepStrictEqual(const std::string &left, const std::stri
   return CallBoolFunction({}, "function() { return " + deepEqualFunc + "(" + left + ", " + right + "); }");
 }
 
+bool NapiTestBase::CheckThrows(const std::string &expr) {
+  char jsScript[255] = {};
+  snprintf(
+      jsScript,
+      sizeof(jsScript),
+      R"(() => {
+        'use strict';
+        try {
+          %s;
+          return false;
+        } catch (error) {
+          return true;
+        }
+      })",
+      expr.c_str());
+  return CallBoolFunction({}, jsScript);
+}
+
 napi_value NapiTestBase::CreateInt32(int32_t value) {
   napi_value result{};
   EXPECT_NAPI_OK(napi_create_int32(env, value, &result));
@@ -258,6 +380,10 @@ bool NapiTestBase::DeleteProperty(napi_value object, napi_value key) {
   return result;
 };
 
+bool NapiTestBase::DeleteProperty(napi_value object, const char *utf8Name) {
+  return DeleteProperty(object, CreateStringUtf8(utf8Name));
+};
+
 napi_value NapiTestBase::CreateObject() {
   napi_value result{};
   EXPECT_NAPI_OK(napi_create_object(env, &result));
@@ -286,6 +412,16 @@ napi_value NapiTestBase::CreateDouble(double value) {
   napi_value result{};
   EXPECT_NAPI_OK(napi_create_double(env, value, &result));
   return result;
+}
+
+napi_value NapiTestBase::ObjectFreeze(napi_value object) {
+  EXPECT_NAPI_OK(napi_object_freeze(env, object));
+  return object;
+}
+
+napi_value NapiTestBase::ObjectSeal(napi_value object) {
+  EXPECT_NAPI_OK(napi_object_seal(env, object));
+  return object;
 }
 
 } // namespace napi
@@ -690,9 +826,7 @@ TEST_P(NapiTest, ObjectTest) {
     return obj;
   };
 
-  auto Wrap = [&](napi_value obj) {
-    EXPECT_NAPI_OK(napi_wrap(env, obj, &test_value, nullptr, nullptr, nullptr));
-  };
+  auto Wrap = [&](napi_value obj) { EXPECT_NAPI_OK(napi_wrap(env, obj, &test_value, nullptr, nullptr, nullptr)); };
 
   auto Unwrap = [&](napi_value obj) {
     void *data{};
@@ -702,35 +836,34 @@ TEST_P(NapiTest, ObjectTest) {
     return is_expected;
   };
 
-#if 0
-  auto TestSetProperty=[&]() {
-    napi_status status;
-    napi_value object, key, value;
+  auto TestSetProperty = [&]() {
+    napi_status status{};
+    napi_value key{};
 
-    EXPECT_NAPI_OK(napi_create_object(env, &object));
+    napi_value object = CreateObject();
+    napi_value value = CreateObject();
     EXPECT_NAPI_OK(napi_create_string_utf8(env, "", NAPI_AUTO_LENGTH, &key));
-    EXPECT_NAPI_OK(napi_create_object(env, &value));
 
     status = napi_set_property(nullptr, object, key, value);
 
     add_returned_status(env, "envIsNull", object, "Invalid argument", napi_invalid_arg, status);
 
-    napi_set_property(env, NULL, key, value);
+    napi_set_property(env, nullptr, key, value);
 
     add_last_status(env, "objectIsNull", object);
 
-    napi_set_property(env, object, NULL, value);
+    napi_set_property(env, object, nullptr, value);
 
     add_last_status(env, "keyIsNull", object);
 
-    napi_set_property(env, object, key, NULL);
+    napi_set_property(env, object, key, nullptr);
 
     add_last_status(env, "valueIsNull", object);
 
     return object;
-  }
+  };
 
-  static napi_value TestHasProperty(napi_env env, napi_callback_info info) {
+  auto TestHasProperty = [&]() -> napi_value {
     napi_status status;
     napi_value object, key;
     bool result;
@@ -756,9 +889,9 @@ TEST_P(NapiTest, ObjectTest) {
     add_last_status(env, "resultIsNull", object);
 
     return object;
-  }
+  };
 
-  static napi_value TestGetProperty(napi_env env, napi_callback_info info) {
+  auto TestGetProperty = [&]() -> napi_value {
     napi_status status;
     napi_value object, key, result;
 
@@ -785,61 +918,24 @@ TEST_P(NapiTest, ObjectTest) {
     add_last_status(env, "resultIsNull", object);
 
     return object;
-  }
-
-  static napi_value TestFreeze(napi_env env, napi_callback_info info) {
-    size_t argc = 1;
-    napi_value args[1];
-    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, args, NULL, NULL));
-
-    napi_value object = args[0];
-    NAPI_CALL(env, napi_object_freeze(env, object));
-
-    return object;
-  }
-
-  static napi_value TestSeal(napi_env env, napi_callback_info info) {
-    size_t argc = 1;
-    napi_value args[1];
-    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, args, NULL, NULL));
-
-    napi_value object = args[0];
-    NAPI_CALL(env, napi_object_seal(env, object));
-
-    return object;
-  }
+  };
 
   // We create two type tags. They are basically 128-bit UUIDs.
-  static const napi_type_tag type_tags[2] = {
-      {0xdaf987b3cc62481a, 0xb745b0497f299531}, {0xbb7936c374084d9b, 0xa9548d0762eeedb9}};
+  const napi_type_tag typeTags[2] = {{0xdaf987b3cc62481a, 0xb745b0497f299531},
+                                     {0xbb7936c374084d9b, 0xa9548d0762eeedb9}};
 
-  static napi_value TypeTaggedInstance(napi_env env, napi_callback_info info) {
-    size_t argc = 1;
-    uint32_t type_index;
-    napi_value instance, which_type;
+  auto TypeTaggedInstance = [&](uint32_t typeIndex) {
+    napi_value obj = CreateObject();
+    EXPECT_NAPI_OK(napi_type_tag_object(env, obj, &typeTags[typeIndex]));
+    return obj;
+  };
 
-    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, &which_type, NULL, NULL));
-    NAPI_CALL(env, napi_get_value_uint32(env, which_type, &type_index));
-    NAPI_CALL(env, napi_create_object(env, &instance));
-    NAPI_CALL(env, napi_type_tag_object(env, instance, &type_tags[type_index]));
+  auto CheckTypeTag = [&](napi_value obj, uint32_t typeIndex) {
+    bool result{};
+    EXPECT_NAPI_OK(napi_check_object_type_tag(env, obj, &typeTags[typeIndex], &result));
+    return result;
+  };
 
-    return instance;
-  }
-
-  auto CheckTypeTag = [&](napi_env env, napi_callback_info info) {
-    size_t argc = 2;
-    bool result;
-    napi_value argv[2], js_result;
-    uint32_t type_index;
-
-    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, NULL, NULL));
-    NAPI_CALL(env, napi_get_value_uint32(env, argv[0], &type_index));
-    NAPI_CALL(env, napi_check_object_type_tag(env, argv[1], &type_tags[type_index], &result));
-    NAPI_CALL(env, napi_get_boolean(env, result, &js_result));
-
-    return js_result;
-  }
-#endif
   {
     napi_value object = Eval(R"(object = {
       hello : 'world',
@@ -959,6 +1055,161 @@ TEST_P(NapiTest, ObjectTest) {
     napi_value wrapper = CreateObject();
     Wrap(wrapper);
     EXPECT_TRUE(Unwrap(wrapper));
+  }
+
+  {
+    // Verify that wrapping doesn't break an object's prototype chain.
+    napi_value wrapper = Eval("wrapper = {}");
+    napi_value protoA = Eval("protoA = {protoA : true}");
+    Eval("Object.setPrototypeOf(wrapper, protoA)");
+    Wrap(wrapper);
+
+    EXPECT_TRUE(Unwrap(wrapper));
+    EXPECT_STRICT_EQ("wrapper.protoA", "true");
+  }
+
+  {
+    // Verify the pointer can be unwrapped after inserting in the prototype chain.
+    napi_value wrapper = Eval("wrapper = {}");
+    napi_value protoA = Eval("protoA = {protoA : true}");
+    Eval("Object.setPrototypeOf(wrapper, protoA)");
+    Wrap(wrapper);
+
+    napi_value protoB = Eval("protoB = {protoB : true}");
+    Eval("Object.setPrototypeOf(protoB, Object.getPrototypeOf(wrapper))");
+    Eval("Object.setPrototypeOf(wrapper, protoB)");
+
+    EXPECT_TRUE(Unwrap(wrapper));
+    EXPECT_STRICT_EQ("wrapper.protoA", "true");
+    EXPECT_STRICT_EQ("wrapper.protoB", "true");
+  }
+
+  {
+    // Verify that objects can be type-tagged and type-tag-checked.
+    napi_value obj1 = TypeTaggedInstance(0);
+    napi_value obj2 = TypeTaggedInstance(1);
+
+    // Verify that type tags are correctly accepted.
+    EXPECT_TRUE(CheckTypeTag(obj1, 0));
+    EXPECT_TRUE(CheckTypeTag(obj2, 1));
+
+    // Verify that wrongly tagged objects are rejected.
+    EXPECT_FALSE(CheckTypeTag(obj2, 0));
+    EXPECT_FALSE(CheckTypeTag(obj1, 1));
+
+    // Verify that untagged objects are rejected.
+    EXPECT_FALSE(CheckTypeTag(CreateObject(), 0));
+    EXPECT_FALSE(CheckTypeTag(CreateObject(), 1));
+  }
+
+  {
+    // Verify that normal and nonexistent properties can be deleted.
+    napi_value sym = Eval("sym = Symbol()");
+    napi_value obj = Eval("obj = {foo : 'bar', [sym] : 'baz'}");
+
+    EXPECT_STRICT_EQ("'foo' in obj", "true");
+    EXPECT_STRICT_EQ("sym in obj", "true");
+    EXPECT_STRICT_EQ("'does_not_exist' in obj", "false");
+    EXPECT_TRUE(DeleteProperty(obj, "foo"));
+    EXPECT_STRICT_EQ("'foo' in obj", "false");
+    EXPECT_STRICT_EQ("sym in obj", "true");
+    EXPECT_STRICT_EQ("'does_not_exist' in obj", "false");
+    EXPECT_TRUE(DeleteProperty(obj, sym));
+    EXPECT_STRICT_EQ("'foo' in obj", "false");
+    EXPECT_STRICT_EQ("sym in obj", "false");
+    EXPECT_STRICT_EQ("'does_not_exist' in obj", "false");
+  }
+
+  {
+    // Verify that non-configurable properties are not deleted.
+    napi_value obj = Eval("obj = {}");
+
+    Eval("Object.defineProperty(obj, 'foo', {configurable : false})");
+    EXPECT_FALSE(DeleteProperty(obj, "foo"));
+    EXPECT_STRICT_EQ("'foo' in obj", "true");
+  }
+
+  {
+    // Verify that prototype properties are not deleted.
+    napi_value obj = Eval(R"(
+      function Foo() {
+        this.foo = 'bar';
+      }
+
+      Foo.prototype.foo = 'baz';
+
+      obj = new Foo();
+    )");
+
+    EXPECT_STRICT_EQ("obj.foo", "'bar'");
+    EXPECT_TRUE(DeleteProperty(obj, "foo"));
+    EXPECT_STRICT_EQ("obj.foo", "'baz'");
+    EXPECT_TRUE(DeleteProperty(obj, "foo"));
+    EXPECT_STRICT_EQ("obj.foo", "'baz'");
+  }
+
+  {
+    // Verify that napi_get_property_names gets the right set of property names,
+    // i.e.: includes prototypes, only enumerable properties, skips symbols,
+    // and includes indices and converts them to strings.
+
+    napi_value object = Eval("object = Object.create({inherited : 1})");
+    napi_value fooSymbol = Eval("fooSymbol = Symbol('foo')");
+
+    Eval(R"(
+      object.normal = 2;
+      object[fooSymbol] = 3;
+      Object.defineProperty(
+        object, 'unenumerable', {value : 4, enumerable : false, writable : true, configurable : true});
+      object[5] = 5;
+    )");
+
+    EXPECT_DEEP_STRICT_EQ(GetPropertyNames(object), "[ '5', 'normal', 'inherited' ]");
+    EXPECT_DEEP_STRICT_EQ(GetPropertySymbols(object), "[fooSymbol]");
+  }
+
+  // Verify that passing NULL to napi_set_property() results in the correct error.
+  EXPECT_DEEP_STRICT_EQ(TestSetProperty(), R"({
+    envIsNull : 'Invalid argument',
+    objectIsNull : 'Invalid argument',
+    keyIsNull : 'Invalid argument',
+    valueIsNull : 'Invalid argument'
+  })");
+
+  // Verify that passing NULL to napi_has_property() results in the correct error.
+  EXPECT_DEEP_STRICT_EQ(TestHasProperty(), R"({
+    envIsNull : 'Invalid argument',
+    objectIsNull : 'Invalid argument',
+    keyIsNull : 'Invalid argument',
+    resultIsNull : 'Invalid argument'
+  })");
+
+  // Verify that passing NULL to napi_get_property() results in the correct error.
+  EXPECT_DEEP_STRICT_EQ(TestGetProperty(), R"({
+    envIsNull : 'Invalid argument',
+    objectIsNull : 'Invalid argument',
+    keyIsNull : 'Invalid argument',
+    resultIsNull : 'Invalid argument'
+  })");
+
+  {
+    napi_value obj = Eval("obj = { x: 'a', y: 'b', z: 'c' }");
+    ObjectSeal(obj);
+    EXPECT_STRICT_EQ("Object.isSealed(obj)", "true");
+    EXPECT_JS_THROWS("obj.w = 'd'");
+    EXPECT_JS_THROWS("delete obj.x");
+
+    // Sealed objects allow updating existing properties, so this should not throw.
+    Eval("obj.x = 'd'");
+  }
+
+  {
+    napi_value obj = Eval("obj = { x: 10, y: 10, z: 10 }");
+    ObjectFreeze(obj);
+    EXPECT_STRICT_EQ("Object.isFrozen(obj)", "true");
+    EXPECT_JS_THROWS("obj.x = 10");
+    EXPECT_JS_THROWS("obj.w = 15");
+    EXPECT_JS_THROWS("delete obj.x");
   }
 }
 

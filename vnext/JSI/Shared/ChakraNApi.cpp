@@ -228,15 +228,25 @@ constexpr bool operator!(PropertyAttibutes attrs) {
   return attrs == PropertyAttibutes::None;
 }
 
+struct Environment;
+
 struct CachedValue {
-  using GetSimpleValue = decltype(JsGetTrueValue);
-  CachedValue(GetSimpleValue *init) noexcept : m_init{init} {}
+  using StaticGetter = JsErrorCode (*)(JsValueRef *);
+  using InstanceGetter = JsErrorCode (Environment::*)(JsValueRef *);
+
+  CachedValue(StaticGetter staticGetter) noexcept : m_staticGetter{staticGetter} {}
+
+  CachedValue(Environment *env, InstanceGetter instanceGetter) noexcept
+      : m_env{env}, m_instanceGetter{instanceGetter} {}
 
   JsErrorCode Get(JsValueRef *result) noexcept {
     if (m_value == JS_INVALID_REFERENCE) {
-      JsValueRef propertyStr{JS_INVALID_REFERENCE};
-      JsValueRef propertySymbol{JS_INVALID_REFERENCE};
-      CHECK_JSRT_ERROR_CODE(m_init(&m_value));
+      JsValueRef propertyStr{}, propertySymbol{};
+      if (m_env) {
+        CHECK_JSRT_ERROR_CODE((m_env->*m_instanceGetter)(&m_value));
+      } else {
+        CHECK_JSRT_ERROR_CODE(m_staticGetter(&m_value));
+      }
       CHECK_JSRT_ERROR_CODE(JsAddRef(m_value, nullptr));
     }
 
@@ -254,8 +264,12 @@ struct CachedValue {
   }
 
  private:
-  JsValueRef m_value{JS_INVALID_REFERENCE};
-  GetSimpleValue *m_init;
+  JsValueRef m_value{};
+  Environment *m_env{};
+  union {
+    StaticGetter m_staticGetter;
+    InstanceGetter m_instanceGetter;
+  };
 };
 
 struct Environment {
@@ -582,10 +596,11 @@ struct Environment {
   template <typename TConstructor, typename... TArgs>
   static JsErrorCode ChakraConstructObject(TConstructor &&constructor, JsValueRef *result, TArgs &&... args) noexcept;
 
-  static JsErrorCode GetObjectConstructor(JsValueRef *result) noexcept;
-  static JsErrorCode GetObjectPrototype(JsValueRef *result) noexcept;
-  static JsErrorCode GetHasOwnPropertyFunction(JsValueRef *result) noexcept;
-  static JsErrorCode GetPropertyIsEnumerable(JsValueRef *result) noexcept;
+  JsErrorCode GetObject(JsValueRef *result) noexcept;
+  JsErrorCode GetObjectFreeze(JsValueRef *result) noexcept;
+  JsErrorCode GetObjectHasOwnProperty(JsValueRef *result) noexcept;
+  JsErrorCode GetObjectPrototype(JsValueRef *result) noexcept;
+  JsErrorCode GetObjectSeal(JsValueRef *result) noexcept;
 
   JsErrorCode ChakraCreatePromise(
       _Out_ JsValueRef *promise,
@@ -614,11 +629,13 @@ struct Environment {
     CachedPropertyId Promise{L"Promise"};
     CachedPropertyId configurable{L"configurable"};
     CachedPropertyId enumerable{L"enumerable"};
+    CachedPropertyId freeze{L"freeze"};
     CachedPropertyId hasOwnProperty{L"hasOwnProperty"};
     CachedPropertyId hostObject{L"hostObject", JsPropertyIdTypeSymbol};
-    CachedPropertyId propertyIsEnumerable{L"propertyIsEnumerable"};
     CachedPropertyId prototype{L"prototype"};
     CachedPropertyId reject{L"reject"};
+    CachedPropertyId seal{L"seal"};
+    CachedPropertyId tag{L"tag", JsPropertyIdTypeSymbol};
     CachedPropertyId resolve{L"resolve"};
     CachedPropertyId value{L"value"};
     CachedPropertyId valueOf{L"valueOf"};
@@ -626,14 +643,21 @@ struct Environment {
   } m_propertyId;
 
   struct Value final {
-    CachedValue False{JsGetTrueValue};
+    Environment *m_env{};
+    Value(Environment *env) : m_env{env} {}
+
+    CachedValue False{JsGetFalseValue};
     CachedValue Global{JsGetGlobalObject};
     CachedValue Null{JsGetNullValue};
     CachedValue Undefined{JsGetUndefinedValue};
     CachedValue True{JsGetTrueValue};
-    CachedValue HasOwnProperty{GetHasOwnPropertyFunction};
-    CachedValue PropertyIsEnumerable{GetPropertyIsEnumerable};
-  } m_value;
+
+    CachedValue Object{m_env, &GetObject};
+    CachedValue ObjectFreeze{m_env, &GetObjectFreeze};
+    CachedValue ObjectHasOwnProperty{m_env, &GetObjectHasOwnProperty};
+    CachedValue ObjectPrototype{m_env, &GetObjectPrototype};
+    CachedValue ObjectSeal{m_env, &GetObjectSeal};
+  } m_value{this};
 
   struct UniqueString {
     napi_value value;
@@ -1612,34 +1636,24 @@ JsErrorCode Environment::ChakraDefineProperty(
       std::forward<TObject>(object), std::forward<TPropertyId>(propertyId), descriptor, isSucceeded);
 }
 
-/*static*/ JsErrorCode Environment::GetObjectConstructor(JsValueRef *result) noexcept {
-  JsValueRef global{};
-  JsPropertyIdRef objectPropertyId{};
-  CHECK_JSRT_ERROR_CODE(JsGetGlobalObject(&global));
-  CHECK_JSRT_ERROR_CODE(JsGetPropertyIdFromName(L"Object", &objectPropertyId));
-  return JsGetProperty(global, objectPropertyId, result);
+JsErrorCode Environment::GetObject(JsValueRef *result) noexcept {
+  return ChakraGetProperty(m_value.Global, m_propertyId.Object, result);
 }
 
-/*static*/ JsErrorCode Environment::GetObjectPrototype(JsValueRef *result) noexcept {
-  JsValueRef objectCtor{};
-  CHECK_JSRT_ERROR_CODE(GetObjectConstructor(&objectCtor));
-  return JsGetPrototype(objectCtor, result);
+JsErrorCode Environment::GetObjectPrototype(JsValueRef *result) noexcept {
+  return ChakraGetProperty(m_value.Object, m_propertyId.prototype, result);
 }
 
-/*static*/ JsErrorCode Environment::GetHasOwnPropertyFunction(JsValueRef *result) noexcept {
-  JsValueRef objectPrototype{};
-  JsPropertyIdRef hasOwnPropertyId{};
-  CHECK_JSRT_ERROR_CODE(GetObjectPrototype(&objectPrototype));
-  CHECK_JSRT_ERROR_CODE(JsGetPropertyIdFromName(L"hasOwnProperty", &hasOwnPropertyId));
-  return JsGetProperty(objectPrototype, hasOwnPropertyId, result);
+JsErrorCode Environment::GetObjectHasOwnProperty(JsValueRef *result) noexcept {
+  return ChakraGetProperty(m_value.ObjectPrototype, m_propertyId.hasOwnProperty, result);
 }
 
-/*static*/ JsErrorCode Environment::GetPropertyIsEnumerable(JsValueRef *result) noexcept {
-  JsValueRef objectPrototype{};
-  JsPropertyIdRef propertyIsEnumerableId;
-  CHECK_JSRT_ERROR_CODE(GetObjectPrototype(&objectPrototype));
-  CHECK_JSRT_ERROR_CODE(JsGetPropertyIdFromName(L"propertyIsEnumerable", &propertyIsEnumerableId));
-  return JsGetProperty(objectPrototype, propertyIsEnumerableId, result);
+JsErrorCode Environment::GetObjectFreeze(JsValueRef *result) noexcept {
+  return ChakraGetProperty(m_value.Object, m_propertyId.freeze, result);
+}
+
+JsErrorCode Environment::GetObjectSeal(JsValueRef *result) noexcept {
+  return ChakraGetProperty(m_value.Object, m_propertyId.seal, result);
 }
 
 template <class TObject, class TPropertyId>
@@ -1660,9 +1674,15 @@ JsErrorCode
 Environment::ChakraGetPrivateProperty(TObject &&object, TPropertyId &&propertyId, JsValueRef *result) noexcept {
   JsValueRef jsObject{}, descriptor{};
   JsPropertyIdRef jsPropertyId{};
+  JsValueType descriptorType{};
   CHECK_JSRT_ERROR_CODE(CachedValue::GetValue(std::forward<TObject>(object), &jsObject));
   CHECK_JSRT_ERROR_CODE(CachedPropertyId::GetPropertyId(std::forward<TPropertyId>(propertyId), &jsPropertyId));
   CHECK_JSRT_ERROR_CODE(JsGetOwnPropertyDescriptor(jsObject, jsPropertyId, &descriptor));
+  CHECK_JSRT_ERROR_CODE(JsGetValueType(descriptor, &descriptorType));
+  if (descriptorType == JsValueType::JsUndefined) {
+    *result = descriptor;
+    return JsErrorCode::JsNoError;
+  }
   return ChakraGetProperty(descriptor, m_propertyId.value, result);
 }
 
@@ -2470,7 +2490,10 @@ napi_status Environment::HasOwnProperty(napi_value object, napi_value key, bool 
   JsValueRef jsResult{};
 
   CHECK_JSRT(ChakraCallFunction(
-      m_value.HasOwnProperty, &jsResult, reinterpret_cast<JsValueRef>(object), reinterpret_cast<JsValueRef>(key)));
+      m_value.ObjectHasOwnProperty,
+      &jsResult,
+      reinterpret_cast<JsValueRef>(object),
+      reinterpret_cast<JsValueRef>(key)));
   CHECK_JSRT(JsBooleanToBool(jsResult, result));
   return napi_status::napi_ok;
 }
@@ -3620,11 +3643,14 @@ napi_status Environment::GetAllPropertyNames(
   JsValueRef jsObj = reinterpret_cast<JsValueRef>(object);
   std::vector<JsValueRef> allPropertyNames;
 
-  auto checkDescriptorFilter = [&](JsValueRef descriptor, napi_key_filter checkFilter, bool *result) -> napi_status {
+  auto checkDescriptorFilter = [&](JsValueRef descriptor,
+                                   napi_key_filter checkFilter,
+                                   CachedPropertyId propertyId,
+                                   bool *result) -> napi_status {
     if (*result && (keyFilter & checkFilter)) {
-      bool isWritable{};
-      CHECK_JSRT(ChakraGetBoolProperty(descriptor, m_propertyId.writable, &isWritable));
-      if (!isWritable) {
+      bool isTrue{};
+      CHECK_JSRT(ChakraGetBoolProperty(descriptor, propertyId, &isTrue));
+      if (!isTrue) {
         *result = false;
       }
     }
@@ -3636,9 +3662,9 @@ napi_status Environment::GetAllPropertyNames(
     JsValueRef descriptor{};
     CHECK_JSRT(JsGetOwnPropertyDescriptor(jsObj, propId, &descriptor));
     *result = true;
-    CHECK_NAPI(checkDescriptorFilter(descriptor, napi_key_writable, result));
-    CHECK_NAPI(checkDescriptorFilter(descriptor, napi_key_enumerable, result));
-    CHECK_NAPI(checkDescriptorFilter(descriptor, napi_key_configurable, result));
+    CHECK_NAPI(checkDescriptorFilter(descriptor, napi_key_writable, m_propertyId.writable, result));
+    CHECK_NAPI(checkDescriptorFilter(descriptor, napi_key_enumerable, m_propertyId.enumerable, result));
+    CHECK_NAPI(checkDescriptorFilter(descriptor, napi_key_configurable, m_propertyId.configurable, result));
     return napi_ok;
   };
 
@@ -3650,8 +3676,10 @@ napi_status Environment::GetAllPropertyNames(
       uint32_t propertyNamesSize{};
       CHECK_JSRT(JsGetOwnPropertyNames(jsObj, &propertyNames));
       CHECK_NAPI(GetArrayLength(reinterpret_cast<napi_value>(propertyNames), &propertyNamesSize));
-      if (propertyNamesSize > allPropertyNames.size() / 2) {
-        allPropertyNames.reserve(allPropertyNames.size() + propertyNamesSize);
+      size_t requiredCapacity = allPropertyNames.size() + propertyNamesSize;
+      if (requiredCapacity > allPropertyNames.capacity() + allPropertyNames.capacity() / 2) {
+        // vector is usually grown by 50%. We reserve here only if we need to grow more.
+        allPropertyNames.reserve(requiredCapacity);
       }
       for (uint32_t i = 0; i < propertyNamesSize; ++i) {
         JsValueRef propName{}, index{};
@@ -3699,16 +3727,13 @@ napi_status Environment::GetAllPropertyNames(
     }
 
     JsValueRef jsPrototype{};
-    CHECK_JSRT(ChakraGetProperty(jsObj, m_propertyId.prototype, &jsPrototype));
-    if (jsPrototype == nullptr) {
-      break;
-    }
+    CHECK_JSRT(JsGetPrototype(jsObj, &jsPrototype));
 
     jsObj = jsPrototype;
     JsValueType objType{};
     CHECK_JSRT(JsGetValueType(jsObj, &objType));
 
-    if (keyMode == napi_key_collection_mode::napi_key_own_only || objType == JsValueType::JsUndefined) {
+    if (keyMode == napi_key_collection_mode::napi_key_own_only || objType < JsValueType::JsObject) {
       break;
     }
   }
@@ -3753,25 +3778,43 @@ napi_status Environment::IsDetachedArrayBuffer(napi_value value, bool *result) n
 
 #ifdef NAPI_EXPERIMENTAL
 
-napi_status Environment::TypeTagObject(
-    napi_value value,
-    const napi_type_tag *typeTag) noexcept { // TODO: [vmoroz] Implement
-  CRASH_IF_FALSE(false);
+napi_status Environment::TypeTagObject(napi_value value, const napi_type_tag *typeTag) noexcept {
+  CHECK_ARG(value);
+  CHECK_ARG(typeTag);
+  JsValueRef external{};
+  CHECK_JSRT(JsCreateExternalObject((void *)(typeTag), nullptr, &external));
+  CHECK_JSRT(ChakraSetPrivateProperty(value, m_propertyId.tag, external));
+  return napi_status::napi_ok;
 }
 
-napi_status Environment::CheckObjectTypeTag(
-    napi_value value,
-    const napi_type_tag *typeTag,
-    bool *result) noexcept { // TODO: [vmoroz] Implement
-  CRASH_IF_FALSE(false);
+napi_status Environment::CheckObjectTypeTag(napi_value value, const napi_type_tag *typeTag, bool *result) noexcept {
+  CHECK_ARG(value);
+  CHECK_ARG(typeTag);
+  CHECK_ARG(result);
+  JsValueRef external{};
+  JsValueType externalType{};
+  napi_type_tag *objectTypeTag;
+  CHECK_JSRT(ChakraGetPrivateProperty(value, m_propertyId.tag, &external));
+  CHECK_JSRT(JsGetValueType(external, &externalType));
+  if (externalType == JsValueType::JsUndefined) {
+    *result = false;
+  } else {
+    CHECK_JSRT(JsGetExternalData(external, reinterpret_cast<void **>(&objectTypeTag)));
+    *result =
+        objectTypeTag != nullptr && typeTag->lower == objectTypeTag->lower && typeTag->upper == objectTypeTag->upper;
+  }
+  return napi_status::napi_ok;
 }
 
-napi_status Environment::ObjectFreeze(napi_value object) noexcept { // TODO: [vmoroz] Implement
-  CRASH_IF_FALSE(false);
+napi_status Environment::ObjectFreeze(napi_value object) noexcept {
+  CHECK_JSRT(
+      ChakraCallFunction(m_value.ObjectFreeze, nullptr, m_value.Undefined, reinterpret_cast<JsValueRef>(object)));
+  return napi_status::napi_ok;
 }
 
-napi_status Environment::ObjectSeal(napi_value object) noexcept { // TODO: [vmoroz] Implement
-  CRASH_IF_FALSE(false);
+napi_status Environment::ObjectSeal(napi_value object) noexcept {
+  CHECK_JSRT(ChakraCallFunction(m_value.ObjectSeal, nullptr, m_value.Undefined, reinterpret_cast<JsValueRef>(object)));
+  return napi_status::napi_ok;
 }
 
 #endif // NAPI_EXPERIMENTAL

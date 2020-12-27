@@ -42,11 +42,12 @@ struct NapiTestBase : ::testing::TestWithParam<NapiEnvFactory> {
   bool CheckStrictEqual(const std::string &left, const std::string &right);
   bool CheckDeepStrictEqual(napi_value value, const std::string &jsValue);
   bool CheckDeepStrictEqual(const std::string &left, const std::string &right);
+  bool CheckThrows(const std::string &expr);
 
   napi_value CreateInt32(int32_t value);
   napi_value CreateStringUtf8(const char *value);
   napi_value GetProperty(napi_value object, napi_value key);
-  napi_value GetProperty(napi_value object, const char* utf8Name);
+  napi_value GetProperty(napi_value object, const char *utf8Name);
   napi_value GetNamedProperty(napi_value object, const char *utf8Name);
   napi_value GetPropertyNames(napi_value object);
   napi_value GetPropertySymbols(napi_value object);
@@ -59,11 +60,14 @@ struct NapiTestBase : ::testing::TestWithParam<NapiEnvFactory> {
   bool HasOwnProperty(napi_value object, napi_value key);
   bool HasOwnProperty(napi_value object, const char *utf8Name);
   bool DeleteProperty(napi_value object, napi_value key);
+  bool DeleteProperty(napi_value object, const char *utf8Name);
   napi_value CreateObject();
   uint32_t GetArrayLength(napi_value value);
   napi_value GetElement(napi_value value, uint32_t index);
   double GetValueDouble(napi_value value);
   napi_value CreateDouble(double value);
+  napi_value ObjectFreeze(napi_value object);
+  napi_value ObjectSeal(napi_value object);
 
  protected:
   NapiEnvFactory factory;
