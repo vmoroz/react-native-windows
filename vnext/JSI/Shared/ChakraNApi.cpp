@@ -2396,28 +2396,40 @@ napi_status Environment::GetValueStringUtf16(napi_value value, char16_t *buf, si
 }
 
 napi_status Environment::CoerceToBool(napi_value value, napi_value *result) noexcept {
+  CHECK_ARG(value);
   CHECK_ARG(result);
+  ClearLastError();
+
   JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
   CHECK_JSRT(JsConvertValueToBoolean(jsValue, reinterpret_cast<JsValueRef *>(result)));
   return napi_ok;
 }
 
 napi_status Environment::CoerceToNumber(napi_value value, napi_value *result) noexcept {
+  CHECK_ARG(value);
   CHECK_ARG(result);
+  ClearLastError();
+
   JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
   CHECK_JSRT(JsConvertValueToNumber(jsValue, reinterpret_cast<JsValueRef *>(result)));
   return napi_ok;
 }
 
 napi_status Environment::CoerceToObject(napi_value value, napi_value *result) noexcept {
+  CHECK_ARG(value);
   CHECK_ARG(result);
+  ClearLastError();
+
   JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
   CHECK_JSRT(JsConvertValueToObject(jsValue, reinterpret_cast<JsValueRef *>(result)));
   return napi_ok;
 }
 
 napi_status Environment::CoerceToString(napi_value value, napi_value *result) noexcept {
+  CHECK_ARG(value);
   CHECK_ARG(result);
+  ClearLastError();
+
   JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
   CHECK_JSRT(JsConvertValueToString(jsValue, reinterpret_cast<JsValueRef *>(result)));
   return napi_ok;
@@ -2425,6 +2437,8 @@ napi_status Environment::CoerceToString(napi_value value, napi_value *result) no
 
 napi_status Environment::GetPrototype(napi_value object, napi_value *result) noexcept {
   CHECK_ARG(result);
+  ClearLastError();
+
   JsValueRef obj = reinterpret_cast<JsValueRef>(object);
   CHECK_JSRT(JsGetPrototype(obj, reinterpret_cast<JsValueRef *>(result)));
   return napi_ok;
@@ -2442,6 +2456,8 @@ napi_status Environment::GetPropertyNames(napi_value object, napi_value *result)
 napi_status Environment::SetProperty(napi_value object, napi_value key, napi_value value) noexcept {
   CHECK_ARG(key);
   CHECK_ARG(value);
+  ClearLastError();
+
   JsValueRef obj = reinterpret_cast<JsValueRef>(object);
   JsPropertyIdRef propertyId{JS_INVALID_REFERENCE};
   CHECK_JSRT(JsPropertyIdFromKey(key, &propertyId));
@@ -2453,6 +2469,8 @@ napi_status Environment::SetProperty(napi_value object, napi_value key, napi_val
 napi_status Environment::HasProperty(napi_value object, napi_value key, bool *result) noexcept {
   CHECK_ARG(key);
   CHECK_ARG(result);
+  ClearLastError();
+
   JsPropertyIdRef propertyId{JS_INVALID_REFERENCE};
   CHECK_JSRT(JsPropertyIdFromKey(key, &propertyId));
   JsValueRef obj = reinterpret_cast<JsValueRef>(object);
@@ -2463,6 +2481,8 @@ napi_status Environment::HasProperty(napi_value object, napi_value key, bool *re
 napi_status Environment::GetProperty(napi_value object, napi_value key, napi_value *result) noexcept {
   CHECK_ARG(key);
   CHECK_ARG(result);
+  ClearLastError();
+
   JsValueRef obj = reinterpret_cast<JsValueRef>(object);
   JsPropertyIdRef propertyId{JS_INVALID_REFERENCE};
   CHECK_JSRT(JsPropertyIdFromKey(key, &propertyId));
@@ -2471,15 +2491,18 @@ napi_status Environment::GetProperty(napi_value object, napi_value key, napi_val
 }
 
 napi_status Environment::DeleteProperty(napi_value object, napi_value key, bool *result) noexcept {
-  CHECK_ARG(result);
-  *result = false;
+  CHECK_ARG(object);
+  CHECK_ARG(key);
+  ClearLastError();
 
   JsValueRef obj = reinterpret_cast<JsValueRef>(object);
-  JsPropertyIdRef propertyId{JS_INVALID_REFERENCE};
+  JsPropertyIdRef propertyId{};
+  JsValueRef deletePropertyResult{};
   CHECK_JSRT(JsPropertyIdFromKey(key, &propertyId));
-  JsValueRef deletePropertyResult{JS_INVALID_REFERENCE};
   CHECK_JSRT(JsDeleteProperty(obj, propertyId, false /* isStrictMode */, &deletePropertyResult));
-  CHECK_JSRT(JsBooleanToBool(deletePropertyResult, result));
+  if (result) {
+    CHECK_JSRT(JsBooleanToBool(deletePropertyResult, result));
+  }
   return napi_ok;
 }
 
@@ -2487,6 +2510,7 @@ napi_status Environment::HasOwnProperty(napi_value object, napi_value key, bool 
   CHECK_ARG(object);
   CHECK_ARG(key);
   CHECK_ARG(result);
+  ClearLastError();
   JsValueRef jsResult{};
 
   CHECK_JSRT(ChakraCallFunction(
@@ -2499,7 +2523,11 @@ napi_status Environment::HasOwnProperty(napi_value object, napi_value key, bool 
 }
 
 napi_status Environment::SetNamedProperty(napi_value object, const char *utf8Name, napi_value value) noexcept {
+  CHECK_ARG(object);
+  CHECK_ARG(utf8Name);
   CHECK_ARG(value);
+  ClearLastError();
+
   JsValueRef obj = reinterpret_cast<JsValueRef>(object);
   JsPropertyIdRef propertyId{JS_INVALID_REFERENCE};
   CHECK_JSRT(JsCreatePropertyId(utf8Name, NAPI_AUTO_LENGTH, &propertyId));
@@ -2509,7 +2537,11 @@ napi_status Environment::SetNamedProperty(napi_value object, const char *utf8Nam
 }
 
 napi_status Environment::HasNamedProperty(napi_value object, const char *utf8Name, bool *result) noexcept {
+  CHECK_ARG(object);
+  CHECK_ARG(utf8Name);
   CHECK_ARG(result);
+  ClearLastError();
+
   JsPropertyIdRef propertyId{JS_INVALID_REFERENCE};
   CHECK_JSRT(JsCreatePropertyId(utf8Name, strlen(utf8Name), &propertyId));
   JsValueRef obj = reinterpret_cast<JsValueRef>(object);
@@ -2518,7 +2550,11 @@ napi_status Environment::HasNamedProperty(napi_value object, const char *utf8Nam
 }
 
 napi_status Environment::GetNamedProperty(napi_value object, const char *utf8Name, napi_value *result) noexcept {
+  CHECK_ARG(object);
+  CHECK_ARG(utf8Name);
   CHECK_ARG(result);
+  ClearLastError();
+
   JsValueRef obj = reinterpret_cast<JsValueRef>(object);
   JsPropertyIdRef propertyId{JS_INVALID_REFERENCE};
   CHECK_JSRT(JsCreatePropertyId(utf8Name, strlen(utf8Name), &propertyId));
@@ -2529,6 +2565,8 @@ napi_status Environment::GetNamedProperty(napi_value object, const char *utf8Nam
 napi_status Environment::SetElement(napi_value object, uint32_t index, napi_value value) noexcept {
   CHECK_ARG(object);
   CHECK_ARG(value);
+  ClearLastError();
+
   JsValueRef obj = reinterpret_cast<JsValueRef>(object);
   JsValueRef jsValue = reinterpret_cast<JsValueRef>(value);
   JsValueRef jsIndex{};
@@ -2544,6 +2582,8 @@ napi_status Environment::SetElement(napi_value object, uint32_t index, napi_valu
 napi_status Environment::HasElement(napi_value object, uint32_t index, bool *result) noexcept {
   CHECK_ARG(object);
   CHECK_ARG(result);
+  ClearLastError();
+
   JsValueRef obj = reinterpret_cast<JsValueRef>(object);
   JsValueRef jsIndex{};
   if (index < static_cast<uint32_t>((std::numeric_limits<int32_t>::max)())) {
@@ -2558,6 +2598,8 @@ napi_status Environment::HasElement(napi_value object, uint32_t index, bool *res
 napi_status Environment::GetElement(napi_value object, uint32_t index, napi_value *result) noexcept {
   CHECK_ARG(object);
   CHECK_ARG(result);
+  ClearLastError();
+
   JsValueRef obj = reinterpret_cast<JsValueRef>(object);
   JsValueRef jsIndex{};
   if (index < static_cast<uint32_t>((std::numeric_limits<int32_t>::max)())) {
@@ -2571,6 +2613,8 @@ napi_status Environment::GetElement(napi_value object, uint32_t index, napi_valu
 
 napi_status Environment::DeleteElement(napi_value object, uint32_t index, bool *result) noexcept {
   CHECK_ARG(object);
+  ClearLastError();
+
   JsValueRef jsIndex{}, element{};
   JsValueRef obj = reinterpret_cast<JsValueRef>(object);
   JsValueType elementType{};
@@ -2596,6 +2640,7 @@ napi_status Environment::DefineProperties(
   if (propertyCount > 0) {
     CHECK_ARG(properties);
   }
+  ClearLastError();
 
   JsPropertyIdRef configurableProperty{JS_INVALID_REFERENCE};
   CHECK_JSRT(JsGetPropertyIdFromName(L"configurable", &configurableProperty));
@@ -3639,6 +3684,9 @@ napi_status Environment::GetAllPropertyNames(
     napi_value *result) noexcept {
   // We currently do not handle the keyConversion
   // Chakra API seems not be able to provide numeric property names.
+  CHECK_ARG(object);
+  CHECK_ARG(result);
+  ClearLastError();
 
   JsValueRef jsObj = reinterpret_cast<JsValueRef>(object);
   std::vector<JsValueRef> allPropertyNames;

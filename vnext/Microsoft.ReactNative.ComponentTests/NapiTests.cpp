@@ -5,34 +5,34 @@
 #include "NapiTests.h"
 #include <limits>
 
-// Empty value so that macros here are able to return NULL or void
+// Empty value so that macros here are able to return nullptr or void
 #define NAPI_RETVAL_NOTHING // Intentionally blank #define
 
-#define GET_AND_THROW_LAST_ERROR(env)                                                            \
-  do {                                                                                           \
-    const napi_extended_error_info *error_info;                                                  \
-    napi_get_last_error_info((env), &error_info);                                                \
-    bool is_pending;                                                                             \
-    napi_is_exception_pending((env), &is_pending);                                               \
-    /* If an exception is already pending, don't rethrow it */                                   \
-    if (!is_pending) {                                                                           \
-      const char *error_message =                                                                \
-          error_info->error_message != NULL ? error_info->error_message : "empty error message"; \
-      napi_throw_error((env), NULL, error_message);                                              \
-    }                                                                                            \
+#define GET_AND_THROW_LAST_ERROR(env)                                                               \
+  do {                                                                                              \
+    const napi_extended_error_info *error_info;                                                     \
+    napi_get_last_error_info((env), &error_info);                                                   \
+    bool is_pending;                                                                                \
+    napi_is_exception_pending((env), &is_pending);                                                  \
+    /* If an exception is already pending, don't rethrow it */                                      \
+    if (!is_pending) {                                                                              \
+      const char *error_message =                                                                   \
+          error_info->error_message != nullptr ? error_info->error_message : "empty error message"; \
+      napi_throw_error((env), nullptr, error_message);                                              \
+    }                                                                                               \
   } while (0)
 
-#define NAPI_ASSERT_BASE(env, assertion, message, ret_val)                          \
-  do {                                                                              \
-    if (!(assertion)) {                                                             \
-      napi_throw_error((env), NULL, "assertion (" #assertion ") failed: " message); \
-      return ret_val;                                                               \
-    }                                                                               \
+#define NAPI_ASSERT_BASE(env, assertion, message, ret_val)                             \
+  do {                                                                                 \
+    if (!(assertion)) {                                                                \
+      napi_throw_error((env), nullptr, "assertion (" #assertion ") failed: " message); \
+      return ret_val;                                                                  \
+    }                                                                                  \
   } while (0)
 
-// Returns NULL on failed assertion.
+// Returns nullptr on failed assertion.
 // This is meant to be used inside napi_callback methods.
-#define NAPI_ASSERT(env, assertion, message) NAPI_ASSERT_BASE(env, assertion, message, NULL)
+#define NAPI_ASSERT(env, assertion, message) NAPI_ASSERT_BASE(env, assertion, message, nullptr)
 
 // Returns empty on failed assertion.
 // This is meant to be used inside functions with void return type.
@@ -46,17 +46,17 @@
     }                                          \
   } while (0)
 
-// Returns NULL if the_call doesn't return napi_ok.
+// Returns nullptr if the_call doesn't return napi_ok.
 #define NAPI_CALL(env, the_call) NAPI_CALL_BASE(env, the_call, nullptr)
 
 // Returns empty if the_call doesn't return napi_ok.
 #define NAPI_CALL_RETURN_VOID(env, the_call) NAPI_CALL_BASE(env, the_call, NAPI_RETVAL_NOTHING)
 
 #define DECLARE_NAPI_PROPERTY(name, func) \
-  { (name), NULL, (func), NULL, NULL, NULL, napi_default, NULL }
+  { (name), nullptr, (func), nullptr, nullptr, nullptr, napi_default, nullptr }
 
 #define DECLARE_NAPI_GETTER(name, func) \
-  { (name), NULL, NULL, (func), NULL, NULL, napi_default, NULL }
+  { (name), nullptr, nullptr, (func), nullptr, nullptr, napi_default, nullptr }
 
 void add_returned_status(
     napi_env env,
@@ -101,7 +101,7 @@ void add_last_status(napi_env env, const char *key, napi_value return_value) {
       env,
       napi_create_string_utf8(
           env,
-          (p_last_error->error_message == NULL ? "napi_ok" : p_last_error->error_message),
+          (p_last_error->error_message == nullptr ? "napi_ok" : p_last_error->error_message),
           NAPI_AUTO_LENGTH,
           &prop_value));
   NAPI_CALL_RETURN_VOID(env, napi_set_named_property(env, return_value, key, prop_value));
@@ -459,7 +459,7 @@ napi_value NapiTestBase::ObjectSeal(napi_value object) {
 //      env,
 //      napi_create_string_utf8(
 //          env,
-//          (p_last_error->error_message == NULL ? "napi_ok" : p_last_error->error_message),
+//          (p_last_error->error_message == nullptr ? "napi_ok" : p_last_error->error_message),
 //          NAPI_AUTO_LENGTH,
 //          &prop_value));
 //  NAPI_CALL_RETURN_VOID(env, napi_set_named_property(env, return_value, key, prop_value));
@@ -872,19 +872,19 @@ TEST_P(NapiTest, ObjectTest) {
 
     NAPI_CALL(env, napi_create_string_utf8(env, "", NAPI_AUTO_LENGTH, &key));
 
-    status = napi_has_property(NULL, object, key, &result);
+    status = napi_has_property(nullptr, object, key, &result);
 
     add_returned_status(env, "envIsNull", object, "Invalid argument", napi_invalid_arg, status);
 
-    napi_has_property(env, NULL, key, &result);
+    napi_has_property(env, nullptr, key, &result);
 
     add_last_status(env, "objectIsNull", object);
 
-    napi_has_property(env, object, NULL, &result);
+    napi_has_property(env, object, nullptr, &result);
 
     add_last_status(env, "keyIsNull", object);
 
-    napi_has_property(env, object, key, NULL);
+    napi_has_property(env, object, key, nullptr);
 
     add_last_status(env, "resultIsNull", object);
 
@@ -901,28 +901,354 @@ TEST_P(NapiTest, ObjectTest) {
 
     NAPI_CALL(env, napi_create_object(env, &result));
 
-    status = napi_get_property(NULL, object, key, &result);
+    status = napi_get_property(nullptr, object, key, &result);
 
     add_returned_status(env, "envIsNull", object, "Invalid argument", napi_invalid_arg, status);
 
-    napi_get_property(env, NULL, key, &result);
+    napi_get_property(env, nullptr, key, &result);
 
     add_last_status(env, "objectIsNull", object);
 
-    napi_get_property(env, object, NULL, &result);
+    napi_get_property(env, object, nullptr, &result);
 
     add_last_status(env, "keyIsNull", object);
 
-    napi_get_property(env, object, key, NULL);
+    napi_get_property(env, object, key, nullptr);
 
     add_last_status(env, "resultIsNull", object);
 
     return object;
   };
 
+  auto NullSetProperty = [&]() {
+    napi_value return_value = CreateObject();
+    napi_value object = CreateObject();
+    napi_value key = CreateStringUtf8("someString");
+
+    add_returned_status(
+        env,
+        "envIsNull",
+        return_value,
+        "Invalid argument",
+        napi_invalid_arg,
+        napi_set_property(nullptr, object, key, object));
+
+    napi_set_property(env, nullptr, key, object);
+    add_last_status(env, "objectIsNull", return_value);
+
+    napi_set_property(env, object, nullptr, object);
+    add_last_status(env, "keyIsNull", return_value);
+
+    napi_set_property(env, object, key, nullptr);
+    add_last_status(env, "valueIsNull", return_value);
+
+    return return_value;
+  };
+
+  auto NullGetProperty = [&]() {
+    napi_value prop;
+
+    napi_value return_value = CreateObject();
+    napi_value object = CreateObject();
+    napi_value key = CreateStringUtf8("someString");
+
+    add_returned_status(
+        env,
+        "envIsNull",
+        return_value,
+        "Invalid argument",
+        napi_invalid_arg,
+        napi_get_property(nullptr, object, key, &prop));
+
+    napi_get_property(env, nullptr, key, &prop);
+    add_last_status(env, "objectIsNull", return_value);
+
+    napi_get_property(env, object, nullptr, &prop);
+    add_last_status(env, "keyIsNull", return_value);
+
+    napi_get_property(env, object, key, nullptr);
+    add_last_status(env, "valueIsNull", return_value);
+
+    return return_value;
+  };
+
+  auto NullTestBoolValuedPropApi = [&](napi_status (*api)(napi_env, napi_value, napi_value, bool *)) {
+    bool result;
+
+    napi_value return_value = CreateObject();
+    napi_value object = CreateObject();
+    napi_value key = CreateStringUtf8("someString");
+
+    add_returned_status(
+        env, "envIsNull", return_value, "Invalid argument", napi_invalid_arg, api(nullptr, object, key, &result));
+
+    api(env, nullptr, key, &result);
+    add_last_status(env, "objectIsNull", return_value);
+
+    api(env, object, nullptr, &result);
+    add_last_status(env, "keyIsNull", return_value);
+
+    api(env, object, key, nullptr);
+    add_last_status(env, "valueIsNull", return_value);
+
+    return return_value;
+  };
+
+  auto NullHasProperty = [&]() { return NullTestBoolValuedPropApi(napi_has_property); };
+
+  auto NullHasOwnProperty = [&]() { return NullTestBoolValuedPropApi(napi_has_own_property); };
+
+  auto NullDeleteProperty = [&]() { return NullTestBoolValuedPropApi(napi_delete_property); };
+
+  auto NullSetNamedProperty = [&]() {
+    napi_value return_value = CreateObject();
+    napi_value object = CreateObject();
+
+    add_returned_status(
+        env,
+        "envIsNull",
+        return_value,
+        "Invalid argument",
+        napi_invalid_arg,
+        napi_set_named_property(nullptr, object, "key", object));
+
+    napi_set_named_property(env, nullptr, "key", object);
+    add_last_status(env, "objectIsNull", return_value);
+
+    napi_set_named_property(env, object, nullptr, object);
+    add_last_status(env, "keyIsNull", return_value);
+
+    napi_set_named_property(env, object, "key", nullptr);
+    add_last_status(env, "valueIsNull", return_value);
+
+    return return_value;
+  };
+
+  auto NullGetNamedProperty = [&]() {
+    napi_value prop;
+
+    napi_value return_value = CreateObject();
+    napi_value object = CreateObject();
+
+    add_returned_status(
+        env,
+        "envIsNull",
+        return_value,
+        "Invalid argument",
+        napi_invalid_arg,
+        napi_get_named_property(nullptr, object, "key", &prop));
+
+    napi_get_named_property(env, nullptr, "key", &prop);
+    add_last_status(env, "objectIsNull", return_value);
+
+    napi_get_named_property(env, object, nullptr, &prop);
+    add_last_status(env, "keyIsNull", return_value);
+
+    napi_get_named_property(env, object, "key", nullptr);
+    add_last_status(env, "valueIsNull", return_value);
+
+    return return_value;
+  };
+
+  auto NullHasNamedProperty = [&]() {
+    bool result;
+
+    napi_value return_value = CreateObject();
+    napi_value object = CreateObject();
+
+    add_returned_status(
+        env,
+        "envIsNull",
+        return_value,
+        "Invalid argument",
+        napi_invalid_arg,
+        napi_has_named_property(nullptr, object, "key", &result));
+
+    napi_has_named_property(env, nullptr, "key", &result);
+    add_last_status(env, "objectIsNull", return_value);
+
+    napi_has_named_property(env, object, nullptr, &result);
+    add_last_status(env, "keyIsNull", return_value);
+
+    napi_has_named_property(env, object, "key", nullptr);
+    add_last_status(env, "valueIsNull", return_value);
+
+    return return_value;
+  };
+
+  auto NullSetElement = [&]() {
+    napi_value return_value = CreateObject();
+    napi_value object = CreateObject();
+
+    add_returned_status(
+        env,
+        "envIsNull",
+        return_value,
+        "Invalid argument",
+        napi_invalid_arg,
+        napi_set_element(nullptr, object, 0, object));
+
+    napi_set_element(env, nullptr, 0, object);
+    add_last_status(env, "objectIsNull", return_value);
+
+    napi_set_property(env, object, 0, nullptr);
+    add_last_status(env, "valueIsNull", return_value);
+
+    return return_value;
+  };
+
+  auto NullGetElement = [&]() {
+    napi_value prop;
+
+    napi_value return_value = CreateObject();
+    napi_value object = CreateObject();
+
+    add_returned_status(
+        env,
+        "envIsNull",
+        return_value,
+        "Invalid argument",
+        napi_invalid_arg,
+        napi_get_element(nullptr, object, 0, &prop));
+
+    napi_get_property(env, nullptr, 0, &prop);
+    add_last_status(env, "objectIsNull", return_value);
+
+    napi_get_property(env, object, 0, nullptr);
+    add_last_status(env, "valueIsNull", return_value);
+
+    return return_value;
+  };
+
+  auto NullTestBoolValuedElementApi = [&](napi_status (*api)(napi_env, napi_value, uint32_t, bool *)) {
+    bool result;
+
+    napi_value return_value = CreateObject();
+    napi_value object = CreateObject();
+
+    add_returned_status(
+        env, "envIsNull", return_value, "Invalid argument", napi_invalid_arg, api(nullptr, object, 0, &result));
+
+    api(env, nullptr, 0, &result);
+    add_last_status(env, "objectIsNull", return_value);
+
+    api(env, object, 0, nullptr);
+    add_last_status(env, "valueIsNull", return_value);
+
+    return return_value;
+  };
+
+  auto NullHasElement = [&]() { return NullTestBoolValuedElementApi(napi_has_element); };
+
+  auto NullDeleteElement = [&]() { return NullTestBoolValuedElementApi(napi_delete_element); };
+
+  auto NullDefineProperties = [&]() {
+    auto defineProperties = [](napi_env /*env*/, napi_callback_info /*info*/) -> napi_value { return nullptr; };
+
+    napi_property_descriptor desc = {
+        "prop", nullptr, defineProperties, nullptr, nullptr, nullptr, napi_enumerable, nullptr};
+
+    napi_value return_value = CreateObject();
+    napi_value object = CreateObject();
+
+    add_returned_status(
+        env,
+        "envIsNull",
+        return_value,
+        "Invalid argument",
+        napi_invalid_arg,
+        napi_define_properties(nullptr, object, 1, &desc));
+
+    napi_define_properties(env, nullptr, 1, &desc);
+    add_last_status(env, "objectIsNull", return_value);
+
+    napi_define_properties(env, object, 1, nullptr);
+    add_last_status(env, "descriptorListIsNull", return_value);
+
+    desc.utf8name = nullptr;
+    napi_define_properties(env, object, 1, nullptr);
+    add_last_status(env, "utf8nameIsNull", return_value);
+    desc.utf8name = "prop";
+
+    desc.method = nullptr;
+    napi_define_properties(env, object, 1, nullptr);
+    add_last_status(env, "methodIsNull", return_value);
+    desc.method = defineProperties;
+
+    return return_value;
+  };
+
+  auto NullGetPropertyNames = [&]() {
+    napi_value props;
+
+    napi_value return_value = CreateObject();
+
+    add_returned_status(
+        env,
+        "envIsNull",
+        return_value,
+        "Invalid argument",
+        napi_invalid_arg,
+        napi_get_property_names(nullptr, return_value, &props));
+
+    napi_get_property_names(env, nullptr, &props);
+    add_last_status(env, "objectIsNull", return_value);
+
+    napi_get_property_names(env, return_value, nullptr);
+    add_last_status(env, "valueIsNull", return_value);
+
+    return return_value;
+  };
+
+  auto NullGetAllPropertyNames = [&]() {
+    napi_value props;
+
+    napi_value return_value = CreateObject();
+
+    add_returned_status(
+        env,
+        "envIsNull",
+        return_value,
+        "Invalid argument",
+        napi_invalid_arg,
+        napi_get_all_property_names(
+            nullptr, return_value, napi_key_own_only, napi_key_writable, napi_key_keep_numbers, &props));
+
+    napi_get_all_property_names(env, nullptr, napi_key_own_only, napi_key_writable, napi_key_keep_numbers, &props);
+    add_last_status(env, "objectIsNull", return_value);
+
+    napi_get_all_property_names(
+        env, return_value, napi_key_own_only, napi_key_writable, napi_key_keep_numbers, nullptr);
+    add_last_status(env, "valueIsNull", return_value);
+
+    return return_value;
+  };
+
+  auto NullGetPrototype = [&]() {
+    napi_value proto;
+
+    napi_value return_value = CreateObject();
+
+    add_returned_status(
+        env,
+        "envIsNull",
+        return_value,
+        "Invalid argument",
+        napi_invalid_arg,
+        napi_get_prototype(nullptr, return_value, &proto));
+
+    napi_get_prototype(env, nullptr, &proto);
+    add_last_status(env, "objectIsNull", return_value);
+
+    napi_get_prototype(env, return_value, nullptr);
+    add_last_status(env, "valueIsNull", return_value);
+
+    return return_value;
+  };
+
   // We create two type tags. They are basically 128-bit UUIDs.
-  const napi_type_tag typeTags[2] = {{0xdaf987b3cc62481a, 0xb745b0497f299531},
-                                     {0xbb7936c374084d9b, 0xa9548d0762eeedb9}};
+  const napi_type_tag typeTags[2] = {
+      {0xdaf987b3cc62481a, 0xb745b0497f299531}, {0xbb7936c374084d9b, 0xa9548d0762eeedb9}};
 
   auto TypeTaggedInstance = [&](uint32_t typeIndex) {
     napi_value obj = CreateObject();
@@ -1168,7 +1494,7 @@ TEST_P(NapiTest, ObjectTest) {
     EXPECT_DEEP_STRICT_EQ(GetPropertySymbols(object), "[fooSymbol]");
   }
 
-  // Verify that passing NULL to napi_set_property() results in the correct error.
+  // Verify that passing nullptr to napi_set_property() results in the correct error.
   EXPECT_DEEP_STRICT_EQ(TestSetProperty(), R"({
     envIsNull : 'Invalid argument',
     objectIsNull : 'Invalid argument',
@@ -1176,7 +1502,7 @@ TEST_P(NapiTest, ObjectTest) {
     valueIsNull : 'Invalid argument'
   })");
 
-  // Verify that passing NULL to napi_has_property() results in the correct error.
+  // Verify that passing nullptr to napi_has_property() results in the correct error.
   EXPECT_DEEP_STRICT_EQ(TestHasProperty(), R"({
     envIsNull : 'Invalid argument',
     objectIsNull : 'Invalid argument',
@@ -1184,7 +1510,7 @@ TEST_P(NapiTest, ObjectTest) {
     resultIsNull : 'Invalid argument'
   })");
 
-  // Verify that passing NULL to napi_get_property() results in the correct error.
+  // Verify that passing nullptr to napi_get_property() results in the correct error.
   EXPECT_DEEP_STRICT_EQ(TestGetProperty(), R"({
     envIsNull : 'Invalid argument',
     objectIsNull : 'Invalid argument',
@@ -1210,6 +1536,49 @@ TEST_P(NapiTest, ObjectTest) {
     EXPECT_JS_THROWS("obj.x = 10");
     EXPECT_JS_THROWS("obj.w = 15");
     EXPECT_JS_THROWS("delete obj.x");
+  }
+
+  {
+    // Test passing nullptr to object-related N-APIs.
+    napi_value expectedForProperty = Eval(R"(expectedForProperty = {
+      envIsNull : 'Invalid argument',
+      objectIsNull : 'Invalid argument',
+      keyIsNull : 'Invalid argument',
+      valueIsNull : 'Invalid argument'
+    })");
+    EXPECT_DEEP_STRICT_EQ(NullSetProperty(), "expectedForProperty");
+    EXPECT_DEEP_STRICT_EQ(NullGetProperty(), "expectedForProperty");
+    EXPECT_DEEP_STRICT_EQ(NullHasProperty(), "expectedForProperty");
+    EXPECT_DEEP_STRICT_EQ(NullHasOwnProperty(), "expectedForProperty");
+    // It's OK not to want the result of a deletion.
+    EXPECT_DEEP_STRICT_EQ(NullDeleteProperty(), "Object.assign({}, expectedForProperty, {valueIsNull : 'napi_ok'})");
+    EXPECT_DEEP_STRICT_EQ(NullSetNamedProperty(), "expectedForProperty");
+    EXPECT_DEEP_STRICT_EQ(NullGetNamedProperty(), "expectedForProperty");
+    EXPECT_DEEP_STRICT_EQ(NullHasNamedProperty(), "expectedForProperty");
+
+    napi_value expectedForElement = Eval(R"(expectedForElement = {
+      envIsNull : 'Invalid argument',
+      objectIsNull : 'Invalid argument',
+      valueIsNull : 'Invalid argument'
+    })");
+    EXPECT_DEEP_STRICT_EQ(NullSetElement(), "expectedForElement");
+    EXPECT_DEEP_STRICT_EQ(NullGetElement(), "expectedForElement");
+    EXPECT_DEEP_STRICT_EQ(NullHasElement(), "expectedForElement");
+    // It's OK not to want the result of a deletion.
+    EXPECT_DEEP_STRICT_EQ(NullDeleteElement(), "Object.assign({}, expectedForElement, { valueIsNull: 'napi_ok'})");
+
+    EXPECT_DEEP_STRICT_EQ(NullDefineProperties(), R"({
+      envIsNull : 'Invalid argument',
+      objectIsNull : 'Invalid argument',
+      descriptorListIsNull : 'Invalid argument',
+      utf8nameIsNull : 'Invalid argument',
+      methodIsNull : 'Invalid argument',
+    })");
+
+    // `expectedForElement` also works for the APIs below.
+    EXPECT_DEEP_STRICT_EQ(NullGetPropertyNames(), "expectedForElement");
+    EXPECT_DEEP_STRICT_EQ(NullGetAllPropertyNames(), "expectedForElement");
+    EXPECT_DEEP_STRICT_EQ(NullGetPrototype(), "expectedForElement");
   }
 }
 
