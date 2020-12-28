@@ -1,0 +1,34 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Manifest Include="Application.manifest" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="JsiRuntimeTests.cpp" />
+    <ClCompile Include="ReactInstanceSettingsTests.cpp" />
+    <ClCompile Include="ReactNonAbiValueTests.cpp" />
+    <ClCompile Include="ReactNotificationServiceTests.cpp" />
+    <ClCompile Include="ReactPropertyBagTests.cpp" />
+    <ClCompile Include="ReactNativeHostTests.cpp" />
+    <ClCompile Include="TurboModuleTests.cpp" />
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="pch.cpp" />
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsi\jsi\test\testlib.cpp" />
+    <ClCompile Include="JsiTurboModuleTests.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="MockReactPackageProvider.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsi\jsi\test\testlib.h" />
+    <ClInclude Include="pch.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="AddValues.js" />
+    <None Include="TurboModuleTests.js" />
+    <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="TurboModule">
+      <UniqueIdentifier>{9acb225f-94a1-4522-ade3-9b757f03fd6e}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>
