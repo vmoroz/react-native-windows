@@ -43,13 +43,33 @@ struct NapiTestBase : ::testing::TestWithParam<NapiEnvFactory> {
   bool CheckStrictEqual(const std::string &left, const std::string &right);
   bool CheckDeepStrictEqual(napi_value value, const std::string &jsValue);
   bool CheckDeepStrictEqual(const std::string &left, const std::string &right);
-  bool CheckThrows(const std::string &expr);
+  bool CheckThrow(const std::string &expr, const std::string &msgRegex);
 
+  napi_value GetBoolean(bool value);
   napi_value CreateInt32(int32_t value);
+  napi_value CreateUInt32(uint32_t value);
+  napi_value CreateInt64(int64_t value);
   napi_value CreateDouble(double value);
   napi_value CreateStringUtf8(const char *value);
   napi_value CreateObject();
+
+  bool GetValueBool(napi_value value);
+  int32_t GetValueInt32(napi_value value);
+  uint32_t GetValueUInt32(napi_value value);
+  int64_t GetValueInt64(napi_value value);
   double GetValueDouble(napi_value value);
+
+  napi_value AsBool(napi_value value);
+  napi_value AsInt32(napi_value value);
+  napi_value AsUInt32(napi_value value);
+  napi_value AsInt64(napi_value value);
+  napi_value AsDouble(napi_value value);
+  napi_value AsString(napi_value value);
+  napi_value ToBool(napi_value value);
+  napi_value ToNumber(napi_value value);
+  napi_value ToObject(napi_value value);
+  napi_value ToString(napi_value value);
+
   napi_value GetProperty(napi_value object, napi_value key);
   napi_value GetProperty(napi_value object, const char *utf8Name);
   napi_value GetNamedProperty(napi_value object, const char *utf8Name);
