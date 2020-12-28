@@ -56,7 +56,7 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)ChakraApi.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="$(MSBuildThisFileDirectory)ChakraNApi.cpp">
+    <ClCompile Include="$(MSBuildThisFileDirectory)ChakraNapi.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="$(MSBuildThisFileDirectory)NapiJsiRuntime.cpp">

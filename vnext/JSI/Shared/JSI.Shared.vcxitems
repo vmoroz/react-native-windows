@@ -15,7 +15,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="$(MSBuildThisFileDirectory)ChakraApi.cpp" />
-    <ClCompile Include="$(MSBuildThisFileDirectory)ChakraNApi.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)ChakraNapi.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)ChakraRuntime.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)NapiApi.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)NapiJsiRuntime.cpp" />
