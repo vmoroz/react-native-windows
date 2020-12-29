@@ -24,6 +24,7 @@
     <ClInclude Include="$(JSI_SourcePath)\jsi\instrumentation.h" />
     <ClInclude Include="$(JSI_SourcePath)\jsi\jsi-inl.h" />
     <ClInclude Include="$(JSI_SourcePath)\jsi\jsi.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)ReactCommon\TurboModuleUtils.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)TurboModuleProvider.h" />
     <ClInclude Include="$(ReactNativeDir)\ReactCommon\callinvoker\ReactCommon\CallInvoker.h" />
     <ClInclude Include="$(ReactNativeDir)\ReactCommon\react\nativemodule\core\ReactCommon\LongLivedObject.h" />
@@ -86,6 +87,7 @@
     <None Include="$(MSBuildThisFileDirectory)README.md" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="$(MSBuildThisFileDirectory)ReactCommon\TurboModuleUtils.cpp" />
     <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\nativemodule\core\ReactCommon\LongLivedObject.cpp" />
     <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\nativemodule\core\ReactCommon\TurboModule.cpp">
       <DisableSpecificWarnings>4100;4267;%(DisableSpecificWarnings)</DisableSpecificWarnings>

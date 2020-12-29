@@ -27,9 +27,4 @@
     <None Include="packages.config" />
     <None Include="JsiTurboModuleTests.js" />
   </ItemGroup>
-  <ItemGroup>
-    <Filter Include="TurboModule">
-      <UniqueIdentifier>{9acb225f-94a1-4522-ade3-9b757f03fd6e}</UniqueIdentifier>
-    </Filter>
-  </ItemGroup>
 </Project>

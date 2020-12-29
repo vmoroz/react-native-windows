@@ -31,7 +31,7 @@ struct ChakraRuntimeArgs {
   bool enableDebugging{false};
   bool debuggerBreakOnNextLine{false};
   bool enableNativePerformanceNow{true};
-  bool enableNativePromiseSupport{false};
+  bool enableNativePromiseSupport{true};
   uint16_t debuggerPort{9229};
   std::string debuggerRuntimeName;
 

@@ -18,6 +18,9 @@
     <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\nativemodule\core\ReactCommon\LongLivedObject.cpp">
       <Filter>TurboModule</Filter>
     </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)ReactCommon\TurboModuleUtils.cpp">
+      <Filter>TurboModule</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="$(MSBuildThisFileDirectory)Crash.h" />
@@ -131,6 +134,9 @@
       <Filter>TurboModule</Filter>
     </ClInclude>
     <ClInclude Include="$(MSBuildThisFileDirectory)TurboModuleProvider.h">
+      <Filter>TurboModule</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)ReactCommon\TurboModuleUtils.h">
       <Filter>TurboModule</Filter>
     </ClInclude>
   </ItemGroup>
