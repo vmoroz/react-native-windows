@@ -25,6 +25,7 @@
     <None Include="AddValues.js" />
     <None Include="TurboModuleTests.js" />
     <None Include="packages.config" />
+    <None Include="JsiTurboModuleTests.js" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="TurboModule">

@@ -1,9 +1,11 @@
 import * as TurboModuleRegistry from '../Libraries/TurboModule/TurboModuleRegistry';
 
-const sampleTurboModule = TurboModuleRegistry.getEnforcing('SampleTurboModule');
+const mySimpleTurboModule = TurboModuleRegistry.getEnforcing('MySimpleTurboModule');
 
 // function calls will be added to cover complete signatures
 
+mySimpleTurboModule.voidFunc();
+/*
 try {
   sampleTurboModule
     .promiseFunction('something', 1, true);
@@ -52,3 +54,4 @@ try {
 } catch (err) {
   sampleTurboModule.onError(typeof err);
 }
+*/

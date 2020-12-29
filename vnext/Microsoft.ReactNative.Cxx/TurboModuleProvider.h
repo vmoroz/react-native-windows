@@ -3,6 +3,7 @@
 
 #pragma once
 #include <JSI/JsiAbiApi.h>
+#include <JSI/JsiApi.h>
 #include <ReactCommon/TurboModule.h>
 #include <winrt/Microsoft.ReactNative.h>
 #include <winrt/Windows.Foundation.h>
@@ -75,6 +76,8 @@ inline ReactModuleProvider MakeJsiTurboModuleProvider() noexcept {
   return [](IReactModuleBuilder const &moduleBuilder) noexcept -> winrt::Windows::Foundation::IInspectable {
     auto abiTurboModule = winrt::make_self<AbiTurboModule<TTurboModule>>();
     moduleBuilder.AddInitializer([abiTurboModule](IReactContext const &context) mutable {
+      ReactContext ctx{context};
+      GetOrCreateContextRuntime(ctx);
       abiTurboModule->Initialize(context);
       abiTurboModule = nullptr;
     });
@@ -84,7 +87,8 @@ inline ReactModuleProvider MakeJsiTurboModuleProvider() noexcept {
 
 template <typename TTurboModule>
 void AddTurboModuleProvider(IReactPackageBuilder const &packageBuilder, std::wstring_view moduleName) {
-  packageBuilder.AddModule(moduleName, MakeJsiTurboModuleProvider<TTurboModule>());
+  auto experimental = packageBuilder.as<IReactPackageBuilderExperimental>();
+  experimental.AddTurboModule(moduleName, MakeJsiTurboModuleProvider<TTurboModule>());
 }
 
 } // namespace winrt::Microsoft::ReactNative

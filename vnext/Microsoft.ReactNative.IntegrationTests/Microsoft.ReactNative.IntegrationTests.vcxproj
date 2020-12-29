@@ -138,6 +138,7 @@
   <ItemGroup>
     <Manifest Include="Application.manifest" />
     <None Include="AddValues.js" />
+    <None Include="JsiTurboModuleTests.js" />
     <None Include="TurboModuleTests.js" />
     <None Include="packages.config" />
     <JsBundleEntry Include="AddValues.js" />

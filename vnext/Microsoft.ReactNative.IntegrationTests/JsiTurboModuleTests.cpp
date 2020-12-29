@@ -159,24 +159,33 @@ struct MySimpleTurboModule : MySimpleTurboModuleSpec {
   facebook::jsi::String getString(facebook::jsi::Runtime &rt, const facebook::jsi::String &arg) override;
   facebook::jsi::Array getArray(facebook::jsi::Runtime &rt, const facebook::jsi::Array &arg) override;
   facebook::jsi::Object getObject(facebook::jsi::Runtime &rt, const facebook::jsi::Object &arg) override;
-  facebook::jsi::Object getValue(facebook::jsi::Runtime &rt, double x, const facebook::jsi::String &y, const facebook::jsi::Object &z) override;
+  facebook::jsi::Object getValue(
+      facebook::jsi::Runtime &rt,
+      double x,
+      const facebook::jsi::String &y,
+      const facebook::jsi::Object &z) override;
   void getValueWithCallback(facebook::jsi::Runtime &rt, const facebook::jsi::Function &callback) override;
   facebook::jsi::Value getValueWithPromise(facebook::jsi::Runtime &rt, bool error) override;
   facebook::jsi::Object getConstants(facebook::jsi::Runtime &rt) override;
+
+ public:
+  static std::promise<bool> voidFuncCalled;
 };
+
+/*static*/ std::promise<bool> MySimpleTurboModule::voidFuncCalled;
 
 MySimpleTurboModule::MySimpleTurboModule(std::shared_ptr<facebook::react::CallInvoker> jsInvoker)
     : MySimpleTurboModuleSpec(std::move(jsInvoker)) {}
 
-void MySimpleTurboModule::voidFunc(facebook::jsi::Runtime &/*rt*/) {
-  // Nothing to do
+void MySimpleTurboModule::voidFunc(facebook::jsi::Runtime & /*rt*/) {
+  voidFuncCalled.set_value(true);
 }
 
-bool MySimpleTurboModule::getBool(facebook::jsi::Runtime &/*rt*/, bool arg) {
+bool MySimpleTurboModule::getBool(facebook::jsi::Runtime & /*rt*/, bool arg) {
   return arg;
 }
 
-double MySimpleTurboModule::getNumber(facebook::jsi::Runtime &/*rt*/, double arg) {
+double MySimpleTurboModule::getNumber(facebook::jsi::Runtime & /*rt*/, double arg) {
   return arg;
 }
 
@@ -184,22 +193,28 @@ facebook::jsi::String MySimpleTurboModule::getString(facebook::jsi::Runtime &rt,
   return facebook::jsi::String::createFromUtf8(rt, arg.utf8(rt));
 }
 
-facebook::jsi::Array MySimpleTurboModule::getArray(facebook::jsi::Runtime &rt, const facebook::jsi::Array &/*arg*/) {
-  //return deepCopyJSIArray(rt, arg);
+facebook::jsi::Array MySimpleTurboModule::getArray(facebook::jsi::Runtime &rt, const facebook::jsi::Array & /*arg*/) {
+  // return deepCopyJSIArray(rt, arg);
   return facebook::jsi::Array(rt, 1);
 }
 
-facebook::jsi::Object MySimpleTurboModule::getObject(facebook::jsi::Runtime &rt, const facebook::jsi::Object &/*arg*/) {
-  //return deepCopyJSIObject(rt, arg);
+facebook::jsi::Object MySimpleTurboModule::getObject(
+    facebook::jsi::Runtime &rt,
+    const facebook::jsi::Object & /*arg*/) {
+  // return deepCopyJSIObject(rt, arg);
   return facebook::jsi::Object(rt);
 }
 
-facebook::jsi::Object MySimpleTurboModule::getValue(facebook::jsi::Runtime &rt, double x, const facebook::jsi::String &y, const facebook::jsi::Object &/*z*/) {
+facebook::jsi::Object MySimpleTurboModule::getValue(
+    facebook::jsi::Runtime &rt,
+    double x,
+    const facebook::jsi::String &y,
+    const facebook::jsi::Object & /*z*/) {
   // Note: return type isn't type-safe.
   facebook::jsi::Object result(rt);
   result.setProperty(rt, "x", facebook::jsi::Value(x));
   result.setProperty(rt, "y", facebook::jsi::String::createFromUtf8(rt, y.utf8(rt)));
-  //result.setProperty(rt, "z", deepCopyJSIObject(rt, z));
+  // result.setProperty(rt, "z", deepCopyJSIObject(rt, z));
   return result;
 }
 
@@ -207,8 +222,8 @@ void MySimpleTurboModule::getValueWithCallback(facebook::jsi::Runtime &rt, const
   callback.call(rt, facebook::jsi::String::createFromUtf8(rt, "value from callback!"));
 }
 
-facebook::jsi::Value MySimpleTurboModule::getValueWithPromise(facebook::jsi::Runtime &/*rt*/, bool /*error*/) {
-  //return createPromiseAsJSIValue(rt, [error](facebook::jsi::Runtime &rt2, std::shared_ptr<Promise> promise) {
+facebook::jsi::Value MySimpleTurboModule::getValueWithPromise(facebook::jsi::Runtime & /*rt*/, bool /*error*/) {
+  // return createPromiseAsJSIValue(rt, [error](facebook::jsi::Runtime &rt2, std::shared_ptr<Promise> promise) {
   //  if (error) {
   //    promise->reject("intentional promise rejection");
   //  } else {
@@ -234,39 +249,32 @@ struct MySimpleTurboModulePackageProvider
   }
 };
 
-// struct SampleTurboModulePackageProvider : winrt::implements<SampleTurboModulePackageProvider, IReactPackageProvider>
-// {
-//  void CreatePackage(IReactPackageBuilder const &packageBuilder) noexcept {
-//    auto experimental = packageBuilder.as<IReactPackageBuilderExperimental>();
-//    experimental.AddTurboModule(
-//        L"SampleTurboModule", MakeTurboModuleProvider<SampleTurboModule, SampleTurboModuleSpec>());
-//  }
-//};
-
 TEST_CLASS (JsiTurboModuleTests) {
   TEST_METHOD(ExecuteSampleTurboModule) {
+    MySimpleTurboModule::voidFuncCalled = {};
     ReactNativeHost host{};
 
-    // auto queueController = winrt::Windows::System::DispatcherQueueController::CreateOnDedicatedThread();
-    // queueController.DispatcherQueue().TryEnqueue([&]() noexcept {
-    //  host.PackageProviders().Append(winrt::make<SampleTurboModulePackageProvider>());
+    auto queueController = winrt::Windows::System::DispatcherQueueController::CreateOnDedicatedThread();
+    queueController.DispatcherQueue().TryEnqueue([&]() noexcept {
+      host.PackageProviders().Append(winrt::make<MySimpleTurboModulePackageProvider>());
 
-    //  // bundle is assumed to be co-located with the test binary
-    //  wchar_t testBinaryPath[MAX_PATH];
-    //  TestCheck(GetModuleFileNameW(NULL, testBinaryPath, MAX_PATH) < MAX_PATH);
-    //  testBinaryPath[std::wstring_view{testBinaryPath}.rfind(L"\\")] = 0;
+      // bundle is assumed to be co-located with the test binary
+      wchar_t testBinaryPath[MAX_PATH];
+      TestCheck(GetModuleFileNameW(NULL, testBinaryPath, MAX_PATH) < MAX_PATH);
+      testBinaryPath[std::wstring_view{testBinaryPath}.rfind(L"\\")] = 0;
 
-    //  host.InstanceSettings().BundleRootPath(testBinaryPath);
-    //  host.InstanceSettings().JavaScriptBundleFile(L"TurboModuleTests");
-    //  host.InstanceSettings().UseDeveloperSupport(false);
-    //  host.InstanceSettings().UseWebDebugger(false);
-    //  host.InstanceSettings().UseFastRefresh(false);
-    //  host.InstanceSettings().UseLiveReload(false);
-    //  host.InstanceSettings().EnableDeveloperMenu(false);
+      host.InstanceSettings().BundleRootPath(testBinaryPath);
+      host.InstanceSettings().JavaScriptBundleFile(L"JsiTurboModuleTests");
+      host.InstanceSettings().UseDeveloperSupport(false);
+      host.InstanceSettings().UseWebDebugger(false);
+      host.InstanceSettings().UseFastRefresh(false);
+      host.InstanceSettings().UseLiveReload(false);
+      host.InstanceSettings().EnableDeveloperMenu(false);
 
-    //  host.LoadInstance();
-    //});
+      host.LoadInstance();
+    });
 
+    TestCheck(MySimpleTurboModule::voidFuncCalled.get_future().get());
     // TestCheckEqual(true, SampleTurboModule::succeededSignal.get_future().get());
     // TestCheckEqual("something, 1, true", SampleTurboModule::promiseFunctionSignal.get_future().get());
     // TestCheckEqual("something, 2, false", SampleTurboModule::syncFunctionSignal.get_future().get());
@@ -275,8 +283,8 @@ TEST_CLASS (JsiTurboModuleTests) {
     // TestCheckEqual(123, SampleTurboModule::twoCallbacksResolvedSignal.get_future().get());
     // TestCheckEqual("Failed", SampleTurboModule::twoCallbacksRejectedSignal.get_future().get());
 
-    // host.UnloadInstance().get();
-    // queueController.ShutdownQueueAsync().get();
+    host.UnloadInstance().get();
+    queueController.ShutdownQueueAsync().get();
   }
 };
 
