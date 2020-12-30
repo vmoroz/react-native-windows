@@ -48,7 +48,7 @@ inline facebook::jsi::Runtime &GetOrCreateContextRuntime(ReactContext const &con
     context.Notifications().Subscribe(
         destroyInstanceNotificationId,
         jsDispatcher,
-        [context, jsiRuntimeProperty](
+        [ context, jsiRuntimeProperty ](
             winrt::Windows::Foundation::IInspectable const & /*sender*/,
             ReactNotificationArgs<InstanceDestroyedEventArgs> const &args) noexcept {
           context.Properties().Remove(jsiRuntimeProperty);
