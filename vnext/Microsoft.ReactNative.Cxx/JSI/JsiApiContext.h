@@ -1,18 +1,23 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-#include "pch.h"
-#include "JsiApi.h"
+#pragma once
+#ifndef MICROSOFT_REACTNATIVE_JSI_JSIAPI
+#define MICROSOFT_REACTNATIVE_JSI_JSIAPI
+
+#include "../ReactContext.h"
+#include "JsiAbiApi.h"
 
 // Use __ImageBase to get current DLL handle.
 // http://blogs.msdn.com/oldnewthing/archive/2004/10/25/247180.aspx
 extern "C" IMAGE_DOS_HEADER __ImageBase;
 
 namespace winrt::Microsoft::ReactNative {
+
 // Get JSI Runtime from the current JS dispatcher thread.
 // If it is not found, then create it and store it in the context.Properties().
 // Make sure that the JSI runtime holder is removed when the instance is unloaded.
-facebook::jsi::Runtime &GetOrCreateContextRuntime(ReactContext const &context) noexcept {
+inline facebook::jsi::Runtime &GetOrCreateContextRuntime(ReactContext const &context) noexcept {
   ReactDispatcher jsDispatcher = context.JSDispatcher();
   VerifyElseCrashSz(jsDispatcher.HasThreadAccess(), "Must be in JS thread");
 
@@ -53,4 +58,22 @@ facebook::jsi::Runtime &GetOrCreateContextRuntime(ReactContext const &context) n
 
   return *runtime;
 }
+
+// Call provided lambda with the facebook::jsi::Runtime& parameter.
+// For example: ExecuteJsi(context, [](facebook::jsi::Runtime& runtime){...})
+// The code is executed synchronously if it is already in JSDispatcher, or asynchronously otherwise.
+template <class TCodeWithRuntime>
+inline void ExecuteJsi(ReactContext const &context, TCodeWithRuntime const &code) {
+  ReactDispatcher jsDispatcher = context.JSDispatcher();
+  if (jsDispatcher.HasThreadAccess()) {
+    // Execute immediately if we are in JS thread.
+    code(GetOrCreateContextRuntime(context));
+  } else {
+    // Otherwise, schedule work in JS thread.
+    jsDispatcher.Post([ context, code ]() noexcept { code(GetOrCreateContextRuntime(context)); });
+  }
+}
+
 } // namespace winrt::Microsoft::ReactNative
+
+#endif // MICROSOFT_REACTNATIVE_JSI_JSIAPI

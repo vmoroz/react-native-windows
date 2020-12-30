@@ -3,7 +3,7 @@
 
 #pragma once
 #include <JSI/JsiAbiApi.h>
-#include <JSI/JsiApi.h>
+#include <JSI/JsiApiContext.h>
 #include <ReactCommon/TurboModule.h>
 #include <winrt/Microsoft.ReactNative.h>
 #include <winrt/Windows.Foundation.h>

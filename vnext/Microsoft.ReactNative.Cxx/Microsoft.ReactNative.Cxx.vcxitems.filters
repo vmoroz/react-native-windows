@@ -21,7 +21,6 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)ReactCommon\TurboModuleUtils.cpp">
       <Filter>TurboModule</Filter>
     </ClCompile>
-    <ClCompile Include="$(MSBuildThisFileDirectory)JSI\JsiApi.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="$(MSBuildThisFileDirectory)Crash.h" />
@@ -122,9 +121,6 @@
     <ClInclude Include="$(JSI_SourcePath)\jsi\instrumentation.h">
       <Filter>JSI</Filter>
     </ClInclude>
-    <ClInclude Include="$(MSBuildThisFileDirectory)JSI\JsiApi.h">
-      <Filter>JSI</Filter>
-    </ClInclude>
     <ClInclude Include="$(ReactNativeDir)\ReactCommon\react\nativemodule\core\ReactCommon\TurboModule.h">
       <Filter>TurboModule</Filter>
     </ClInclude>
@@ -139,6 +135,9 @@
     </ClInclude>
     <ClInclude Include="$(MSBuildThisFileDirectory)ReactCommon\TurboModuleUtils.h">
       <Filter>TurboModule</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)JSI\JsiApiContext.h">
+      <Filter>JSI</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
