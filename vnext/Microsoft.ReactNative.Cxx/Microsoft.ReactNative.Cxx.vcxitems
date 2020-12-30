@@ -87,7 +87,10 @@
     <None Include="$(MSBuildThisFileDirectory)README.md" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="$(MSBuildThisFileDirectory)ReactCommon\TurboModuleUtils.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)JSI\JsiApi.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)ReactCommon\TurboModuleUtils.cpp">
+      <DisableSpecificWarnings>4100;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+    </ClCompile>
     <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\nativemodule\core\ReactCommon\LongLivedObject.cpp" />
     <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\nativemodule\core\ReactCommon\TurboModule.cpp">
       <DisableSpecificWarnings>4100;4267;%(DisableSpecificWarnings)</DisableSpecificWarnings>

@@ -21,6 +21,7 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)ReactCommon\TurboModuleUtils.cpp">
       <Filter>TurboModule</Filter>
     </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)JSI\JsiApi.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="$(MSBuildThisFileDirectory)Crash.h" />

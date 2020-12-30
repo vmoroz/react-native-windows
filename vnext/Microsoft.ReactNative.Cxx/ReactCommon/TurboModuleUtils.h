@@ -38,34 +38,23 @@ struct Promise : public LongLivedObject {
   jsi::Function reject_;
 };
 
-using PromiseSetupFunctionType =
-    std::function<void(jsi::Runtime &rt, std::shared_ptr<Promise>)>;
-jsi::Value createPromiseAsJSIValue(
-    jsi::Runtime &rt,
-    const PromiseSetupFunctionType func);
+using PromiseSetupFunctionType = std::function<void(jsi::Runtime &rt, std::shared_ptr<Promise>)>;
+jsi::Value createPromiseAsJSIValue(jsi::Runtime &rt, const PromiseSetupFunctionType func);
 
 // Helper for passing jsi::Function arg to other methods.
 class CallbackWrapper : public LongLivedObject {
  private:
-  CallbackWrapper(
-      jsi::Function &&callback,
-      jsi::Runtime &runtime,
-      std::shared_ptr<CallInvoker> jsInvoker)
-      : callback_(std::move(callback)),
-        runtime_(runtime),
-        jsInvoker_(std::move(jsInvoker)) {}
+  CallbackWrapper(jsi::Function &&callback, jsi::Runtime &runtime, std::shared_ptr<CallInvoker> jsInvoker)
+      : callback_(std::move(callback)), runtime_(runtime), jsInvoker_(std::move(jsInvoker)) {}
 
   jsi::Function callback_;
   jsi::Runtime &runtime_;
   std::shared_ptr<CallInvoker> jsInvoker_;
 
  public:
-  static std::weak_ptr<CallbackWrapper> createWeak(
-      jsi::Function &&callback,
-      jsi::Runtime &runtime,
-      std::shared_ptr<CallInvoker> jsInvoker) {
-    auto wrapper = std::shared_ptr<CallbackWrapper>(
-        new CallbackWrapper(std::move(callback), runtime, jsInvoker));
+  static std::weak_ptr<CallbackWrapper>
+  createWeak(jsi::Function &&callback, jsi::Runtime &runtime, std::shared_ptr<CallInvoker> jsInvoker) {
+    auto wrapper = std::shared_ptr<CallbackWrapper>(new CallbackWrapper(std::move(callback), runtime, jsInvoker));
     LongLivedObjectCollection::get().add(wrapper);
     return wrapper;
   }

@@ -73,7 +73,7 @@ template <
     typename TTurboModule,
     std::enable_if_t<std::is_base_of_v<::facebook::react::TurboModule, TTurboModule>, int> = 0>
 inline ReactModuleProvider MakeJsiTurboModuleProvider() noexcept {
-  return [](IReactModuleBuilder const &moduleBuilder) noexcept -> winrt::Windows::Foundation::IInspectable {
+  return [](IReactModuleBuilder const &moduleBuilder) noexcept->winrt::Windows::Foundation::IInspectable {
     auto abiTurboModule = winrt::make_self<AbiTurboModule<TTurboModule>>();
     moduleBuilder.AddInitializer([abiTurboModule](IReactContext const &context) mutable {
       ReactContext ctx{context};

@@ -381,8 +381,8 @@ TEST_CLASS (JsiTurboModuleTests) {
       host.InstanceSettings().UseLiveReload(false);
       host.InstanceSettings().EnableDeveloperMenu(false);
 
-      host.LoadInstance().Completed([](IAsyncAction asyncInfo, AsyncStatus asyncStatus) { TestCheckEqual(AsyncStatus::Completed, asyncStatus);
-        });
+      host.LoadInstance().Completed(
+          [](IAsyncAction asyncInfo, AsyncStatus asyncStatus) { TestCheckEqual(AsyncStatus::Completed, asyncStatus); });
     });
 
     auto lock = std::unique_lock{MySimpleTurboModule::s_mutex};

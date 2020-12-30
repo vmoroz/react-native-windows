@@ -3,8 +3,8 @@
 
 #include <JSI/ByteArrayBuffer.h>
 #include <JSI/ChakraRuntime.h>
-#include "Unicode.h"
 #include <cxxreact/MessageQueueThread.h>
+#include "Unicode.h"
 
 #if !defined(CHAKRACORE)
 #include <jsrt.h>
@@ -12,9 +12,7 @@
 namespace Microsoft::JSI {
 
 void ChakraRuntime::setupNativePromiseContinuation() noexcept {
-  if (runtimeArgs().enableNativePromiseSupport) {
-    JsSetPromiseContinuationCallback(PromiseContinuationCallback, this);
-  }
+  JsSetPromiseContinuationCallback(PromiseContinuationCallback, this);
 }
 
 // ES6 Promise callback
