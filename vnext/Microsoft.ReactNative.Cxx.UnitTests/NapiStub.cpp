@@ -6,6 +6,9 @@
 #define NAPI_EXPERIMENTAL
 #include <NAPI/js_native_api_ext.h>
 
+#pragma warning(push)
+#pragma warning(disable : 4100) // unreferenced formal parameter
+
 NAPI_EXTERN napi_status napi_get_last_error_info(napi_env env, const napi_extended_error_info **result) {
   VerifyElseCrashSz(false, "Stub implementation");
 }
@@ -604,3 +607,5 @@ NAPI_EXTERN napi_status napiext_run_serialized_script(
     napi_value *result) {
   VerifyElseCrashSz(false, "Stub implementation");
 }
+
+#pragma warning(pop)
