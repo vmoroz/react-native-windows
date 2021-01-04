@@ -4,7 +4,7 @@
 #include "NapiApi.h"
 #include <sstream>
 #include <utility>
-#include "Unicode.h"
+//#include "Unicode.h"
 
 namespace react::jsi {
 

@@ -4,8 +4,8 @@
 #pragma once
 
 #define NAPI_EXPERIMENTAL
-#include "js_native_api.h"
-#include "js_native_api_ext.h"
+#include <NAPI/js_native_api.h>
+#include <NAPI/js_native_api_ext.h>
 
 #include <cassert>
 #include <cstddef>

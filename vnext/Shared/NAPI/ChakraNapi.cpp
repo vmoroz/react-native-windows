@@ -1,8 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-#define NAPI_EXPERIMENTAL
-#include "js_native_api_ext.h"
 #ifdef CHAKRACORE
 #include "ChakraCore.h"
 #else
@@ -20,7 +18,7 @@
 #include <vector>
 
 #include "ChakraNapi.h"
-#include "ChakraRuntimeArgs.h"
+#include "../JSI/ChakraRuntimeArgs.h"
 
 [[noreturn]] void CrashWithAccessViolation() noexcept {
   *((int *)0) = 1;

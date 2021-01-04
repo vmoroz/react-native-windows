@@ -4,7 +4,7 @@
 #pragma once
 
 #define NAPI_EXPERIMENTAL
-#include "js_native_api.h"
+#include <NAPI/js_native_api_ext.h>
 
 namespace Microsoft::JSI {
 struct ChakraRuntimeArgs;

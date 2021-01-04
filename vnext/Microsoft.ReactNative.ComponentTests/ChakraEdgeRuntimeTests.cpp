@@ -4,8 +4,8 @@
 #include <JSI/ChakraRuntimeArgs.h>
 #include <JSI/ChakraRuntimeFactory.h>
 #include <gtest/gtest.h>
-#include "ChakraNapi.h"
-#include "NapiJsiRuntime.h"
+#include <NAPI/ChakraNapi.h>
+#include <NAPI/NapiJsiRuntime.h>
 #include "NapiTests.h"
 #include "jsi/test/testlib.h"
 

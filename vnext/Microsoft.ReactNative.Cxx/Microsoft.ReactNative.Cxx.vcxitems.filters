@@ -12,7 +12,10 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)JSI\JsiAbiApi.cpp">
       <Filter>JSI</Filter>
     </ClCompile>
-    <ClCompile Include="$(MSBuildThisFileDirectory)NAPI\JsiNApi.cpp">
+    <ClCompile Include="$(MSBuildThisFileDirectory)NAPI\NapiJsiRuntime.cpp">
+      <Filter>NAPI</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)NAPI\NapiApi.cpp">
       <Filter>NAPI</Filter>
     </ClCompile>
   </ItemGroup>
@@ -121,10 +124,16 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)NAPI\js_native_api.h">
       <Filter>NAPI</Filter>
     </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)NAPI\js_native_api_ext.h">
+      <Filter>NAPI</Filter>
+    </ClInclude>
     <ClInclude Include="$(MSBuildThisFileDirectory)NAPI\js_native_api_types.h">
       <Filter>NAPI</Filter>
     </ClInclude>
-    <ClInclude Include="$(MSBuildThisFileDirectory)NAPI\JsiNApi.h">
+    <ClInclude Include="$(MSBuildThisFileDirectory)NAPI\NapiJsiRuntime.h">
+      <Filter>NAPI</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)NAPI\NapiApi.h">
       <Filter>NAPI</Filter>
     </ClInclude>
   </ItemGroup>

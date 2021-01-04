@@ -3,10 +3,10 @@
 
 #include "NapiJsiRuntime.h"
 
-#include "Unicode.h"
-#include "Utilities.h"
+//#include "Unicode.h"
+//#include "Utilities.h"
 
-#include <MemoryTracker.h>
+//#include <MemoryTracker.h>
 #include <cxxreact/MessageQueueThread.h>
 
 #include <cstring>

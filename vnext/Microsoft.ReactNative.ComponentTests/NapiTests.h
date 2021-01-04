@@ -7,7 +7,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
-#include <js_native_api_ext.h>
+#include <NAPI/js_native_api_ext.h>
 
 namespace napi {
 
