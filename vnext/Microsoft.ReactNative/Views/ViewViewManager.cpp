@@ -124,6 +124,9 @@ class ViewShadowNode : public ShadowNodeBase {
   }
   void IsFocusable(bool isFocusable) {
     m_isFocusable = isFocusable;
+
+    if (IsControl())
+      GetControl().IsTabStop(m_isFocusable);
   }
 
   bool IsHitTestBrushRequired() const {
@@ -190,6 +193,7 @@ class ViewShadowNode : public ShadowNodeBase {
     // shadow node to the view
     EnableFocusRing(EnableFocusRing());
     TabIndex(TabIndex());
+    IsFocusable(IsFocusable());
     static_cast<FrameworkElementViewManager *>(GetViewManager())->RefreshTransformMatrix(this);
   }
 
@@ -418,11 +422,9 @@ bool ViewViewManager::UpdateProperty(
       else if (propertyValue.IsNull())
         pViewShadowNode->EnableFocusRing(false);
     } else if (propertyName == "tabIndex") {
-      if (propertyValue.Type() == winrt::Microsoft::ReactNative::JSValueType::Double) {
-        auto tabIndex = propertyValue.AsDouble();
-        if (tabIndex == static_cast<int32_t>(tabIndex)) {
-          pViewShadowNode->TabIndex(static_cast<int32_t>(tabIndex));
-        }
+      auto tabIndex = propertyValue.AsInt64();
+      if (tabIndex == static_cast<int32_t>(tabIndex)) {
+        pViewShadowNode->TabIndex(static_cast<int32_t>(tabIndex));
       } else if (propertyValue.IsNull()) {
         pViewShadowNode->TabIndex(std::numeric_limits<std::int32_t>::max());
       }

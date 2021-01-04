@@ -22,6 +22,12 @@
     <Filter Include="ExternalFiles\Shared">
       <UniqueIdentifier>{29f908a2-84b5-43af-b690-b33a68e426db}</UniqueIdentifier>
     </Filter>
+    <Filter Include="ExternalFiles\Microsoft.ReactNative\JSI">
+      <UniqueIdentifier>{c27e30dc-f28b-48b8-8a9c-1a57adada7e7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ExternalFiles\Shared\JSI">
+      <UniqueIdentifier>{8b4f18d5-12c7-49cd-890c-f0c12cf97ba6}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DynamicReaderTest.cpp">
@@ -53,6 +59,15 @@
     </ClCompile>
     <ClCompile Include="NapiTests.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Microsoft.ReactNative\JSI\ChakraJsiRuntime_edgemode.cpp">
+      <Filter>ExternalFiles\Microsoft.ReactNative\JSI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Shared\JSI\ChakraRuntime.cpp">
+      <Filter>ExternalFiles\Shared\JSI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Shared\JSI\ChakraApi.cpp">
+      <Filter>ExternalFiles\Shared\JSI</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

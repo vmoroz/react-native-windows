@@ -1,10 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+#include <JSI/ChakraRuntimeArgs.h>
+#include <JSI/ChakraRuntimeFactory.h>
 #include <gtest/gtest.h>
 #include "ChakraNapi.h"
-#include "ChakraRuntimeArgs.h"
-#include "ChakraRuntimeFactory.h"
 #include "NapiJsiRuntime.h"
 #include "NapiTests.h"
 #include "jsi/test/testlib.h"
