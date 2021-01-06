@@ -14,6 +14,10 @@ import {createNM2Generator} from './generators/GenerateNM2';
 import {parseFile} from 'react-native-tscodegen/lib/rncodegen/src/parsers/flow';
 // @ts-ignore
 import * as schemaValidator from 'react-native-tscodegen/lib/rncodegen/src/schemaValidator';
+// @ts-ignore
+import * as RNCodegen from 'react-native-codegen/lib/generators/RNCodegen.js';
+// @ts-ignore
+import * as combineFlowSchemas from 'react-native-codegen/lib/cli/combine/combine-js-to-schema.js';
 
 const argv = yargs.options({
   file: {
@@ -182,3 +186,13 @@ generate(
   {libraryName, schema, outputDirectory, moduleSpecName},
   {generators: [], test: false},
 );
+
+if (argv.files) {
+  const libraryName = 'FBReactNativeSpec';
+  const outputDirectory = 'react/modules/' + libraryName;
+  const schema = combineFlowSchemas(globby.sync(argv.files as string[]));
+  RNCodegen.generate(
+    {libraryName, schema, outputDirectory, moduleSpecName},
+    {generators: ['modulesCxx'], test: false},
+  );
+}

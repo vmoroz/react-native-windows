@@ -175,6 +175,7 @@
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\react\modules\FBReactNativeSpec\NativeModules.h" />
     <ClInclude Include="ABICxxModule.h" />
     <ClInclude Include="ABIViewManager.h" />
     <ClInclude Include="Base\CoreNativeModules.h" />
@@ -377,6 +378,7 @@
     <ClInclude Include="XamlView.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\react\modules\FBReactNativeSpec\NativeModules.cpp" />
     <ClCompile Include="ABICxxModule.cpp" />
     <ClCompile Include="ABIViewManager.cpp" />
     <ClCompile Include="Base\CoreNativeModules.cpp" />

@@ -27,6 +27,9 @@ static const React::ReactPropertyId<bool> &ForceRTLPropertyId() noexcept {
   return prop;
 }
 
+I18nManager::I18nManager(std::shared_ptr<facebook::react::CallInvoker> jsInvoker, React::ReactContext context) noexcept
+    : facebook::react::NativeI18nManagerCxxSpecJSI{std::move(jsInvoker)}, m_context{std::move(context)} {}
+
 void I18nManager::InitI18nInfo(const winrt::Microsoft::ReactNative::ReactPropertyBag &propertyBag) noexcept {
   if (xaml::TryGetCurrentApplication() && !react::uwp::IsXamlIsland()) {
     // TODO: Figure out packaged win32 app story for WinUI 3
@@ -49,19 +52,19 @@ void I18nManager::InitI18nInfo(const winrt::Microsoft::ReactNative::ReactPropert
   return propertyBag.Get(SystemIsRTLPropertyId()).value_or(false);
 }
 
-void I18nManager::AllowRTL(bool allowRTL) noexcept {
+void I18nManager::allowRTL(facebook::jsi::Runtime &rt, bool allowRTL) {
   m_context.Properties().Set(AllowRTLPropertyId(), allowRTL);
 }
 
-void I18nManager::ForceRTL(bool forceRTL) noexcept {
+void I18nManager::forceRTL(facebook::jsi::Runtime &rt, bool forceRTL) {
   m_context.Properties().Set(ForceRTLPropertyId(), forceRTL);
 }
 
-void I18nManager::SwapLeftAndRightInRTL(bool /*flipStyles*/) noexcept {
+void I18nManager::swapLeftAndRightInRTL(facebook::jsi::Runtime & /*rt*/, bool /*flipStyles*/) {
   // TODO - https://github.com/microsoft/react-native-windows/issues/4662
 }
 
-void I18nManager::GetConstants(React::ReactConstantProvider &provider) noexcept {
+facebook::jsi::Object I18nManager::getConstants(facebook::jsi::Runtime &rt) {
   std::string locale = "en-us";
 
   auto langs = winrt::Windows::Globalization::ApplicationLanguages::Languages();
@@ -69,13 +72,11 @@ void I18nManager::GetConstants(React::ReactConstantProvider &provider) noexcept 
     locale = Microsoft::Common::Unicode::Utf16ToUtf8(langs.GetAt(0));
   }
 
-  provider.Add(L"localeIdentifier", locale);
-  provider.Add(L"doLeftAndRightSwapInRTL", false);
-  provider.Add(L"isRTL", IsRTL(m_context.Properties()));
-}
-
-void I18nManager::Initialize(React::ReactContext const &reactContext) noexcept {
-  m_context = reactContext;
+  auto constants = facebook::jsi::Object{rt};
+  constants.setProperty(rt, "localeIdentifier", locale);
+  constants.setProperty(rt, "doLeftAndRightSwapInRTL", false);
+  constants.setProperty(rt, "isRTL", IsRTL(m_context.Properties()));
+  return constants;
 }
 
 } // namespace Microsoft::ReactNative

@@ -313,6 +313,9 @@
     <ClCompile Include="JSI\ChakraJsiRuntime_edgemode.cpp">
       <Filter>JSI</Filter>
     </ClCompile>
+    <ClCompile Include="..\react\modules\FBReactNativeSpec\NativeModules.cpp">
+      <Filter>TurboModules</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ABICxxModule.h" />
@@ -667,6 +670,9 @@
     <ClInclude Include="Views\PaperShadowNode.h" />
     <ClInclude Include="Views\ShadowNodeRegistry.h" />
     <ClInclude Include="DocString.h" />
+    <ClInclude Include="..\react\modules\FBReactNativeSpec\NativeModules.h">
+      <Filter>TurboModules</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Midl Include="IJSValueReader.idl" />
@@ -748,6 +754,9 @@
     </Filter>
     <Filter Include="JSI">
       <UniqueIdentifier>{24290499-e864-407e-89c0-473f2b8dbb6e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="TurboModules">
+      <UniqueIdentifier>{55c77181-e41b-4635-8561-987053dd6fcb}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
