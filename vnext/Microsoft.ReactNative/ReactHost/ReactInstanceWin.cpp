@@ -20,7 +20,6 @@
 #include "../../codegen/NativeClipboardSpec.g.h"
 #include "../../codegen/NativeDevSettingsSpec.g.h"
 #include "../../codegen/NativeDeviceInfoSpec.g.h"
-#include "../../codegen/NativeI18nManagerSpec.g.h"
 #include "../../codegen/NativeLogBoxSpec.g.h"
 #include "../../codegen/NativeUIManagerSpec.g.h"
 #include "NativeModules.h"
@@ -255,11 +254,12 @@ void ReactInstanceWin::LoadModules(
           ::Microsoft::ReactNative::DevSettings,
           ::Microsoft::ReactNativeSpecs::DevSettingsSpec>());
 
-  registerTurboModule(
-      L"I18nManager",
-      winrt::Microsoft::ReactNative::MakeTurboModuleProvider<
-          ::Microsoft::ReactNative::I18nManager,
-          ::Microsoft::ReactNativeSpecs::I18nManagerSpec>());
+  turboModulesProvider->AddModuleProvider(
+      "I18nManager",
+      [](std::shared_ptr<facebook::react::CallInvoker> callInvoker,
+         winrt::Microsoft::ReactNative::IReactContext const &reactContext) {
+        return std::make_shared<::Microsoft::ReactNative::I18nManager>(std::move(callInvoker), reactContext);
+      });
 }
 
 //! Initialize() is called from the native queue.

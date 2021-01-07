@@ -16,8 +16,7 @@ namespace Microsoft::ReactNative {
 struct I18nManager : facebook::react::NativeI18nManagerCxxSpecJSI {
   I18nManager(std::shared_ptr<facebook::react::CallInvoker> jsInvoker, React::ReactContext context) noexcept;
 
-  static void InitI18nInfo(
-      const React::ReactPropertyBag &propertyBag) noexcept;
+  static void InitI18nInfo(const React::ReactPropertyBag &propertyBag) noexcept;
   static bool IsRTL(const React::ReactPropertyBag &propertyBag) noexcept;
 
   facebook::jsi::Object getConstants(facebook::jsi::Runtime &rt) override;

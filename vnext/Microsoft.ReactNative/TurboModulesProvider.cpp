@@ -324,8 +324,8 @@ TurboModulesProvider::TurboModulePtr TurboModulesProvider::getModule(
   }
 
   // cache and return the turbo module
-  auto tm = std::make_shared<TurboModuleImpl>(m_reactContext, moduleName, callInvoker, it->second);
-  m_cachedModules.insert({pair, tm});
+  auto tm = it->second(callInvoker, m_reactContext);
+  m_cachedModules.try_emplace(std::move(pair), tm);
   return tm;
 }
 
@@ -346,15 +346,19 @@ void TurboModulesProvider::AddModuleProvider(
     winrt::hstring const &moduleName,
     ReactModuleProvider const &moduleProvider) noexcept {
   auto key = to_string(moduleName);
-  auto it = m_moduleProviders.find(key);
-  if (it == m_moduleProviders.end()) {
-    m_moduleProviders.insert({key, moduleProvider});
-  } else {
-    // turbo modules should be replaceable before the first time it is requested
-    // if a turbo module has been requested, it will be cached in m_cachedModules
-    // in this case, changing m_moduleProviders affects nothing
-    it->second = moduleProvider;
-  }
+  AddModuleProvider(
+      key, [moduleName = key, moduleProvider](CallInvokerPtr callInvoker, IReactContext const &reactContext) {
+        return std::make_shared<TurboModuleImpl>(reactContext, moduleName, callInvoker, moduleProvider);
+      });
+}
+
+void TurboModulesProvider::AddModuleProvider(
+    std::string const &moduleName,
+    TurboModuleProvider &&moduleProvider) noexcept {
+  // turbo modules should be replaceable before the first time it is requested
+  // if a turbo module has been requested, it will be cached in m_cachedModules
+  // in this case, changing m_moduleProviders affects nothing
+  m_moduleProviders.try_emplace(moduleName, std::move(moduleProvider));
 }
 
 } // namespace winrt::Microsoft::ReactNative

@@ -13,6 +13,7 @@ namespace Microsoft.ReactNative
   // copy data if it wants to store it for the later use. Otherwise it may cause issues due to the memory
   // being overwritten after the call is completed. It may happen if the provided byte array was stored
   // on the call stack or it was a managed memory pinned for the use and then unpinned after that.
+  [webhosthidden, experimental]
   delegate void JsiByteArrayUser(UInt8[] bytes);
 
   // IJsiByteBuffer encapsulates a byte array buffer.
@@ -25,7 +26,7 @@ namespace Microsoft.ReactNative
   // JsiByteArrayUser delegate. For example, .Net implementation must pin the memory before the JsiByteArrayUser
   // delegate call and unpin it after that. It means that the provided data is only valid while the
   // JsiByteArrayUser delegate is being called.
-  [webhosthidden]
+  [webhosthidden, experimental]
   interface IJsiByteBuffer
   {
     // Size of the byte buffer data.
@@ -36,6 +37,7 @@ namespace Microsoft.ReactNative
   };
 
   // Type of the JavaScript value. It is currently matching the full JavaScript set of types except for the BigInt type.
+  [webhosthidden, experimental]
   enum JsiValueKind
   {
     Undefined,
@@ -47,38 +49,44 @@ namespace Microsoft.ReactNative
     Object,
   };
 
-  [webhosthidden]
+  [webhosthidden, experimental]
   struct JsiValueRef
   {
     JsiValueKind Kind;
     UInt64 Data;
   };
 
+  [webhosthidden, experimental]
   struct JsiSymbolRef
   {
     UInt64 Data;
   };
 
+  [webhosthidden, experimental]
   struct JsiStringRef
   {
     UInt64 Data;
   };
 
+  [webhosthidden, experimental]
   struct JsiObjectRef
   {
     UInt64 Data;
   };
 
+  [webhosthidden, experimental]
   struct JsiWeakObjectRef
   {
     UInt64 Data;
   };
 
+  [webhosthidden, experimental]
   struct JsiPropertyIdRef
   {
     UInt64 Data;
   };
 
+  [webhosthidden, experimental]
   struct JsiScopeState
   {
     UInt64 Data;
@@ -89,11 +97,10 @@ namespace Microsoft.ReactNative
   {
   };
 
-  [experimental]
+  [webhosthidden, experimental]
   delegate JsiValueRef JsiHostFunction(JsiRuntime runtime, JsiValueRef thisArg, JsiValueRef[] args);
 
-  [webhosthidden]
-  [experimental]
+  [webhosthidden, experimental]
   interface IJsiHostObject
   {
     JsiValueRef GetProperty(JsiRuntime runtime, JsiPropertyIdRef propertyId);
@@ -101,14 +108,15 @@ namespace Microsoft.ReactNative
     IVector<JsiPropertyIdRef> GetPropertyIds(JsiRuntime runtime);
   };
 
+  [webhosthidden, experimental]
   enum JsiErrorType
   {
     JSError,         // JavaScript error
     NativeException, // JSI native code exception
   };
 
-  [webhosthidden, default_interface]
-  runtimeclass JsiError
+  [exclusiveto(JsiError), webhosthidden, experimental]
+  interface IJsiError
   {
     JsiErrorType ErrorType { get; };
     String ErrorDetails { get; };
@@ -117,13 +125,14 @@ namespace Microsoft.ReactNative
     JsiValueRef Value { get; };
   };
 
-  [webhosthidden, default_interface]
-  [experimental]
-  runtimeclass JsiRuntime
+  [webhosthidden, experimental]
+  runtimeclass JsiError : [default]IJsiError
   {
-    // TODO : replace with a registered factory method
-    static JsiRuntime MakeChakraRuntime();
+  };
 
+  [exclusiveto(JsiRuntime), webhosthidden, experimental]
+  interface IJsiRuntime
+  {
     JsiValueRef EvaluateJavaScript(IJsiByteBuffer buffer, String sourceUrl);
     JsiPreparedJavaScript PrepareJavaScript(IJsiByteBuffer buffer, String sourceUrl);
     JsiValueRef EvaluatePreparedJavaScript(JsiPreparedJavaScript js);
@@ -202,5 +211,12 @@ namespace Microsoft.ReactNative
 
     JsiError GetAndClearError();
     void SetError(JsiErrorType errorType, String errorDetails, JsiValueRef value);
+  };
+
+  [webhosthidden, experimental]
+  runtimeclass JsiRuntime : [default]IJsiRuntime
+  {
+    // TODO : replace with a registered factory method
+    static JsiRuntime MakeChakraRuntime();
   };
 }

@@ -20,6 +20,8 @@ class TurboModulesProvider final : public facebook::react::TurboModuleRegistry {
   using TurboModulePtr = std::shared_ptr<TurboModule>;
   using CallInvokerPtr = std::shared_ptr<CallInvoker>;
 
+  using TurboModuleProvider = std::function<TurboModulePtr(CallInvokerPtr, IReactContext const &)>;
+
  public:
   virtual TurboModulePtr getModule(const std::string &moduleName, const CallInvokerPtr &callInvoker) noexcept override;
   virtual std::vector<std::string> getEagerInitModuleNames() noexcept override;
@@ -27,9 +29,10 @@ class TurboModulesProvider final : public facebook::react::TurboModuleRegistry {
  public:
   void SetReactContext(const IReactContext &reactContext) noexcept;
   void AddModuleProvider(winrt::hstring const &moduleName, ReactModuleProvider const &moduleProvider) noexcept;
+  void AddModuleProvider(std::string const &moduleName, TurboModuleProvider &&moduleProvider) noexcept;
 
  private:
-  std::unordered_map<std::string, ReactModuleProvider> m_moduleProviders;
+  std::unordered_map<std::string, TurboModuleProvider> m_moduleProviders;
   std::unordered_map<std::pair<std::string, CallInvokerPtr>, TurboModulePtr> m_cachedModules;
   IReactContext m_reactContext;
 };
