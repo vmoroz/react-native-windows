@@ -146,7 +146,7 @@ void add_last_status(napi_env env, const char *key, napi_value return_value) {
 
 #define EXPECT_DEEP_STRICT_EQ(left, right) EXPECT_TRUE(CheckDeepStrictEqual(left, right))
 
-#define EXPECT_JS_THROW(expr) EXPECT_TRUE(CheckThrow(expr, nullptr))
+#define EXPECT_JS_THROW(expr) EXPECT_TRUE(CheckThrow(expr, ""))
 
 #define EXPECT_JS_THROW_MSG(expr, msgRegex) EXPECT_TRUE(CheckThrow(expr, msgRegex))
 
