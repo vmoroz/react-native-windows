@@ -2,6 +2,42 @@
   "name": "@react-native-windows/cli",
   "entries": [
     {
+      "date": "Wed, 06 Jan 2021 05:06:51 GMT",
+      "tag": "@react-native-windows/cli_v0.0.0-canary.51",
+      "version": "0.0.0-canary.51",
+      "comments": {
+        "prerelease": [
+          {
+            "comment": "Print cwd if generator cannot detect project package",
+            "author": "ngerlem@microsoft.com",
+            "commit": "e7d58f9ce5566078a44f456d0275b9fcbaadad33",
+            "package": "@react-native-windows/cli"
+          },
+          {
+            "comment": "Move some packages from @rnw-scripts to @react-native-windows",
+            "author": "ngerlem@microsoft.com",
+            "commit": "cd49e86e7bb698c318a776fa9b9142792196942f",
+            "package": "@react-native-windows/cli"
+          }
+        ]
+      }
+    },
+    {
+      "date": "Tue, 05 Jan 2021 05:06:42 GMT",
+      "tag": "@react-native-windows/cli_v0.0.0-canary.50",
+      "version": "0.0.0-canary.50",
+      "comments": {
+        "prerelease": [
+          {
+            "comment": "Rework error reporting/telemetry to only log the minimal amount of data",
+            "author": "asklar@microsoft.com",
+            "commit": "226fc2c5f4fc300ad90bfc413d275e0fe0adf87f",
+            "package": "@react-native-windows/cli"
+          }
+        ]
+      }
+    },
+    {
       "date": "Tue, 29 Dec 2020 05:06:55 GMT",
       "tag": "@react-native-windows/cli_v0.0.0-canary.49",
       "version": "0.0.0-canary.49",

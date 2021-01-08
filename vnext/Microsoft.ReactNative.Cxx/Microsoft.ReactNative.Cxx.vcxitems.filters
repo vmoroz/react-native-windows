@@ -18,6 +18,21 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)NAPI\NapiApi.cpp">
       <Filter>NAPI</Filter>
     </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)ReactCommon\TurboModuleUtils.cpp">
+      <Filter>TurboModule</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)TurboModuleProvider.cpp">
+      <Filter>TurboModule</Filter>
+    </ClCompile>
+    <ClCompile Include="$(TurboModule_SourcePath)\ReactCommon\TurboModule.cpp">
+      <Filter>TurboModule</Filter>
+    </ClCompile>
+    <ClCompile Include="$(TurboModule_SourcePath)\ReactCommon\LongLivedObject.cpp">
+      <Filter>TurboModule</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)JSI\JsiApiContext.cpp">
+      <Filter>JSI</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="$(MSBuildThisFileDirectory)Crash.h" />
@@ -118,7 +133,13 @@
     <ClInclude Include="$(JSI_SourcePath)\jsi\instrumentation.h">
       <Filter>JSI</Filter>
     </ClInclude>
-    <ClInclude Include="$(MSBuildThisFileDirectory)JSI\JsiApi.h">
+    <ClInclude Include="$(MSBuildThisFileDirectory)TurboModuleProvider.h">
+      <Filter>TurboModule</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)ReactCommon\TurboModuleUtils.h">
+      <Filter>TurboModule</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)JSI\JsiApiContext.h">
       <Filter>JSI</Filter>
     </ClInclude>
     <ClInclude Include="$(MSBuildThisFileDirectory)NAPI\js_native_api.h">
@@ -136,6 +157,15 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)NAPI\NapiApi.h">
       <Filter>NAPI</Filter>
     </ClInclude>
+    <ClInclude Include="$(CallInvoker_SourcePath)\ReactCommon\CallInvoker.h">
+      <Filter>TurboModule</Filter>
+    </ClInclude>
+    <ClInclude Include="$(TurboModule_SourcePath)\ReactCommon\TurboModule.h">
+      <Filter>TurboModule</Filter>
+    </ClInclude>
+    <ClInclude Include="$(TurboModule_SourcePath)\ReactCommon\LongLivedObject.h">
+      <Filter>TurboModule</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="JSI">
@@ -147,5 +177,11 @@
     <Filter Include="NAPI">
       <UniqueIdentifier>{578ba5ec-1e7d-4ba2-baf9-07fcc506d4ce}</UniqueIdentifier>
     </Filter>
+    <Filter Include="TurboModule">
+      <UniqueIdentifier>{b5c0294c-d72f-44fa-8509-369f7d3e4a56}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)README.md" />
   </ItemGroup>
 </Project>

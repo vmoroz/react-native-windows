@@ -21,7 +21,11 @@ import {
   copyAndReplaceWithChangedCallback,
 } from '../generator-common';
 import {GenerateOptions} from '..';
-import {findPackage, WritableNpmPackage} from '@rnw-scripts/package-utils';
+import {CodedError} from '@react-native-windows/telemetry';
+import {
+  findPackage,
+  WritableNpmPackage,
+} from '@react-native-windows/package-utils';
 
 const windowsDir = 'windows';
 const bundleDir = 'Bundle';
@@ -108,15 +112,24 @@ export async function copyProjectTemplateAndReplace(
   options: GenerateOptions,
 ) {
   if (!srcRootPath) {
-    throw new Error('Need a path to copy from');
+    throw new CodedError(
+      'CopyProjectTemplateNoSourcePath',
+      'Need a path to copy from',
+    );
   }
 
   if (!destPath) {
-    throw new Error('Need a path to copy to');
+    throw new CodedError(
+      'CopyProjectTemplateNoDestPath',
+      'Need a path to copy to',
+    );
   }
 
   if (!newProjectName) {
-    throw new Error('Need a project name');
+    throw new CodedError(
+      'CopyProjectTemplateNoProjectName',
+      'Need a project name',
+    );
   }
 
   const projectType = options.projectType;
@@ -525,7 +538,9 @@ export async function installScriptsAndDependencies(options: {
 }) {
   const projectPackage = await WritableNpmPackage.fromPath(process.cwd());
   if (!projectPackage) {
-    throw new Error('The current directory is not the root of an npm package');
+    throw new Error(
+      `The current directory '${process.cwd()}' is not the root of an npm package`,
+    );
   }
 
   await projectPackage.mergeProps({
