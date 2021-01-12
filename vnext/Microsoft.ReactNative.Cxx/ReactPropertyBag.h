@@ -100,8 +100,8 @@ struct ReactPropertyNamespace {
     return ReactPropertyNamespace{ReactPropertyBagHelper::GlobalNamespace()};
   }
 
-  hstring NamespaceName() const noexcept {
-    return m_handle ? m_handle.NamespaceName() : hstring{};
+  std::wstring NamespaceName() const noexcept {
+    return m_handle ? std::wstring(m_handle.NamespaceName()) : std::wstring();
   }
 
  private:
@@ -110,19 +110,19 @@ struct ReactPropertyNamespace {
 
 // ReactPropertyName encapsulates the IReactPropertyName.
 // It represents an atomic property name object that defines a LocalName
-// within the referenced Namespace.
+// within the referenced namespace.
 struct ReactPropertyName {
   ReactPropertyName(std::nullptr_t = nullptr) noexcept {}
 
   explicit ReactPropertyName(IReactPropertyName const &handle) noexcept : m_handle{handle} {}
 
-  explicit ReactPropertyName(hstring const &localName) noexcept
+  explicit ReactPropertyName(std::wstring_view localName) noexcept
       : m_handle{ReactPropertyBagHelper::GetName(nullptr, localName)} {}
 
-  ReactPropertyName(ReactPropertyNamespace const &ns, hstring const &localName) noexcept
+  ReactPropertyName(ReactPropertyNamespace const &ns, std::wstring_view localName) noexcept
       : m_handle{ReactPropertyBagHelper::GetName(ns.Handle(), localName)} {}
 
-  ReactPropertyName(hstring const &namespaceName, hstring const &localName) noexcept
+  ReactPropertyName(std::wstring_view namespaceName, std::wstring_view localName) noexcept
       : m_handle{ReactPropertyBagHelper::GetName(ReactPropertyBagHelper::GetNamespace(namespaceName), localName)} {}
 
   IReactPropertyName const &Handle() const noexcept {
@@ -137,12 +137,12 @@ struct ReactPropertyName {
     return ReactPropertyNamespace{m_handle ? m_handle.Namespace() : nullptr};
   }
 
-  hstring NamespaceName() const noexcept {
-    return m_handle ? m_handle.Namespace().NamespaceName() : hstring{};
+  std::wstring NamespaceName() const noexcept {
+    return m_handle ? std::wstring(m_handle.Namespace().NamespaceName()) : std::wstring();
   }
 
-  hstring LocalName() const noexcept {
-    return m_handle ? m_handle.LocalName() : hstring{};
+  std::wstring LocalName() const noexcept {
+    return m_handle ? std::wstring(m_handle.LocalName()) : std::wstring();
   }
 
  private:

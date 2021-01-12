@@ -136,11 +136,13 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)JSI\JsiApiContext.h">
       <Filter>JSI</Filter>
     </ClInclude>
-    <ClInclude Include="$(CallInvoker_SourcePath)\ReactCommon\CallInvoker.h" />
     <ClInclude Include="$(TurboModule_SourcePath)\ReactCommon\TurboModule.h">
       <Filter>TurboModule</Filter>
     </ClInclude>
     <ClInclude Include="$(TurboModule_SourcePath)\ReactCommon\LongLivedObject.h">
+      <Filter>TurboModule</Filter>
+    </ClInclude>
+    <ClInclude Include="$(CallInvoker_SourcePath)\ReactCommon\CallInvoker.h">
       <Filter>TurboModule</Filter>
     </ClInclude>
   </ItemGroup>
