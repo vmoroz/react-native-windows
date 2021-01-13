@@ -310,11 +310,12 @@ TEST_CLASS (ReactNotificationServiceTests) {
       host.InstanceSettings().UseLiveReload(false);
       host.InstanceSettings().EnableDeveloperMenu(false);
 
-      ReactNotificationService notificationService(host.InstanceSettings().Notifications());
-      notificationService.Subscribe(
-          notifyAppFromModule, [notificationService](IInspectable const &, ReactNotificationArgs<int> const &args) {
+      ReactNotificationService::Subscribe(
+          host.InstanceSettings().Notifications(),
+          notifyAppFromModule,
+          [](IInspectable const &, ReactNotificationArgs<int> const &args) {
             TestEventService::LogEvent("NotifyAppFromModule", args.Data());
-            notificationService.SendNotification(notifyModuleFromApp, 42);
+            args.Subscription().NotificationService().SendNotification(notifyModuleFromApp, 42);
             args.Subscription().Unsubscribe();
           });
 
