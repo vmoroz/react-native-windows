@@ -21,6 +21,7 @@
 #include <ReactCommon/TurboModule.h> // This comes from the react-native package.
 #include <ReactCommon/TurboModuleUtils.h> // This must come from the react-native package, but we use a local version to fix issues.
 #include <TurboModuleProvider.h> // It is RNW specific
+#include "TestEventService.h"
 
 #include <condition_variable>
 #include <limits>
@@ -186,11 +187,6 @@ MySimpleTurboModuleSpec::MySimpleTurboModuleSpec(std::shared_ptr<::facebook::rea
 
 // <<<< End generated
 
-struct TestAction {
-  std::string ActionName;
-  JSValue Value;
-};
-
 struct MySimpleTurboModule : MySimpleTurboModuleSpec {
   MySimpleTurboModule(std::shared_ptr<facebook::react::CallInvoker> jsInvoker);
 
@@ -210,26 +206,7 @@ struct MySimpleTurboModule : MySimpleTurboModuleSpec {
   void getValueWithCallback(facebook::jsi::Runtime &rt, const facebook::jsi::Function &callback) override;
   facebook::jsi::Value getValueWithPromise(facebook::jsi::Runtime &rt, bool error) override;
   facebook::jsi::Object getConstants(facebook::jsi::Runtime &rt) override;
-
- public: // Code to report test results
-  static void LogAction(std::string actionName, JSValue value) {
-    auto lock = std::scoped_lock{s_mutex};
-    s_currentAction.ActionName = std::move(actionName);
-    s_currentAction.Value = std::move(value);
-    ++s_actionIndex;
-    s_cv.notify_all();
-  }
-
-  static std::mutex s_mutex;
-  static std::condition_variable s_cv;
-  static TestAction s_currentAction;
-  static int s_actionIndex;
 };
-
-/*static*/ std::mutex MySimpleTurboModule::s_mutex;
-/*static*/ std::condition_variable MySimpleTurboModule::s_cv;
-/*static*/ TestAction MySimpleTurboModule::s_currentAction;
-/*static*/ int MySimpleTurboModule::s_actionIndex{-1};
 
 MySimpleTurboModule::MySimpleTurboModule(std::shared_ptr<facebook::react::CallInvoker> jsInvoker)
     : MySimpleTurboModuleSpec(std::move(jsInvoker)) {}
@@ -246,35 +223,35 @@ void MySimpleTurboModule::logAction(
   } else if (value.isString()) {
     jsValue = JSValue(value.getString(rt).utf8(rt));
   }
-  LogAction(actionName.utf8(rt), std::move(jsValue));
+  TestEventService::LogEvent(actionName.utf8(rt), std::move(jsValue));
 }
 
 void MySimpleTurboModule::voidFunc(facebook::jsi::Runtime & /*rt*/) {
-  LogAction("voidFunc called", nullptr);
+  TestEventService::LogEvent("voidFunc called", nullptr);
 }
 
 bool MySimpleTurboModule::getBool(facebook::jsi::Runtime & /*rt*/, bool arg) {
-  LogAction("getBool called", arg);
+  TestEventService::LogEvent("getBool called", arg);
   return arg;
 }
 
 double MySimpleTurboModule::getNumber(facebook::jsi::Runtime & /*rt*/, double arg) {
-  LogAction("getNumber called", arg);
+  TestEventService::LogEvent("getNumber called", arg);
   return arg;
 }
 
 facebook::jsi::String MySimpleTurboModule::getString(facebook::jsi::Runtime &rt, const facebook::jsi::String &arg) {
-  LogAction("getString called", arg.utf8(rt));
+  TestEventService::LogEvent("getString called", arg.utf8(rt));
   return facebook::jsi::String::createFromUtf8(rt, arg.utf8(rt));
 }
 
 facebook::jsi::Array MySimpleTurboModule::getArray(facebook::jsi::Runtime &rt, const facebook::jsi::Array &arg) {
-  LogAction("getArray called", arg.length(rt));
+  TestEventService::LogEvent("getArray called", arg.length(rt));
   return facebook::react::deepCopyJSIArray(rt, arg);
 }
 
 facebook::jsi::Object MySimpleTurboModule::getObject(facebook::jsi::Runtime &rt, const facebook::jsi::Object &arg) {
-  LogAction("getObject called", "OK");
+  TestEventService::LogEvent("getObject called", "OK");
   return facebook::react::deepCopyJSIObject(rt, arg);
 }
 
@@ -283,7 +260,7 @@ facebook::jsi::Object MySimpleTurboModule::getValue(
     double x,
     const facebook::jsi::String &y,
     const facebook::jsi::Object &z) {
-  LogAction("getValue called", "OK");
+  TestEventService::LogEvent("getValue called", "OK");
   // Note: return type isn't type-safe.
   facebook::jsi::Object result(rt);
   result.setProperty(rt, "x", facebook::jsi::Value(x));
@@ -293,12 +270,12 @@ facebook::jsi::Object MySimpleTurboModule::getValue(
 }
 
 void MySimpleTurboModule::getValueWithCallback(facebook::jsi::Runtime &rt, const facebook::jsi::Function &callback) {
-  LogAction("getValueWithCallback called", "OK");
+  TestEventService::LogEvent("getValueWithCallback called", "OK");
   callback.call(rt, facebook::jsi::String::createFromUtf8(rt, "value from callback!"));
 }
 
 facebook::jsi::Value MySimpleTurboModule::getValueWithPromise(facebook::jsi::Runtime &rt, bool error) {
-  LogAction("getValueWithPromise called", error);
+  TestEventService::LogEvent("getValueWithPromise called", error);
   return facebook::react::createPromiseAsJSIValue(
       rt, [error](facebook::jsi::Runtime &rt2, std::shared_ptr<facebook::react::Promise> promise) {
         if (error) {
@@ -310,7 +287,7 @@ facebook::jsi::Value MySimpleTurboModule::getValueWithPromise(facebook::jsi::Run
 }
 
 facebook::jsi::Object MySimpleTurboModule::getConstants(facebook::jsi::Runtime &rt) {
-  LogAction("getConstants called", "OK");
+  TestEventService::LogEvent("getConstants called", "OK");
   // Note: return type isn't type-safe.
   facebook::jsi::Object result(rt);
   result.setProperty(rt, "const1", facebook::jsi::Value(true));
@@ -330,38 +307,7 @@ struct MySimpleTurboModulePackageProvider
 
 TEST_CLASS (JsiTurboModuleTests) {
   TEST_METHOD(ExecuteSampleTurboModule) {
-    MySimpleTurboModule::s_actionIndex = -1;
-    TestAction expectedActions[] = {
-        TestAction{"voidFunc called", nullptr},
-        TestAction{"getBool called", true},
-        TestAction{"getBool result", true},
-        TestAction{"getBool called", false},
-        TestAction{"getBool result", false},
-        TestAction{"getNumber called", 5.0},
-        TestAction{"getNumber result", 5.0},
-        TestAction{"getNumber called", std::numeric_limits<double>::quiet_NaN()},
-        TestAction{"getNumber result", std::numeric_limits<double>::quiet_NaN()},
-        TestAction{"getNumber called", std::numeric_limits<double>::infinity()},
-        TestAction{"getNumber result", std::numeric_limits<double>::infinity()},
-        TestAction{"getString called", "Hello"},
-        TestAction{"getString result", "Hello"},
-        TestAction{"getString called", ""},
-        TestAction{"getString result", ""},
-        TestAction{"getArray called", 3},
-        TestAction{"getArray result", "OK"},
-        TestAction{"getObject called", "OK"},
-        TestAction{"getObject result", "OK"},
-        TestAction{"getValue called", "OK"},
-        TestAction{"getValue result", "OK"},
-        TestAction{"getConstants called", "OK"},
-        TestAction{"getConstants result", "OK"},
-        TestAction{"getValueWithCallback called", "OK"},
-        TestAction{"getValueWithCallback result", "value from callback!"},
-        TestAction{"getValueWithPromise called", false},
-        TestAction{"getValueWithPromise called", true},
-        TestAction{"getValueWithPromise result resolve", "result!"},
-        TestAction{"getValueWithPromise result reject", "intentional promise rejection"},
-    };
+    TestEventService::Initialize();
 
     ReactNativeHost host{};
 
@@ -386,31 +332,35 @@ TEST_CLASS (JsiTurboModuleTests) {
           [](IAsyncAction asyncInfo, AsyncStatus asyncStatus) { TestCheckEqual(AsyncStatus::Completed, asyncStatus); });
     });
 
-    auto lock = std::unique_lock{MySimpleTurboModule::s_mutex};
-    MySimpleTurboModule::s_cv.wait(lock, [&]() {
-      if (MySimpleTurboModule::s_actionIndex >= 0) {
-        auto const &expectedAction = expectedActions[MySimpleTurboModule::s_actionIndex];
-        TestCheckEqual(expectedAction.ActionName, MySimpleTurboModule::s_currentAction.ActionName);
-        if (auto d1 = expectedAction.Value.TryGetDouble(),
-            d2 = MySimpleTurboModule::s_currentAction.Value.TryGetDouble();
-            d1 && d2) {
-          if (!isnan(*d1) && !isnan(*d2)) {
-            TestCheckEqual(*d1, *d2);
-          }
-        } else if (expectedAction.Value != MySimpleTurboModule::s_currentAction.Value) {
-          std::stringstream os;
-          os << "Action index: " << MySimpleTurboModule::s_actionIndex << '\n'
-             << "Expected: " << expectedAction.Value.ToString() << '\n'
-             << "Actual: " << MySimpleTurboModule::s_currentAction.Value.ToString();
-          TestCheckFail("%s", os.str().c_str());
-        }
-      }
-      return MySimpleTurboModule::s_actionIndex >= static_cast<ptrdiff_t>(std::size(expectedActions)) - 1;
-    });
-
-    // Make sure that we did all actions
-    TestCheckEqual(MySimpleTurboModule::s_actionIndex, static_cast<ptrdiff_t>(std::size(expectedActions)) - 1);
-    lock.unlock();
+    TestEventService::ObserveEvents({TestEvent{"voidFunc called", nullptr},
+                                     TestEvent{"getBool called", true},
+                                     TestEvent{"getBool result", true},
+                                     TestEvent{"getBool called", false},
+                                     TestEvent{"getBool result", false},
+                                     TestEvent{"getNumber called", 5.0},
+                                     TestEvent{"getNumber result", 5.0},
+                                     TestEvent{"getNumber called", std::numeric_limits<double>::quiet_NaN()},
+                                     TestEvent{"getNumber result", std::numeric_limits<double>::quiet_NaN()},
+                                     TestEvent{"getNumber called", std::numeric_limits<double>::infinity()},
+                                     TestEvent{"getNumber result", std::numeric_limits<double>::infinity()},
+                                     TestEvent{"getString called", "Hello"},
+                                     TestEvent{"getString result", "Hello"},
+                                     TestEvent{"getString called", ""},
+                                     TestEvent{"getString result", ""},
+                                     TestEvent{"getArray called", 3},
+                                     TestEvent{"getArray result", "OK"},
+                                     TestEvent{"getObject called", "OK"},
+                                     TestEvent{"getObject result", "OK"},
+                                     TestEvent{"getValue called", "OK"},
+                                     TestEvent{"getValue result", "OK"},
+                                     TestEvent{"getConstants called", "OK"},
+                                     TestEvent{"getConstants result", "OK"},
+                                     TestEvent{"getValueWithCallback called", "OK"},
+                                     TestEvent{"getValueWithCallback result", "value from callback!"},
+                                     TestEvent{"getValueWithPromise called", false},
+                                     TestEvent{"getValueWithPromise called", true},
+                                     TestEvent{"getValueWithPromise result resolve", "result!"},
+                                     TestEvent{"getValueWithPromise result reject", "intentional promise rejection"}});
 
     host.UnloadInstance().get();
     queueController.ShutdownQueueAsync().get();

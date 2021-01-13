@@ -6,6 +6,7 @@
 #include <NativeModules.h>
 #include <winrt/Windows.System.h>
 #include "MockReactPackageProvider.h"
+#include "TestEventService.h"
 
 using namespace React;
 
@@ -16,7 +17,8 @@ struct TestHostModule {
   REACT_INIT(Initialize)
   void Initialize(ReactContext const &reactContext) noexcept {
     using namespace facebook::jsi;
-    TestHostModule::Instance.set_value(*this);
+
+    TestEventService::LogEvent("initialize", nullptr);
 
     Runtime *jsiRuntime{nullptr};
     bool jsiExecuted{false};
@@ -79,19 +81,15 @@ struct TestHostModule {
   void Start() noexcept {
     // Native modules are created on-demand.
     // This method is used to start loading the module from JavaScript.
+    TestEventService::LogEvent("start", nullptr);
+    addValues(4, 7);
   }
 
   REACT_METHOD(ReturnInt, L"returnInt")
   void ReturnInt(int value) noexcept {
-    TestHostModule::IntReturnValue.set_value(value);
+    TestEventService::LogEvent("returnInt", value);
   }
-
-  static std::promise<TestHostModule &> Instance;
-  static std::promise<int> IntReturnValue;
 };
-
-std::promise<TestHostModule &> TestHostModule::Instance;
-std::promise<int> TestHostModule::IntReturnValue;
 
 struct TestPackageProvider : winrt::implements<TestPackageProvider, IReactPackageProvider> {
   void CreatePackage(IReactPackageBuilder const &packageBuilder) noexcept {
@@ -129,8 +127,7 @@ TEST_CLASS (ReactNativeHostTests) {
   }
 
   TEST_METHOD(JsFunctionCall_Succeeds) {
-    std::future<TestHostModule &> testHostModule = TestHostModule::Instance.get_future();
-    std::future<int> returnValue = TestHostModule::IntReturnValue.get_future();
+    TestEventService::Initialize();
 
     winrt::Microsoft::ReactNative::ReactNativeHost host{};
 
@@ -156,8 +153,8 @@ TEST_CLASS (ReactNativeHostTests) {
       host.LoadInstance();
     });
 
-    testHostModule.get().addValues(12, 23);
-    TestCheckEqual(35, returnValue.get());
+    TestEventService::ObserveEvents(
+        {TestEvent{"initialize", nullptr}, TestEvent{"start", nullptr}, TestEvent{"returnInt", 11}});
 
     host.UnloadInstance().get();
     queueController.ShutdownQueueAsync().get();
