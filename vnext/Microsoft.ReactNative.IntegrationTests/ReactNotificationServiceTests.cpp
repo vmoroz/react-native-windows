@@ -3,11 +3,13 @@
 
 #include "pch.h"
 
+#include <NativeModules.h>
 #include <ReactNotificationService.h>
 #include <eventWaitHandle/eventWaitHandle.h>
 #include <winrt/Microsoft.ReactNative.h>
 #include <winrt/Windows.Foundation.h>
 #include <string>
+#include "TestEventService.h"
 
 using namespace winrt;
 using namespace Microsoft::ReactNative;
@@ -15,6 +17,44 @@ using namespace Windows::Foundation;
 using namespace std::string_literals;
 
 namespace ReactNativeIntegrationTests {
+
+// Use anonymous namespace to avoid any linking conflicts
+namespace {
+
+ReactNotificationId<int> notifyAppFromModule{L"NotificationTestModule", L"NotifyAppFromModule"};
+ReactNotificationId<int> notifyModuleFromApp{L"NotificationTestModule", L"NotifyModuleFromApp"};
+
+REACT_MODULE(NotificationTestModule)
+struct NotificationTestModule {
+  REACT_INIT(Initialize)
+  void Initialize(ReactContext const &reactContext) noexcept {
+    m_reactContext = reactContext;
+    reactContext.Notifications().Subscribe(
+        notifyModuleFromApp, [](IInspectable const & /*sender*/, ReactNotificationArgs<int> const &args) noexcept {
+          TestEventService::LogEvent("NotifyModuleFromApp", args.Data());
+        });
+  }
+
+  REACT_METHOD(Start, L"start")
+  void Start() noexcept {
+    // Native modules are created on-demand.
+    // This method is used to start loading the module from JavaScript.
+    TestEventService::LogEvent("NativeModule started", nullptr);
+    m_reactContext.Notifications().SendNotification(notifyAppFromModule, 15);
+    TestEventService::LogEvent("NativeModule ended", nullptr);
+  }
+
+ private:
+  ReactContext m_reactContext;
+};
+
+struct NotificationTestPackageProvider : winrt::implements<NotificationTestPackageProvider, IReactPackageProvider> {
+  void CreatePackage(IReactPackageBuilder const &packageBuilder) noexcept {
+    TryAddAttributedModule(packageBuilder, L"NotificationTestModule");
+  }
+};
+
+} // namespace
 
 TEST_CLASS (ReactNotificationServiceTests) {
   TEST_METHOD(Notification_Subscribe) {
@@ -246,6 +286,51 @@ TEST_CLASS (ReactNotificationServiceTests) {
 
     subscription = nullptr;
     TestCheck(!s.IsSubscribed());
+  }
+
+  TEST_METHOD(NotificationBetweenAppAndModule) {
+    TestEventService::Initialize();
+
+    ReactNativeHost host{};
+
+    auto queueController = winrt::Windows::System::DispatcherQueueController::CreateOnDedicatedThread();
+    queueController.DispatcherQueue().TryEnqueue([&]() noexcept {
+      host.PackageProviders().Append(winrt::make<NotificationTestPackageProvider>());
+
+      // bundle is assumed to be co-located with the test binary
+      wchar_t testBinaryPath[MAX_PATH];
+      TestCheck(GetModuleFileNameW(NULL, testBinaryPath, MAX_PATH) < MAX_PATH);
+      testBinaryPath[std::wstring_view{testBinaryPath}.rfind(L"\\")] = 0;
+
+      host.InstanceSettings().BundleRootPath(testBinaryPath);
+      host.InstanceSettings().JavaScriptBundleFile(L"ReactNotificationServiceTests");
+      host.InstanceSettings().UseDeveloperSupport(false);
+      host.InstanceSettings().UseWebDebugger(false);
+      host.InstanceSettings().UseFastRefresh(false);
+      host.InstanceSettings().UseLiveReload(false);
+      host.InstanceSettings().EnableDeveloperMenu(false);
+
+      ReactNotificationService notificationService(host.InstanceSettings().Notifications());
+      notificationService.Subscribe(
+          notifyAppFromModule, [notificationService](IInspectable const &, ReactNotificationArgs<int> const &args) {
+            TestEventService::LogEvent("NotifyAppFromModule", args.Data());
+            notificationService.SendNotification(notifyModuleFromApp, 42);
+            args.Subscription().Unsubscribe();
+          });
+
+      host.LoadInstance().Completed(
+          [](IAsyncAction asyncInfo, AsyncStatus asyncStatus) { TestCheckEqual(AsyncStatus::Completed, asyncStatus); });
+    });
+
+    TestEventService::ObserveEvents({
+        TestEvent{"NativeModule started", nullptr},
+        TestEvent{"NotifyAppFromModule", 15},
+        TestEvent{"NotifyModuleFromApp", 42},
+        TestEvent{"NativeModule ended", nullptr},
+    });
+
+    host.UnloadInstance().get();
+    queueController.ShutdownQueueAsync().get();
   }
 };
 

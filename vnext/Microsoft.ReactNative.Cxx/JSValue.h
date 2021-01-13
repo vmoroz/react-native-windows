@@ -223,6 +223,11 @@ struct JSValue {
   //! Create a Double JSValue.
   JSValue(double value) noexcept;
 
+  //! Create JSValue from std::optional<T>. The result type is defined by T.
+  //! If std::optional does not have value, then the result is JSValue::Null
+  template <class T>
+  JSValue(std::optional<T> &&value) noexcept;
+
   //! Delete the copy constructor to avoid unexpected copies. Use the Copy method instead.
   JSValue(const JSValue &other) = delete;
 
@@ -607,6 +612,9 @@ inline JSValue::JSValue(TBool value) noexcept : m_type{JSValueType::Boolean}, m_
 template <class TInt, std::enable_if_t<std::is_integral_v<TInt> && !std::is_same_v<TInt, bool>, int>>
 inline JSValue::JSValue(TInt value) noexcept : m_type{JSValueType::Int64}, m_int64{static_cast<int64_t>(value)} {}
 inline JSValue::JSValue(double value) noexcept : m_type{JSValueType::Double}, m_double{value} {}
+template <class T>
+inline JSValue::JSValue(std::optional<T> &&value) noexcept
+    : JSValue(value.has_value() ? JSValue(std::move(value).value()) : JSValue()) {}
 #pragma warning(pop)
 
 inline JSValueType JSValue::Type() const noexcept {
