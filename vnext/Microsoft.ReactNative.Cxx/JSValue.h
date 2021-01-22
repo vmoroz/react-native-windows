@@ -163,9 +163,11 @@ struct JSValueArray : std::vector<JSValue> {
 #pragma endregion
 };
 
+//! \related JSValueArray
 //! True if left.Equals(right)
 bool operator==(JSValueArray const &left, JSValueArray const &right) noexcept;
 
+//! \related JSValueArray
 //! True if !left.Equals(right)
 bool operator!=(JSValueArray const &left, JSValueArray const &right) noexcept;
 
@@ -470,6 +472,7 @@ struct JSValue {
 #pragma region Deprecated methods
 
   // The methods below are deprecated in favor of other methods with clearer semantic
+  //! \deprecated Use TryGetObject or AsObject. To be removed in 0.65
   [[deprecated("Use TryGetObject or AsObject")]] JSValueObject const &Object() const noexcept;
   [[deprecated("Use TryGetArray or As Array")]] JSValueArray const &Array() const noexcept;
   [[deprecated("Use TryGetString, AsString, or AsJSString")]] std::string const &String() const noexcept;
