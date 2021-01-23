@@ -68,7 +68,7 @@ interface CompoundRootType {
 
 export interface DoxCompound {
   $: {id: string; kind: DoxCompoundKind};
-  compoundname: string[]; // there is only one entry
+  compoundname: {_: string}[]; // there is only one entry
 }
 
 interface IndexRootType {
