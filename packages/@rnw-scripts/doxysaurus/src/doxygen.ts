@@ -19,11 +19,11 @@ export async function generateDoxygenXml(config: Config) {
   const doxygenConfigPath = path.join(config.output, 'doxygen.config');
   generateDoxygenConfig(config, doxygenConfigPath);
 
-  // if (!doxygen.isDoxygenExecutableInstalled(DOXYGEN_VERSION)) {
-  //   console.log(`Downloading Doxygen version ${DOXYGEN_VERSION} ...`);
-  //   await doxygen.downloadVersion(DOXYGEN_VERSION);
-  //   console.log(`Doxygen version ${DOXYGEN_VERSION} is downloaded`);
-  // }
+  if (!doxygen.isDoxygenExecutableInstalled(DOXYGEN_VERSION)) {
+    console.log(`Downloading Doxygen version ${DOXYGEN_VERSION} ...`);
+    await doxygen.downloadVersion(DOXYGEN_VERSION);
+    console.log(`Doxygen version ${DOXYGEN_VERSION} is downloaded`);
+  }
 
   doxygen.run(doxygenConfigPath, DOXYGEN_VERSION);
 }

@@ -28,12 +28,30 @@ export class Transformer {
   }
 
   private transform() {
-    this.config;
-    this.doxModel;
-    this.docModel;
-    this.compoundMapDoxToDoc;
-    this.compoundMapDocToDox;
+    for (const doxCompoundId of Object.keys(this.doxModel.compounds)) {
+      const doxCompound = this.doxModel.compounds[doxCompoundId];
+      switch (doxCompound.$.kind) {
+        case 'struct':
+        case 'class':
+          this.transformClass(doxCompound);
+          break;
+        default:
+          break;
+      }
+    }
 
     return this.docModel;
+  }
+
+  private transformClass(doxCompound: DoxCompound) {
+    const doxCompoundName = doxCompound.compoundname[0];
+    const nsp = doxCompoundName.split('::');
+    const compound = new DocCompound();
+    compound.namespace = nsp.splice(0, nsp.length - 1).join('::');
+    compound.typeName = nsp[nsp.length - 1];
+    compound.docId = `${this.config.prefix}${compound.typeName.toLowerCase()}`;
+    this.docModel.compounds[compound.docId] = compound;
+    this.compoundMapDoxToDoc[doxCompound.$.id] = compound;
+    this.compoundMapDocToDox[compound.docId] = doxCompound;
   }
 }
