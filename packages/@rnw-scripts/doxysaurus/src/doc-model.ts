@@ -15,10 +15,12 @@ export class DocCompound {
   typeName?: string;
   docId?: string;
 
+  prototype?: string;
+
   brief?: string;
   details?: string;
 
-  sections = new Map<string, DocSection>();
+  sections: DocSection[] = [];
   // TODO: add templateParams
   // TODO: add support for template specializations
 
@@ -26,6 +28,7 @@ export class DocCompound {
 }
 
 export class DocSection {
+  title = '';
   memberOverloads = new Map<string, DocMemberOverload>();
 }
 
