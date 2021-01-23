@@ -6,7 +6,7 @@
  **/
 
 export class DocModel {
-  compounds: {[index: string]: DocCompound} = {};
+  compounds = new Map<string, DocCompound>();
 }
 
 export class DocCompound {
@@ -19,6 +19,7 @@ export class DocCompound {
 
   sections = new Map<string, DocSection>();
   // TODO: add templateParams
+  // TODO: add support for template specializations
 
   baseCompounds: DocCompound[] = [];
 }

@@ -45,13 +45,17 @@ export class Transformer {
 
   private transformClass(doxCompound: DoxCompound) {
     const doxCompoundName = doxCompound.compoundname[0]._;
-    const nsp = doxCompoundName.split('::');
+    const noTemplateName = doxCompoundName.split('<')[0];
+    const nsp = noTemplateName.split('::');
     const compound = new DocCompound();
     compound.namespace = nsp.splice(0, nsp.length - 1).join('::');
     compound.typeName = nsp[nsp.length - 1];
     compound.docId = `${this.config.prefix}${compound.typeName.toLowerCase()}`;
-    this.docModel.compounds[compound.docId] = compound;
+    this.docModel.compounds.set(compound.docId, compound);
     this.compoundMapDoxToDoc[doxCompound.$.id] = compound;
     this.compoundMapDocToDox[compound.docId] = doxCompound;
+
+    console.log(`transforming ${doxCompoundName}`);
+    console.log(compound);
   }
 }
