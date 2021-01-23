@@ -11,6 +11,7 @@ export class DocModel {
 
 export class DocCompound {
   namespace?: string;
+  namespaceAlias?: string;
   typeName?: string;
   docId?: string;
 

@@ -49,6 +49,10 @@ export class Transformer {
     const nsp = noTemplateName.split('::');
     const compound = new DocCompound();
     compound.namespace = nsp.splice(0, nsp.length - 1).join('::');
+    // TODO: make this code config driven
+    if (compound.namespace === 'winrt::Microsoft::ReactNative') {
+      compound.namespaceAlias = 'React';
+    }
     compound.typeName = nsp[nsp.length - 1];
     compound.docId = `${this.config.prefix}${compound.typeName.toLowerCase()}`;
     this.docModel.compounds.set(compound.docId, compound);
