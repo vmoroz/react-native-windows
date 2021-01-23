@@ -44,7 +44,7 @@ export class Transformer {
   }
 
   private transformClass(doxCompound: DoxCompound) {
-    const doxCompoundName = doxCompound.compoundname[0];
+    const doxCompoundName = doxCompound.compoundname[0]._;
     const nsp = doxCompoundName.split('::');
     const compound = new DocCompound();
     compound.namespace = nsp.splice(0, nsp.length - 1).join('::');
