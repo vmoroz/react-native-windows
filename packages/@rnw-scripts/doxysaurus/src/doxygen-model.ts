@@ -74,6 +74,12 @@ export interface DoxCompound {
 
 export interface DoxSection {
   $: {kind: DoxSectionKind};
+  memberdef: DoxMember[];
+}
+
+export interface DoxMember {
+  $: {id: string; kind: DoxMemberKind};
+  name: {_: string}[]; // there is only one entry
 }
 
 interface IndexRootType {
@@ -143,3 +149,19 @@ export type DoxSectionKind =
   | 'enum'
   | 'func'
   | 'var';
+
+export type DoxMemberKind =
+  | 'define'
+  | 'property'
+  | 'event'
+  | 'variable'
+  | 'typedef'
+  | 'enum'
+  | 'function'
+  | 'signal'
+  | 'prototype'
+  | 'friend'
+  | 'dcop'
+  | 'slot'
+  | 'interface'
+  | 'service';

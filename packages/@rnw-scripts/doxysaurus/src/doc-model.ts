@@ -21,6 +21,7 @@ export class DocCompound {
   details?: string;
 
   sections: DocSection[] = [];
+  memberOverloads: DocMemberOverload[] = [];
   // TODO: add templateParams
   // TODO: add support for template specializations
 
@@ -29,14 +30,31 @@ export class DocCompound {
 
 export class DocSection {
   title = '';
-  memberOverloads = new Map<string, DocMemberOverload>();
+  memberOverloads: DocMemberOverload[] = [];
 }
 
 export class DocMemberOverload {
-  members = new Map<string, DocMember>();
+  name = '';
+  members: DocMember[] = [];
+  anchor = '#';
+
+  static compareByName(
+    left: DocMemberOverload,
+    right: DocMemberOverload,
+  ): number {
+    if (left.name < right.name) {
+      return -1;
+    } else if (right.name > left.name) {
+      return 1;
+    } else {
+      return 0;
+    }
+  }
 }
 
 export class DocMember {
+  name = '';
+  overload?: DocMemberOverload;
   parameters = new Map<string, DocParameter>();
 }
 

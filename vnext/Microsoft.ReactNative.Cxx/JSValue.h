@@ -470,7 +470,8 @@ struct JSValue {
   void WriteTo(IJSValueWriter const &writer) const noexcept;
 
 #pragma region Deprecated methods
-
+//!@name Deprecated methods
+//!@{
   // The methods below are deprecated in favor of other methods with clearer semantic
   //! \deprecated Use TryGetObject or AsObject. To be removed in 0.65
   [[deprecated("Use TryGetObject or AsObject")]] JSValueObject const &Object() const noexcept;
@@ -497,12 +498,13 @@ struct JSValue {
       JSValueArray const &value) noexcept;
   [[deprecated("Use JSEquals")]] bool EqualsAfterConversion(JSValue const &other) const noexcept;
   [[deprecated("Use AsSingle")]] float AsFloat() const noexcept;
-
+//!@}
 #pragma endregion
 
  private: // Instance fields
   JSValueType m_type;
   union {
+    //! @privatesection
     JSValueObject m_object;
     JSValueArray m_array;
     std::string m_string;
