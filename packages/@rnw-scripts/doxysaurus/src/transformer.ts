@@ -231,9 +231,13 @@ export class Transformer {
         m = m.concat([memberDef.$.prot, ': ']); // public, private, ...
         m = m.concat(memberDef.$.static === 'yes' ? ['static', ' '] : []);
         m = m.concat(memberDef.$.virt === 'virtual' ? ['virtual', ' '] : []);
-        const typeMarkdown = this.toMarkdownNoLink(memberDef.type);
+        let typeMarkdown = this.toMarkdownNoLink(memberDef.type);
         if (typeMarkdown.trim() !== '') {
-          m = m.concat(typeMarkdown, ' ');
+          typeMarkdown = typeMarkdown.replace(/\s+/g, ' ');
+          m = m.concat(
+            typeMarkdown,
+            typeMarkdown.endsWith('&') || typeMarkdown.endsWith('*') ? '' : ' ',
+          );
         }
         m = m.concat(memberDef.$.explicit === 'yes' ? ['explicit', ' '] : []);
         m = m.concat(memberDef.name[0]._);
