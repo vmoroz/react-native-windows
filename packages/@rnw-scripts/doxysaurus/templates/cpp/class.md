@@ -14,8 +14,9 @@ Namespace alias: **`{{.}}`**
 ```cpp
 {{&prototype}}
 ```
+{{brief}}
 
-{{summary}}
+{{&summary}}
 
 {{#sections}}
 
@@ -23,13 +24,19 @@ Namespace alias: **`{{.}}`**
 
 Name | Description
 -----|------------
-{{#memberOverloads}}[**`{{&name}}`**]({{anchor}})| {{summary}}
+{{#memberOverloads}}[**`{{&name}}`**]({{anchor}}) | {{&summary}}
 {{/memberOverloads}}
 {{/sections}}
 
-{{details}}
+{{#details}}
+### Notes
 
+{{&details}}
+{{/details}}
+
+{{#sections}}
 {{#memberOverloads}}
+---
 ## `{{&name}}`
 
 {{#members}}
@@ -42,3 +49,4 @@ Name | Description
 {{/members}}
 
 {{/memberOverloads}}
+{{/sections}}

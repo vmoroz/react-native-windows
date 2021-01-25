@@ -208,9 +208,6 @@ export class Transformer {
           member.brief,
           member.details,
         );
-        if (!member.details) {
-          member.details = member.brief;
-        }
 
         let m: string[] = [];
         if (memberDef.templateparamlist) {
@@ -247,6 +244,7 @@ export class Transformer {
         if (argsstring.trim() !== '') {
           m = m.concat(argsstring.replace('=', ' = '));
         }
+        m = m.concat(';');
 
         member.prototype = m.join('');
 
@@ -278,6 +276,9 @@ export class Transformer {
           summary = firstParagraph;
         }
       }
+    }
+    if (!summary) {
+      summary = '&nbsp;';
     }
     return summary;
   }
