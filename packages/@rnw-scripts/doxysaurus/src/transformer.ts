@@ -333,12 +333,12 @@ class MarkdownTransformer {
     switch (element['#name']) {
       case 'ref':
         return this.refLink(
-          MarkdownTransformer.transform(this.transformer, element.$$),
+          MarkdownTransformer.transform(this.transformer, element.$$, true),
           element.$.refid,
           element.$.kindref,
         );
       case '__text__':
-        return this.w(element._);
+        return this.autoLinks(element._);
       case 'para':
         return this.w(element.$$, '\n\n');
       case 'emphasis':
@@ -440,7 +440,7 @@ class MarkdownTransformer {
         return this.w('<br/>');
       case 'ulink':
         return this.link(
-          MarkdownTransformer.transform(this.transformer, element.$$),
+          MarkdownTransformer.transform(this.transformer, element.$$, true),
           element.$.url,
         );
       case 'xreftitle':
@@ -509,6 +509,41 @@ class MarkdownTransformer {
       : isCode
       ? this.w('[`', text, '`](', href, ')')
       : this.w('[', text, '](', href, ')');
+  }
+
+  private autoLinks(text?: string) {
+    if (!this.noLink && text) {
+      text = this.applyStandardLibLinks(text);
+      // text = this.applyIdlGeneratedLinks(text);
+    }
+    return this.w(text);
+  }
+
+  stdLibRefs: {[index: string]: string} = {
+    'std::intializer_list':
+      'https://en.cppreference.com/w/cpp/utility/initializer_list',
+    'std::vector': 'https://en.cppreference.com/w/cpp/container/vector',
+  };
+
+  private applyStandardLibLinks(text: string) {
+    return text.replace(
+      /(std::\w+)(<\w+>)?(::\w+\(\)|::operator\[\])?/g,
+      (match, p1, _, p3) => {
+        const ref = this.stdLibRefs[p1];
+        if (ref) {
+          if (p3) {
+            if (p3.endsWith('()')) {
+              return `[\`${match}\`](${ref}/${p3.slice(2, -2)})`;
+            } else if (p3.endsWith('operator[]')) {
+              return `[\`${match}\`](${ref}/operator_at)`;
+            }
+          }
+          return `[\`${match}\`](${ref})`;
+        } else {
+          return match;
+        }
+      },
+    );
   }
 
   private trim(text: string) {

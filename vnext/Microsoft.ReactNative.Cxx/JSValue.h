@@ -142,7 +142,7 @@ bool operator!=(JSValueObject const &left, JSValueObject const &right) noexcept;
 //! };
 //! ```
 //!
-//! Use any std::vector methods because JSValueArray is inherited from std::vector.  
+//! Use any std::vector methods because JSValueArray is inherited from std::vector<JSValue>.  
 //! Add JSValueArray items using std::vector::emplace_back() method:
 //!
 //! ```cpp
