@@ -13,11 +13,15 @@
 import * as yargs from 'yargs';
 import * as log from 'winston';
 import * as chalk from 'chalk';
+import * as path from 'path';
 import {getProjectConfigs} from './config';
 import {generateDoxygenXml} from './doxygen';
 import {DoxModel} from './doxygen-model';
 import {Transformer} from './transformer';
 import {Renderer} from './renderer';
+
+import * as fs from 'fs';
+const fsPromises = fs.promises;
 
 const argv = yargs
   .options({
@@ -59,5 +63,55 @@ log.add(
         projectConfig.input,
       )}`,
     );
+
+    if (process.env.DOCUSAURUS_DOCS) {
+      log.verbose(
+        `${chalk.greenBright('Found')} environment variable ${chalk.cyanBright(
+          'DOCUSAURUS_DOCS',
+        )} = ${chalk.cyanBright(process.env.DOCUSAURUS_DOCS)}`,
+      );
+      log.verbose(
+        `${chalk.greenBright(
+          'Copying',
+        )} files to Docusaurus Docs location: ${chalk.cyanBright(
+          process.env.DOCUSAURUS_DOCS,
+        )}`,
+      );
+      for (const compoundEntry of docModel.compounds) {
+        const compound = compoundEntry[1];
+        if (compound.docId) {
+          const source = path.join(
+            projectConfig.output,
+            'out',
+            compound.docId + '.md',
+          );
+          const target = path.join(
+            process.env.DOCUSAURUS_DOCS,
+            compound.docId + '.md',
+          );
+          log.verbose(
+            `${chalk.greenBright('Copying')} file to ${chalk.cyanBright(
+              target,
+            )}`,
+          );
+          await fsPromises.copyFile(source, target);
+        }
+      }
+      log.verbose(
+        `${chalk.greenBright(
+          'Finished copying',
+        )} files to Docusaurus Docs location: ${chalk.cyanBright(
+          process.env.DOCUSAURUS_DOCS,
+        )}`,
+      );
+    } else {
+      log.verbose(
+        `${chalk.greenBright(
+          'Not copying',
+        )} files to Docusaurus Docs location: environment variable ${chalk.cyanBright(
+          'DOCUSAURUS_DOCS',
+        )} is not defined`,
+      );
+    }
   }
 })();
