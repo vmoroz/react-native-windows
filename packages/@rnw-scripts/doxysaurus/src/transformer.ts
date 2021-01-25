@@ -250,13 +250,17 @@ export class Transformer {
 
         if (!memberOverload.summary) {
           if (memberOverload.name === '(constructor)') {
-            memberOverload.summary = `constructs the ${'`' +
+            memberOverload.summary = `constructs the ${'[`' +
               compound.typeName +
-              '`'}`;
+              '`](' +
+              compound.docId +
+              ')'}`;
           } else if (memberOverload.name === '(destructor)') {
-            memberOverload.summary = `destroys the ${'`' +
+            memberOverload.summary = `destroys the ${'[`' +
               compound.typeName +
-              '`'}`;
+              '`](' +
+              compound.docId +
+              ')'}`;
           } else {
             memberOverload.summary = member.summary;
           }
@@ -431,7 +435,7 @@ class MarkdownTransformer {
           element.$.url,
         );
       case 'xreftitle':
-        return this.w(element.$$, ': ');
+        return this.w('**', element.$$, ':** ');
       case 'row':
         this.w(
           '\n',

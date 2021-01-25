@@ -47,9 +47,9 @@ Name | Description
 {{&prototype}}
 ```
 
-{{brief}}
+{{&brief}}
 
-{{details}}
+{{&details}}
 {{/members}}
 
 {{/memberOverloads}}

@@ -99,10 +99,7 @@ bool operator==(JSValueObject const &left, JSValueObject const &right) noexcept;
 //! True if !left.Equals(right)
 bool operator!=(JSValueObject const &left, JSValueObject const &right) noexcept;
 
-//==============================================================================
-// JSValueArray declaration.
-//==============================================================================
-
+//!
 //! @brief JSValueArray builds JSValue array. It is used as a read-only JSValue array value.
 //!
 //! JSValue is an immutable class. It needs builder classes to create object and array values.
@@ -120,8 +117,8 @@ bool operator!=(JSValueObject const &left, JSValueObject const &right) noexcept;
 //!   a JSValue array with string, number, null, and boolean values.
 //! - Equals() method and standalone operator== and operator!= to do a strict deep comparison.
 //! - JSEquals() method to do comparison after converting to the same type. It is similar to the JavaScript operator `==`.
-//! - ReadFrom() method to construct JSValueArray from [`IJSValueReader`](IJSValueReader).
-//! - WriteTo() method to serialize JSValueArray to [`IJSValueWriter`](IJSValueWriter).
+//! - ReadFrom() method to construct JSValueArray from IJSValueReader.
+//! - WriteTo() method to serialize JSValueArray to IJSValueWriter.
 //!
 //!
 //! ### Examples
@@ -182,71 +179,102 @@ bool operator!=(JSValueObject const &left, JSValueObject const &right) noexcept;
 //! auto item = arr[2].Copy(); // when we must to get an item copy.
 //! ```
 struct JSValueArray : std::vector<JSValue> {
-  //! Default constructor.
+  //! Default constructor. Constructs an empty JSValueArray.
   JSValueArray() = default;
 
-  //! Constructs JSValueArray with 'size' count of JSValue::Null elements.
+  //! Constructs JSValueArray with `size` JSValue::Null elements.
   explicit JSValueArray(size_type size) noexcept;
 
-  //! Constructs JSValueArray with 'size' count elements.
-  //! Each element is a copy of defaultValue.
+  //! Constructs JSValueArray with `size` elements.
+  //! Each element is a copy of `defaultValue`.
   JSValueArray(size_type size, JSValue const &defaultValue) noexcept;
 
-  //! Construct JSValueArray from the move iterator.
+  //! Construct JSValueArray from the `first` and `last` move iterator range.
   template <class TMoveInputIterator, std::enable_if_t<!std::is_integral_v<TMoveInputIterator>, int> = 1>
   JSValueArray(TMoveInputIterator first, TMoveInputIterator last) noexcept;
 
-  //! Move-construct JSValueArray from the initializer list.
-  JSValueArray(std::initializer_list<JSValueArrayItem> initObject) noexcept;
+  //! @brief Move-constructs JSValueArray from the `initArray` initializer list.
+  //!
+  //! The JSValueArrayItem is an internal helper struct that initializes its JSValueArrayItem::JSValue field
+  //! with any value that can be passed to JSValue constructors. Do not use the JSValueArrayItem class directly.
+  //! Instead, provide a value which can initialize the JSValueArrayItem.
+  JSValueArray(std::initializer_list<JSValueArrayItem> initArray) noexcept;
 
-  //! Move-construct JSValueArray from the JSValue vector.
+  //! Move-constructs JSValueArray from the JSValue vector.
   JSValueArray(std::vector<JSValue> &&other) noexcept;
 
-  //! Delete copy constructor to avoid unexpected copies. Use the Copy method instead.
-  JSValueArray(JSValueArray const &) = delete;
-
-  // Default move constructor.
+  //! Default move constructor.
   JSValueArray(JSValueArray &&) = default;
 
-  //! Delete copy assignment to avoid unexpected copies. Use the Copy method instead.
-  JSValueArray &operator=(JSValueArray const &) = delete;
+  //! Deletes copy constructor to avoid unexpected copies. Use the Copy() method instead.
+  JSValueArray(JSValueArray const &) = delete;
 
-  // Default move assignment.
+  //! Default move assignment.
   JSValueArray &operator=(JSValueArray &&) = default;
 
-  //! Do a deep copy of JSValueArray.
+  //! Deletes copy assignment to avoid unexpected copies. Use the Copy() method instead.
+  JSValueArray &operator=(JSValueArray const &) = delete;
+
+  //! @brief Does a deep copy of the JSValueArray.
+  //!
+  //! Doing a deep copy could be an expensive operation.
+  //! For that reason the JSValueArray has no copy constructor or assignment operqator.
+  //! Use the Copy() method to do the explicti deep copy of JSValueArray.
   JSValueArray Copy() const noexcept;
 
-  //! Return true if this JSValueArray is strictly equal to other JSValueArray.
-  //! Both arrays must have the same set of items. Items must have the same type and value.
+  //! @brief Checks strict equality with the `other` JSValueArray.
+  //!
+  //! The `other` JSValueArray must have the same size as this JSValueArray.
+  //! Then, the JSValue::Equals() must be `true` for for each pair of corresponding items.
+  //!
+  //! @param other is a reference to another JSValueArray to compare with.
+  //! @returns `true` if this JSValueArray has the same size as the `other` JSValueArray
+  //!   and the JSValue::Equals() method returns `true` for each pair of corresponding items.
+  //!   Otherwise, it returns `false`.
   bool Equals(JSValueArray const &other) const noexcept;
 
-  //! Return true if this JSValueArray is strictly equal to other JSValueArray
-  //! after their items are converted to the same type.
-  //! See JSValue::JSEquals for details about the conversion.
+  //! @brief Checks equality with the `other` JSValueArray after converting items to the same type.
+  //!
+  //! The `other` JSValueArray must have the same size as this JSValueArray.
+  //! Then, the JSValue::JSEquals() must be `true` for for each pair of corresponding items.
+  //!
+  //! @param other is a reference to another JSValueArray to compare with.
+  //! @returns `true` if this JSValueArray has the same size as the `other` JSValueArray
+  //!   and the JSValue::JSEquals() method returns `true` for each pair of corresponding items.
+  //!   Otherwise, it returns `false`.
   bool JSEquals(JSValueArray const &other) const noexcept;
 
-  //! Create JSValueArray from IJSValueReader.
+  //! @brief Creates new JSValueArray from the IJSValueReader.
+  //! @param reader is a IJSValueReader to read JSValueArray value from.
+  //! @returns new JSValueArray initialized from the IJSValueReader.
+  //!   If the `reader` is not in the array reading state, then it returns
+  //!   an JSValue::EmptyArray and the state of `reader` is not changed.
   static JSValueArray ReadFrom(IJSValueReader const &reader) noexcept;
 
-  //! Write this JSValueArray to IJSValueWriter.
+  //! @brief Writes this JSValueArray to the IJSValueWriter.
+  //! @param writer is a IJSValueWriter to write JSValueArray values to.
   void WriteTo(IJSValueWriter const &writer) const noexcept;
 
-  //! @name Deprecated methods
-  //! @{
-  
+  //! @name Deprecated methods @{
+
   //! @deprecated Use JSEquals() method instead. To be removed in version 0.65.
   [[deprecated("Use JSEquals")]] bool EqualsAfterConversion(JSValueArray const &other) const noexcept;
-  
+
   //! @}
 };
 
 //! @related JSValueArray
-//! True if left.Equals(right)
+//! @brief Gets result of Equals() method call for `left.Equals(right)`.
+//! @param left is a JSValueArray to compare with `right`.
+//! @param right is a JSValueArray to compare with `left`.
+//! @returns resul of Equals() method call for `left.Equals(right)`.
 bool operator==(JSValueArray const &left, JSValueArray const &right) noexcept;
 
 //! @related JSValueArray
-//! True if !left.Equals(right)
+//! @brief Gets result of Equals() method call for `!left.Equals(right)`.
+//! @param left is a JSValueArray to compare with `right`.
+//! @param right is a JSValueArray to compare with `left`.
+//! @returns resul of Equals() method call for `!left.Equals(right)`.
 bool operator!=(JSValueArray const &left, JSValueArray const &right) noexcept;
 
 //==============================================================================
