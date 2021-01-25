@@ -103,8 +103,84 @@ bool operator!=(JSValueObject const &left, JSValueObject const &right) noexcept;
 // JSValueArray declaration.
 //==============================================================================
 
-//! JSValueArray is based on std::vector<JSValue> and has a custom constructor with std::intializer_list.
-//! It is possible to write: JSValueArray{"X", 42, nullptr, true} and assign it to JSValue.
+//! @brief JSValueArray builds JSValue array. It is used as a read-only JSValue array value.
+//!
+//! JSValue is an immutable class. It needs builder classes to create object and array values.
+//! The JSValueArray is a builder class for JSValue arrays, and the JSValueObject is a builder class for JSValue objects.
+//!
+//! The JSValueArray has no copy constructor or assignment operator.
+//! It is done to avoid accidental expensive copies. Use the Copy() method to do the explicit copy.
+//!
+//! JSValueArray is based on std::vector<JSValue>.
+//! Use std::vector methods to work with JSValueArray.
+//! In addition to std::vector methods, the JSValueArray has the following methods:
+//! - Constructor to move-initialize from an std::intializer_list<JSValueArrayItem>.
+//!   It initializes JSValueArray from any values that can be passed to JSValue constructors.
+//!   E.g. we can write `JSValueArray{"X", 42, nullptr, true}` to create
+//!   a JSValue array with string, number, null, and boolean values.
+//! - Equals() method and standalone operator== and operator!= to do a strict deep comparison.
+//! - JSEquals() method to do comparison after converting to the same type. It is similar to the JavaScript operator `==`.
+//! - ReadFrom() method to construct JSValueArray from [`IJSValueReader`](IJSValueReader).
+//! - WriteTo() method to serialize JSValueArray to [`IJSValueWriter`](IJSValueWriter).
+//!
+//!
+//! ### Examples
+//!
+//! Construct JSValueArray from an initializer list:
+//!
+//! ```cpp
+//! auto arr = JSValueArray{"X", 42, nullptr, true};
+//! ```
+//!
+//! Use JSValueArray and JSValueObject in the initializer list:
+//!
+//! ```cpp
+//! auto arr = JSValueArray{
+//!   "X",
+//!   42,
+//!   nullptr,
+//!   true, 
+//!   JSValueArray{1, "2", 3},
+//!   JSValueObject{{"Foo", 5}, {"Bar", 10}}
+//! };
+//! ```
+//!
+//! Use any std::vector methods because JSValueArray is inherited from std::vector.  
+//! Add JSValueArray items using std::vector::emplace_back() method:
+//!
+//! ```cpp
+//! auto arr = JSValueArray();
+//! arr.emplace_back("X");
+//! arr.emplace_back(42);
+//! arr.emplace_back(nullptr);
+//! arr.emplace_back(true);
+//! arr.emplace_back(JSValueArray{1, "2", 3});
+//! arr.emplace_back(JSValueObject{{"Foo", 5}, {"Bar", 10}});
+//! ```
+//!
+//! Get size of the JSValueArray:
+//!
+//! ```cpp
+//! JSValueArray arr = ...;
+//! auto itemCount = arr.size();
+//! ```
+//!
+//! Use std::vector::operator[] to access array items by index.
+//! Use `auto&` reference variable type to avoid copy.
+//! Accidental use of `auto` will cause a compilation error because JSValue has no copy constructor.
+//!
+//! ```cpp
+//! JSValueArray arr = ...;
+//! auto& item = arr[2];
+//! ```
+//!
+//! Use JSValue::Copy() method to get a copy of an item.
+//! Note that JSValue::Copy() method does a deep copy and it can be expensive.
+//!
+//! ```cpp
+//! JSValueArray arr = ...;
+//! auto item = arr[2].Copy(); // when we must to get an item copy.
+//! ```
 struct JSValueArray : std::vector<JSValue> {
   //! Default constructor.
   JSValueArray() = default;
@@ -156,18 +232,20 @@ struct JSValueArray : std::vector<JSValue> {
   //! Write this JSValueArray to IJSValueWriter.
   void WriteTo(IJSValueWriter const &writer) const noexcept;
 
-#pragma region Deprecated methods
-
+  //! @name Deprecated methods
+  //! @{
+  
+  //! @deprecated Use JSEquals() method instead. To be removed in version 0.65.
   [[deprecated("Use JSEquals")]] bool EqualsAfterConversion(JSValueArray const &other) const noexcept;
-
-#pragma endregion
+  
+  //! @}
 };
 
-//! \related JSValueArray
+//! @related JSValueArray
 //! True if left.Equals(right)
 bool operator==(JSValueArray const &left, JSValueArray const &right) noexcept;
 
-//! \related JSValueArray
+//! @related JSValueArray
 //! True if !left.Equals(right)
 bool operator!=(JSValueArray const &left, JSValueArray const &right) noexcept;
 
