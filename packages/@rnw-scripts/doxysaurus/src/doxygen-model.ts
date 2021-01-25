@@ -69,6 +69,7 @@ interface CompoundRootType {
 export interface DoxCompound {
   $: {id: string; kind: DoxCompoundKind};
   compoundname: {_: string}[]; // there is only one entry
+  basecompoundref?: {$: {prot: string}; _: string}[];
   sectiondef?: DoxSection[];
   briefdescription: DoxDescription;
   detaileddescription: DoxDescription;

@@ -119,8 +119,6 @@ export class Transformer {
     this.compoundMapDoxToDoc[doxCompound.$.id] = compound;
     this.compoundMapDocToDox[compound.docId] = doxCompound;
 
-    compound.prototype = doxCompound.$.kind + ' ' + compound.typeName;
-
     const compoundMemberOverloads = new Map<string, DocMemberOverload>();
 
     const slugger = new GithubSlugger();
@@ -198,6 +196,15 @@ export class Transformer {
       compound.brief,
       compound.details,
     );
+
+    compound.prototype = doxCompound.$.kind + ' ' + compound.typeName;
+    if (doxCompound.basecompoundref) {
+      doxCompound.basecompoundref.forEach((base, index) => {
+        compound.prototype += `\n    ${index ? ',' : ':'} `;
+        compound.prototype += base.$.prot + ' ';
+        compound.prototype += base._.replace('< ', '<').replace(' >', '>');
+      });
+    }
 
     for (const memberOverload of compound.memberOverloads) {
       for (const member of memberOverload.members) {
