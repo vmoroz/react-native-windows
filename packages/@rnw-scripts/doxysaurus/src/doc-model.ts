@@ -27,6 +27,7 @@ export class DocCompound {
   // TODO: add support for template specializations
 
   baseCompounds: DocCompound[] = [];
+  fileName = '';
 }
 
 export class DocSection {

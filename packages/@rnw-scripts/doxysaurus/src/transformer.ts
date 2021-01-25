@@ -24,6 +24,7 @@ import {
 const GithubSlugger = require('github-slugger');
 import * as log from 'winston';
 import * as chalk from 'chalk';
+import * as path from 'path';
 
 export class Transformer {
   private readonly config: Config;
@@ -113,6 +114,7 @@ export class Transformer {
     }
     compound.typeName = nsp[nsp.length - 1];
     compound.docId = `${this.config.prefix}${compound.typeName.toLowerCase()}`;
+    compound.fileName = path.basename(doxCompound.location[0].$.file);
     this.docModel.compounds.set(compound.docId, compound);
     this.compoundMapDoxToDoc[doxCompound.$.id] = compound;
     this.compoundMapDocToDox[compound.docId] = doxCompound;

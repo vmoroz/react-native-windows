@@ -72,6 +72,7 @@ export interface DoxCompound {
   sectiondef?: DoxSection[];
   briefdescription: DoxDescription;
   detaileddescription: DoxDescription;
+  location: {$: {file: string}}[];
 }
 
 export interface DoxSection {

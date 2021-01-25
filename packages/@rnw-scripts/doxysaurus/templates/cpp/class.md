@@ -3,7 +3,7 @@ id: {{docId}}
 title: {{typeName}}
 ---
 
-Defined in `file name`  
+Defined in `{{fileName}}`  
 Namespace: **`{{namespace}}`**  
 {{#namespaceAlias}}
 Namespace alias: **`{{.}}`**
