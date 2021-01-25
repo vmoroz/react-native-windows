@@ -84,7 +84,7 @@ export class Transformer {
     ['protected-func', 'Protected functions'],
     ['protected-static-attrib', 'Protected static fields'],
     ['protected-static-func', 'Protected static functions'],
-    ['related', 'Related functions'],
+    ['related', 'Related standalone functions'],
     ['user-defined', 'User Defined'],
   ];
 
@@ -174,7 +174,7 @@ export class Transformer {
 
           if (section.memberOverloads.length > 0) {
             sections[orderedIndex] = section;
-            section.memberOverloads.sort(DocMemberOverload.compareByName);
+            //section.memberOverloads.sort(DocMemberOverload.compareByName);
           }
         }
       }
@@ -312,7 +312,7 @@ class MarkdownTransformer {
 
   private constructor(
     private readonly transformer: Transformer,
-    private readonly noLink: boolean,
+    private noLink: boolean,
   ) {}
 
   // eslint-disable-next-line complexity
@@ -334,8 +334,13 @@ class MarkdownTransformer {
         return this.w('**', element.$$, '**');
       case 'parametername':
         return this.w('`', element.$$, '` ');
-      case 'computeroutput':
-        return this.w('`', element.$$, '`');
+      case 'computeroutput': {
+        const noLinkPrev = this.noLink;
+        this.noLink = true;
+        this.w('`', element.$$, '`');
+        this.noLink = noLinkPrev;
+        return this;
+      }
       case 'parameterlist':
         if (element.$.kind === 'exception') {
           return this.w('\n### Exceptions\n', element.$$, '\n\n');
@@ -344,8 +349,13 @@ class MarkdownTransformer {
         }
       case 'parameteritem':
         return this.w('* ', element.$$, '\n');
-      case 'programlisting':
-        return this.w('\n```cpp\n', element.$$, '```\n');
+      case 'programlisting': {
+        const noLinkPrev = this.noLink;
+        this.noLink = true;
+        this.w('\n```cpp\n', element.$$, '```\n');
+        this.noLink = noLinkPrev;
+        return this;
+      }
       case 'codeline':
         return this.w(element.$$, '\n');
       case 'orderedlist':
@@ -408,7 +418,7 @@ class MarkdownTransformer {
             (this.context[this.context.length - 1]['#name'] || '0').slice(-1),
           );
         }
-        return this.w('\n#', '#'.repeat(level), ' ', element._, '\n');
+        return this.w('\n', '#'.repeat(level), ' ', element._, '\n\n');
       case 'mdash':
         return this.w('&mdash;');
       case 'ndash':
@@ -466,12 +476,13 @@ class MarkdownTransformer {
     switch (refKind) {
       case 'compound':
         const compound = this.transformer.compoundMapDoxToDoc[refId];
-        return this.link(text, compound.docId || '');
+        return this.link(text, compound.docId || '', true);
       case 'member':
         const memberOverload = this.transformer.memberOverrideMap[refId];
         return this.link(
           text,
           (memberOverload.compound.docId || '') + (memberOverload.anchor || ''),
+          true,
         );
       default:
         log.warn(`Unknown refkind '${refKind}'`);
@@ -479,8 +490,12 @@ class MarkdownTransformer {
     }
   }
 
-  private link(text: string, href: string) {
-    return this.noLink ? this.w(text) : this.w('[', text, '](', href, ')');
+  private link(text: string, href: string, isCode = false) {
+    return this.noLink
+      ? this.w(text)
+      : isCode
+      ? this.w('[`', text, '`](', href, ')')
+      : this.w('[', text, '](', href, ')');
   }
 
   private trim(text: string) {

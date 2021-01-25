@@ -35,7 +35,6 @@ function generateDoxygenConfig(config: Config, doxygenConfigPath: string) {
     GENERATE_LATEX: 'NO',
     GENERATE_HTML: 'NO',
     GENERATE_XML: 'YES',
-    MARKDOWN_SUPPORT: 'NO',
   };
 
   doxygen.createConfig(doxygenOptions, doxygenConfigPath);
