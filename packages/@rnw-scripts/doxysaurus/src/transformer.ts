@@ -514,7 +514,7 @@ class MarkdownTransformer {
   private autoLinks(text?: string) {
     if (!this.noLink && text) {
       text = this.applyStandardLibLinks(text);
-      // text = this.applyIdlGeneratedLinks(text);
+      text = this.applyIdlGeneratedLinks(text);
     }
     return this.w(text);
   }
@@ -544,6 +544,16 @@ class MarkdownTransformer {
         }
       },
     );
+  }
+
+  idlClasses: string[] = ['IJSValueReader', 'IJSValueWriter'];
+
+  private applyIdlGeneratedLinks(text: string) {
+    for (const idlClass of this.idlClasses) {
+      text = text.replace(idlClass, match => `[\`${match}\`](${match})`);
+    }
+
+    return text;
   }
 
   private trim(text: string) {
