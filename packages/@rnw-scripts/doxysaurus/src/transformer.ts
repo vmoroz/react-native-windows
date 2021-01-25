@@ -269,7 +269,9 @@ export class Transformer {
               compound.docId +
               ')'}`;
           } else {
-            memberOverload.summary = member.summary;
+            memberOverload.summary = member.summary.replace(/^[A-Z]/, match =>
+              match.toLowerCase(),
+            );
           }
         }
       }
