@@ -17,8 +17,9 @@ export class DocCompound {
 
   prototype?: string;
 
-  brief?: string;
-  details?: string;
+  brief: string = '';
+  details: string = '';
+  summary: string = ''; // Assembled from and brief and details
 
   sections: DocSection[] = [];
   memberOverloads: DocMemberOverload[] = [];

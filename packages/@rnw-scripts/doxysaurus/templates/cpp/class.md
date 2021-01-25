@@ -9,13 +9,13 @@ Namespace: **`{{namespace}}`**
 Namespace alias: **`{{.}}`**
 {{/namespaceAlias}}
 
-## Summary
+## Definition
 
 ```cpp
 {{prototype}}
 ```
 
-{{brief}}
+{{summary}}
 
 {{#sections}}
 

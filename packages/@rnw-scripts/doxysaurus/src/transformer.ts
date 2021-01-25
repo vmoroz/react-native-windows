@@ -188,6 +188,29 @@ export class Transformer {
     const compound = this.compoundMapDoxToDoc[doxCompound.$.id];
     compound.brief = this.toMarkdown(doxCompound.briefdescription);
     compound.details = this.toMarkdown(doxCompound.detaileddescription);
+    compound.summary = Transformer.createSummary(
+      compound.brief,
+      compound.details,
+    );
+  }
+
+  private static createSummary(brief: string, details: string) {
+    // set from brief or first paragraph of details
+    let summary = Transformer.trim(brief);
+    if (!summary) {
+      summary = Transformer.trim(details);
+      if (summary) {
+        const firstParagraph = summary.split('\n', 1)[0];
+        if (firstParagraph) {
+          summary = firstParagraph;
+        }
+      }
+    }
+    return summary;
+  }
+
+  private static trim(text: string) {
+    return text.replace(/^[\s\t\r\n]+|[\s\t\r\n]+$/g, '');
   }
 
   private toMarkdown(desc: DoxDescription) {
