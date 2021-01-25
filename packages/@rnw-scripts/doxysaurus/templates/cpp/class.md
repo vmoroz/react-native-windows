@@ -12,7 +12,7 @@ Namespace alias: **`{{.}}`**
 ## Definition
 
 ```cpp
-{{prototype}}
+{{&prototype}}
 ```
 
 {{summary}}
@@ -23,7 +23,7 @@ Namespace alias: **`{{.}}`**
 
 Name | Description
 -----|------------
-{{#memberOverloads}}[**`{{&name}}`**]({{anchor}})| description
+{{#memberOverloads}}[**`{{&name}}`**]({{anchor}})| {{summary}}
 {{/memberOverloads}}
 {{/sections}}
 
@@ -32,5 +32,13 @@ Name | Description
 {{#memberOverloads}}
 ## `{{&name}}`
 
-Hello!
+{{#members}}
+
+```cpp
+{{&prototype}}
+```
+
+{{details}}
+{{/members}}
+
 {{/memberOverloads}}

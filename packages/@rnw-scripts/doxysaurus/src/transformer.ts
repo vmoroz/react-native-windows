@@ -9,6 +9,7 @@ import {Config} from './config';
 import {
   DoxModel,
   DoxCompound,
+  DoxMember,
   DoxDescription,
   DoxDescriptionElement,
   DoxRefKind,
@@ -31,6 +32,8 @@ export class Transformer {
   private readonly compoundMapDocToDox: {[index: string]: DoxCompound} = {};
   readonly compoundMapDoxToDoc: {[index: string]: DocCompound} = {};
   readonly memberOverrideMap: {[index: string]: DocMemberOverload} = {};
+
+  private readonly doxMemberMap = new Map<DocMember, DoxMember>();
 
   static transformToMarkdown(doxModel: DoxModel, config: Config) {
     const transformer = new Transformer(doxModel, config);
@@ -141,6 +144,7 @@ export class Transformer {
           for (const memberdef of sectiondef.memberdef) {
             const memberName = memberdef.name[0]._;
             const member = new DocMember();
+            this.doxMemberMap.set(member, memberdef);
             member.name = memberName;
             const overloadName =
               memberName === compound.typeName
@@ -192,6 +196,69 @@ export class Transformer {
       compound.brief,
       compound.details,
     );
+
+    for (const memberOverload of compound.memberOverloads) {
+      for (const member of memberOverload.members) {
+        const memberDef = this.doxMemberMap.get(member);
+        member.brief = this.toMarkdown(memberDef.briefdescription);
+        member.details = this.toMarkdown(memberDef.detaileddescription);
+        member.summary = Transformer.createSummary(
+          member.brief,
+          member.details,
+        );
+        if (!member.details) {
+          member.details = member.brief;
+        }
+
+        let m: string[] = [];
+        if (memberDef.templateparamlist) {
+          m.push('template<');
+          if (
+            memberDef.templateparamlist.length > 0 &&
+            memberDef.templateparamlist[0].param
+          ) {
+            memberDef.templateparamlist[0].param.forEach((param, argn) => {
+              m = m.concat(argn === 0 ? [] : ',');
+              m = m.concat([this.toMarkdownNoLink(param.type)]);
+              // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+              if (param.defval && param.defval[0]._) {
+                m = m.concat([' = ', param.defval[0]._]);
+              }
+            });
+          }
+          m.push('>  \n');
+        }
+        m = m.concat([memberDef.$.prot, ': ']); // public, private, ...
+        m = m.concat(memberDef.$.static === 'yes' ? ['static', ' '] : []);
+        m = m.concat(memberDef.$.virt === 'virtual' ? ['virtual', ' '] : []);
+        const typeMarkdown = this.toMarkdownNoLink(memberDef.type);
+        if (typeMarkdown.trim() !== '') {
+          m = m.concat(typeMarkdown, ' ');
+        }
+        m = m.concat(memberDef.$.explicit === 'yes' ? ['explicit', ' '] : []);
+        m = m.concat(memberDef.name[0]._);
+        const argsstring = this.toMarkdownNoLink(memberDef.argsstring);
+        if (argsstring.trim() !== '') {
+          m = m.concat(argsstring.replace('=', ' = '));
+        }
+
+        member.prototype = m.join('');
+
+        if (!memberOverload.summary) {
+          if (memberOverload.name === '(constructor)') {
+            memberOverload.summary = `constructs the ${'`' +
+              compound.typeName +
+              '`'}`;
+          } else if (memberOverload.name === '(destructor)') {
+            memberOverload.summary = `destroys the ${'`' +
+              compound.typeName +
+              '`'}`;
+          } else {
+            memberOverload.summary = member.summary;
+          }
+        }
+      }
+    }
   }
 
   private static createSummary(brief: string, details: string) {
@@ -216,19 +283,30 @@ export class Transformer {
   private toMarkdown(desc: DoxDescription) {
     return MarkdownTransformer.transform(this, desc);
   }
+
+  private toMarkdownNoLink(desc: DoxDescription) {
+    return MarkdownTransformer.transform(this, desc, true);
+  }
 }
 
 class MarkdownTransformer {
   private readonly context: DoxDescriptionElement[] = [];
   private readonly output: string[] = [];
 
-  static transform(transformer: Transformer, desc: DoxDescription) {
-    const mdTransformer = new MarkdownTransformer(transformer);
+  static transform(
+    transformer: Transformer,
+    desc: DoxDescription,
+    noLink: boolean = false,
+  ) {
+    const mdTransformer = new MarkdownTransformer(transformer, noLink);
     mdTransformer.w(desc);
     return mdTransformer.output.join('');
   }
 
-  private constructor(private readonly transformer: Transformer) {}
+  private constructor(
+    private readonly transformer: Transformer,
+    private readonly noLink: boolean,
+  ) {}
 
   // eslint-disable-next-line complexity
   private transformElement(element: DoxDescriptionElement) {
@@ -395,7 +473,7 @@ class MarkdownTransformer {
   }
 
   private link(text: string, href: string) {
-    return this.w('[', text, '](', href, ')');
+    return this.noLink ? this.w(text) : this.w('[', text, '](', href, ')');
   }
 
   private trim(text: string) {

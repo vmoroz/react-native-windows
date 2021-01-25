@@ -38,6 +38,7 @@ export class DocMemberOverload {
   name = '';
   members: DocMember[] = [];
   anchor = '#';
+  summary = ''; // First member summary
 
   constructor(public compound: DocCompound) {}
 
@@ -58,7 +59,8 @@ export class DocMemberOverload {
 export class DocMember {
   name = '';
   overload?: DocMemberOverload;
-  parameters = new Map<string, DocParameter>();
+  brief: string = '';
+  details: string = '';
+  summary: string = ''; // Assembled from and brief and details
+  prototype = '';
 }
-
-export class DocParameter {}

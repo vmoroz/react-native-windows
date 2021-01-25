@@ -80,10 +80,25 @@ export interface DoxSection {
 }
 
 export interface DoxMember {
-  $: {id: string; kind: DoxMemberKind};
+  $: {
+    id: string;
+    kind: DoxMemberKind;
+    prot: string;
+    static: DoxBool;
+    virt: string;
+    explicit: DoxBool;
+  };
   name: {_: string}[]; // there is only one entry
+  templateparamlist?: DoxTemplateParamList[];
+  type: DoxDescription;
+  param?: {type: DoxDescription; declname: DoxDescription}[];
   briefdescription: DoxDescription;
   detaileddescription: DoxDescription;
+  argsstring: DoxDescription;
+}
+
+export interface DoxTemplateParamList {
+  param?: {type: DoxDescription; defval: {_: string}[]}[];
 }
 
 export type DoxDescription =
