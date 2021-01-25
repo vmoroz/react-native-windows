@@ -3,7 +3,11 @@ id: {{docId}}
 title: {{typeName}}
 ---
 
-{{&summary}}
+Defined in `{{fileName}}`  
+Namespace: **`{{namespace}}`**  
+{{#namespaceAlias}}
+Namespace alias: **`{{.}}`**
+{{/namespaceAlias}}
 
 ## Definition
 
@@ -11,11 +15,7 @@ title: {{typeName}}
 {{&prototype}}
 ```
 
-Defined in `{{fileName}}`  
-Namespace: **`{{namespace}}`**  
-{{#namespaceAlias}}
-Namespace alias: **`{{.}}`**
-{{/namespaceAlias}}
+{{&summary}}
 
 {{#sections}}
 
