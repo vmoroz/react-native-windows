@@ -4,3 +4,4 @@ TODO list for Doxysaurus
 [ ] How to document stand-alone functions?
 [ ] Add namespace aliases to config
 [ ] Allow to group method
+[ ] Implement support for user sections

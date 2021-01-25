@@ -6,7 +6,13 @@
  **/
 
 import {Config} from './config';
-import {DoxModel, DoxCompound} from './doxygen-model';
+import {
+  DoxModel,
+  DoxCompound,
+  DoxDescription,
+  DoxDescriptionElement,
+  DoxRefKind,
+} from './doxygen-model';
 import {
   DocModel,
   DocCompound,
@@ -15,13 +21,16 @@ import {
   DocMember,
 } from './doc-model';
 const GithubSlugger = require('github-slugger');
+import * as log from 'winston';
+import * as chalk from 'chalk';
 
 export class Transformer {
   private readonly config: Config;
   private readonly doxModel: DoxModel;
   private readonly docModel: DocModel;
-  private readonly compoundMapDoxToDoc: {[index: string]: DocCompound} = {};
   private readonly compoundMapDocToDox: {[index: string]: DoxCompound} = {};
+  readonly compoundMapDoxToDoc: {[index: string]: DocCompound} = {};
+  readonly memberOverrideMap: {[index: string]: DocMemberOverload} = {};
 
   static transformToMarkdown(doxModel: DoxModel, config: Config) {
     const transformer = new Transformer(doxModel, config);
@@ -41,6 +50,18 @@ export class Transformer {
         case 'struct':
         case 'class':
           this.transformClass(doxCompound);
+          break;
+        default:
+          break;
+      }
+    }
+
+    for (const doxCompoundId of Object.keys(this.doxModel.compounds)) {
+      const doxCompound = this.doxModel.compounds[doxCompoundId];
+      switch (doxCompound.$.kind) {
+        case 'struct':
+        case 'class':
+          this.compoundToMarkdown(doxCompound);
           break;
         default:
           break;
@@ -131,7 +152,7 @@ export class Transformer {
             // Disable the false positive
             // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
             if (!memberOverload) {
-              memberOverload = new DocMemberOverload();
+              memberOverload = new DocMemberOverload(compound);
               memberOverload.name = overloadName;
               compoundMemberOverloads.set(overloadName, memberOverload);
               compound.memberOverloads.push(memberOverload);
@@ -141,6 +162,8 @@ export class Transformer {
               section.memberOverloads.push(memberOverload);
             }
             memberOverload.members.push(member);
+
+            this.memberOverrideMap[memberdef.$.id] = memberOverload;
           }
 
           if (section.memberOverloads.length > 0) {
@@ -159,5 +182,236 @@ export class Transformer {
     }
 
     console.dir(compound, {depth: null});
+  }
+
+  private compoundToMarkdown(doxCompound: DoxCompound) {
+    const compound = this.compoundMapDoxToDoc[doxCompound.$.id];
+    compound.brief = this.toMarkdown(doxCompound.briefdescription);
+    compound.details = this.toMarkdown(doxCompound.detaileddescription);
+  }
+
+  private toMarkdown(desc: DoxDescription) {
+    return MarkdownTransformer.transform(this, desc);
+  }
+}
+
+class MarkdownTransformer {
+  private readonly context: DoxDescriptionElement[] = [];
+  private readonly output: string[] = [];
+
+  static transform(transformer: Transformer, desc: DoxDescription) {
+    const mdTransformer = new MarkdownTransformer(transformer);
+    mdTransformer.w(desc);
+    return mdTransformer.output.join('');
+  }
+
+  private constructor(private readonly transformer: Transformer) {}
+
+  // eslint-disable-next-line complexity
+  private transformElement(element: DoxDescriptionElement) {
+    switch (element['#name']) {
+      case 'ref':
+        return this.refLink(
+          MarkdownTransformer.transform(this.transformer, element.$$),
+          element.$.refid,
+          element.$.kindref,
+        );
+      case '__text__':
+        return this.w(element._);
+      case 'para':
+        return this.w(element.$$, '\n\n');
+      case 'emphasis':
+        return this.w('*', element.$$, '*');
+      case 'bold':
+        return this.w('**', element.$$, '**');
+      case 'parametername':
+        return this.w('`', element.$$, '` ');
+      case 'computeroutput':
+        return this.w('`', element.$$, '`');
+      case 'parameterlist':
+        if (element.$.kind === 'exception') {
+          return this.w('\n### Exceptions\n', element.$$, '\n\n');
+        } else {
+          return this.w('\n### Parameters\n', element.$$, '\n\n');
+        }
+      case 'parameteritem':
+        return this.w('* ', element.$$, '\n');
+      case 'programlisting':
+        return this.w('\n```cpp\n', element.$$, '```\n');
+      case 'codeline':
+        return this.w(element.$$, '\n');
+      case 'orderedlist':
+        this.context.push(element);
+        this.w('\n\n', element.$$, '\n');
+        this.context.pop();
+        return this;
+      case 'itemizedlist':
+        return this.w('\n\n', element.$$, '\n');
+      case 'listitem':
+        return this.w(
+          this.context.length > 0 &&
+            this.context[this.context.length - 1]['#name'] === 'orderedlist'
+            ? '1. '
+            : '* ',
+          element.$$,
+          '\n',
+        );
+      case 'sp':
+        return this.w(' ', element.$$);
+      case 'heading':
+        return this.w('## ', element.$$);
+      case 'xrefsect':
+        return this.w('\n> ', element.$$);
+      case 'simplesect':
+        if (element.$.kind === 'attention') {
+          return this.w('> ', element.$$);
+        } else if (element.$.kind === 'return') {
+          return this.w('\n### Returns\n', element.$$);
+        } else if (element.$.kind === 'see') {
+          return this.w('**See also**: ', element.$$);
+        } else {
+          log.warn(
+            `${chalk.red(`element.$.kind=${element.$.kind}`)}: not supported.`,
+          );
+          return this;
+        }
+      case 'formula':
+        let s = this.trim(element._ || '');
+        if (s.startsWith('$') && s.endsWith('$')) {
+          return this.w(s);
+        }
+        if (s.startsWith('\\[') && s.endsWith('\\]')) {
+          s = this.trim(s.substring(2, s.length - 2));
+        }
+        return this.w('\n$$\n' + s + '\n$$\n');
+      case 'preformatted':
+        return this.w('\n<pre>', element.$$, '</pre>\n');
+      case 'sect1':
+      case 'sect2':
+      case 'sect3':
+        this.context.push(element);
+        this.w('\n', element.$$, '\n');
+        this.context.pop();
+        return this;
+      case 'title':
+        let level = 0;
+        if (this.context.length > 0) {
+          level = Number(
+            (this.context[this.context.length - 1]['#name'] || '0').slice(-1),
+          );
+        }
+        return this.w('\n#', '#'.repeat(level), ' ', element._, '\n');
+      case 'mdash':
+        return this.w('&mdash;');
+      case 'ndash':
+        return this.w('&neath;');
+      case 'linebreak':
+        return this.w('<br/>');
+      case 'ulink':
+        return this.link(
+          MarkdownTransformer.transform(this.transformer, element.$$),
+          element.$.url,
+        );
+      case 'xreftitle':
+        return this.w(element.$$, ': ');
+      case 'row':
+        this.w(
+          '\n',
+          this.escapeRow(
+            MarkdownTransformer.transform(this.transformer, element.$$),
+          ),
+        );
+        if ((element.$$[0] as DoxDescriptionElement).$.thead === 'yes') {
+          element.$$.forEach((_, i) => {
+            this.w(i ? ' | ' : '\n', '---------');
+          });
+        }
+        return this;
+      case 'entry':
+        return this.w(
+          this.escapeCell(
+            MarkdownTransformer.transform(this.transformer, element.$$),
+          ),
+          '|',
+        );
+      case 'highlight':
+      case 'table':
+      case 'parameterdescription':
+      case 'parameternamelist':
+      case 'xrefdescription':
+      case 'verbatim':
+      case 'hruler':
+      case undefined:
+        return this.w(element.$$);
+
+      default:
+        log.warn(
+          `${chalk.red(
+            `element['#name'=${element['#name']}]`,
+          )}: not supported.`,
+        );
+        return this;
+    }
+  }
+
+  private refLink(text: string, refId: string, refKind: DoxRefKind) {
+    switch (refKind) {
+      case 'compound':
+        const compound = this.transformer.compoundMapDoxToDoc[refId];
+        return this.link(text, compound.docId || '');
+      case 'member':
+        const memberOverload = this.transformer.memberOverrideMap[refId];
+        return this.link(
+          text,
+          (memberOverload.compound.docId || '') + (memberOverload.anchor || ''),
+        );
+      default:
+        log.warn(`Unknown refkind '${refKind}'`);
+        return this;
+    }
+  }
+
+  private link(text: string, href: string) {
+    return this.w('[', text, '](', href, ')');
+  }
+
+  private trim(text: string) {
+    return text.replace(/^[\s\t\r\n]+|[\s\t\r\n]+$/g, '');
+  }
+
+  private escapeRow(text: string) {
+    return text.replace(/\s*\|\s*$/, '');
+  }
+
+  private escapeCell(text: string) {
+    return text
+      .replace(/^[\n]+|[\n]+$/g, '') // trim CRLF
+      .replace('/|/g', '\\|') // escape the pipe
+      .replace(/\n/g, '<br/>'); // escape CRLF
+  }
+
+  private w(...items: DoxDescription[]): MarkdownTransformer {
+    for (const item of items) {
+      switch (typeof item) {
+        case 'string':
+          this.output.push(item);
+          break;
+        case 'object':
+          if (Array.isArray(item)) {
+            for (const element of <DoxDescription[]>item) {
+              this.w(element);
+            }
+          } else {
+            this.transformElement(item as DoxDescriptionElement);
+          }
+          break;
+        case 'undefined':
+          break;
+        default:
+          throw new Error(`Unexpected object type: ${typeof item}`);
+      }
+    }
+
+    return this;
   }
 }

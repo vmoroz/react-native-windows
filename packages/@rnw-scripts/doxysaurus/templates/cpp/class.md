@@ -27,6 +27,8 @@ Name | Description
 {{/memberOverloads}}
 {{/sections}}
 
+{{details}}
+
 {{#memberOverloads}}
 ## `{{&name}}`
 

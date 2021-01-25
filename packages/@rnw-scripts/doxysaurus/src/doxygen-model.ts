@@ -70,6 +70,8 @@ export interface DoxCompound {
   $: {id: string; kind: DoxCompoundKind};
   compoundname: {_: string}[]; // there is only one entry
   sectiondef?: DoxSection[];
+  briefdescription: DoxDescription;
+  detaileddescription: DoxDescription;
 }
 
 export interface DoxSection {
@@ -80,6 +82,27 @@ export interface DoxSection {
 export interface DoxMember {
   $: {id: string; kind: DoxMemberKind};
   name: {_: string}[]; // there is only one entry
+  briefdescription: DoxDescription;
+  detaileddescription: DoxDescription;
+}
+
+export type DoxDescription =
+  | undefined
+  | string
+  | DoxDescription[]
+  | DoxDescriptionElement;
+
+export interface DoxDescriptionElement {
+  '#name'?: string;
+  $: {
+    refid: string;
+    kindref: DoxRefKind;
+    kind: DoxDescriptionKind;
+    thead: DoxBool;
+    url: string;
+  };
+  $$: DoxDescription[];
+  _?: string;
 }
 
 interface IndexRootType {
@@ -165,3 +188,14 @@ export type DoxMemberKind =
   | 'slot'
   | 'interface'
   | 'service';
+
+export type DoxRefKind = 'compound' | 'member';
+
+export type DoxDescriptionKind =
+  | 'exception'
+  | 'attention'
+  | 'return'
+  | 'see'
+  | 'other';
+
+export type DoxBool = 'yes' | 'no';

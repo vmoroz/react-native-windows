@@ -38,6 +38,8 @@ export class DocMemberOverload {
   members: DocMember[] = [];
   anchor = '#';
 
+  constructor(public compound: DocCompound) {}
+
   static compareByName(
     left: DocMemberOverload,
     right: DocMemberOverload,
