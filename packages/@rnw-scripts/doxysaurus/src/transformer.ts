@@ -167,6 +167,14 @@ export class Transformer {
               ? '(constructor)'
               : memberName === '~' + compound.typeName
               ? '(destructor)'
+              : memberName === 'operator='
+              ? 'assignment operator='
+              : memberName === 'operator=='
+              ? 'equal operator=='
+              : memberName === 'operator!='
+              ? 'not equal operator!='
+              : memberName === 'operator[]'
+              ? 'subscript operator[]'
               : memberName;
           let memberOverload = compoundMemberOverloads.get(overloadName);
           if (typeof memberOverload === 'undefined') {

@@ -116,7 +116,8 @@ bool operator!=(JSValueObject const &left, JSValueObject const &right) noexcept;
 //!   It initializes JSValueArray from any values that can be passed to JSValue constructors.
 //!   E.g. we can write `JSValueArray{"X", 42, nullptr, true}` to create
 //!   a JSValue array with string, number, null, and boolean values.
-//! - Equals() method and standalone operator== and operator!= to do a strict deep comparison.
+//! - Equals() method and standalone [operator==](#equal-operator) and
+//!   [operator!=](#not-equal-operator) to do a strict deep comparison.
 //! - JSEquals() method to do comparison after converting to the same type.
 //!   It is similar to the JavaScript operator `==`.
 //! - ReadFrom() method to construct JSValueArray from IJSValueReader.
