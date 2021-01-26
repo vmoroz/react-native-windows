@@ -413,6 +413,9 @@ bool operator!=(JSValueArray const &left, JSValueArray const &right) noexcept;
 //! For copy operations the explicit Copy() method must be used.
 //! Note that the move operations are not thread safe.
 struct JSValue {
+  //! @name Static fields
+  //! @{
+
   //! JSValue with JSValueType::Null.
   static JSValue const Null;
 
@@ -424,6 +427,8 @@ struct JSValue {
 
   //! JSValue with empty string.
   static JSValue const EmptyString;
+
+  //! @}
 
   //! Create a Null JSValue.
   JSValue() noexcept;
@@ -512,6 +517,9 @@ struct JSValue {
 
   //! Return pointer to double value if JSValue type is Double, or nullptr otherwise.
   double const *TryGetDouble() const noexcept;
+
+  //! @name Conversion functions
+  //! @{
 
   //! Return Object representation of JSValue. It is JSValue::EmptyObject if type is not Object.
   JSValueObject const &AsObject() const noexcept;
@@ -636,6 +644,8 @@ struct JSValue {
   template <class T>
   static JSValue From(T const &value) noexcept;
 
+  //!@} Conversion functions
+
   //! Return property count if JSValue is Object, or 0 otherwise.
   size_t PropertyCount() const noexcept;
 
@@ -699,13 +709,16 @@ struct JSValue {
   //! Write this JSValue to IJSValueWriter.
   void WriteTo(IJSValueWriter const &writer) const noexcept;
 
-#pragma region Deprecated methods
-//!@name Deprecated methods
-//!@{
-  // The methods below are deprecated in favor of other methods with clearer semantic
-  //! \deprecated Use TryGetObject or AsObject. To be removed in 0.65
+  //! @name Deprecated members
+  //! @{
+
+  //! @deprecated Use TryGetObject() or AsObject(). To be removed in 0.65
   [[deprecated("Use TryGetObject or AsObject")]] JSValueObject const &Object() const noexcept;
-  [[deprecated("Use TryGetArray or As Array")]] JSValueArray const &Array() const noexcept;
+
+  //! @deprecated Use TryGetArray() or AsArray(). To be removed in 0.65
+  [[deprecated("Use TryGetArray or AsArray")]] JSValueArray const &Array() const noexcept;
+
+  //! @deprecated Use TryGetString(), AsString(), or AsJSString(). To be removed in 0.65
   [[deprecated("Use TryGetString, AsString, or AsJSString")]] std::string const &String() const noexcept;
   [[deprecated("Use TryGetBoolean, AsBoolean, or AsJSBoolean")]] bool Boolean() const noexcept;
   [[deprecated("Use TryGetInt64, AsInt64, or AsJSNumber")]] int64_t Int64() const noexcept;
@@ -728,13 +741,13 @@ struct JSValue {
       JSValueArray const &value) noexcept;
   [[deprecated("Use JSEquals")]] bool EqualsAfterConversion(JSValue const &other) const noexcept;
   [[deprecated("Use AsSingle")]] float AsFloat() const noexcept;
-//!@}
-#pragma endregion
+
+  //!@} Deprecated members
 
  private: // Instance fields
   JSValueType m_type;
   union {
-    //! @privatesection
+    //! @privatesection - to avoid reporting these fields as public by Doxygen.
     JSValueObject m_object;
     JSValueArray m_array;
     std::string m_string;
