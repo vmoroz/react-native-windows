@@ -1,8 +1,31 @@
 # Change Log - react-native-windows
 
-This log was last generated on Fri, 22 Jan 2021 05:07:27 GMT and should not be manually modified.
+This log was last generated on Tue, 26 Jan 2021 05:06:39 GMT and should not be manually modified.
 
 <!-- Start content -->
+
+## 0.0.0-canary.242
+
+Tue, 26 Jan 2021 05:06:39 GMT
+
+### Patches
+
+- Bump react-native-platform-override to v1.4.8 (dannyvv@microsoft.com)
+
+### Changes
+
+- Update @types package versions in package.json from dependabot updates to yarn.lock (dannyvv@microsoft.com)
+- Background/Foreground app state handlers should be registered from the xaml thread (asklar@microsoft.com)
+- Rewrite E2ETest Specs (Removes Python Dependency) (ngerlem@microsoft.com)
+- Integrate 1/21 Nightly RN Build (ngerlem@microsoft.com)
+
+## 0.0.0-canary.241
+
+Sat, 23 Jan 2021 05:08:20 GMT
+
+### Changes
+
+- react-native-windows package should include jest preset/setup files (30809111+acoates-ms@users.noreply.github.com)
 
 ## 0.0.0-canary.240
 
