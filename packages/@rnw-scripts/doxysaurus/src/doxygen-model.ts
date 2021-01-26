@@ -79,6 +79,7 @@ export interface DoxCompound {
 export interface DoxSection {
   $: {kind: DoxSectionKind};
   memberdef: DoxMember[];
+  header: {_: string}[];
 }
 
 export interface DoxMember {
@@ -97,6 +98,7 @@ export interface DoxMember {
   briefdescription: DoxDescription;
   detaileddescription: DoxDescription;
   argsstring: DoxDescription;
+  location: {$: {line: string}}[];
 }
 
 export interface DoxTemplateParamList {

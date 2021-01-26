@@ -99,11 +99,12 @@ bool operator==(JSValueObject const &left, JSValueObject const &right) noexcept;
 //! True if !left.Equals(right)
 bool operator!=(JSValueObject const &left, JSValueObject const &right) noexcept;
 
-//!
-//! @brief JSValueArray builds JSValue array. It is used as a read-only JSValue array value.
+//=====================================================================================================================
+//! @brief JSValueArray builds JSValue array. It is also used as a read-only JSValue array value.
 //!
 //! JSValue is an immutable class. It needs builder classes to create object and array values.
-//! The JSValueArray is a builder class for JSValue arrays, and the JSValueObject is a builder class for JSValue objects.
+//! The JSValueArray is a builder class for JSValue arrays,
+//! and the JSValueObject is a builder class for JSValue objects.
 //!
 //! The JSValueArray has no copy constructor or assignment operator.
 //! It is done to avoid accidental expensive copies. Use the Copy() method to do the explicit copy.
@@ -116,7 +117,8 @@ bool operator!=(JSValueObject const &left, JSValueObject const &right) noexcept;
 //!   E.g. we can write `JSValueArray{"X", 42, nullptr, true}` to create
 //!   a JSValue array with string, number, null, and boolean values.
 //! - Equals() method and standalone operator== and operator!= to do a strict deep comparison.
-//! - JSEquals() method to do comparison after converting to the same type. It is similar to the JavaScript operator `==`.
+//! - JSEquals() method to do comparison after converting to the same type.
+//!   It is similar to the JavaScript operator `==`.
 //! - ReadFrom() method to construct JSValueArray from IJSValueReader.
 //! - WriteTo() method to serialize JSValueArray to IJSValueWriter.
 //!
@@ -255,7 +257,8 @@ struct JSValueArray : std::vector<JSValue> {
   //! @param writer is a IJSValueWriter to write JSValueArray values to.
   void WriteTo(IJSValueWriter const &writer) const noexcept;
 
-  //! @name Deprecated methods @{
+  //! @name Deprecated members
+  //! @{
 
   //! @deprecated Use JSEquals() method instead. To be removed in version 0.65.
   [[deprecated("Use JSEquals")]] bool EqualsAfterConversion(JSValueArray const &other) const noexcept;

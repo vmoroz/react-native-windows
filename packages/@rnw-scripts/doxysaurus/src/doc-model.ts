@@ -33,6 +33,7 @@ export class DocCompound {
 export class DocSection {
   title = '';
   memberOverloads: DocMemberOverload[] = [];
+  line = 0;
 }
 
 export class DocMemberOverload {
@@ -40,6 +41,7 @@ export class DocMemberOverload {
   members: DocMember[] = [];
   anchor = '#';
   summary = ''; // First member summary
+  line = 0;
 
   constructor(public compound: DocCompound) {}
 
@@ -64,4 +66,5 @@ export class DocMember {
   details: string = '';
   summary: string = ''; // Assembled from and brief and details
   prototype = '';
+  line = 0;
 }

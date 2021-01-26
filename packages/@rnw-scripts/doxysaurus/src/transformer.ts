@@ -26,6 +26,9 @@ import * as log from 'winston';
 import * as chalk from 'chalk';
 import * as path from 'path';
 
+type NotVisible = 'not visible';
+type UserDefined = 'user defined';
+
 export class Transformer {
   private readonly config: Config;
   private readonly doxModel: DoxModel;
@@ -75,31 +78,30 @@ export class Transformer {
     return this.docModel;
   }
 
-  private static readonly sectionsOrder = [
-    ['public-attrib', 'Public fields'],
-    ['public-func', 'Public functions'],
-    ['public-static-attrib', 'Public static fields'],
-    ['public-static-func', 'Public static functions'],
-    ['protected-attrib', 'Protected fields'],
-    ['protected-func', 'Protected functions'],
-    ['protected-static-attrib', 'Protected static fields'],
-    ['protected-static-func', 'Protected static functions'],
-    ['related', 'Related standalone functions'],
-    ['user-defined', 'User Defined'],
-  ];
-
-  private static readonly knownSections: string[] = [
-    ...Transformer.sectionsOrder.map(a => a[0]),
-    'private-type',
-    'private-func',
-    'private-attrib',
-    'private-slot',
-    'private-static-func',
-    'private-static-attrib',
-    'public-type', // TODO: research
-    'protected-type', // TODO: research
-    'friend', // TODO: research
-  ];
+  private static readonly knownSections = new Map<
+    string,
+    string | NotVisible | UserDefined
+  >([
+    ['friend', 'not visible'], // TODO: research
+    ['private-attrib', 'not visible'],
+    ['private-func', 'not visible'],
+    ['private-slot', 'not visible'],
+    ['private-static-attrib', 'not visible'],
+    ['private-static-func', 'not visible'],
+    ['private-type', 'not visible'],
+    ['protected-attrib', 'Protected members'],
+    ['protected-func', 'Protected members'],
+    ['protected-static-attrib', 'Protected members'],
+    ['protected-static-func', 'Protected members'],
+    ['protected-type', 'not visible'], // TODO: research
+    ['public-attrib', 'Public members'],
+    ['public-func', 'Public members'],
+    ['public-static-attrib', 'Public members'],
+    ['public-static-func', 'Public members'],
+    ['public-type', 'not visible'], // TODO: research
+    ['related', 'Standalone members'],
+    ['user-defined', 'user defined'],
+  ]);
 
   private transformClass(doxCompound: DoxCompound) {
     const doxCompoundName = doxCompound.compoundname[0]._;
@@ -124,60 +126,85 @@ export class Transformer {
     const slugger = new GithubSlugger();
 
     if (Array.isArray(doxCompound.sectiondef)) {
-      const sections = new Array<DocSection>(Transformer.sectionsOrder.length);
+      const visibleSections: {[index: string]: DocSection} = {};
 
-      for (const sectiondef of doxCompound.sectiondef) {
-        const sectionKind = sectiondef.$.kind;
-        if (!Transformer.knownSections.includes(sectionKind)) {
+      for (const sectionDef of doxCompound.sectiondef) {
+        const sectionKind = sectionDef.$.kind;
+        const sectionName = Transformer.knownSections.get(sectionKind);
+
+        if (typeof sectionName === 'undefined') {
           throw new Error(`Unknown section kind ${sectionKind}`);
         }
 
-        const orderedIndex = Transformer.sectionsOrder.findIndex(
-          o => o[0] === sectionKind,
-        );
-        if (orderedIndex >= 0) {
-          const section = new DocSection();
-          section.title = Transformer.sectionsOrder[orderedIndex][1];
+        if (sectionName === 'not visible') {
+          continue;
+        }
 
-          const memberOverloads = new Map<string, DocMemberOverload>();
-
-          for (const memberdef of sectiondef.memberdef) {
-            const memberName = memberdef.name[0]._;
-            const member = new DocMember();
-            this.doxMemberMap.set(member, memberdef);
-            member.name = memberName;
-            const overloadName =
-              memberName === compound.typeName
-                ? '(constructor)'
-                : memberName === '~' + compound.typeName
-                ? '(destructor)'
-                : memberName;
-            let memberOverload = compoundMemberOverloads.get(overloadName);
-            // Disable the false positive
-            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-            if (!memberOverload) {
-              memberOverload = new DocMemberOverload(compound);
-              memberOverload.name = overloadName;
-              compoundMemberOverloads.set(overloadName, memberOverload);
-              compound.memberOverloads.push(memberOverload);
-            }
-            if (!memberOverloads.has(overloadName)) {
-              memberOverloads.set(overloadName, memberOverload);
-              section.memberOverloads.push(memberOverload);
-            }
-            memberOverload.members.push(member);
-
-            this.memberOverrideMap[memberdef.$.id] = memberOverload;
-          }
-
-          if (section.memberOverloads.length > 0) {
-            sections[orderedIndex] = section;
-            //section.memberOverloads.sort(DocMemberOverload.compareByName);
+        let section: DocSection;
+        if (sectionName === 'user defined') {
+          section = new DocSection();
+          section.title = sectionDef.header[0]._;
+          visibleSections[section.title] = section;
+        } else {
+          section = visibleSections[sectionName];
+          if (typeof section === 'undefined') {
+            section = new DocSection();
+            section.title = sectionName;
+            visibleSections[sectionName] = section;
           }
         }
+
+        const memberOverloads = new Map<string, DocMemberOverload>();
+
+        for (const memberDef of sectionDef.memberdef) {
+          const memberName = memberDef.name[0]._;
+          const member = new DocMember();
+          member.line = Number(memberDef.location[0].$.line);
+          this.doxMemberMap.set(member, memberDef);
+          member.name = memberName;
+          const overloadName =
+            memberName === compound.typeName
+              ? '(constructor)'
+              : memberName === '~' + compound.typeName
+              ? '(destructor)'
+              : memberName;
+          let memberOverload = compoundMemberOverloads.get(overloadName);
+          if (typeof memberOverload === 'undefined') {
+            memberOverload = new DocMemberOverload(compound);
+            memberOverload.name = overloadName;
+            memberOverload.line = member.line;
+            compoundMemberOverloads.set(overloadName, memberOverload);
+            compound.memberOverloads.push(memberOverload);
+          }
+          if (!memberOverloads.has(overloadName)) {
+            memberOverloads.set(overloadName, memberOverload);
+            section.memberOverloads.push(memberOverload);
+          }
+          memberOverload.members.push(member);
+          memberOverload.line = Math.min(memberOverload.line, member.line);
+
+          this.memberOverrideMap[memberDef.$.id] = memberOverload;
+
+          if (section.line === 0) {
+            section.line = member.line;
+          } else {
+            section.line = Math.min(section.line, member.line);
+          }
+        }
+
+        section.memberOverloads.sort((a, b) => a.line - b.line);
       }
 
-      compound.sections = sections.filter(Boolean) as DocSection[];
+      const sections: DocSection[] = Object.values(visibleSections);
+      // Put deprecated section to the end
+      sections.forEach(
+        s =>
+          (s.line = s.title.includes('Deprecated')
+            ? Number.MAX_SAFE_INTEGER
+            : 0),
+      );
+      sections.sort((a, b) => a.line - b.line);
+      compound.sections = sections;
     }
 
     compound.memberOverloads.sort(DocMemberOverload.compareByName);
