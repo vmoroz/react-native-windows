@@ -209,7 +209,7 @@ export class Transformer {
         s =>
           (s.line = s.title.includes('Deprecated')
             ? Number.MAX_SAFE_INTEGER
-            : 0),
+            : s.line),
       );
       sections.sort((a, b) => a.line - b.line);
       compound.sections = sections;
@@ -586,14 +586,21 @@ class MarkdownTransformer {
     );
   }
 
-  idlClasses: string[] = ['IJSValueReader', 'IJSValueWriter'];
+  idlClassRefs: {[index: string]: string} = {
+    IJSValueReader: 'IJSValueReader',
+    IJSValueWriter: 'IJSValueWriter',
+    JSValueType: 'JSValueType',
+  };
 
   private applyIdlGeneratedLinks(text: string) {
-    for (const idlClass of this.idlClasses) {
-      text = text.replace(idlClass, match => `[\`${match}\`](${match})`);
-    }
-
-    return text;
+    return text.replace(/(\w+)(::\w+(\(\))?)?/g, (match, p1) => {
+      const ref = this.idlClassRefs[p1];
+      if (ref) {
+        return `[\`${match}\`](${ref})`;
+      } else {
+        return match;
+      }
+    });
   }
 
   private trim(text: string) {
