@@ -557,6 +557,11 @@ class MarkdownTransformer {
   stdLibRefs: {[index: string]: string} = {
     'std::intializer_list':
       'https://en.cppreference.com/w/cpp/utility/initializer_list',
+    'std::less': 'https://en.cppreference.com/w/cpp/utility/functional/less',
+    'std::map': 'https://en.cppreference.com/w/cpp/container/map',
+    'std::string': 'https://en.cppreference.com/w/cpp/string/basic_string',
+    'std::string_view':
+      'https://en.cppreference.com/w/cpp/string/basic_string_view',
     'std::vector': 'https://en.cppreference.com/w/cpp/container/vector',
   };
 
