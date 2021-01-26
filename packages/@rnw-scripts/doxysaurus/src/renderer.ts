@@ -29,9 +29,9 @@ export class Renderer {
 
   private async renderModel() {
     const outDir = path.join(this.config.output, 'out');
-    // await fsPromises.mkdir(outDir).catch(err => {
-    //   if (err.code !== 'EEXISTS') throw err;
-    // });
+    await fsPromises.mkdir(outDir).catch(err => {
+      if (err.code !== 'EEXIST') throw err;
+    });
 
     const templatePath = path.normalize(
       path.join(__dirname, '..', 'templates', 'cpp', 'class.md'),
