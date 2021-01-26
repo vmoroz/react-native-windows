@@ -3,5 +3,6 @@ TODO list for Doxysaurus
 [ ] Add support for enums
 [ ] Hide internal types
 [ ] Add support for templates and specializations
-[ ] Add namespace aliases to config
 [ ] Research public-type, protected-type, and friend sections
+[ ] Add namespace aliases to config
+[ ] Move standard lib and IDL generated refs to config
