@@ -39,7 +39,7 @@ const argv = yargs
   .version(false)
   .help(false).argv;
 
-// log.quiet = Boolean(argv.quiet);
+log.quiet = Boolean(argv.quiet);
 
 (async () => {
   for await (const projectConfig of getProjectConfigs(argv.config)) {
