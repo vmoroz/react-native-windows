@@ -22,9 +22,8 @@ import {
   DocMember,
 } from './doc-model';
 const GithubSlugger = require('github-slugger');
-import * as log from 'winston';
-import * as chalk from 'chalk';
 import * as path from 'path';
+import {log} from './logger';
 
 type NotVisible = 'not visible';
 type UserDefined = 'user defined';
@@ -436,9 +435,7 @@ class MarkdownTransformer {
         } else if (element.$.kind === 'see') {
           return this.w('**See also**: ', element.$$);
         } else {
-          log.warn(
-            `${chalk.red(`element.$.kind=${element.$.kind}`)}: not supported.`,
-          );
+          log(`Warning: [element.$.kind=${element.$.kind}]: not supported.`);
           return this;
         }
       case 'formula':
@@ -511,10 +508,8 @@ class MarkdownTransformer {
         return this.w(element.$$);
 
       default:
-        log.warn(
-          `${chalk.red(
-            `element['#name'=${element['#name']}]`,
-          )}: not supported.`,
+        log(
+          `Warning: [element[['#name'=${element['#name']}]]]: not supported.`,
         );
         return this;
     }
@@ -533,7 +528,7 @@ class MarkdownTransformer {
           true,
         );
       default:
-        log.warn(`Unknown refkind '${refKind}'`);
+        log(`Warning: Unknown refkind={${refKind}}`);
         return this;
     }
   }

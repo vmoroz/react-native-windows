@@ -6,12 +6,11 @@
  */
 
 import {Config} from './config';
-import * as chalk from 'chalk';
 import * as path from 'path';
 import * as fs from 'fs';
 const fsPromises = fs.promises;
 import * as xml2js from 'xml2js';
-import * as log from 'winston';
+import {log} from './logger';
 
 export class DoxModel {
   compounds: {[index: string]: DoxCompound} = {};
@@ -21,7 +20,7 @@ export class DoxModel {
   static async load(config: Config): Promise<DoxModel> {
     const model = new DoxModel(config);
     const indexPath = path.join(config.output, 'xml', 'index.xml');
-    log.verbose(`Loading index ${chalk.cyanBright(indexPath)}`);
+    log(`Loading index {${indexPath}}`);
     const indexText = await fsPromises.readFile(indexPath, 'utf8');
     const indexXml = <IndexRootType>await xml2js.parseStringPromise(indexText);
     await model.loadCompounds(indexXml);
@@ -47,7 +46,7 @@ export class DoxModel {
       'xml',
       `${compound.$.refid}.xml`,
     );
-    log.verbose(`Loading compound ${chalk.cyanBright(compoundPath)}`);
+    log(`Loading compound {${compoundPath}}`);
     const compoundText = await fsPromises.readFile(compoundPath, 'utf8');
     const compoundXml = <CompoundRootType>await xml2js.parseStringPromise(
       compoundText,

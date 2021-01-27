@@ -11,9 +11,8 @@
 //
 
 import * as yargs from 'yargs';
-import * as log from 'winston';
-import * as chalk from 'chalk';
 import * as path from 'path';
+import {log} from './logger';
 import {getProjectConfigs} from './config';
 import {generateDoxygenXml} from './doxygen';
 import {DoxModel} from './doxygen-model';
@@ -40,42 +39,23 @@ const argv = yargs
   .version(false)
   .help(false).argv;
 
-log.add(
-  new log.transports.Console({
-    format: log.format.combine(log.format.colorize(), log.format.simple()),
-    level: argv.quiet ? undefined : 'verbose',
-  }),
-);
+// log.quiet = Boolean(argv.quiet);
 
 (async () => {
   for await (const projectConfig of getProjectConfigs(argv.config)) {
-    log.verbose(
-      `${chalk.greenBright('Start')} processing project ${chalk.cyanBright(
-        projectConfig.input,
-      )}`,
-    );
+    log(`[Start] processing project {${projectConfig.input}}`);
     await generateDoxygenXml(projectConfig);
     const doxModel = await DoxModel.load(projectConfig);
     const docModel = Transformer.transformToMarkdown(doxModel, projectConfig);
     await Renderer.render(docModel, projectConfig);
-    log.verbose(
-      `${chalk.greenBright('Finished')} processing project ${chalk.cyanBright(
-        projectConfig.input,
-      )}`,
-    );
+    log(`[Finished] processing project {${projectConfig.input}}`);
 
     if (process.env.DOCUSAURUS_DOCS) {
-      log.verbose(
-        `${chalk.greenBright('Found')} environment variable ${chalk.cyanBright(
-          'DOCUSAURUS_DOCS',
-        )} = ${chalk.cyanBright(process.env.DOCUSAURUS_DOCS)}`,
+      log(
+        `[Found] environment variable {DOCUSAURUS_DOCS}={${process.env.DOCUSAURUS_DOCS}}`,
       );
-      log.verbose(
-        `${chalk.greenBright(
-          'Copying',
-        )} files to Docusaurus Docs location: ${chalk.cyanBright(
-          process.env.DOCUSAURUS_DOCS,
-        )}`,
+      log(
+        `[Start] copying files to Docusaurus Docs location {${process.env.DOCUSAURUS_DOCS}}`,
       );
       for (const compoundEntry of docModel.compounds) {
         const compound = compoundEntry[1];
@@ -89,28 +69,17 @@ log.add(
             process.env.DOCUSAURUS_DOCS,
             compound.docId + '.md',
           );
-          log.verbose(
-            `${chalk.greenBright('Copying')} file to ${chalk.cyanBright(
-              target,
-            )}`,
-          );
+          log(`[Copying] file to {${target}}`);
           await fsPromises.copyFile(source, target);
         }
       }
-      log.verbose(
-        `${chalk.greenBright(
-          'Finished copying',
-        )} files to Docusaurus Docs location: ${chalk.cyanBright(
-          process.env.DOCUSAURUS_DOCS,
-        )}`,
+      log(
+        `[Finished] copying files to Docusaurus Docs location: {${process.env.DOCUSAURUS_DOCS}}`,
       );
     } else {
-      log.verbose(
-        `${chalk.greenBright(
-          'Not copying',
-        )} files to Docusaurus Docs location: environment variable ${chalk.cyanBright(
-          'DOCUSAURUS_DOCS',
-        )} is not defined`,
+      log(
+        `[Cannot copy] files to Docusaurus Docs location: environment ` +
+          'variable {DOCUSAURUS_DOCS} is not defined',
       );
     }
   }
