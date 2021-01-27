@@ -11,16 +11,13 @@
 //
 
 import * as yargs from 'yargs';
-import * as path from 'path';
-import {log} from './logger';
 import {getProjectConfigs} from './config';
+import {log} from './logger';
 import {generateDoxygenXml} from './doxygen';
+import {copyDocusaurusFiles} from './docusaurus';
 import {DoxModel} from './doxygen-model';
-import {Transformer} from './transformer';
 import {Renderer} from './renderer';
-
-import * as fs from 'fs';
-const fsPromises = fs.promises;
+import {Transformer} from './transformer';
 
 const argv = yargs
   .options({
@@ -39,48 +36,18 @@ const argv = yargs
   .version(false)
   .help(false).argv;
 
-log.quiet = Boolean(argv.quiet);
+log.quiet = argv.quiet;
 
 (async () => {
   for await (const projectConfig of getProjectConfigs(argv.config)) {
     log(`[Start] processing project {${projectConfig.input}}`);
+
     await generateDoxygenXml(projectConfig);
     const doxModel = await DoxModel.load(projectConfig);
     const docModel = Transformer.transformToMarkdown(doxModel, projectConfig);
     await Renderer.render(docModel, projectConfig);
-    log(`[Finished] processing project {${projectConfig.input}}`);
+    await copyDocusaurusFiles(docModel);
 
-    if (process.env.DOCUSAURUS_DOCS) {
-      log(
-        `[Found] environment variable {DOCUSAURUS_DOCS}={${process.env.DOCUSAURUS_DOCS}}`,
-      );
-      log(
-        `[Start] copying files to Docusaurus Docs location {${process.env.DOCUSAURUS_DOCS}}`,
-      );
-      for (const compoundEntry of docModel.compounds) {
-        const compound = compoundEntry[1];
-        if (compound.docId) {
-          const source = path.join(
-            projectConfig.output,
-            'out',
-            compound.docId + '.md',
-          );
-          const target = path.join(
-            process.env.DOCUSAURUS_DOCS,
-            compound.docId + '.md',
-          );
-          log(`[Copying] file to {${target}}`);
-          await fsPromises.copyFile(source, target);
-        }
-      }
-      log(
-        `[Finished] copying files to Docusaurus Docs location: {${process.env.DOCUSAURUS_DOCS}}`,
-      );
-    } else {
-      log(
-        `[Cannot copy] files to Docusaurus Docs location: environment ` +
-          'variable {DOCUSAURUS_DOCS} is not defined',
-      );
-    }
+    log(`[Finished] processing project {${projectConfig.input}}`);
   }
 })();

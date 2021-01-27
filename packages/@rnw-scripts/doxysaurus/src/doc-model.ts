@@ -6,7 +6,7 @@
  **/
 
 export class DocModel {
-  compounds = new Map<string, DocCompound>();
+  compounds: {[index: string]: DocCompound} = {};
 }
 
 export class DocCompound {
@@ -28,6 +28,7 @@ export class DocCompound {
 
   baseCompounds: DocCompound[] = [];
   fileName = '';
+  output = '';
 }
 
 export class DocSection {

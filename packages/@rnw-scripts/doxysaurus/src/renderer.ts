@@ -38,11 +38,11 @@ export class Renderer {
     );
     const template = await Renderer.getTemplate(templatePath);
 
-    for (const docCompound of this.docModel.compounds) {
-      const outputText = mustache.render(template, docCompound[1]);
-      const outputPath = path.join(outDir, `${docCompound[0]}.md`);
-      console.log(`write file: ${outputPath}`);
-      await fsPromises.writeFile(outputPath, outputText, 'utf-8');
+    for (const compound of Object.values(this.docModel.compounds)) {
+      const outputText = mustache.render(template, compound);
+      compound.output = path.join(outDir, `${compound.docId}.md`);
+      console.log(`write file: ${compound.output}`);
+      await fsPromises.writeFile(compound.output, outputText, 'utf-8');
     }
   }
 
