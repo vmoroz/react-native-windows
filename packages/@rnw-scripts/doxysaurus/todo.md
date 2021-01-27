@@ -19,3 +19,4 @@ TODO list for Doxysaurus
     [ ] Split up the main function into multiple small function
     [ ] Move MarkdownTransform to Transform
 [ ] Get new version of doxygen
+[ ] Make sure that we handle only .h files.

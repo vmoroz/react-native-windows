@@ -19,7 +19,7 @@
 import * as doxygen from 'doxygen';
 import * as fs from 'fs';
 import * as path from 'path';
-import {spawn} from 'child_process';
+import {exec} from 'child_process';
 import {Config} from './config';
 import {log} from './logger';
 
@@ -35,7 +35,16 @@ export async function generateDoxygenXml(config: Config) {
     log(`[Downloaded] Doxygen version {${DOXYGEN_VERSION}}`);
   }
 
-  await run(doxygenConfigPath, DOXYGEN_VERSION);
+  const {stdout, stderr} = await runAsync(doxygenConfigPath, DOXYGEN_VERSION);
+
+  for (const info of stdout.split('\n')) {
+    log(`[Doxygen:] ${info}`);
+  }
+
+  // Doxygen process reports all warnings in the stderr stream.
+  for (const warning of stderr.split('\n')) {
+    log(`Warning: ${warning}`);
+  }
 }
 
 function generateDoxygenConfig(config: Config, doxygenConfigPath: string) {
@@ -85,42 +94,24 @@ function isDoxygenExecutableInstalled(version?: any) {
 }
 
 // From doxygen NPM.
-// Extends doxygen.run to use our logger and to return Promise.
-async function run(configPath?: any, version?: any) {
+// Extends doxygen.run to return a Promise.
+// We cannot use util.promisify because it loses the stderr with warnings.
+async function runAsync(
+  configPath?: any,
+  version?: any,
+): Promise<{stdout: string; stderr: string}> {
   configPath = configPath ? configPath : constants.path.configFile;
   const doxygenPath = doxygenExecutablePath(version);
-
-  // Show all warnings/errors in the end to avoid mixing them with notifications.
-  let errors: string[] = [];
-  const doxygenProcess = spawn(doxygenPath, [path.resolve(<string>configPath)]);
-
-  doxygenProcess.stdout.on('data', data => {
-    const lines = (data + '').split('\n');
-    for (const line of lines) {
-      log(`[Doxygen:] ${line}`);
-    }
-  });
-
-  doxygenProcess.stderr.on('data', data => {
-    errors = errors.concat((data + '').split('\n'));
-  });
-
   return new Promise((resolve, reject) => {
-    doxygenProcess.on('close', (code, signal) => {
-      if (code === 0) {
-        for (const warning of errors) {
-          log(`Warning: ${warning}`);
+    exec(
+      `"${doxygenPath}" "${path.resolve(configPath)}"`,
+      (error, stdout, stderr) => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve({stdout, stderr});
         }
-
-        resolve(null);
-      } else {
-        for (const error of errors) {
-          log(`Error: ${error}`);
-        }
-
-        console.log(`Error: {${doxygenPath}} exited with code {${code}}`);
-        reject(new Error(signal + ''));
-      }
-    });
+      },
+    );
   });
 }
