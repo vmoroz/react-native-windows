@@ -9,8 +9,8 @@
 // Render documentation files defined in DocModel by applying Mustache templates.
 //
 
-import * as mustache from 'mustache';
-import * as path from 'path';
+import mustache from 'mustache';
+import path from 'path';
 import {Config} from './config';
 import {DocModel} from './doc-model';
 import {log} from './logger';
@@ -19,8 +19,8 @@ import {promises as fs} from 'fs';
 const templateCache: {[index: string]: string} = {};
 
 export async function renderDocFiles(docModel: DocModel, config: Config) {
-  const outDir = path.join(config.output, 'out');
-  await fs.mkdir(outDir).catch(err => {
+  docModel.outputPath = path.join(config.output, 'out');
+  await fs.mkdir(docModel.outputPath).catch(err => {
     if (err.code !== 'EEXIST') throw err;
   });
 
@@ -30,7 +30,10 @@ export async function renderDocFiles(docModel: DocModel, config: Config) {
   const template = await getCachedTemplate(templatePath);
 
   for (const compound of Object.values(docModel.compounds)) {
-    compound.outputFileName = path.join(outDir, `${compound.docId}.md`);
+    compound.outputFileName = path.join(
+      docModel.outputPath,
+      `${compound.docId}.md`,
+    );
     log(`[Rendering] file {${compound.outputFileName}}`);
     const outputText = mustache.render(template, compound);
     await fs.writeFile(compound.outputFileName, outputText, 'utf-8');
