@@ -324,10 +324,6 @@ export function transformToMarkdown(doxModel: DoxModel, config: Config) {
           }
         }
       }
-
-      function trim(text: string) {
-        return text.replace(/^[\s\t\r\n]+|[\s\t\r\n]+$/g, '');
-      }
     }
 
     private toMarkdown(desc: DoxDescription) {
@@ -435,12 +431,12 @@ export function transformToMarkdown(doxModel: DoxModel, config: Config) {
             return this;
           }
         case 'formula':
-          let s = this.trim(element._ || '');
+          let s = trim(element._ || '');
           if (s.startsWith('$') && s.endsWith('$')) {
             return this.w(s);
           }
           if (s.startsWith('\\[') && s.endsWith('\\]')) {
-            s = this.trim(s.substring(2, s.length - 2));
+            s = trim(s.substring(2, s.length - 2));
           }
           return this.w('\n$$\n' + s + '\n$$\n');
         case 'preformatted':
@@ -587,10 +583,6 @@ export function transformToMarkdown(doxModel: DoxModel, config: Config) {
       });
     }
 
-    private trim(text: string) {
-      return text.replace(/^[\s\t\r\n]+|[\s\t\r\n]+$/g, '');
-    }
-
     private escapeRow(text: string) {
       return text.replace(/\s*\|\s*$/, '');
     }
@@ -649,4 +641,8 @@ class StringBuilder {
   toString() {
     return this.parts.join('');
   }
+}
+
+function trim(text: string) {
+  return text.replace(/^[\s\t\r\n]+|[\s\t\r\n]+$/g, '');
 }
