@@ -626,27 +626,6 @@ class MarkdownTransformer {
 
   private w(...items: DoxDescription[]): MarkdownTransformer {
     for (const item of items) {
-      switch (typeof item) {
-        case 'string':
-          this.sb.write(item);
-          break;
-        case 'object':
-          if (Array.isArray(item)) {
-            for (const element of <DoxDescription[]>item) {
-              this.w(element);
-            }
-          } else {
-            this.transformElement(item as DoxDescriptionElement);
-          }
-          break;
-        case 'undefined':
-          break;
-        default:
-          throw new Error(`Unexpected object type: ${typeof item}`);
-      }
-    }
-
-    for (const item of items) {
       if (typeof item === 'string') {
         this.sb.write(item);
       } else if (typeof item === 'object') {
