@@ -101,7 +101,7 @@ export interface DoxMember {
 }
 
 export interface DoxTemplateParamList {
-  param?: {type: DoxDescription; defval: {_: string}[]}[];
+  param?: {type: DoxDescription; defval?: {_: string}[]}[];
 }
 
 export type DoxDescription =

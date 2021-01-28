@@ -217,74 +217,22 @@ export class Transformer {
   }
 
   private compoundToMarkdown(compound: DocCompound) {
+    const toMarkdownNoLink = (desc: DoxDescription) =>
+      this.toMarkdownNoLink(desc);
+
     const doxCompound = this.compoundMapDocToDox[compound.docId];
     compound.brief = this.toMarkdown(doxCompound.briefdescription);
     compound.details = this.toMarkdown(doxCompound.detaileddescription);
-    compound.summary = Transformer.createSummary(
-      compound.brief,
-      compound.details,
-    );
+    compound.summary = createSummary(compound.brief, compound.details);
 
-    compound.declaration = doxCompound.$.kind + ' ' + compound.name;
-    if (doxCompound.basecompoundref) {
-      doxCompound.basecompoundref.forEach((base, index) => {
-        compound.declaration += `\n    ${index ? ',' : ':'} `;
-        compound.declaration += base.$.prot + ' ';
-        compound.declaration += base._.replace('< ', '<').replace(' >', '>');
-      });
-    }
-
+    compound.declaration = createCompoundDeclaration();
     for (const section of compound.sections) {
       for (const memberOverload of section.memberOverloads) {
         for (const member of memberOverload.members) {
           const memberDef = this.doxMemberMap.get(member);
           member.brief = this.toMarkdown(memberDef.briefdescription);
           member.details = this.toMarkdown(memberDef.detaileddescription);
-          member.summary = Transformer.createSummary(
-            member.brief,
-            member.details,
-          );
-
-          let m: string[] = [];
-          if (memberDef.templateparamlist) {
-            m.push('template<');
-            if (
-              memberDef.templateparamlist.length > 0 &&
-              memberDef.templateparamlist[0].param
-            ) {
-              memberDef.templateparamlist[0].param.forEach((param, argn) => {
-                m = m.concat(argn === 0 ? [] : ',');
-                m = m.concat([this.toMarkdownNoLink(param.type)]);
-                // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-                if (param.defval && param.defval[0]._) {
-                  m = m.concat([' = ', param.defval[0]._]);
-                }
-              });
-            }
-            m.push('>  \n');
-          }
-          m = m.concat([memberDef.$.prot, ': ']); // public, private, ...
-          m = m.concat(memberDef.$.static === 'yes' ? ['static', ' '] : []);
-          m = m.concat(memberDef.$.virt === 'virtual' ? ['virtual', ' '] : []);
-          let typeMarkdown = this.toMarkdownNoLink(memberDef.type);
-          if (typeMarkdown.trim() !== '') {
-            typeMarkdown = typeMarkdown.replace(/\s+/g, ' ');
-            m = m.concat(
-              typeMarkdown,
-              typeMarkdown.endsWith('&') || typeMarkdown.endsWith('*')
-                ? ''
-                : ' ',
-            );
-          }
-          m = m.concat(memberDef.$.explicit === 'yes' ? ['explicit', ' '] : []);
-          m = m.concat(memberDef.name[0]._);
-          const argsstring = this.toMarkdownNoLink(memberDef.argsstring);
-          if (argsstring.trim() !== '') {
-            m = m.concat(argsstring.replace('=', ' = '));
-          }
-          m = m.concat(';');
-
-          member.declaration = m.join('');
+          member.summary = createSummary(member.brief, member.details);
 
           if (!memberOverload.summary) {
             if (memberOverload.name === '(constructor)') {
@@ -305,31 +253,71 @@ export class Transformer {
               );
             }
           }
+
+          createMemberDeclaration(member, memberDef);
         }
       }
     }
-  }
 
-  private static createSummary(brief: string, details: string) {
-    // set from brief or first paragraph of details
-    let summary = Transformer.trim(brief);
-    if (!summary) {
-      summary = Transformer.trim(details);
-      if (summary) {
-        const firstParagraph = summary.split('\n', 1)[0];
-        if (firstParagraph) {
-          summary = firstParagraph;
+    function createSummary(brief: string, details: string) {
+      let summary = trim(brief);
+      if (!summary) summary = trim(details).split('\n', 1)[0];
+      if (!summary) summary = '&nbsp;';
+      return summary;
+    }
+
+    function trim(text: string) {
+      return text.replace(/^[\s\t\r\n]+|[\s\t\r\n]+$/g, '');
+    }
+
+    function createCompoundDeclaration() {
+      const sb = new StringBuilder();
+      sb.write(doxCompound.$.kind, ' ', compound.name);
+      doxCompound.basecompoundref?.forEach((base, index) => {
+        sb.write('\n    ', index ? ', ' : ': ');
+        sb.write(base.$.prot, ' ');
+        sb.write(base._.replace('< ', '<').replace(' >', '>'));
+      });
+      return sb.toString();
+    }
+
+    function createMemberDeclaration(member: DocMember, memberDef: DoxMember) {
+      const sb = new StringBuilder();
+      if (memberDef.templateparamlist) {
+        sb.write('template<');
+        memberDef.templateparamlist[0].param?.forEach((param, index) => {
+          sb.writeIf(',', index !== 0);
+          sb.write(toMarkdownNoLink(param.type));
+          if (param.defval?.[0]._) {
+            sb.write(' = ', param.defval[0]._);
+          }
+        });
+        sb.write('>  \n');
+      }
+      sb.write(memberDef.$.prot, ': '); // public, private, ...
+      sb.writeIf('static ', memberDef.$.static === 'yes');
+      sb.writeIf('virtual ', memberDef.$.virt === 'virtual');
+      writeType();
+      sb.writeIf('explicit ', memberDef.$.explicit === 'yes');
+      sb.write(memberDef.name[0]._);
+      sb.write(
+        trim(toMarkdownNoLink(memberDef.argsstring)).replace('=', ' = '),
+      );
+      sb.write(';');
+
+      member.declaration = sb.toString();
+
+      function writeType() {
+        let memberType = toMarkdownNoLink(memberDef.type);
+        if (trim(memberType) !== '') {
+          memberType = memberType.replace(/\s+/g, ' ');
+          sb.write(memberType);
+          sb.write(
+            memberType.endsWith('&') || memberType.endsWith('*') ? '' : ' ',
+          );
         }
       }
     }
-    if (!summary) {
-      summary = '&nbsp;';
-    }
-    return summary;
-  }
-
-  private static trim(text: string) {
-    return text.replace(/^[\s\t\r\n]+|[\s\t\r\n]+$/g, '');
   }
 
   private toMarkdown(desc: DoxDescription) {
@@ -627,5 +615,25 @@ class MarkdownTransformer {
     }
 
     return this;
+  }
+}
+
+class StringBuilder {
+  private readonly parts: string[] = [];
+
+  write(...args: string[]) {
+    for (const arg of args) {
+      this.parts.push(arg);
+    }
+  }
+
+  writeIf(arg: string, cond: boolean) {
+    if (cond) {
+      this.parts.push(arg);
+    }
+  }
+
+  toString() {
+    return this.parts.join('');
   }
 }
