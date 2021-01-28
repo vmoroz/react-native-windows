@@ -353,11 +353,11 @@ export function transformToMarkdown(doxModel: DoxModel, config: Config) {
     }
 
     private toMarkdown(desc: DoxDescription) {
-      return MarkdownTransformer.transform(this, desc);
+      return MarkdownTransformer.transform(desc, this);
     }
 
     private toMarkdownNoLink(desc: DoxDescription) {
-      return MarkdownTransformer.transform(this, desc, true);
+      return MarkdownTransformer.transform(desc);
     }
   }
 
@@ -366,29 +366,22 @@ export function transformToMarkdown(doxModel: DoxModel, config: Config) {
 
 class MarkdownTransformer {
   private readonly context: DoxDescriptionElement[] = [];
-  private readonly output: string[] = [];
+  private readonly sb = new StringBuilder();
 
-  static transform(
-    linkResolver: LinkResolver,
-    desc: DoxDescription,
-    noLink: boolean = false,
-  ) {
-    const mdTransformer = new MarkdownTransformer(linkResolver, noLink);
+  static transform(desc: DoxDescription, linkResolver?: LinkResolver) {
+    const mdTransformer = new MarkdownTransformer(linkResolver);
     mdTransformer.w(desc);
-    return mdTransformer.output.join('');
+    return mdTransformer.sb.toString();
   }
 
-  private constructor(
-    private readonly linkResolver: LinkResolver,
-    private noLink: boolean,
-  ) {}
+  private constructor(private linkResolver?: LinkResolver) {}
 
   // eslint-disable-next-line complexity
   private transformElement(element: DoxDescriptionElement) {
     switch (element['#name']) {
       case 'ref':
         return this.refLink(
-          MarkdownTransformer.transform(this.linkResolver, element.$$, true),
+          MarkdownTransformer.transform(element.$$, this.linkResolver),
           element.$.refid,
           element.$.kindref,
         );
@@ -403,10 +396,10 @@ class MarkdownTransformer {
       case 'parametername':
         return this.w('`', element.$$, '` ');
       case 'computeroutput': {
-        const noLinkPrev = this.noLink;
-        this.noLink = true;
+        const linkResolver = this.linkResolver;
+        this.linkResolver = undefined;
         this.w('`', element.$$, '`');
-        this.noLink = noLinkPrev;
+        this.linkResolver = linkResolver;
         return this;
       }
       case 'parameterlist':
@@ -418,10 +411,10 @@ class MarkdownTransformer {
       case 'parameteritem':
         return this.w('* ', element.$$, '\n');
       case 'programlisting': {
-        const noLinkPrev = this.noLink;
-        this.noLink = true;
+        const linkResolver = this.linkResolver;
+        this.linkResolver = undefined;
         this.w('\n```cpp\n', element.$$, '```\n');
-        this.noLink = noLinkPrev;
+        this.linkResolver = linkResolver;
         return this;
       }
       case 'codeline':
@@ -493,7 +486,7 @@ class MarkdownTransformer {
         return this.w('<br/>');
       case 'ulink':
         return this.link(
-          MarkdownTransformer.transform(this.linkResolver, element.$$, true),
+          MarkdownTransformer.transform(element.$$, this.linkResolver),
           element.$.url,
         );
       case 'xreftitle':
@@ -502,7 +495,7 @@ class MarkdownTransformer {
         this.w(
           '\n',
           this.escapeRow(
-            MarkdownTransformer.transform(this.linkResolver, element.$$),
+            MarkdownTransformer.transform(element.$$, this.linkResolver),
           ),
         );
         if ((element.$$[0] as DoxDescriptionElement).$.thead === 'yes') {
@@ -514,7 +507,7 @@ class MarkdownTransformer {
       case 'entry':
         return this.w(
           this.escapeCell(
-            MarkdownTransformer.transform(this.linkResolver, element.$$),
+            MarkdownTransformer.transform(element.$$, this.linkResolver),
           ),
           '|',
         );
@@ -537,6 +530,9 @@ class MarkdownTransformer {
   }
 
   private refLink(text: string, refId: string, refKind: DoxRefKind) {
+    if (!this.linkResolver) {
+      return this.w(text);
+    }
     if (refKind === 'compound') {
       const compound = this.linkResolver.resolveCompoundId(refId);
       if (compound) {
@@ -560,7 +556,7 @@ class MarkdownTransformer {
   }
 
   private link(text: string, href: string, isCode = false) {
-    return this.noLink
+    return !this.linkResolver
       ? this.w(text)
       : isCode
       ? this.w('[`', text, '`](', href, ')')
@@ -568,15 +564,15 @@ class MarkdownTransformer {
   }
 
   private autoLinks(text?: string) {
-    if (!this.noLink && text) {
-      text = this.applyStandardLibLinks(text);
-      text = this.applyIdlGeneratedLinks(text);
+    if (text && this.linkResolver) {
+      text = this.applyStandardLibLinks(text, this.linkResolver);
+      text = this.applyIdlGeneratedLinks(text, this.linkResolver);
     }
     return this.w(text);
   }
 
-  private applyStandardLibLinks(text: string) {
-    const stdTypeLinks = this.linkResolver.stdTypeLinks;
+  private applyStandardLibLinks(text: string, linkResolver: LinkResolver) {
+    const stdTypeLinks = linkResolver.stdTypeLinks;
     return text.replace(
       /(std::\w+)(<\w+>)?(::\w+\(\)|::operator\[\])?/g,
       (match, p1, _, p3) => {
@@ -598,9 +594,9 @@ class MarkdownTransformer {
     );
   }
 
-  private applyIdlGeneratedLinks(text: string) {
+  private applyIdlGeneratedLinks(text: string, linkResolver: LinkResolver) {
     return text.replace(/(\w+)(::\w+(\(\))?)?/g, (match, p1) => {
-      const idlTypeLinks = this.linkResolver.idlTypeLinks;
+      const idlTypeLinks = linkResolver.idlTypeLinks;
       const ref = idlTypeLinks.linkMap.get(p1);
       if (ref) {
         return `[\`${match}\`](${idlTypeLinks.linkPrefix + ref})`;
@@ -625,7 +621,7 @@ class MarkdownTransformer {
     for (const item of items) {
       switch (typeof item) {
         case 'string':
-          this.output.push(item);
+          this.sb.write(item);
           break;
         case 'object':
           if (Array.isArray(item)) {
