@@ -19,6 +19,9 @@ export interface Config {
   prefix: string;
   index: string;
   projects?: string[];
+  readonly namespaces?: {
+    [index: string]: {aliases?: string[]} | undefined;
+  };
 }
 
 // Generates an async stream of project configs.

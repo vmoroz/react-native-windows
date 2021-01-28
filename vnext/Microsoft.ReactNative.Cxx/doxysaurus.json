@@ -1,4 +1,9 @@
 {
   "prefix": "cppapi-",
-  "index": "cppapi.md"
+  "index": "cppapi.md",
+  "namespaces": {
+    "winrt::Microsoft::ReactNative": {
+      "aliases": ["React"]
+    }
+  }
 }

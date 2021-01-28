@@ -103,6 +103,7 @@ export class Transformer {
     ['user-defined', 'user defined'],
   ]);
 
+  // eslint-disable-next-line complexity
   private transformClass(doxCompound: DoxCompound) {
     const doxCompoundName = doxCompound.compoundname[0]._;
     log(`[Transforming] ${doxCompoundName}`);
@@ -110,9 +111,11 @@ export class Transformer {
     const nsp = noTemplateName.split('::');
     const compound = new DocCompound();
     compound.namespace = nsp.splice(0, nsp.length - 1).join('::');
-    // TODO: make this code config driven
-    if (compound.namespace === 'winrt::Microsoft::ReactNative') {
-      compound.namespaceAliases.push('React');
+    if (this.config.namespaces && this.config.namespaces[compound.namespace]) {
+      const aliases = this.config.namespaces[compound.namespace]?.aliases;
+      if (aliases) {
+        compound.namespaceAliases = aliases;
+      }
     }
     compound.name = nsp[nsp.length - 1];
     compound.docId = `${this.config.prefix}${compound.name.toLowerCase()}`;
