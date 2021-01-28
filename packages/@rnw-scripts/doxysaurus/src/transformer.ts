@@ -21,7 +21,7 @@ import {
   DocMemberOverload,
   DocMember,
 } from './doc-model';
-const GithubSlugger = require('github-slugger');
+import GithubSlugger from 'github-slugger';
 import * as path from 'path';
 import {log} from './logger';
 

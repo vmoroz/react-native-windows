@@ -5,7 +5,7 @@
  * @format
  */
 
-import * as chalk from 'chalk';
+import chalk from 'chalk';
 import * as util from 'util';
 
 export interface Logger {
