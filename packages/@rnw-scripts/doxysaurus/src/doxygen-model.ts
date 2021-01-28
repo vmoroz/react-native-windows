@@ -207,7 +207,7 @@ export type DoxMemberKind =
   | 'interface'
   | 'service';
 
-export type DoxRefKind = 'compound' | 'member';
+export type DoxRefKind = 'compound' | 'member' | '<unknown>';
 
 export type DoxDescriptionKind =
   | 'exception'

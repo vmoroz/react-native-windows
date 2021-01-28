@@ -30,6 +30,20 @@ interface TypeLinks {
   linkMap: Map<string, string>;
 }
 
+// const memberOverload = this.linkResolver.memberOverloadMap[refId];
+// const memberCompound = this.linkResolver.memberOverloadToCompound.get(
+//   memberOverload,
+// );
+
+interface LinkResolver {
+  stdTypeLinks: TypeLinks;
+  idlTypeLinks: TypeLinks;
+  resolveCompoundId(doxCompoundId: string): DocCompound | undefined;
+  resolveMemberId(
+    doxMemberId: string,
+  ): [DocCompound | undefined, DocMemberOverload | undefined];
+}
+
 export function transformToMarkdown(doxModel: DoxModel, config: Config) {
   class Transformer {
     readonly config: Config;
@@ -326,6 +340,18 @@ export function transformToMarkdown(doxModel: DoxModel, config: Config) {
       }
     }
 
+    resolveCompoundId(doxCompoundId: string): DocCompound | undefined {
+      return this.compoundMapDoxToDoc[doxCompoundId];
+    }
+
+    resolveMemberId(
+      doxMemberId: string,
+    ): [DocCompound | undefined, DocMemberOverload | undefined] {
+      const memberOverload = this.memberOverloadMap[doxMemberId];
+      const compound = this.memberOverloadToCompound.get(memberOverload);
+      return [compound, memberOverload];
+    }
+
     private toMarkdown(desc: DoxDescription) {
       return MarkdownTransformer.transform(this, desc);
     }
@@ -335,292 +361,290 @@ export function transformToMarkdown(doxModel: DoxModel, config: Config) {
     }
   }
 
-  class MarkdownTransformer {
-    private readonly context: DoxDescriptionElement[] = [];
-    private readonly output: string[] = [];
+  return Transformer.transformToMarkdown(doxModel, config);
+}
 
-    static transform(
-      transformer: Transformer,
-      desc: DoxDescription,
-      noLink: boolean = false,
-    ) {
-      const mdTransformer = new MarkdownTransformer(transformer, noLink);
-      mdTransformer.w(desc);
-      return mdTransformer.output.join('');
-    }
+class MarkdownTransformer {
+  private readonly context: DoxDescriptionElement[] = [];
+  private readonly output: string[] = [];
 
-    private constructor(
-      private readonly transformer: Transformer,
-      private noLink: boolean,
-    ) {}
+  static transform(
+    linkResolver: LinkResolver,
+    desc: DoxDescription,
+    noLink: boolean = false,
+  ) {
+    const mdTransformer = new MarkdownTransformer(linkResolver, noLink);
+    mdTransformer.w(desc);
+    return mdTransformer.output.join('');
+  }
 
-    // eslint-disable-next-line complexity
-    private transformElement(element: DoxDescriptionElement) {
-      switch (element['#name']) {
-        case 'ref':
-          return this.refLink(
-            MarkdownTransformer.transform(this.transformer, element.$$, true),
-            element.$.refid,
-            element.$.kindref,
-          );
-        case '__text__':
-          return this.autoLinks(element._);
-        case 'para':
-          return this.w(element.$$, '\n\n');
-        case 'emphasis':
-          return this.w('*', element.$$, '*');
-        case 'bold':
-          return this.w('**', element.$$, '**');
-        case 'parametername':
-          return this.w('`', element.$$, '` ');
-        case 'computeroutput': {
-          const noLinkPrev = this.noLink;
-          this.noLink = true;
-          this.w('`', element.$$, '`');
-          this.noLink = noLinkPrev;
-          return this;
-        }
-        case 'parameterlist':
-          if (element.$.kind === 'exception') {
-            return this.w('\n### Exceptions\n', element.$$, '\n\n');
-          } else {
-            return this.w('\n### Parameters\n', element.$$, '\n\n');
-          }
-        case 'parameteritem':
-          return this.w('* ', element.$$, '\n');
-        case 'programlisting': {
-          const noLinkPrev = this.noLink;
-          this.noLink = true;
-          this.w('\n```cpp\n', element.$$, '```\n');
-          this.noLink = noLinkPrev;
-          return this;
-        }
-        case 'codeline':
-          return this.w(element.$$, '\n');
-        case 'orderedlist':
-          this.context.push(element);
-          this.w('\n\n', element.$$, '\n');
-          this.context.pop();
-          return this;
-        case 'itemizedlist':
-          return this.w('\n\n', element.$$, '\n');
-        case 'listitem':
-          return this.w(
-            this.context.length > 0 &&
-              this.context[this.context.length - 1]['#name'] === 'orderedlist'
-              ? '1. '
-              : '* ',
-            element.$$,
-            '\n',
-          );
-        case 'sp':
-          return this.w(' ', element.$$);
-        case 'heading':
-          return this.w('## ', element.$$);
-        case 'xrefsect':
-          return this.w('\n> ', element.$$);
-        case 'simplesect':
-          if (element.$.kind === 'attention') {
-            return this.w('> ', element.$$);
-          } else if (element.$.kind === 'return') {
-            return this.w('\n### Returns\n', element.$$);
-          } else if (element.$.kind === 'see') {
-            return this.w('**See also**: ', element.$$);
-          } else {
-            log(`Warning: [element.$.kind=${element.$.kind}]: not supported.`);
-            return this;
-          }
-        case 'formula':
-          let s = trim(element._ || '');
-          if (s.startsWith('$') && s.endsWith('$')) {
-            return this.w(s);
-          }
-          if (s.startsWith('\\[') && s.endsWith('\\]')) {
-            s = trim(s.substring(2, s.length - 2));
-          }
-          return this.w('\n$$\n' + s + '\n$$\n');
-        case 'preformatted':
-          return this.w('\n<pre>', element.$$, '</pre>\n');
-        case 'sect1':
-        case 'sect2':
-        case 'sect3':
-          this.context.push(element);
-          this.w('\n', element.$$, '\n');
-          this.context.pop();
-          return this;
-        case 'title':
-          let level = 0;
-          if (this.context.length > 0) {
-            level = Number(
-              (this.context[this.context.length - 1]['#name'] || '0').slice(-1),
-            );
-          }
-          return this.w('\n', '#'.repeat(level), ' ', element._, '\n\n');
-        case 'mdash':
-          return this.w('&mdash;');
-        case 'ndash':
-          return this.w('&neath;');
-        case 'linebreak':
-          return this.w('<br/>');
-        case 'ulink':
-          return this.link(
-            MarkdownTransformer.transform(this.transformer, element.$$, true),
-            element.$.url,
-          );
-        case 'xreftitle':
-          return this.w('**', element.$$, ':** ');
-        case 'row':
-          this.w(
-            '\n',
-            this.escapeRow(
-              MarkdownTransformer.transform(this.transformer, element.$$),
-            ),
-          );
-          if ((element.$$[0] as DoxDescriptionElement).$.thead === 'yes') {
-            element.$$.forEach((_, i) => {
-              this.w(i ? ' | ' : '\n', '---------');
-            });
-          }
-          return this;
-        case 'entry':
-          return this.w(
-            this.escapeCell(
-              MarkdownTransformer.transform(this.transformer, element.$$),
-            ),
-            '|',
-          );
-        case 'highlight':
-        case 'table':
-        case 'parameterdescription':
-        case 'parameternamelist':
-        case 'xrefdescription':
-        case 'verbatim':
-        case 'hruler':
-        case undefined:
-          return this.w(element.$$);
+  private constructor(
+    private readonly linkResolver: LinkResolver,
+    private noLink: boolean,
+  ) {}
 
-        default:
-          log(
-            `Warning: [element[['#name'=${element['#name']}]]]: not supported.`,
-          );
-          return this;
+  // eslint-disable-next-line complexity
+  private transformElement(element: DoxDescriptionElement) {
+    switch (element['#name']) {
+      case 'ref':
+        return this.refLink(
+          MarkdownTransformer.transform(this.linkResolver, element.$$, true),
+          element.$.refid,
+          element.$.kindref,
+        );
+      case '__text__':
+        return this.autoLinks(element._);
+      case 'para':
+        return this.w(element.$$, '\n\n');
+      case 'emphasis':
+        return this.w('*', element.$$, '*');
+      case 'bold':
+        return this.w('**', element.$$, '**');
+      case 'parametername':
+        return this.w('`', element.$$, '` ');
+      case 'computeroutput': {
+        const noLinkPrev = this.noLink;
+        this.noLink = true;
+        this.w('`', element.$$, '`');
+        this.noLink = noLinkPrev;
+        return this;
       }
-    }
-
-    private refLink(text: string, refId: string, refKind: DoxRefKind) {
-      switch (refKind) {
-        case 'compound':
-          const compound = this.transformer.compoundMapDoxToDoc[refId];
-          if (compound) {
-            return this.link(text, compound.docId, true);
-          } else {
-            return this.w(text);
-          }
-        case 'member':
-          const memberOverload = this.transformer.memberOverloadMap[refId];
-          const memberCompound = this.transformer.memberOverloadToCompound.get(
-            memberOverload,
-          );
-          return this.link(
-            text,
-            memberCompound.docId + memberOverload.anchor,
-            true,
-          );
-        default:
-          log(`Warning: Unknown refkind={${refKind}}`);
-          return this;
-      }
-    }
-
-    private link(text: string, href: string, isCode = false) {
-      return this.noLink
-        ? this.w(text)
-        : isCode
-        ? this.w('[`', text, '`](', href, ')')
-        : this.w('[', text, '](', href, ')');
-    }
-
-    private autoLinks(text?: string) {
-      if (!this.noLink && text) {
-        text = this.applyStandardLibLinks(text);
-        text = this.applyIdlGeneratedLinks(text);
-      }
-      return this.w(text);
-    }
-
-    private applyStandardLibLinks(text: string) {
-      const stdTypeLinks = this.transformer.stdTypeLinks;
-      return text.replace(
-        /(std::\w+)(<\w+>)?(::\w+\(\)|::operator\[\])?/g,
-        (match, p1, _, p3) => {
-          const link = stdTypeLinks.linkMap.get(p1);
-          if (link) {
-            const ref = stdTypeLinks.linkPrefix + link;
-            if (p3) {
-              if (p3.endsWith('()')) {
-                return `[\`${match}\`](${ref}/${p3.slice(2, -2)})`;
-              } else if (p3.endsWith('operator[]')) {
-                return `[\`${match}\`](${ref}/operator_at)`;
-              }
-            }
-            return `[\`${match}\`](${ref})`;
-          } else {
-            return match;
-          }
-        },
-      );
-    }
-
-    private applyIdlGeneratedLinks(text: string) {
-      return text.replace(/(\w+)(::\w+(\(\))?)?/g, (match, p1) => {
-        const idlTypeLinks = this.transformer.idlTypeLinks;
-        const ref = idlTypeLinks.linkMap.get(p1);
-        if (ref) {
-          return `[\`${match}\`](${idlTypeLinks.linkPrefix + ref})`;
+      case 'parameterlist':
+        if (element.$.kind === 'exception') {
+          return this.w('\n### Exceptions\n', element.$$, '\n\n');
         } else {
-          return match;
+          return this.w('\n### Parameters\n', element.$$, '\n\n');
         }
-      });
-    }
-
-    private escapeRow(text: string) {
-      return text.replace(/\s*\|\s*$/, '');
-    }
-
-    private escapeCell(text: string) {
-      return text
-        .replace(/^[\n]+|[\n]+$/g, '') // trim CRLF
-        .replace('/|/g', '\\|') // escape the pipe
-        .replace(/\n/g, '<br/>'); // escape CRLF
-    }
-
-    private w(...items: DoxDescription[]): MarkdownTransformer {
-      for (const item of items) {
-        switch (typeof item) {
-          case 'string':
-            this.output.push(item);
-            break;
-          case 'object':
-            if (Array.isArray(item)) {
-              for (const element of <DoxDescription[]>item) {
-                this.w(element);
-              }
-            } else {
-              this.transformElement(item as DoxDescriptionElement);
-            }
-            break;
-          case 'undefined':
-            break;
-          default:
-            throw new Error(`Unexpected object type: ${typeof item}`);
-        }
+      case 'parameteritem':
+        return this.w('* ', element.$$, '\n');
+      case 'programlisting': {
+        const noLinkPrev = this.noLink;
+        this.noLink = true;
+        this.w('\n```cpp\n', element.$$, '```\n');
+        this.noLink = noLinkPrev;
+        return this;
       }
+      case 'codeline':
+        return this.w(element.$$, '\n');
+      case 'orderedlist':
+        this.context.push(element);
+        this.w('\n\n', element.$$, '\n');
+        this.context.pop();
+        return this;
+      case 'itemizedlist':
+        return this.w('\n\n', element.$$, '\n');
+      case 'listitem':
+        return this.w(
+          this.context.length > 0 &&
+            this.context[this.context.length - 1]['#name'] === 'orderedlist'
+            ? '1. '
+            : '* ',
+          element.$$,
+          '\n',
+        );
+      case 'sp':
+        return this.w(' ', element.$$);
+      case 'heading':
+        return this.w('## ', element.$$);
+      case 'xrefsect':
+        return this.w('\n> ', element.$$);
+      case 'simplesect':
+        if (element.$.kind === 'attention') {
+          return this.w('> ', element.$$);
+        } else if (element.$.kind === 'return') {
+          return this.w('\n### Returns\n', element.$$);
+        } else if (element.$.kind === 'see') {
+          return this.w('**See also**: ', element.$$);
+        } else {
+          log(`Warning: [element.$.kind=${element.$.kind}]: not supported.`);
+          return this;
+        }
+      case 'formula':
+        let s = trim(element._ || '');
+        if (s.startsWith('$') && s.endsWith('$')) {
+          return this.w(s);
+        }
+        if (s.startsWith('\\[') && s.endsWith('\\]')) {
+          s = trim(s.substring(2, s.length - 2));
+        }
+        return this.w('\n$$\n' + s + '\n$$\n');
+      case 'preformatted':
+        return this.w('\n<pre>', element.$$, '</pre>\n');
+      case 'sect1':
+      case 'sect2':
+      case 'sect3':
+        this.context.push(element);
+        this.w('\n', element.$$, '\n');
+        this.context.pop();
+        return this;
+      case 'title':
+        let level = 0;
+        if (this.context.length > 0) {
+          level = Number(
+            (this.context[this.context.length - 1]['#name'] || '0').slice(-1),
+          );
+        }
+        return this.w('\n', '#'.repeat(level), ' ', element._, '\n\n');
+      case 'mdash':
+        return this.w('&mdash;');
+      case 'ndash':
+        return this.w('&neath;');
+      case 'linebreak':
+        return this.w('<br/>');
+      case 'ulink':
+        return this.link(
+          MarkdownTransformer.transform(this.linkResolver, element.$$, true),
+          element.$.url,
+        );
+      case 'xreftitle':
+        return this.w('**', element.$$, ':** ');
+      case 'row':
+        this.w(
+          '\n',
+          this.escapeRow(
+            MarkdownTransformer.transform(this.linkResolver, element.$$),
+          ),
+        );
+        if ((element.$$[0] as DoxDescriptionElement).$.thead === 'yes') {
+          element.$$.forEach((_, i) => {
+            this.w(i ? ' | ' : '\n', '---------');
+          });
+        }
+        return this;
+      case 'entry':
+        return this.w(
+          this.escapeCell(
+            MarkdownTransformer.transform(this.linkResolver, element.$$),
+          ),
+          '|',
+        );
+      case 'highlight':
+      case 'table':
+      case 'parameterdescription':
+      case 'parameternamelist':
+      case 'xrefdescription':
+      case 'verbatim':
+      case 'hruler':
+      case undefined:
+        return this.w(element.$$);
 
+      default:
+        log(
+          `Warning: [element[['#name'=${element['#name']}]]]: not supported.`,
+        );
+        return this;
+    }
+  }
+
+  private refLink(text: string, refId: string, refKind: DoxRefKind) {
+    if (refKind === 'compound') {
+      const compound = this.linkResolver.resolveCompoundId(refId);
+      if (compound) {
+        return this.link(text, compound.docId, true);
+      } else {
+        return this.w(text);
+      }
+    } else if (refKind === 'member') {
+      const [compound, memberOverload] = this.linkResolver.resolveMemberId(
+        refId,
+      );
+      if (compound) {
+        return this.link(text, compound.docId + memberOverload?.anchor, true);
+      } else {
+        return this.w(text);
+      }
+    } else {
+      log(`Warning: Unknown refkind={${refKind}}`);
       return this;
     }
   }
 
-  return Transformer.transformToMarkdown(doxModel, config);
+  private link(text: string, href: string, isCode = false) {
+    return this.noLink
+      ? this.w(text)
+      : isCode
+      ? this.w('[`', text, '`](', href, ')')
+      : this.w('[', text, '](', href, ')');
+  }
+
+  private autoLinks(text?: string) {
+    if (!this.noLink && text) {
+      text = this.applyStandardLibLinks(text);
+      text = this.applyIdlGeneratedLinks(text);
+    }
+    return this.w(text);
+  }
+
+  private applyStandardLibLinks(text: string) {
+    const stdTypeLinks = this.linkResolver.stdTypeLinks;
+    return text.replace(
+      /(std::\w+)(<\w+>)?(::\w+\(\)|::operator\[\])?/g,
+      (match, p1, _, p3) => {
+        const link = stdTypeLinks.linkMap.get(p1);
+        if (link) {
+          const ref = stdTypeLinks.linkPrefix + link;
+          if (p3) {
+            if (p3.endsWith('()')) {
+              return `[\`${match}\`](${ref}/${p3.slice(2, -2)})`;
+            } else if (p3.endsWith('operator[]')) {
+              return `[\`${match}\`](${ref}/operator_at)`;
+            }
+          }
+          return `[\`${match}\`](${ref})`;
+        } else {
+          return match;
+        }
+      },
+    );
+  }
+
+  private applyIdlGeneratedLinks(text: string) {
+    return text.replace(/(\w+)(::\w+(\(\))?)?/g, (match, p1) => {
+      const idlTypeLinks = this.linkResolver.idlTypeLinks;
+      const ref = idlTypeLinks.linkMap.get(p1);
+      if (ref) {
+        return `[\`${match}\`](${idlTypeLinks.linkPrefix + ref})`;
+      } else {
+        return match;
+      }
+    });
+  }
+
+  private escapeRow(text: string) {
+    return text.replace(/\s*\|\s*$/, '');
+  }
+
+  private escapeCell(text: string) {
+    return text
+      .replace(/^[\n]+|[\n]+$/g, '') // trim CRLF
+      .replace('/|/g', '\\|') // escape the pipe
+      .replace(/\n/g, '<br/>'); // escape CRLF
+  }
+
+  private w(...items: DoxDescription[]): MarkdownTransformer {
+    for (const item of items) {
+      switch (typeof item) {
+        case 'string':
+          this.output.push(item);
+          break;
+        case 'object':
+          if (Array.isArray(item)) {
+            for (const element of <DoxDescription[]>item) {
+              this.w(element);
+            }
+          } else {
+            this.transformElement(item as DoxDescriptionElement);
+          }
+          break;
+        case 'undefined':
+          break;
+        default:
+          throw new Error(`Unexpected object type: ${typeof item}`);
+      }
+    }
+
+    return this;
+  }
 }
 
 class StringBuilder {
