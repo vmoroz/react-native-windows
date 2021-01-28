@@ -24,7 +24,6 @@ import {
   DoxMember,
   DoxDescription,
   DoxDescriptionElement,
-  DoxRefKind,
 } from './doxygen-model';
 import {
   DocModel,
@@ -282,7 +281,7 @@ export function transformToMarkdown(doxModel: DoxModel, config: Config) {
               }
             }
 
-            createMemberDeclaration(member, memberDef);
+            member.declaration = createMemberDeclaration(memberDef);
           }
         }
       }
@@ -305,10 +304,7 @@ export function transformToMarkdown(doxModel: DoxModel, config: Config) {
         return sb.toString();
       }
 
-      function createMemberDeclaration(
-        member: DocMember,
-        memberDef: DoxMember,
-      ) {
+      function createMemberDeclaration(memberDef: DoxMember) {
         const sb = new StringBuilder();
         if (memberDef.templateparamlist) {
           sb.write('template<');
@@ -377,129 +373,97 @@ class MarkdownTransformer {
 
   static transform(desc: DoxDescription, linkResolver?: LinkResolver) {
     const mdTransformer = new MarkdownTransformer(linkResolver);
-    mdTransformer.w(desc);
+    mdTransformer.write(desc);
     return mdTransformer.sb.toString();
   }
 
   private constructor(private linkResolver?: LinkResolver) {}
 
   // eslint-disable-next-line complexity
-  private transformElement(element: DoxDescriptionElement) {
+  private transformElement(element: DoxDescriptionElement): void {
     switch (element['#name']) {
       case 'ref':
-        return this.refLink(
-          MarkdownTransformer.transform(element.$$, this.linkResolver),
-          element.$.refid,
-          element.$.kindref,
-        );
+        return this.refLink(element);
       case '__text__':
         return this.autoLinks(element._);
       case 'para':
-        return this.w(element.$$, '\n\n');
+        return this.write(element.$$, '\n\n');
       case 'emphasis':
-        return this.w('*', element.$$, '*');
+        return this.write('*', element.$$, '*');
       case 'bold':
-        return this.w('**', element.$$, '**');
-      case 'parametername':
-        return this.w('`', element.$$, '` ');
-      case 'computeroutput': {
-        const linkResolver = this.linkResolver;
-        this.linkResolver = undefined;
-        this.w('`', element.$$, '`');
-        this.linkResolver = linkResolver;
-        return this;
-      }
+        return this.write('**', element.$$, '**');
       case 'parameterlist':
-        if (element.$.kind === 'exception') {
-          return this.w('\n### Exceptions\n', element.$$, '\n\n');
-        } else {
-          return this.w('\n### Parameters\n', element.$$, '\n\n');
-        }
+        return this.write('\n### Parameters\n', element.$$, '\n\n');
       case 'parameteritem':
-        return this.w('* ', element.$$, '\n');
-      case 'programlisting': {
-        const linkResolver = this.linkResolver;
-        this.linkResolver = undefined;
-        this.w('\n```cpp\n', element.$$, '```\n');
-        this.linkResolver = linkResolver;
-        return this;
-      }
+        return this.write('* ', element.$$, '\n');
+      case 'parametername':
+        return this.writeCode('`', element.$$, '` ');
+      case 'computeroutput':
+        return this.writeCode('`', element.$$, '`');
+      case 'programlisting':
+        return this.writeCode('\n```cpp\n', element.$$, '```\n');
       case 'codeline':
-        return this.w(element.$$, '\n');
+        return this.write(element.$$, '\n');
       case 'orderedlist':
-        this.context.push(element);
-        this.w('\n\n', element.$$, '\n');
-        this.context.pop();
-        return this;
+        return this.writeWithContext(element, '\n\n', element.$$, '\n');
       case 'itemizedlist':
-        return this.w('\n\n', element.$$, '\n');
+        return this.write('\n\n', element.$$, '\n');
       case 'listitem':
-        return this.w(
-          this.context.length > 0 &&
-            this.context[this.context.length - 1]['#name'] === 'orderedlist'
-            ? '1. '
-            : '* ',
+        return this.write(
+          last(this.context)?.['#name'] === 'orderedlist' ? '1. ' : '* ',
           element.$$,
           '\n',
         );
       case 'sp':
-        return this.w(' ', element.$$);
+        return this.write(' ', element.$$);
       case 'heading':
-        return this.w('## ', element.$$);
+        return this.write('## ', element.$$);
       case 'xrefsect':
-        return this.w('\n> ', element.$$);
+        return this.write('\n> ', element.$$);
       case 'simplesect':
         if (element.$.kind === 'attention') {
-          return this.w('> ', element.$$);
+          return this.write('> ', element.$$);
         } else if (element.$.kind === 'return') {
-          return this.w('\n### Returns\n', element.$$);
+          return this.write('\n### Returns\n', element.$$);
         } else if (element.$.kind === 'see') {
-          return this.w('**See also**: ', element.$$);
+          return this.write('**See also**: ', element.$$);
         } else {
           log(`Warning: [element.$.kind=${element.$.kind}]: not supported.`);
-          return this;
+          return;
         }
       case 'formula':
         let s = trim(element._ || '');
         if (s.startsWith('$') && s.endsWith('$')) {
-          return this.w(s);
+          return this.write(s);
         }
         if (s.startsWith('\\[') && s.endsWith('\\]')) {
           s = trim(s.substring(2, s.length - 2));
         }
-        return this.w('\n$$\n' + s + '\n$$\n');
+        return this.write('\n$$\n' + s + '\n$$\n');
       case 'preformatted':
-        return this.w('\n<pre>', element.$$, '</pre>\n');
+        return this.writeCode('\n<pre>', element.$$, '</pre>\n');
       case 'sect1':
       case 'sect2':
       case 'sect3':
-        this.context.push(element);
-        this.w('\n', element.$$, '\n');
-        this.context.pop();
-        return this;
+        return this.writeWithContext(element, '\n', element.$$, '\n');
       case 'title':
-        let level = 0;
-        if (this.context.length > 0) {
-          level = Number(
-            (this.context[this.context.length - 1]['#name'] || '0').slice(-1),
-          );
-        }
-        return this.w('\n', '#'.repeat(level), ' ', element._, '\n\n');
+        const level = Number((last(this.context)?.['#name'] || '0').slice(-1));
+        return this.write('\n', '#'.repeat(level), ' ', element._, '\n\n');
       case 'mdash':
-        return this.w('&mdash;');
+        return this.write('&mdash;');
       case 'ndash':
-        return this.w('&neath;');
+        return this.write('&neath;');
       case 'linebreak':
-        return this.w('<br/>');
+        return this.write('<br/>');
       case 'ulink':
         return this.link(
-          MarkdownTransformer.transform(element.$$, this.linkResolver),
+          MarkdownTransformer.transform(element.$$),
           element.$.url,
         );
       case 'xreftitle':
-        return this.w('**', element.$$, ':** ');
+        return this.write('**', element.$$, ':** ');
       case 'row':
-        this.w(
+        this.write(
           '\n',
           this.escapeRow(
             MarkdownTransformer.transform(element.$$, this.linkResolver),
@@ -507,12 +471,12 @@ class MarkdownTransformer {
         );
         if ((element.$$[0] as DoxDescriptionElement).$.thead === 'yes') {
           element.$$.forEach((_, i) => {
-            this.w(i ? ' | ' : '\n', '---------');
+            this.write(i ? ' | ' : '\n', '---------');
           });
         }
-        return this;
+        break;
       case 'entry':
-        return this.w(
+        return this.write(
           this.escapeCell(
             MarkdownTransformer.transform(element.$$, this.linkResolver),
           ),
@@ -526,48 +490,55 @@ class MarkdownTransformer {
       case 'verbatim':
       case 'hruler':
       case undefined:
-        return this.w(element.$$);
+        return this.write(element.$$);
 
       default:
         log(
           `Warning: [element[['#name'=${element['#name']}]]]: not supported.`,
         );
-        return this;
     }
   }
 
-  private refLink(text: string, refId: string, refKind: DoxRefKind) {
+  private refLink(element: DoxDescriptionElement): void {
+    const text = MarkdownTransformer.transform(element.$$);
+
     if (!this.linkResolver) {
-      return this.w(text);
+      return this.write(text);
     }
-    if (refKind === 'compound') {
-      const compound = this.linkResolver.resolveCompoundId(refId);
+
+    if (element.$.kindref === 'compound') {
+      const compound = this.linkResolver.resolveCompoundId(element.$.refid);
       if (compound) {
-        return this.link(text, compound.docId, true);
-      } else {
-        return this.w(text);
+        return this.linkCode(text, compound.docId);
       }
-    } else if (refKind === 'member') {
+    } else if (element.$.kindref === 'member') {
       const [compound, memberOverload] = this.linkResolver.resolveMemberId(
-        refId,
+        element.$.refid,
       );
       if (compound) {
-        return this.link(text, compound.docId + memberOverload?.anchor, true);
-      } else {
-        return this.w(text);
+        return this.linkCode(text, compound.docId + memberOverload?.anchor);
       }
     } else {
-      log(`Warning: Unknown refkind={${refKind}}`);
-      return this;
+      log(`Warning: Unknown kindref={${element.$.kindref}}`);
+    }
+
+    this.write(text);
+  }
+
+  private link(text: string, href: string) {
+    if (this.linkResolver) {
+      this.write('[', text, '](', href, ')');
+    } else {
+      this.write(text);
     }
   }
 
-  private link(text: string, href: string, isCode = false) {
-    return !this.linkResolver
-      ? this.w(text)
-      : isCode
-      ? this.w('[`', text, '`](', href, ')')
-      : this.w('[', text, '](', href, ')');
+  private linkCode(text: string, href: string) {
+    if (this.linkResolver) {
+      this.write('[`', text, '`](', href, ')');
+    } else {
+      this.write(text);
+    }
   }
 
   private autoLinks(text?: string) {
@@ -575,7 +546,7 @@ class MarkdownTransformer {
       text = this.applyStandardLibLinks(text, this.linkResolver);
       text = this.applyIdlGeneratedLinks(text, this.linkResolver);
     }
-    return this.w(text);
+    this.write(text);
   }
 
   private applyStandardLibLinks(text: string, linkResolver: LinkResolver) {
@@ -613,25 +584,41 @@ class MarkdownTransformer {
     });
   }
 
-  private escapeRow(text: string) {
+  private escapeRow(text: string): string {
     return text.replace(/\s*\|\s*$/, '');
   }
 
-  private escapeCell(text: string) {
+  private escapeCell(text: string): string {
     return text
       .replace(/^[\n]+|[\n]+$/g, '') // trim CRLF
       .replace('/|/g', '\\|') // escape the pipe
       .replace(/\n/g, '<br/>'); // escape CRLF
   }
 
-  private w(...items: DoxDescription[]): MarkdownTransformer {
+  private writeCode(...items: DoxDescription[]) {
+    const linkResolver = this.linkResolver;
+    this.linkResolver = undefined;
+    this.write(...items);
+    this.linkResolver = linkResolver;
+  }
+
+  private writeWithContext(
+    element: DoxDescriptionElement,
+    ...items: DoxDescription[]
+  ) {
+    this.context.push(element);
+    this.write(...items);
+    this.context.pop();
+  }
+
+  private write(...items: DoxDescription[]): void {
     for (const item of items) {
       if (typeof item === 'string') {
         this.sb.write(item);
       } else if (typeof item === 'object') {
         if (Array.isArray(item)) {
           for (const element of <DoxDescription[]>item) {
-            this.w(element);
+            this.write(element);
           }
         } else {
           this.transformElement(item as DoxDescriptionElement);
@@ -640,8 +627,6 @@ class MarkdownTransformer {
         throw new Error(`Unexpected object type: ${typeof item}`);
       }
     }
-
-    return this;
   }
 }
 
@@ -663,6 +648,10 @@ class StringBuilder {
   toString() {
     return this.parts.join('');
   }
+}
+
+function last<T>(arr?: T[]): T | undefined {
+  return arr ? arr[arr.length - 1] : undefined;
 }
 
 function trim(text: string) {
