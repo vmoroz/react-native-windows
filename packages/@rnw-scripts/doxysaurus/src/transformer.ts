@@ -36,13 +36,14 @@ export class Transformer {
   private readonly docModel: DocModel;
   private readonly compoundMapDocToDox: {[index: string]: DoxCompound} = {};
   readonly knownSections: Map<string, string>;
-  readonly compoundMapDoxToDoc: {[index: string]: DocCompound} = {};
+  readonly compoundMapDoxToDoc: {[index: string]: DocCompound | undefined} = {};
   readonly memberOverloadMap: {[index: string]: DocMemberOverload} = {};
   readonly memberOverloadToCompound = new Map<DocMemberOverload, DocCompound>();
 
   private readonly doxMemberMap = new Map<DocMember, DoxMember>();
 
-  readonly namespaces: Map<string, {aliases: string[]}>;
+  readonly types: Set<string>;
+  readonly namespaces: Map<string, {aliases: string[]} | undefined>;
   readonly stdTypeLinks: TypeLinks;
   readonly idlTypeLinks: TypeLinks;
 
@@ -56,6 +57,7 @@ export class Transformer {
     this.doxModel = doxModel;
     this.docModel = new DocModel();
     this.knownSections = new Map<string, string>(config.sections ?? []);
+    this.types = new Set<string>(config.types ?? []);
     this.namespaces = new Map<string, {aliases: string[]}>(
       config.namespaces ?? [],
     );
@@ -82,21 +84,14 @@ export class Transformer {
       }
     }
 
-    for (const doxCompoundId of Object.keys(this.doxModel.compounds)) {
-      const doxCompound = this.doxModel.compounds[doxCompoundId];
-      switch (doxCompound.$.kind) {
-        case 'struct':
-        case 'class':
-          this.compoundToMarkdown(doxCompound);
-          break;
-        default:
-          break;
-      }
+    for (const compound of Object.values(this.docModel.compounds)) {
+      this.compoundToMarkdown(compound);
     }
 
     return this.docModel;
   }
 
+  // eslint-disable-next-line complexity
   private transformClass(doxCompound: DoxCompound) {
     const doxCompoundName = doxCompound.compoundname[0]._;
     log(`[Transforming] ${doxCompoundName}`);
@@ -110,6 +105,10 @@ export class Transformer {
       compound.namespaceAliases = nsEntry.aliases;
     }
     compound.name = nsp[nsp.length - 1];
+    if (!this.types.has(compound.name)) {
+      log(`[Skipped] {${doxCompoundName}}: not in config.types`);
+      return;
+    }
     compound.docId = `${this.config.prefix}${compound.name.toLowerCase()}`;
     compound.codeFileName = path.basename(doxCompound.location[0].$.file);
     this.docModel.compounds[compound.docId] = compound;
@@ -219,8 +218,8 @@ export class Transformer {
     log('[Compound] dump: ', compound);
   }
 
-  private compoundToMarkdown(doxCompound: DoxCompound) {
-    const compound = this.compoundMapDoxToDoc[doxCompound.$.id];
+  private compoundToMarkdown(compound: DocCompound) {
+    const doxCompound = this.compoundMapDocToDox[compound.docId];
     compound.brief = this.toMarkdown(doxCompound.briefdescription);
     compound.details = this.toMarkdown(doxCompound.detaileddescription);
     compound.summary = Transformer.createSummary(
@@ -520,7 +519,11 @@ class MarkdownTransformer {
     switch (refKind) {
       case 'compound':
         const compound = this.transformer.compoundMapDoxToDoc[refId];
-        return this.link(text, compound.docId, true);
+        if (compound) {
+          return this.link(text, compound.docId, true);
+        } else {
+          return this.w(text);
+        }
       case 'member':
         const memberOverload = this.transformer.memberOverloadMap[refId];
         const memberCompound = this.transformer.memberOverloadToCompound.get(

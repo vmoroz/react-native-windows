@@ -19,6 +19,7 @@ export interface Config {
   prefix: string;
   index: string;
   projects?: string[];
+  types?: string[];
   namespaces?: [string, {aliases: string[]}][];
   sections?: [string, string][];
   stdTypeLinks?: {

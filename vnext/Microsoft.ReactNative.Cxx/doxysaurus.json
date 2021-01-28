@@ -1,6 +1,11 @@
 {
   "prefix": "cppapi-",
   "index": "cppapi.md",
+  "types": [
+    "JSValue",
+    "JSValueArray",
+    "JSValueObject"
+  ],
   "namespaces": [
     ["winrt::Microsoft::ReactNative", {"aliases": ["React"]}]
   ],
