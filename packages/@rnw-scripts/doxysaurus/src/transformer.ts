@@ -43,7 +43,7 @@ export class Transformer {
   private readonly doxMemberMap = new Map<DocMember, DoxMember>();
 
   readonly types: Set<string>;
-  readonly namespaces: Map<string, {aliases: string[]} | undefined>;
+  readonly namespaceAliases: Map<string, string[] | undefined>;
   readonly stdTypeLinks: TypeLinks;
   readonly idlTypeLinks: TypeLinks;
 
@@ -58,8 +58,8 @@ export class Transformer {
     this.docModel = new DocModel();
     this.knownSections = new Map<string, string>(config.sections ?? []);
     this.types = new Set<string>(config.types ?? []);
-    this.namespaces = new Map<string, {aliases: string[]}>(
-      config.namespaces ?? [],
+    this.namespaceAliases = new Map<string, string[] | undefined>(
+      config.namespaceAliases ?? [],
     );
     this.stdTypeLinks = {
       linkPrefix: config.stdTypeLinks?.linkPrefix ?? '',
@@ -100,10 +100,8 @@ export class Transformer {
     const compound = new DocCompound();
     compound.namespace = nsp.splice(0, nsp.length - 1).join('::');
     compound.namespaceAliases = [];
-    const nsEntry = this.namespaces.get(compound.namespace);
-    if (nsEntry) {
-      compound.namespaceAliases = nsEntry.aliases;
-    }
+    compound.namespaceAliases =
+      this.namespaceAliases.get(compound.namespace) ?? [];
     compound.name = nsp[nsp.length - 1];
     if (!this.types.has(compound.name)) {
       log(`[Skipped] {${doxCompoundName}}: not in config.types`);

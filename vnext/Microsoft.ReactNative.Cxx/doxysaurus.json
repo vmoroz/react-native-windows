@@ -6,8 +6,8 @@
     "JSValueArray",
     "JSValueObject"
   ],
-  "namespaces": [
-    ["winrt::Microsoft::ReactNative", {"aliases": ["React"]}]
+  "namespaceAliases": [
+    ["winrt::Microsoft::ReactNative", ["React"]]
   ],
   "sections": [
     ["friend", "<not visible>"],
