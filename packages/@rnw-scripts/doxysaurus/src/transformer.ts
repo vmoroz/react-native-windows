@@ -2,8 +2,20 @@
  * Copyright (c) Microsoft Corporation.
  * Licensed under the MIT License.
  *
+ * Code in this file is partially based on the moxygen project code
+ * which in turn is based on the doxygen2md project.
+ * https://github.com/sourcey/moxygen
+ * https://github.com/pferdinand/doxygen2md
+ * Copyright for the moxygen and doxygen2md code:
+ * Copyright (c) 2016 Philippe FERDINAND
+ * Copyright (c) 2016 Kam Low
+ *
  * @format
  **/
+
+//
+// Transforms Doxygen documentation model to the Markdown based model to be used by Docusaurus service.
+//
 
 import {Config} from './config';
 import {
@@ -29,11 +41,6 @@ interface TypeLinks {
   linkPrefix: string;
   linkMap: Map<string, string>;
 }
-
-// const memberOverload = this.linkResolver.memberOverloadMap[refId];
-// const memberCompound = this.linkResolver.memberOverloadToCompound.get(
-//   memberOverload,
-// );
 
 interface LinkResolver {
   stdTypeLinks: TypeLinks;
@@ -636,6 +643,22 @@ class MarkdownTransformer {
           break;
         default:
           throw new Error(`Unexpected object type: ${typeof item}`);
+      }
+    }
+
+    for (const item of items) {
+      if (typeof item === 'string') {
+        this.sb.write(item);
+      } else if (typeof item === 'object') {
+        if (Array.isArray(item)) {
+          for (const element of <DoxDescription[]>item) {
+            this.w(element);
+          }
+        } else {
+          this.transformElement(item as DoxDescriptionElement);
+        }
+      } else if (typeof item !== 'undefined') {
+        throw new Error(`Unexpected object type: ${typeof item}`);
       }
     }
 

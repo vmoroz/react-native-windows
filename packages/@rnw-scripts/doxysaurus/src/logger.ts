@@ -5,15 +5,28 @@
  * @format
  */
 
+//
+// The logger used by the Doxysaurus project.
+//
+// The goal is make the logging looking simpler in the code.
+// - 'Warning:' prefixes are rendered in yellow color.
+// - 'Error:' prefixes are rendered in red color.
+// - Text in square brackets [] is rendered in green.
+// - Text in curly brackets {} is rendered in bright cyan.
+// - Repeat [] or {} brackets to render them. E.g. {{, ]], }}, ]].
+// - Provide the second objTree parameter to dump a JavaScrip object.
+// - Setting `log.quiet = true` disables console output.
+//
+
 import chalk from 'chalk';
-import * as util from 'util';
+import util from 'util';
 
 export interface Logger {
   (message: string, obj?: any): void;
   quiet?: boolean;
 }
 
-export const log: Logger = (message: string, obj?: any) => {
+export const log: Logger = (message: string, objTree?: any) => {
   const output: string[] = [];
   const warning = 'Warning:';
   const error = 'Error:';
@@ -30,37 +43,37 @@ export const log: Logger = (message: string, obj?: any) => {
     return;
   }
 
-  const openBraces = '[{';
-  const closeBraces = ']}';
-  let braceIndex = -1;
+  const openBrackets = '[{';
+  const closeBrackets = ']}';
+  let bracketIndex = -1;
   for (let i = index, ch = '\0'; (ch = message[i]); ++i) {
     if (ch === message[i + 1]) {
-      if (openBraces.includes(ch) || closeBraces.includes(ch)) {
+      if (openBrackets.includes(ch) || closeBrackets.includes(ch)) {
         output.push(message.slice(index, i));
         index = ++i;
       }
-    } else if (braceIndex >= 0 && ch === closeBraces[braceIndex]) {
-      if (braceIndex === 0) {
+    } else if (bracketIndex >= 0 && ch === closeBrackets[bracketIndex]) {
+      if (bracketIndex === 0) {
         output.push(chalk.greenBright(message.slice(index, i)));
-      } else if (braceIndex === 1) {
+      } else if (bracketIndex === 1) {
         output.push(chalk.cyanBright(message.slice(index, i)));
       }
-      braceIndex = -1;
+      bracketIndex = -1;
       index = i + 1;
     } else {
-      const tempBraceIndex = openBraces.indexOf(ch);
+      const tempBraceIndex = openBrackets.indexOf(ch);
       if (tempBraceIndex === -1) {
         continue;
       }
 
       output.push(message.slice(index, i));
-      braceIndex = tempBraceIndex;
+      bracketIndex = tempBraceIndex;
       index = i + 1;
     }
   }
   output.push(message.slice(index, message.length));
-  if (typeof obj !== 'undefined') {
-    output.push(util.inspect(obj, {colors: true, depth: null}));
+  if (typeof objTree !== 'undefined') {
+    output.push(util.inspect(objTree, {colors: true, depth: null}));
   }
   console.log(output.join(''));
 };

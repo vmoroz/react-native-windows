@@ -5,12 +5,16 @@
  * @format
  */
 
-import {Config} from './config';
-import * as path from 'path';
-import * as fs from 'fs';
-const fsPromises = fs.promises;
-import * as xml2js from 'xml2js';
+//
+// Loads Doxygen model using xml2js component.
+// Provides partial typings for loaded data structures used by Doxysaurus project.
+//
+
+import path from 'path';
+import xml2js from 'xml2js';
 import {log} from './logger';
+import {promises as fs} from 'fs';
+import {Config} from './config';
 
 export class DoxModel {
   compounds: {[index: string]: DoxCompound} = {};
@@ -21,7 +25,7 @@ export class DoxModel {
     const model = new DoxModel(config);
     const indexPath = path.join(config.output, 'xml', 'index.xml');
     log(`Loading index {${indexPath}}`);
-    const indexText = await fsPromises.readFile(indexPath, 'utf8');
+    const indexText = await fs.readFile(indexPath, 'utf8');
     const indexXml = <IndexRootType>await xml2js.parseStringPromise(indexText);
     await model.loadCompounds(indexXml);
     return model;
@@ -47,7 +51,7 @@ export class DoxModel {
       `${compound.$.refid}.xml`,
     );
     log(`Loading compound {${compoundPath}}`);
-    const compoundText = await fsPromises.readFile(compoundPath, 'utf8');
+    const compoundText = await fs.readFile(compoundPath, 'utf8');
     const compoundXml = <CompoundRootType>await xml2js.parseStringPromise(
       compoundText,
       {

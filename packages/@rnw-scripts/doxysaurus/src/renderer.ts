@@ -6,15 +6,15 @@
  **/
 
 //
-// Render documentation files defined in DocModel by applying Mustache templates.
+// Renders Markdown based documentation model to markdown files by applying Mustache templates.
 //
 
 import mustache from 'mustache';
 import path from 'path';
-import {Config} from './config';
-import {DocModel} from './doc-model';
 import {log} from './logger';
 import {promises as fs} from 'fs';
+import {Config} from './config';
+import {DocModel} from './doc-model';
 
 const templateCache: {[index: string]: string} = {};
 

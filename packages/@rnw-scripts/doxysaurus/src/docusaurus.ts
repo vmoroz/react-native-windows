@@ -9,9 +9,9 @@
 // Copy generated documentation files to Docusaurus location.
 //
 
-import * as path from 'path';
-import {promises as fs} from 'fs';
+import path from 'path';
 import {log} from './logger';
+import {promises as fs} from 'fs';
 import {DocModel} from './doc-model';
 
 export async function copyDocusaurusFiles(docModel: DocModel) {

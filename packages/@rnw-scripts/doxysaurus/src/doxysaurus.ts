@@ -10,7 +10,7 @@
 // and then generates markdown files to be used by the Docusaurus service.
 //
 
-import * as yargs from 'yargs';
+import yargs from 'yargs';
 import {log} from './logger';
 import {getProjectConfigs} from './config';
 import {generateDoxygenXml} from './doxygen';

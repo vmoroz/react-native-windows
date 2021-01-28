@@ -5,11 +5,12 @@
  * @format
  */
 
-import * as fsUtils from './fs-utils';
-import * as path from 'path';
-import * as fs from 'fs';
-import {ensureAbsolutePath} from './fs-utils';
-const fsPromises = fs.promises;
+//
+// Configuration for the Doxysaurus tool.
+//
+
+import path from 'path';
+import {promises as fs, existsSync} from 'fs';
 
 // Definition of a config.
 export interface Config {
@@ -43,7 +44,7 @@ export async function* getProjectConfigs(configPath: string) {
         path.join(project, 'doxysaurus.json'),
         config.configDir,
       );
-      if (fs.existsSync(projectConfigPath)) {
+      if (existsSync(projectConfigPath)) {
         yield loadConfig(projectConfigPath, config);
       } else {
         yield updateConfig(config, {input: project});
@@ -59,7 +60,7 @@ export async function loadConfig(
   configPath: string,
   parentConfig?: Config,
 ): Promise<Config> {
-  const configText = await fsPromises.readFile(configPath, 'utf-8');
+  const configText = await fs.readFile(configPath, 'utf-8');
   const config = <Partial<Config>>JSON.parse(configText);
   config.configDir = path.dirname(configPath);
   if (parentConfig) {
@@ -77,7 +78,7 @@ export async function loadConfig(
 function normalizeConfig(config: Partial<Config>): Config {
   if (config.configDir) {
     if (config.input) {
-      config.input = fsUtils.ensureAbsolutePath(config.input, config.configDir);
+      config.input = ensureAbsolutePath(config.input, config.configDir);
     } else {
       config.input = config.configDir;
     }
@@ -112,4 +113,10 @@ function normalizeConfig(config: Partial<Config>): Config {
 // Updates and normalizes config file.
 function updateConfig(config: Config, ...update: Partial<Config>[]): Config {
   return normalizeConfig(Object.assign({}, config, ...update));
+}
+
+function ensureAbsolutePath(filePath: string, currentDir: string) {
+  return path.normalize(
+    path.isAbsolute(filePath) ? filePath : path.join(currentDir, filePath),
+  );
 }

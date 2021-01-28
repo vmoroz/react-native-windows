@@ -2,7 +2,7 @@
  * Copyright (c) Microsoft Corporation.
  * Licensed under the MIT License.
  *
- * This file contains some code taken from the doxygen NPM package.
+ * This file contains some code taken from the doxygen project.
  * This is to fix/extend some doxygen package features.
  * https://github.com/EruantalonJS/node-doxygen
  * Copyright for the doxygen package code:
@@ -12,16 +12,16 @@
  */
 
 //
-// Generate Doxygen documentation XML files.
+// Generates Doxygen documentation XML files.
 //
 
 // @ts-ignore (no typings for doxygen)
-import * as doxygen from 'doxygen';
-import * as fs from 'fs';
-import * as path from 'path';
+import doxygen from 'doxygen';
+import fs from 'fs';
+import path from 'path';
 import {exec} from 'child_process';
-import {Config} from './config';
 import {log} from './logger';
+import {Config} from './config';
 
 const DOXYGEN_VERSION = '1.9.1';
 
