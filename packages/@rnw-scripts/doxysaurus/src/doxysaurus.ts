@@ -13,8 +13,8 @@
 import * as yargs from 'yargs';
 import {log} from './logger';
 import {getProjectConfigs} from './config';
-import {DoxModel} from './doxygen-model';
 import {generateDoxygenXml} from './doxygen';
+import {DoxModel} from './doxygen-model';
 import {Transformer} from './transformer';
 import {renderDocFiles} from './renderer';
 import {copyDocusaurusFiles} from './docusaurus';
@@ -39,15 +39,16 @@ const argv = yargs
 log.quiet = argv.quiet;
 
 (async () => {
-  for await (const projectConfig of getProjectConfigs(argv.config)) {
-    log(`[Start] processing project {${projectConfig.input}}`);
+  for await (const config of getProjectConfigs(argv.config)) {
+    log(`[Start] processing project {${config.input}}`);
+    log('Project config: ', config);
 
-    await generateDoxygenXml(projectConfig);
-    const doxModel = await DoxModel.load(projectConfig);
-    const docModel = Transformer.transformToMarkdown(doxModel, projectConfig);
-    await renderDocFiles(docModel, projectConfig);
+    await generateDoxygenXml(config);
+    const doxModel = await DoxModel.load(config);
+    const docModel = Transformer.transformToMarkdown(doxModel, config);
+    await renderDocFiles(docModel, config);
     await copyDocusaurusFiles(docModel);
 
-    log(`[Finished] processing project {${projectConfig.input}}`);
+    log(`[Finished] processing project {${config.input}}`);
   }
 })();

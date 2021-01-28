@@ -25,13 +25,13 @@ export async function copyDocusaurusFiles(docModel: DocModel) {
   log(`[Start] copying files to Docusaurus Docs {${docsPath}}`);
 
   for (const compound of Object.values(docModel.compounds)) {
-    if (compound.output) {
+    if (compound.outputFileName) {
       const target = path.join(
         docsPath,
-        path.basename(compound.output) + '.md',
+        path.basename(compound.outputFileName),
       );
       log(`[Copying] file to {${target}}`);
-      await fs.copyFile(compound.output, target);
+      await fs.copyFile(compound.outputFileName, target);
     }
   }
 

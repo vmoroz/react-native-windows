@@ -1,18 +1,18 @@
 ---
 id: {{docId}}
-title: {{typeName}}
+title: {{name}}
 ---
 
-Defined in `{{fileName}}`  
+Defined in `{{codeFileName}}`  
 Namespace: **`{{namespace}}`**  
-{{#namespaceAlias}}
+{{#namespaceAliases}}
 Namespace alias: **`{{.}}`**
-{{/namespaceAlias}}
+{{/namespaceAliases}}
 
 ## Definition
 
 ```cpp
-{{&prototype}}
+{{&declaration}}
 ```
 
 {{&summary}}
@@ -44,7 +44,7 @@ Name | Description
 {{#members}}
 
 ```cpp
-{{&prototype}}
+{{&declaration}}
 ```
 
 {{&brief}}

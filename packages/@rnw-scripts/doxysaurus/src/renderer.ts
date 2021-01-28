@@ -30,10 +30,10 @@ export async function renderDocFiles(docModel: DocModel, config: Config) {
   const template = await getCachedTemplate(templatePath);
 
   for (const compound of Object.values(docModel.compounds)) {
-    compound.output = path.join(outDir, `${compound.docId}.md`);
-    log(`[Rendering] file {${compound.output}}`);
+    compound.outputFileName = path.join(outDir, `${compound.docId}.md`);
+    log(`[Rendering] file {${compound.outputFileName}}`);
     const outputText = mustache.render(template, compound);
-    await fs.writeFile(compound.output, outputText, 'utf-8');
+    await fs.writeFile(compound.outputFileName, outputText, 'utf-8');
   }
 }
 

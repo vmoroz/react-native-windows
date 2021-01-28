@@ -34,7 +34,8 @@ export class Transformer {
   private readonly docModel: DocModel;
   private readonly compoundMapDocToDox: {[index: string]: DoxCompound} = {};
   readonly compoundMapDoxToDoc: {[index: string]: DocCompound} = {};
-  readonly memberOverrideMap: {[index: string]: DocMemberOverload} = {};
+  readonly memberOverloadMap: {[index: string]: DocMemberOverload} = {};
+  readonly memberOverloadToCompound = new Map<DocMemberOverload, DocCompound>();
 
   private readonly doxMemberMap = new Map<DocMember, DoxMember>();
 
@@ -104,18 +105,18 @@ export class Transformer {
 
   private transformClass(doxCompound: DoxCompound) {
     const doxCompoundName = doxCompound.compoundname[0]._;
-    console.log(`transforming ${doxCompoundName}`);
+    log(`[Transforming] ${doxCompoundName}`);
     const noTemplateName = doxCompoundName.split('<')[0];
     const nsp = noTemplateName.split('::');
     const compound = new DocCompound();
     compound.namespace = nsp.splice(0, nsp.length - 1).join('::');
     // TODO: make this code config driven
     if (compound.namespace === 'winrt::Microsoft::ReactNative') {
-      compound.namespaceAlias = 'React';
+      compound.namespaceAliases.push('React');
     }
-    compound.typeName = nsp[nsp.length - 1];
-    compound.docId = `${this.config.prefix}${compound.typeName.toLowerCase()}`;
-    compound.fileName = path.basename(doxCompound.location[0].$.file);
+    compound.name = nsp[nsp.length - 1];
+    compound.docId = `${this.config.prefix}${compound.name.toLowerCase()}`;
+    compound.codeFileName = path.basename(doxCompound.location[0].$.file);
     this.docModel.compounds[compound.docId] = compound;
     this.compoundMapDoxToDoc[doxCompound.$.id] = compound;
     this.compoundMapDocToDox[compound.docId] = doxCompound;
@@ -142,13 +143,13 @@ export class Transformer {
         let section: DocSection;
         if (sectionName === 'user defined') {
           section = new DocSection();
-          section.title = sectionDef.header[0]._;
-          visibleSections[section.title] = section;
+          section.name = sectionDef.header[0]._;
+          visibleSections[section.name] = section;
         } else {
           section = visibleSections[sectionName];
           if (typeof section === 'undefined') {
             section = new DocSection();
-            section.title = sectionName;
+            section.name = sectionName;
             visibleSections[sectionName] = section;
           }
         }
@@ -162,9 +163,9 @@ export class Transformer {
           this.doxMemberMap.set(member, memberDef);
           member.name = memberName;
           const overloadName =
-            memberName === compound.typeName
+            memberName === compound.name
               ? '(constructor)'
-              : memberName === '~' + compound.typeName
+              : memberName === '~' + compound.name
               ? '(destructor)'
               : memberName === 'operator='
               ? 'assignment operator='
@@ -177,11 +178,11 @@ export class Transformer {
               : memberName;
           let memberOverload = compoundMemberOverloads.get(overloadName);
           if (typeof memberOverload === 'undefined') {
-            memberOverload = new DocMemberOverload(compound);
+            memberOverload = new DocMemberOverload();
+            this.memberOverloadToCompound.set(memberOverload, compound);
             memberOverload.name = overloadName;
             memberOverload.line = member.line;
             compoundMemberOverloads.set(overloadName, memberOverload);
-            compound.memberOverloads.push(memberOverload);
           }
           if (!memberOverloads.has(overloadName)) {
             memberOverloads.set(overloadName, memberOverload);
@@ -190,7 +191,7 @@ export class Transformer {
           memberOverload.members.push(member);
           memberOverload.line = Math.min(memberOverload.line, member.line);
 
-          this.memberOverrideMap[memberDef.$.id] = memberOverload;
+          this.memberOverloadMap[memberDef.$.id] = memberOverload;
 
           if (section.line === 0) {
             section.line = member.line;
@@ -206,7 +207,7 @@ export class Transformer {
       // Put deprecated section to the end
       sections.forEach(
         s =>
-          (s.line = s.title.includes('Deprecated')
+          (s.line = s.name.includes('Deprecated')
             ? Number.MAX_SAFE_INTEGER
             : s.line),
       );
@@ -214,12 +215,13 @@ export class Transformer {
       compound.sections = sections;
     }
 
-    compound.memberOverloads.sort(DocMemberOverload.compareByName);
-    for (const memberOverload of compound.memberOverloads) {
-      memberOverload.anchor = '#' + slugger.slug(memberOverload.name);
+    for (const section of compound.sections) {
+      for (const memberOverload of section.memberOverloads) {
+        memberOverload.anchor = '#' + slugger.slug(memberOverload.name);
+      }
     }
 
-    console.dir(compound, {depth: null});
+    log('[Compound] dump: ', compound);
   }
 
   private compoundToMarkdown(doxCompound: DoxCompound) {
@@ -231,81 +233,85 @@ export class Transformer {
       compound.details,
     );
 
-    compound.prototype = doxCompound.$.kind + ' ' + compound.typeName;
+    compound.declaration = doxCompound.$.kind + ' ' + compound.name;
     if (doxCompound.basecompoundref) {
       doxCompound.basecompoundref.forEach((base, index) => {
-        compound.prototype += `\n    ${index ? ',' : ':'} `;
-        compound.prototype += base.$.prot + ' ';
-        compound.prototype += base._.replace('< ', '<').replace(' >', '>');
+        compound.declaration += `\n    ${index ? ',' : ':'} `;
+        compound.declaration += base.$.prot + ' ';
+        compound.declaration += base._.replace('< ', '<').replace(' >', '>');
       });
     }
 
-    for (const memberOverload of compound.memberOverloads) {
-      for (const member of memberOverload.members) {
-        const memberDef = this.doxMemberMap.get(member);
-        member.brief = this.toMarkdown(memberDef.briefdescription);
-        member.details = this.toMarkdown(memberDef.detaileddescription);
-        member.summary = Transformer.createSummary(
-          member.brief,
-          member.details,
-        );
-
-        let m: string[] = [];
-        if (memberDef.templateparamlist) {
-          m.push('template<');
-          if (
-            memberDef.templateparamlist.length > 0 &&
-            memberDef.templateparamlist[0].param
-          ) {
-            memberDef.templateparamlist[0].param.forEach((param, argn) => {
-              m = m.concat(argn === 0 ? [] : ',');
-              m = m.concat([this.toMarkdownNoLink(param.type)]);
-              // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-              if (param.defval && param.defval[0]._) {
-                m = m.concat([' = ', param.defval[0]._]);
-              }
-            });
-          }
-          m.push('>  \n');
-        }
-        m = m.concat([memberDef.$.prot, ': ']); // public, private, ...
-        m = m.concat(memberDef.$.static === 'yes' ? ['static', ' '] : []);
-        m = m.concat(memberDef.$.virt === 'virtual' ? ['virtual', ' '] : []);
-        let typeMarkdown = this.toMarkdownNoLink(memberDef.type);
-        if (typeMarkdown.trim() !== '') {
-          typeMarkdown = typeMarkdown.replace(/\s+/g, ' ');
-          m = m.concat(
-            typeMarkdown,
-            typeMarkdown.endsWith('&') || typeMarkdown.endsWith('*') ? '' : ' ',
+    for (const section of compound.sections) {
+      for (const memberOverload of section.memberOverloads) {
+        for (const member of memberOverload.members) {
+          const memberDef = this.doxMemberMap.get(member);
+          member.brief = this.toMarkdown(memberDef.briefdescription);
+          member.details = this.toMarkdown(memberDef.detaileddescription);
+          member.summary = Transformer.createSummary(
+            member.brief,
+            member.details,
           );
-        }
-        m = m.concat(memberDef.$.explicit === 'yes' ? ['explicit', ' '] : []);
-        m = m.concat(memberDef.name[0]._);
-        const argsstring = this.toMarkdownNoLink(memberDef.argsstring);
-        if (argsstring.trim() !== '') {
-          m = m.concat(argsstring.replace('=', ' = '));
-        }
-        m = m.concat(';');
 
-        member.prototype = m.join('');
-
-        if (!memberOverload.summary) {
-          if (memberOverload.name === '(constructor)') {
-            memberOverload.summary = `constructs the ${'[`' +
-              compound.typeName +
-              '`](' +
-              compound.docId +
-              ')'}`;
-          } else if (memberOverload.name === '(destructor)') {
-            memberOverload.summary = `destroys the ${'[`' +
-              compound.typeName +
-              '`](' +
-              compound.docId +
-              ')'}`;
-          } else {
-            memberOverload.summary = member.summary.replace(/^[A-Z]/, match =>
-              match.toLowerCase(),
+          let m: string[] = [];
+          if (memberDef.templateparamlist) {
+            m.push('template<');
+            if (
+              memberDef.templateparamlist.length > 0 &&
+              memberDef.templateparamlist[0].param
+            ) {
+              memberDef.templateparamlist[0].param.forEach((param, argn) => {
+                m = m.concat(argn === 0 ? [] : ',');
+                m = m.concat([this.toMarkdownNoLink(param.type)]);
+                // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+                if (param.defval && param.defval[0]._) {
+                  m = m.concat([' = ', param.defval[0]._]);
+                }
+              });
+            }
+            m.push('>  \n');
+          }
+          m = m.concat([memberDef.$.prot, ': ']); // public, private, ...
+          m = m.concat(memberDef.$.static === 'yes' ? ['static', ' '] : []);
+          m = m.concat(memberDef.$.virt === 'virtual' ? ['virtual', ' '] : []);
+          let typeMarkdown = this.toMarkdownNoLink(memberDef.type);
+          if (typeMarkdown.trim() !== '') {
+            typeMarkdown = typeMarkdown.replace(/\s+/g, ' ');
+            m = m.concat(
+              typeMarkdown,
+              typeMarkdown.endsWith('&') || typeMarkdown.endsWith('*')
+                ? ''
+                : ' ',
             );
+          }
+          m = m.concat(memberDef.$.explicit === 'yes' ? ['explicit', ' '] : []);
+          m = m.concat(memberDef.name[0]._);
+          const argsstring = this.toMarkdownNoLink(memberDef.argsstring);
+          if (argsstring.trim() !== '') {
+            m = m.concat(argsstring.replace('=', ' = '));
+          }
+          m = m.concat(';');
+
+          member.declaration = m.join('');
+
+          if (!memberOverload.summary) {
+            if (memberOverload.name === '(constructor)') {
+              memberOverload.summary = `constructs the ${'[`' +
+                compound.name +
+                '`](' +
+                compound.docId +
+                ')'}`;
+            } else if (memberOverload.name === '(destructor)') {
+              memberOverload.summary = `destroys the ${'[`' +
+                compound.name +
+                '`](' +
+                compound.docId +
+                ')'}`;
+            } else {
+              memberOverload.summary = member.summary.replace(/^[A-Z]/, match =>
+                match.toLowerCase(),
+              );
+            }
           }
         }
       }
@@ -519,12 +525,15 @@ class MarkdownTransformer {
     switch (refKind) {
       case 'compound':
         const compound = this.transformer.compoundMapDoxToDoc[refId];
-        return this.link(text, compound.docId || '', true);
+        return this.link(text, compound.docId, true);
       case 'member':
-        const memberOverload = this.transformer.memberOverrideMap[refId];
+        const memberOverload = this.transformer.memberOverloadMap[refId];
+        const memberCompound = this.transformer.memberOverloadToCompound.get(
+          memberOverload,
+        );
         return this.link(
           text,
-          (memberOverload.compound.docId || '') + (memberOverload.anchor || ''),
+          memberCompound.docId + memberOverload.anchor,
           true,
         );
       default:
@@ -581,15 +590,16 @@ class MarkdownTransformer {
     );
   }
 
-  idlClassRefs: {[index: string]: string} = {
-    IJSValueReader: 'IJSValueReader',
-    IJSValueWriter: 'IJSValueWriter',
-    JSValueType: 'JSValueType',
-  };
+  // Use Map instead of Object to avoid matching special members such as 'constructor'.
+  idlClassRefs = new Map<string, string>([
+    ['IJSValueReader', 'IJSValueReader'],
+    ['IJSValueWriter', 'IJSValueWriter'],
+    ['JSValueType', 'JSValueType'],
+  ]);
 
   private applyIdlGeneratedLinks(text: string) {
     return text.replace(/(\w+)(::\w+(\(\))?)?/g, (match, p1) => {
-      const ref = this.idlClassRefs[p1];
+      const ref = this.idlClassRefs.get(p1);
       if (ref) {
         return `[\`${match}\`](${ref})`;
       } else {
