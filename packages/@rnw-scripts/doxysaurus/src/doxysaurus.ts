@@ -15,7 +15,7 @@ import {log} from './logger';
 import {getProjectConfigs} from './config';
 import {generateDoxygenXml} from './doxygen';
 import {DoxModel} from './doxygen-model';
-import {Transformer} from './transformer';
+import {transformToMarkdown} from './transformer';
 import {renderDocFiles} from './renderer';
 import {copyDocusaurusFiles} from './docusaurus';
 
@@ -45,7 +45,7 @@ log.quiet = argv.quiet;
 
     await generateDoxygenXml(config);
     const doxModel = await DoxModel.load(config);
-    const docModel = Transformer.transformToMarkdown(doxModel, config);
+    const docModel = transformToMarkdown(doxModel, config);
     await renderDocFiles(docModel, config);
     await copyDocusaurusFiles(docModel);
 
