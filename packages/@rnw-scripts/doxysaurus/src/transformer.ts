@@ -25,19 +25,26 @@ const GithubSlugger = require('github-slugger');
 import * as path from 'path';
 import {log} from './logger';
 
-type NotVisible = 'not visible';
-type UserDefined = 'user defined';
+interface TypeLinks {
+  linkPrefix: string;
+  linkMap: Map<string, string>;
+}
 
 export class Transformer {
-  private readonly config: Config;
+  readonly config: Config;
   private readonly doxModel: DoxModel;
   private readonly docModel: DocModel;
   private readonly compoundMapDocToDox: {[index: string]: DoxCompound} = {};
+  readonly knownSections: Map<string, string>;
   readonly compoundMapDoxToDoc: {[index: string]: DocCompound} = {};
   readonly memberOverloadMap: {[index: string]: DocMemberOverload} = {};
   readonly memberOverloadToCompound = new Map<DocMemberOverload, DocCompound>();
 
   private readonly doxMemberMap = new Map<DocMember, DoxMember>();
+
+  readonly namespaces: Map<string, {aliases: string[]}>;
+  readonly stdTypeLinks: TypeLinks;
+  readonly idlTypeLinks: TypeLinks;
 
   static transformToMarkdown(doxModel: DoxModel, config: Config) {
     const transformer = new Transformer(doxModel, config);
@@ -48,6 +55,18 @@ export class Transformer {
     this.config = config;
     this.doxModel = doxModel;
     this.docModel = new DocModel();
+    this.knownSections = new Map<string, string>(config.sections ?? []);
+    this.namespaces = new Map<string, {aliases: string[]}>(
+      config.namespaces ?? [],
+    );
+    this.stdTypeLinks = {
+      linkPrefix: config.stdTypeLinks?.linkPrefix ?? '',
+      linkMap: new Map<string, string>(config.stdTypeLinks?.linkMap ?? []),
+    };
+    this.idlTypeLinks = {
+      linkPrefix: config.idlTypeLinks?.linkPrefix ?? '',
+      linkMap: new Map<string, string>(config.idlTypeLinks?.linkMap ?? []),
+    };
   }
 
   private transform() {
@@ -78,32 +97,6 @@ export class Transformer {
     return this.docModel;
   }
 
-  private static readonly knownSections = new Map<
-    string,
-    string | NotVisible | UserDefined
-  >([
-    ['friend', 'not visible'], // TODO: research
-    ['private-attrib', 'not visible'],
-    ['private-func', 'not visible'],
-    ['private-slot', 'not visible'],
-    ['private-static-attrib', 'not visible'],
-    ['private-static-func', 'not visible'],
-    ['private-type', 'not visible'],
-    ['protected-attrib', 'Protected members'],
-    ['protected-func', 'Protected members'],
-    ['protected-static-attrib', 'Protected members'],
-    ['protected-static-func', 'Protected members'],
-    ['protected-type', 'not visible'], // TODO: research
-    ['public-attrib', 'Public members'],
-    ['public-func', 'Public members'],
-    ['public-static-attrib', 'Public members'],
-    ['public-static-func', 'Public members'],
-    ['public-type', 'not visible'], // TODO: research
-    ['related', 'Standalone members'],
-    ['user-defined', 'user defined'],
-  ]);
-
-  // eslint-disable-next-line complexity
   private transformClass(doxCompound: DoxCompound) {
     const doxCompoundName = doxCompound.compoundname[0]._;
     log(`[Transforming] ${doxCompoundName}`);
@@ -111,11 +104,10 @@ export class Transformer {
     const nsp = noTemplateName.split('::');
     const compound = new DocCompound();
     compound.namespace = nsp.splice(0, nsp.length - 1).join('::');
-    if (this.config.namespaces && this.config.namespaces[compound.namespace]) {
-      const aliases = this.config.namespaces[compound.namespace]?.aliases;
-      if (aliases) {
-        compound.namespaceAliases = aliases;
-      }
+    compound.namespaceAliases = [];
+    const nsEntry = this.namespaces.get(compound.namespace);
+    if (nsEntry) {
+      compound.namespaceAliases = nsEntry.aliases;
     }
     compound.name = nsp[nsp.length - 1];
     compound.docId = `${this.config.prefix}${compound.name.toLowerCase()}`;
@@ -133,18 +125,18 @@ export class Transformer {
 
       for (const sectionDef of doxCompound.sectiondef) {
         const sectionKind = sectionDef.$.kind;
-        const sectionName = Transformer.knownSections.get(sectionKind);
+        const sectionName = this.knownSections.get(sectionKind);
 
         if (typeof sectionName === 'undefined') {
           throw new Error(`Unknown section kind ${sectionKind}`);
         }
 
-        if (sectionName === 'not visible') {
+        if (sectionName === '<not visible>') {
           continue;
         }
 
         let section: DocSection;
-        if (sectionName === 'user defined') {
+        if (sectionName === '<user defined>') {
           section = new DocSection();
           section.name = sectionDef.header[0]._;
           visibleSections[section.name] = section;
@@ -561,23 +553,14 @@ class MarkdownTransformer {
     return this.w(text);
   }
 
-  stdLibRefs: {[index: string]: string} = {
-    'std::intializer_list':
-      'https://en.cppreference.com/w/cpp/utility/initializer_list',
-    'std::less': 'https://en.cppreference.com/w/cpp/utility/functional/less',
-    'std::map': 'https://en.cppreference.com/w/cpp/container/map',
-    'std::string': 'https://en.cppreference.com/w/cpp/string/basic_string',
-    'std::string_view':
-      'https://en.cppreference.com/w/cpp/string/basic_string_view',
-    'std::vector': 'https://en.cppreference.com/w/cpp/container/vector',
-  };
-
   private applyStandardLibLinks(text: string) {
+    const stdTypeLinks = this.transformer.stdTypeLinks;
     return text.replace(
       /(std::\w+)(<\w+>)?(::\w+\(\)|::operator\[\])?/g,
       (match, p1, _, p3) => {
-        const ref = this.stdLibRefs[p1];
-        if (ref) {
+        const link = stdTypeLinks.linkMap.get(p1);
+        if (link) {
+          const ref = stdTypeLinks.linkPrefix + link;
           if (p3) {
             if (p3.endsWith('()')) {
               return `[\`${match}\`](${ref}/${p3.slice(2, -2)})`;
@@ -593,18 +576,12 @@ class MarkdownTransformer {
     );
   }
 
-  // Use Map instead of Object to avoid matching special members such as 'constructor'.
-  idlClassRefs = new Map<string, string>([
-    ['IJSValueReader', 'IJSValueReader'],
-    ['IJSValueWriter', 'IJSValueWriter'],
-    ['JSValueType', 'JSValueType'],
-  ]);
-
   private applyIdlGeneratedLinks(text: string) {
     return text.replace(/(\w+)(::\w+(\(\))?)?/g, (match, p1) => {
-      const ref = this.idlClassRefs.get(p1);
+      const idlTypeLinks = this.transformer.idlTypeLinks;
+      const ref = idlTypeLinks.linkMap.get(p1);
       if (ref) {
-        return `[\`${match}\`](${ref})`;
+        return `[\`${match}\`](${idlTypeLinks.linkPrefix + ref})`;
       } else {
         return match;
       }

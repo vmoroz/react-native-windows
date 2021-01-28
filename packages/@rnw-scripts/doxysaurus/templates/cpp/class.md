@@ -19,7 +19,7 @@ Namespace alias: **`{{.}}`**
 
 {{#sections}}
 
-### {{title}}
+### {{name}}
 
 Name | Description
 -----|------------

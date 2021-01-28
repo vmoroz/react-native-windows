@@ -19,8 +19,15 @@ export interface Config {
   prefix: string;
   index: string;
   projects?: string[];
-  readonly namespaces?: {
-    [index: string]: {aliases?: string[]} | undefined;
+  namespaces?: [string, {aliases: string[]}][];
+  sections?: [string, string][];
+  stdTypeLinks?: {
+    linkPrefix?: string;
+    linkMap: [string, string][];
+  };
+  idlTypeLinks?: {
+    linkPrefix?: string;
+    linkMap: [string, string][];
   };
 }
 
