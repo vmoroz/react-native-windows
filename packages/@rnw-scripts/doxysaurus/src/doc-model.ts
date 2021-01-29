@@ -17,8 +17,8 @@ export class DocModel {
   // List of all documented compounds indexed by their name.
   compounds: {[index: string]: DocCompound} = {};
 
-  // The path where the model is rendered to.
-  outputPath = '';
+  // List of all structs and classes sorted by name.
+  classes: DocCompound[] = [];
 }
 
 // DocCompound represents a document for a type.
@@ -53,9 +53,6 @@ export class DocCompound {
 
   // Sections with type members and with related definitions.
   sections: DocSection[] = [];
-
-  // Name of the file where this compound is rendered to.
-  outputFileName = '';
 }
 
 // DocSection is a group of compound members such as 'Public members' or 'Related definitions'.

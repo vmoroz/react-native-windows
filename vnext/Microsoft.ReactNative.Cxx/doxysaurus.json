@@ -1,6 +1,7 @@
 {
   "prefix": "cppapi-",
   "index": "cppapi.md",
+  "indexTemplate": "cppapi.md",
   "types": [
     "JSValue",
     "JSValueArray",

@@ -18,7 +18,8 @@ export interface Config {
   input: string;
   output: string;
   prefix: string;
-  index: string;
+  index?: string;
+  indexTemplate?: string;
   projects?: string[];
   types?: string[];
   namespaceAliases?: [string, string[]][];

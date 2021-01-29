@@ -129,6 +129,7 @@ export function transformToMarkdown(doxModel: DoxModel, config: Config) {
     compound.docId = `${config.prefix}${compound.name.toLowerCase()}`;
     compound.codeFileName = path.basename(doxCompound.location[0].$.file);
     docModel.compounds[compound.docId] = compound;
+    docModel.classes.push(compound);
     doxIdToDocCompound.set(doxCompound.$.id, compound);
     docIdToDoxCompound.set(compound.docId, doxCompound);
 

@@ -46,8 +46,8 @@ log.quiet = argv.quiet;
     await generateDoxygenXml(config);
     const doxModel = await DoxModel.load(config);
     const docModel = transformToMarkdown(doxModel, config);
-    await renderDocFiles(docModel, config);
-    await copyDocusaurusFiles(docModel);
+    const files = await renderDocFiles(docModel, config);
+    await copyDocusaurusFiles(files);
 
     log(`[Finished] processing project {${config.input}}`);
   }
