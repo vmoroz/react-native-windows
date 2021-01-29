@@ -32,11 +32,16 @@ const argv = yargs
       describe: 'quiet mode',
       type: 'boolean',
     },
+    log: {
+      alias: 'l',
+      describe: 'log file',
+      type: 'string',
+    },
   })
   .version(false)
   .help(false).argv;
 
-log.quiet = argv.quiet;
+log.init({quiet: argv.quiet, logFile: argv.log});
 
 (async () => {
   for await (const config of getProjectConfigs(argv.config)) {

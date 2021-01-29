@@ -8,8 +8,7 @@
     [ ] Map std:: operators
 [ ] Refactoring
     [ ] Simplify doxygen-model
-    [ ] Add support for log file (no color, add time stamp)
-    [ ] Split up the transform function into multiple small function
+    [ ] Split up the transform function into multiple small functions
 [ ] Add app Promise rejection handler.
 [ ] Make sure that we handle only .h files.
 [ ] Make output folder be project specific

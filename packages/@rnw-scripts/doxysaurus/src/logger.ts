@@ -19,28 +19,38 @@
 //
 
 import chalk from 'chalk';
+import fs from 'fs';
+import path from 'path';
 import util from 'util';
+
+export interface LoggerOptions {
+  quiet?: boolean;
+  logFile?: string;
+}
 
 export interface Logger {
   (message: string, obj?: any): void;
-  quiet?: boolean;
+  init: (options: LoggerOptions) => void;
 }
 
-export const log: Logger = (message: string, objTree?: any) => {
-  const output: string[] = [];
+function writeLog(message: string, objTree?: any) {
   const warning = 'Warning:';
   const error = 'Error:';
-  let index = 0;
-  if (message.startsWith(warning)) {
-    output.push(chalk.yellow(warning));
-    index += warning.length;
-  } else if (message.startsWith(error)) {
-    output.push(chalk.redBright(error));
-    index += error.length;
-  }
+  const hasError = message.startsWith(error);
 
-  if (index === 0 && log.quiet) {
-    return;
+  const consoleOutput: string[] | undefined =
+    hasError || !writeLog.quiet ? [] : undefined;
+  const logFileOutput: string[] | undefined = writeLog.logFilePath
+    ? []
+    : undefined;
+
+  let index = 0;
+  if (hasError) {
+    write(error, chalk.redBright);
+    index += error.length;
+  } else if (message.startsWith(warning)) {
+    write(warning, chalk.yellow);
+    index += warning.length;
   }
 
   const openBrackets = '[{';
@@ -49,14 +59,14 @@ export const log: Logger = (message: string, objTree?: any) => {
   for (let i = index, ch = '\0'; (ch = message[i]); ++i) {
     if (ch === message[i + 1]) {
       if (openBrackets.includes(ch) || closeBrackets.includes(ch)) {
-        output.push(message.slice(index, i));
+        write(message.slice(index, i));
         index = ++i;
       }
     } else if (bracketIndex >= 0 && ch === closeBrackets[bracketIndex]) {
       if (bracketIndex === 0) {
-        output.push(chalk.greenBright(message.slice(index, i)));
+        write(message.slice(index, i), chalk.greenBright);
       } else if (bracketIndex === 1) {
-        output.push(chalk.cyanBright(message.slice(index, i)));
+        write(message.slice(index, i), chalk.cyanBright);
       }
       bracketIndex = -1;
       index = i + 1;
@@ -66,14 +76,47 @@ export const log: Logger = (message: string, objTree?: any) => {
         continue;
       }
 
-      output.push(message.slice(index, i));
+      write(message.slice(index, i));
       bracketIndex = tempBraceIndex;
       index = i + 1;
     }
   }
-  output.push(message.slice(index, message.length));
-  if (typeof objTree !== 'undefined') {
-    output.push(util.inspect(objTree, {colors: true, depth: null}));
+  write(message.slice(index, message.length));
+
+  if (consoleOutput) {
+    if (typeof objTree !== 'undefined') {
+      consoleOutput.push(util.inspect(objTree, {colors: true, depth: null}));
+    }
+    console.log(consoleOutput.join(''));
   }
-  console.log(output.join(''));
+
+  if (logFileOutput) {
+    if (typeof objTree !== 'undefined') {
+      logFileOutput.push(util.inspect(objTree, {colors: false, depth: null}));
+    }
+    logFileOutput.push('\n');
+    fs.appendFileSync(writeLog.logFilePath, logFileOutput.join(''), 'utf-8');
+  }
+
+  function write(text: string, colorizer?: (text: string) => string) {
+    if (consoleOutput) {
+      consoleOutput.push(colorizer ? colorizer(text) : text);
+    }
+    if (logFileOutput) {
+      logFileOutput.push(text);
+    }
+  }
+}
+
+writeLog.quiet = false;
+writeLog.logFilePath = '';
+
+writeLog.init = (options: LoggerOptions) => {
+  writeLog.quiet = options.quiet ?? false;
+  if (options.logFile) {
+    writeLog.logFilePath = path.join(process.cwd(), options.logFile);
+    fs.writeFileSync(writeLog.logFilePath, '', 'utf-8');
+  }
 };
+
+export const log: Logger = writeLog;
