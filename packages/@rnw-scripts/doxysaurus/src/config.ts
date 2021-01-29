@@ -62,7 +62,7 @@ export async function loadConfig(
   parentConfig?: Config,
 ): Promise<Config> {
   const configText = await fs.readFile(configPath, 'utf-8');
-  const config = <Partial<Config>>JSON.parse(configText);
+  const config = JSON.parse(configText) as Partial<Config>;
   config.configDir = path.dirname(configPath);
   if (parentConfig) {
     return updateConfig(
