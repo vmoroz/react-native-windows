@@ -56,9 +56,12 @@ export function transformToMarkdown(doxModel: DoxModel, config: Config) {
   const docIdToDoxCompound = new Map<string, DoxCompound | undefined>();
   const doxIdToDocCompound = new Map<string, DocCompound | undefined>();
 
-  const memberOverloadMap: {[index: string]: DocMemberOverload} = {};
+  const doxMemberIdToMemberOverload = new Map<
+    string,
+    DocMemberOverload | undefined
+  >();
   const memberOverloadToCompound = new Map<DocMemberOverload, DocCompound>();
-  const doxMemberMap = new Map<DocMember, DoxMember>();
+  const memberToDoxMember = new Map<DocMember, DoxMember>();
 
   const types = new Set<string>(config.types ?? []);
   const namespaceAliases = new Map<string, string[] | undefined>(
@@ -81,9 +84,12 @@ export function transformToMarkdown(doxModel: DoxModel, config: Config) {
     resolveMemberId: (
       doxMemberId: string,
     ): [DocCompound | undefined, DocMemberOverload | undefined] => {
-      const memberOverload = memberOverloadMap[doxMemberId];
-      const compound = memberOverloadToCompound.get(memberOverload);
-      return [compound, memberOverload];
+      const memberOverload = doxMemberIdToMemberOverload.get(doxMemberId);
+      if (memberOverload) {
+        return [memberOverloadToCompound.get(memberOverload), memberOverload];
+      } else {
+        return [undefined, undefined];
+      }
     },
   };
 
@@ -165,7 +171,7 @@ export function transformToMarkdown(doxModel: DoxModel, config: Config) {
           const memberName = memberDef.name[0]._;
           const member = new DocMember();
           member.line = Number(memberDef.location[0].$.line);
-          doxMemberMap.set(member, memberDef);
+          memberToDoxMember.set(member, memberDef);
           member.name = memberName;
           const overloadName =
             memberName === compound.name
@@ -196,7 +202,7 @@ export function transformToMarkdown(doxModel: DoxModel, config: Config) {
           memberOverload.members.push(member);
           memberOverload.line = Math.min(memberOverload.line, member.line);
 
-          memberOverloadMap[memberDef.$.id] = memberOverload;
+          doxMemberIdToMemberOverload.set(memberDef.$.id, memberOverload);
 
           if (section.line === 0) {
             section.line = member.line;
@@ -242,7 +248,7 @@ export function transformToMarkdown(doxModel: DoxModel, config: Config) {
     for (const section of compound.sections) {
       for (const memberOverload of section.memberOverloads) {
         for (const member of memberOverload.members) {
-          const memberDef = doxMemberMap.get(member);
+          const memberDef = memberToDoxMember.get(member);
           member.brief = toMarkdown(memberDef.briefdescription, linkResolver);
           member.details = toMarkdown(
             memberDef.detaileddescription,
