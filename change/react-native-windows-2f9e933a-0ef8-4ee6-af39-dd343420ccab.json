@@ -1,6 +1,6 @@
 {
   "type": "prerelease",
-  "comment": "use lifted DispatcherQueue",
+  "comment": "App crashes at startup on RS3 because of RS4+ API usage",
   "packageName": "react-native-windows",
   "email": "asklar@microsoft.com",
   "dependentChangeType": "patch"
