@@ -41,19 +41,29 @@ const argv = yargs
   .version(false)
   .help(false).argv;
 
-log.init({quiet: argv.quiet, logFile: argv.log});
-
 (async () => {
-  for await (const config of getProjectConfigs(argv.config)) {
-    log(`[Start] processing project {${config.input}}`);
-    log('Project config: ', config);
+  try {
+    log.init({quiet: argv.quiet, logFile: argv.log});
 
-    await generateDoxygenXml(config);
-    const doxModel = await DoxModel.load(config);
-    const docModel = transformToMarkdown(doxModel, config);
-    const files = await renderDocFiles(docModel, config);
-    await copyDocusaurusFiles(files);
+    for await (const config of getProjectConfigs(argv.config)) {
+      log(`[Start] processing project {${config.input}}`);
+      log('Project config: ', config);
 
-    log(`[Finished] processing project {${config.input}}`);
+      await generateDoxygenXml(config);
+      const doxModel = await DoxModel.load(config);
+      const docModel = transformToMarkdown(doxModel, config);
+      const files = await renderDocFiles(docModel, config);
+      await copyDocusaurusFiles(files);
+
+      log(`[Finished] processing project {${config.input}}`);
+    }
+  } catch (err) {
+    try {
+      log(`Error: `, err);
+    } catch (logError) {
+      console.error(logError);
+    }
+
+    process.exit(1);
   }
 })();

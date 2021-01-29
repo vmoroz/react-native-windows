@@ -9,7 +9,6 @@
 [ ] Refactoring
     [ ] Simplify doxygen-model
     [ ] Split up the transform function into multiple small functions
-[ ] Add app Promise rejection handler.
 [ ] Make sure that we handle only .h files.
 [ ] Make output folder be project specific
 [ ] Better algorithm for std:: operator mapping
