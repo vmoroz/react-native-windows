@@ -52,20 +52,19 @@ interface LinkResolver {
 
 export function transformToMarkdown(doxModel: DoxModel, config: Config) {
   const docModel = new DocModel();
-  const compoundMapDocToDox: {[index: string]: DoxCompound} = {};
-  const knownSections = new Map<string, string>(config.sections ?? []);
-  const compoundMapDoxToDoc: {
-    [index: string]: DocCompound | undefined;
-  } = {};
+
+  const docIdToDoxCompound = new Map<string, DoxCompound | undefined>();
+  const doxIdToDocCompound = new Map<string, DocCompound | undefined>();
+
   const memberOverloadMap: {[index: string]: DocMemberOverload} = {};
   const memberOverloadToCompound = new Map<DocMemberOverload, DocCompound>();
-
   const doxMemberMap = new Map<DocMember, DoxMember>();
 
   const types = new Set<string>(config.types ?? []);
   const namespaceAliases = new Map<string, string[] | undefined>(
     config.namespaceAliases ?? [],
   );
+  const knownSections = new Map<string, string>(config.sections ?? []);
 
   const linkResolver: LinkResolver = {
     stdTypeLinks: {
@@ -77,7 +76,7 @@ export function transformToMarkdown(doxModel: DoxModel, config: Config) {
       linkMap: new Map<string, string>(config.idlTypeLinks?.linkMap ?? []),
     },
     resolveCompoundId: (doxCompoundId: string): DocCompound | undefined => {
-      return compoundMapDoxToDoc[doxCompoundId];
+      return doxIdToDocCompound.get(doxCompoundId);
     },
     resolveMemberId: (
       doxMemberId: string,
@@ -124,8 +123,8 @@ export function transformToMarkdown(doxModel: DoxModel, config: Config) {
     compound.docId = `${config.prefix}${compound.name.toLowerCase()}`;
     compound.codeFileName = path.basename(doxCompound.location[0].$.file);
     docModel.compounds[compound.docId] = compound;
-    compoundMapDoxToDoc[doxCompound.$.id] = compound;
-    compoundMapDocToDox[compound.docId] = doxCompound;
+    doxIdToDocCompound.set(doxCompound.$.id, compound);
+    docIdToDoxCompound.set(compound.docId, doxCompound);
 
     const compoundMemberOverloads = new Map<string, DocMemberOverload>();
 
@@ -231,10 +230,10 @@ export function transformToMarkdown(doxModel: DoxModel, config: Config) {
   }
 
   function compoundToMarkdown(compound: DocCompound) {
-    const doxCompound = compoundMapDocToDox[compound.docId];
-    compound.brief = toMarkdown(doxCompound.briefdescription, linkResolver);
+    const doxCompound = docIdToDoxCompound.get(compound.docId);
+    compound.brief = toMarkdown(doxCompound?.briefdescription, linkResolver);
     compound.details = toMarkdown(
-      doxCompound.detaileddescription,
+      doxCompound?.detaileddescription,
       linkResolver,
     );
     compound.summary = createSummary(compound.brief, compound.details);
@@ -285,8 +284,8 @@ export function transformToMarkdown(doxModel: DoxModel, config: Config) {
 
     function createCompoundDeclaration() {
       const sb = new StringBuilder();
-      sb.write(doxCompound.$.kind, ' ', compound.name);
-      doxCompound.basecompoundref?.forEach((base, index) => {
+      sb.write(doxCompound?.$.kind ?? '', ' ', compound.name);
+      doxCompound?.basecompoundref?.forEach((base, index) => {
         sb.write('\n    ', index ? ', ' : ': ');
         sb.write(base.$.prot, ' ');
         sb.write(base._.replace('< ', '<').replace(' >', '>'));
