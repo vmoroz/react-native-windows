@@ -17,6 +17,7 @@ export interface Config {
   configDir: string;
   input: string;
   output: string;
+  filePatterns?: string[];
   prefix: string;
   index?: string;
   indexTemplate?: string;
@@ -69,7 +70,7 @@ export async function loadConfig(
       parentConfig,
       {
         input: undefined,
-        projects: undefined
+        projects: undefined,
       },
       config,
       {

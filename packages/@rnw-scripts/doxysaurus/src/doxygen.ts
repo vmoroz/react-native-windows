@@ -48,13 +48,17 @@ export async function generateDoxygenXml(config: Config) {
 }
 
 function generateDoxygenConfig(config: Config, doxygenConfigPath: string) {
-  const doxygenOptions = {
+  const doxygenOptions: {[index: string]: string} = {
     OUTPUT_DIRECTORY: config.output,
     INPUT: config.input,
     GENERATE_LATEX: 'NO',
     GENERATE_HTML: 'NO',
     GENERATE_XML: 'YES',
   };
+
+  if (config.filePatterns) {
+    doxygenOptions.FILE_PATTERNS = config.filePatterns.join(' ');
+  }
 
   doxygen.createConfig(doxygenOptions, doxygenConfigPath);
 }
