@@ -1,6 +1,5 @@
 # TODO list for Doxysaurus
 
-[ ] Make output folder be project specific
 [ ] Make sure that we handle only .h files.
 [ ] Fix link substitution algorithm to avoid nested substitutions
 [ ] Better algorithm for std:: operator mapping

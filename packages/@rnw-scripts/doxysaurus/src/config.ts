@@ -67,8 +67,17 @@ export async function loadConfig(
   if (parentConfig) {
     return updateConfig(
       parentConfig,
-      {input: undefined, projects: undefined},
+      {
+        input: undefined,
+        projects: undefined
+      },
       config,
+      {
+        output: path.join(
+          parentConfig.output,
+          config.output ?? path.basename(config.configDir),
+        ),
+      },
     );
   } else {
     return normalizeConfig(config);
