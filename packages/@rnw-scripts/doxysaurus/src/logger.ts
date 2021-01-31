@@ -18,10 +18,10 @@
 // - Setting `log.quiet = true` disables console output.
 //
 
-import * as chalk from 'chalk';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as util from 'util';
+import chalk from 'chalk';
+import fs from 'fs';
+import path from 'path';
+import util from 'util';
 
 export interface LoggerOptions {
   quiet?: boolean;
