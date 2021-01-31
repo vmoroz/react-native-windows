@@ -37,6 +37,8 @@ export interface LinkResolver {
 
 export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
   const context: DoxDescriptionElement[] = [];
+  let indent = 0;
+
   const sb = new StringBuilder();
   write(desc);
   return sb.toString();
@@ -52,7 +54,7 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
       case '__text__':
         return autoLinks(element._);
       case 'para':
-        return write(index ? '\n\n' : '', element.$$);
+        return write(index ? '\n\n' : '', ' '.repeat(index ? indent: 0), element.$$);
       case 'emphasis':
         return write('*', element.$$, '*');
       case 'bold':
@@ -74,7 +76,8 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
       case 'itemizedlist':
         return write('\n\n', element.$$, '\n');
       case 'listitem':
-        return write(
+        return writeWithIndent(
+          ' '.repeat(indent),
           last(context)?.['#name'] === 'orderedlist' ? '1. ' : '* ',
           element.$$,
           '\n',
@@ -259,6 +262,12 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
     context.push(element);
     write(...items);
     context.pop();
+  }
+
+  function writeWithIndent(...items: DoxDescription[]) {
+    indent += 2;
+    write(...items);
+    indent -= 2;
   }
 
   function write(...items: DoxDescription[]): void {

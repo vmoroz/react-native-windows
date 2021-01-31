@@ -79,6 +79,39 @@ test('Brief description with itemized list', async () => {
   );
 });
 
+test('Brief description with "para" tags in itemized list', async () => {
+  const memberDef = await parse(`
+    |<memberdef>
+    |  <briefdescription>
+    |<para><itemizedlist>
+    |<listitem><para>item1 para1</para>
+    |<para>item1 para2</para>
+    |<para>item1 para3</para>
+    |</listitem><listitem><para>item2</para>
+    |</listitem><listitem><para>item3</para>
+    |</listitem></itemizedlist>
+    |</para>
+    |  </briefdescription>
+    |</memberdef>`);
+
+  const text = toMarkdown(memberDef.briefdescription);
+  expect(text).toBe(
+    t(`
+      |
+      |
+      |* item1 para1
+      |
+      |  item1 para2
+      |
+      |  item1 para3
+      |* item2
+      |* item3
+      |
+      |
+      `),
+  );
+});
+
 async function parse(xmlText: string) {
   const xml = await xml2js.parseStringPromise(t(xmlText), {
     explicitChildren: true,
