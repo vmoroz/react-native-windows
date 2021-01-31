@@ -308,6 +308,18 @@ test('White spaces', async () => {
   );
 });
 
+test('Hyphen and dashes', async () => {
+  const memberDef = await parse(`
+    |<memberdef>
+    |  <briefdescription>
+        |<para>Dashes: hypen: - ndash: <ndash/> mdash: <mdash/></para>
+    |  </briefdescription>
+    |</memberdef>`);
+
+  const text = toMarkdown(memberDef.briefdescription);
+  expect(text).toBe(t(`Dashes: hypen: - ndash: &ndash; mdash: &mdash;`));
+});
+
 async function parse(xmlText: string) {
   const xml = await xml2js.parseStringPromise(t(xmlText), {
     explicitChildren: true,
