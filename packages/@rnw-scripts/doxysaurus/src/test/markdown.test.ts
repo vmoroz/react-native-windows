@@ -279,6 +279,22 @@ test('Bold and emphasis', async () => {
   );
 });
 
+test('Line break', async () => {
+  const memberDef = await parse(`
+    |<memberdef>
+    |  <briefdescription>
+        |<para>line1<linebreak/>line2</para>
+    |  </briefdescription>
+    |</memberdef>`);
+
+  const text = toMarkdown(memberDef.briefdescription);
+  expect(text).toBe(
+    t(`line1<br/>
+      |line2
+      `),
+  );
+});
+
 async function parse(xmlText: string) {
   const xml = await xml2js.parseStringPromise(t(xmlText), {
     explicitChildren: true,
