@@ -10,6 +10,16 @@ import {applyTemplateRules} from './string-template';
 import {DoxMember} from '../doxygen-model';
 import {toMarkdown} from '../markdown';
 
+//
+// Test conversion from Doxygen XML to Markdown.
+//
+// The real Doxygen XML often omits any spaces between tags. Here we use extra
+// spaces in cases when they are omitted by XML parser to indent XML for readability.
+//
+// These tests are using the string-template to have more natural string look and feel.
+// The leading pipeline means a beginning of the line.
+//
+
 test('Empty brief description', async () => {
   const memberDef = await parse(`
     |<memberdef>
@@ -21,7 +31,7 @@ test('Empty brief description', async () => {
   expect(text).toBe('');
 });
 
-test('Brief description with "para" tag', async () => {
+test('Brief description with a paragraph', async () => {
   const memberDef = await parse(`
     |<memberdef>
     |  <briefdescription>
@@ -33,7 +43,7 @@ test('Brief description with "para" tag', async () => {
   expect(text).toBe('Test');
 });
 
-test('Brief description with three "para" tags', async () => {
+test('Brief description with three paragraphs', async () => {
   const memberDef = await parse(`
     |<memberdef>
     |  <briefdescription>
@@ -75,18 +85,14 @@ test('Brief description with itemized list', async () => {
 
   const text = toMarkdown(memberDef.briefdescription);
   expect(text).toBe(
-    t(`
-      |
-      |
-      |* item1
+    t(`* item1
       |* item2
       |* item3
-      |
       `),
   );
 });
 
-test('Brief description with "para" tags in itemized list', async () => {
+test('Brief description with paragraphs in itemized list', async () => {
   const memberDef = await parse(`
   |<memberdef>
   |  <briefdescription>
@@ -110,17 +116,13 @@ test('Brief description with "para" tags in itemized list', async () => {
 
   const text = toMarkdown(memberDef.briefdescription);
   expect(text).toBe(
-    t(`
-      |
-      |
-      |* item1 para1
+    t(`* item1 para1
       |
       |  item1 para2
       |
       |  item1 para3
       |* item2
       |* item3
-      |
       `),
   );
 });
@@ -147,18 +149,14 @@ test('Brief description with ordered list', async () => {
 
   const text = toMarkdown(memberDef.briefdescription);
   expect(text).toBe(
-    t(`
-      |
-      |
-      |1. item1
+    t(`1. item1
       |1. item2
       |1. item3
-      |
       `),
   );
 });
 
-test('Brief description with "para" tags in ordered list', async () => {
+test('Brief description with paragraphs in ordered list', async () => {
   const memberDef = await parse(`
     |<memberdef>
     |  <briefdescription>
@@ -182,17 +180,13 @@ test('Brief description with "para" tags in ordered list', async () => {
 
   const text = toMarkdown(memberDef.briefdescription);
   expect(text).toBe(
-    t(`
-      |
-      |
-      |1. item1 para1
+    t(`1. item1 para1
       |
       |   item1 para2
       |
       |   item1 para3
       |1. item2
       |1. item3
-      |
       `),
   );
 });
@@ -233,21 +227,13 @@ test('Brief description with nested ordered list', async () => {
 
   const text = toMarkdown(memberDef.briefdescription);
   expect(text).toBe(
-    t(`
-      |
-      |
-      |1. item1
-      |
+    t(`1. item1
       |   1. item1 item1
       |   1. item1 item2
-      |
       |1. item2
-      |
       |   * item2 item1
       |   * item2 item2
-      |
       |1. item3
-      |
       `),
   );
 });
@@ -288,21 +274,48 @@ test('Brief description with nested itemized list', async () => {
 
   const text = toMarkdown(memberDef.briefdescription);
   expect(text).toBe(
-    t(`
-      |
-      |
-      |* item1
-      |
+    t(`* item1
       |  1. item1 item1
       |  1. item1 item2
-      |
       |* item2
-      |
       |  * item2 item1
       |  * item2 item2
+      |* item3
+      `),
+  );
+});
+
+test('Brief description with itemized list between paragraphs', async () => {
+  const memberDef = await parse(`
+    |<memberdef>
+    |  <briefdescription>
+    |   <para>text1</para>
+    |   <para>
+    |     <itemizedlist>
+    |       <listitem>
+    |         <para>item1</para>
+    |       </listitem>
+    |       <listitem>
+    |         <para>item2</para>
+    |       </listitem>
+    |       <listitem>
+    |         <para>item3</para>
+    |       </listitem>
+    |     </itemizedlist>
+    |   </para>
+    |   <para>text2</para>
+    |  </briefdescription>
+    |</memberdef>`);
+
+  const text = toMarkdown(memberDef.briefdescription);
+  expect(text).toBe(
+    t(`text1
       |
+      |* item1
+      |* item2
       |* item3
       |
+      |text2
       `),
   );
 });

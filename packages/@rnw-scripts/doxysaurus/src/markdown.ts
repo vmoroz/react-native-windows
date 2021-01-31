@@ -77,16 +77,16 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
         return write(element.$$, '\n');
       case 'orderedlist':
       case 'itemizedlist':
-        return writeWithContext(element, '\n\n', element.$$);
+        return writeWithContext(element, index ? '\n' : '', element.$$);
       case 'listitem':
         const itemBullet =
           last(context)?.['#name'] === 'orderedlist' ? '1. ' : '* ';
         return writeWithIndent(
           itemBullet.length,
+          index ? '\n' : '',
           ' '.repeat(indent),
           itemBullet,
           element.$$,
-          '\n',
         );
       case 'sp':
         return write(' ', element.$$);
