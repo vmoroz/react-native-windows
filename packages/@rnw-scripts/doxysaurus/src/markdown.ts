@@ -42,14 +42,17 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
   return sb.toString();
 
   // eslint-disable-next-line complexity
-  function transformElement(element: DoxDescriptionElement): void {
+  function transformElement(
+    element: DoxDescriptionElement,
+    index: number,
+  ): void {
     switch (element['#name']) {
       case 'ref':
         return refLink(element);
       case '__text__':
         return autoLinks(element._);
       case 'para':
-        return write(element.$$, '\n\n');
+        return write(index ? '\n\n' : '', element.$$);
       case 'emphasis':
         return write('*', element.$$, '*');
       case 'bold':
@@ -264,11 +267,11 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
         sb.write(item);
       } else if (typeof item === 'object') {
         if (Array.isArray(item)) {
-          for (const element of <DoxDescription[]>item) {
-            write(element);
-          }
+          (item as DoxDescriptionElement[]).forEach((element, index) => {
+            transformElement(element, index);
+          });
         } else {
-          transformElement(item as DoxDescriptionElement);
+          transformElement(item as DoxDescriptionElement, 0);
         }
       } else if (typeof item !== 'undefined') {
         throw new Error(`Unexpected object type: ${typeof item}`);
