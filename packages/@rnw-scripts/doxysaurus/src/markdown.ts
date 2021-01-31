@@ -76,11 +76,18 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
       case 'codeline':
         return write(element.$$, '\n');
       case 'orderedlist':
-        return writeWithContext(element, '\n\n', element.$$, '\n');
       case 'itemizedlist':
-        return write('\n\n', element.$$, '\n');
+        return writeWithContext(element, '\n\n', element.$$);
       case 'listitem':
-        return writeListItem(element);
+        const itemBullet =
+          last(context)?.['#name'] === 'orderedlist' ? '1. ' : '* ';
+        return writeWithIndent(
+          itemBullet.length,
+          ' '.repeat(indent),
+          itemBullet,
+          element.$$,
+          '\n',
+        );
       case 'sp':
         return write(' ', element.$$);
       case 'heading':
@@ -263,13 +270,10 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
     context.pop();
   }
 
-  function writeListItem(element: DoxDescriptionElement) {
-    const itemBullet =
-      last(context)?.['#name'] === 'orderedlist' ? '1. ' : '* ';
-    write(' '.repeat(indent), itemBullet);
-    indent += itemBullet.length;
-    write(element.$$, '\n');
-    indent -= itemBullet.length;
+  function writeWithIndent(indentBy: number, ...items: DoxDescription[]) {
+    indent += indentBy;
+    write(...items);
+    indent -= indentBy;
   }
 
   function write(...items: DoxDescription[]): void {

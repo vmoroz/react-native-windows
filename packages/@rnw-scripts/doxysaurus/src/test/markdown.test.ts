@@ -82,7 +82,6 @@ test('Brief description with itemized list', async () => {
       |* item2
       |* item3
       |
-      |
       `),
   );
 });
@@ -122,7 +121,6 @@ test('Brief description with "para" tags in itemized list', async () => {
       |* item2
       |* item3
       |
-      |
       `),
   );
 });
@@ -147,7 +145,6 @@ test('Brief description with ordered list', async () => {
   |  </briefdescription>
   |</memberdef>`);
 
-
   const text = toMarkdown(memberDef.briefdescription);
   expect(text).toBe(
     t(`
@@ -156,7 +153,6 @@ test('Brief description with ordered list', async () => {
       |1. item1
       |1. item2
       |1. item3
-      |
       |
       `),
   );
@@ -197,43 +193,119 @@ test('Brief description with "para" tags in ordered list', async () => {
       |1. item2
       |1. item3
       |
+      `),
+  );
+});
+
+test('Brief description with nested ordered list', async () => {
+  const memberDef = await parse(`
+    |<memberdef>
+    |  <briefdescription>
+    |   <para>
+    |     <orderedlist>
+    |       <listitem>
+    |         <para>item1<orderedlist>
+    |           <listitem>
+    |             <para>item1 item1</para>
+    |           </listitem>
+    |           <listitem>
+    |             <para>item1 item2</para>
+    |           </listitem>
+    |         </orderedlist></para>
+    |       </listitem>
+    |       <listitem>
+    |         <para>item2<itemizedlist>
+    |           <listitem>
+    |             <para>item2 item1</para>
+    |           </listitem>
+    |           <listitem>
+    |             <para>item2 item2</para>
+    |           </listitem>
+    |         </itemizedlist></para>
+    |       </listitem>
+    |       <listitem>
+    |         <para>item3</para>
+    |       </listitem>
+    |     </orderedlist>
+    |   </para>
+    |  </briefdescription>
+    |</memberdef>`);
+
+  const text = toMarkdown(memberDef.briefdescription);
+  expect(text).toBe(
+    t(`
+      |
+      |
+      |1. item1
+      |
+      |   1. item1 item1
+      |   1. item1 item2
+      |
+      |1. item2
+      |
+      |   * item2 item1
+      |   * item2 item2
+      |
+      |1. item3
       |
       `),
   );
 });
 
-// test('Brief description with nested ordered list', async () => {
-//   const memberDef = await parse(`
-//     |<memberdef>
-//     |  <briefdescription>
-//     |<para><orderedlist>
-//     |<listitem><para>item1 para1</para>
-//     |<para>item1 para2</para>
-//     |<para>item1 para3</para>
-//     |</listitem><listitem><para>item2</para>
-//     |</listitem><listitem><para>item3</para>
-//     |</listitem></orderedlist>
-//     |</para>
-//     |  </briefdescription>
-//     |</memberdef>`);
+test('Brief description with nested itemized list', async () => {
+  const memberDef = await parse(`
+    |<memberdef>
+    |  <briefdescription>
+    |   <para>
+    |     <itemizedlist>
+    |       <listitem>
+    |         <para>item1<orderedlist>
+    |           <listitem>
+    |             <para>item1 item1</para>
+    |           </listitem>
+    |           <listitem>
+    |             <para>item1 item2</para>
+    |           </listitem>
+    |         </orderedlist></para>
+    |       </listitem>
+    |       <listitem>
+    |         <para>item2<itemizedlist>
+    |           <listitem>
+    |             <para>item2 item1</para>
+    |           </listitem>
+    |           <listitem>
+    |             <para>item2 item2</para>
+    |           </listitem>
+    |         </itemizedlist></para>
+    |       </listitem>
+    |       <listitem>
+    |         <para>item3</para>
+    |       </listitem>
+    |     </itemizedlist>
+    |   </para>
+    |  </briefdescription>
+    |</memberdef>`);
 
-//   const text = toMarkdown(memberDef.briefdescription);
-//   expect(text).toBe(
-//     t(`
-//       |
-//       |
-//       |1. item1 para1
-//       |
-//       |   item1 para2
-//       |
-//       |   item1 para3
-//       |1. item2
-//       |1. item3
-//       |
-//       |
-//       `),
-//   );
-// });
+  const text = toMarkdown(memberDef.briefdescription);
+  expect(text).toBe(
+    t(`
+      |
+      |
+      |* item1
+      |
+      |  1. item1 item1
+      |  1. item1 item2
+      |
+      |* item2
+      |
+      |  * item2 item1
+      |  * item2 item2
+      |
+      |* item3
+      |
+      `),
+  );
+});
 
 async function parse(xmlText: string) {
   const xml = await xml2js.parseStringPromise(t(xmlText), {
