@@ -289,9 +289,22 @@ test('Line break', async () => {
 
   const text = toMarkdown(memberDef.briefdescription);
   expect(text).toBe(
-    t(`line1<br/>
-      |line2
+    t(`line1<br/>line2
       `),
+  );
+});
+
+test('White spaces', async () => {
+  const memberDef = await parse(`
+    |<memberdef>
+    |  <briefdescription>
+        |<para>Spaces: text<sp/>text<nonbreakablespace/>text<ensp/>text<emsp/>text<thinsp/>text</para>
+    |  </briefdescription>
+    |</memberdef>`);
+
+  const text = toMarkdown(memberDef.briefdescription);
+  expect(text).toBe(
+    t(`Spaces: text text&nbsp;text&ensp;text&emsp;text&thinsp;text`),
   );
 });
 
