@@ -13,11 +13,13 @@ import {toMarkdown} from '../markdown';
 //
 // Test conversion from Doxygen XML to Markdown.
 //
-// The real Doxygen XML often omits any spaces between tags. Here we use extra
-// spaces in cases when they are omitted by XML parser to indent XML for readability.
-//
 // These tests are using the string-template to have more natural string look and feel.
-// The leading pipeline means a beginning of the line.
+// The leading pipeline '|' means an end of previous line and the of a new line.
+// All other end-of-line characters are removed from the string.
+//
+// The XML spaces are significant in Doxygen XML docs.
+// We keep them as we parse XML.
+// Using the pipeline '|' character we indent the XML text for better readability.
 //
 
 test('Empty brief description', async () => {
@@ -35,7 +37,7 @@ test('Brief description with a paragraph', async () => {
   const memberDef = await parse(`
     |<memberdef>
     |  <briefdescription>
-    |    <para>Test</para>
+        |<para>Test</para>
     |  </briefdescription>
     |</memberdef>`);
 
@@ -47,9 +49,9 @@ test('Brief description with three paragraphs', async () => {
   const memberDef = await parse(`
     |<memberdef>
     |  <briefdescription>
-    |    <para>Paragraph1</para>
-    |    <para>Paragraph2</para>
-    |    <para>Paragraph3</para>
+        |<para>Paragraph1</para>
+        |<para>Paragraph2</para>
+        |<para>Paragraph3</para>
     |  </briefdescription>
     |</memberdef>`);
 
@@ -67,19 +69,12 @@ test('Brief description with itemized list', async () => {
   const memberDef = await parse(`
     |<memberdef>
     |  <briefdescription>
-    |    <para>
-    |      <itemizedlist>
-    |        <listitem>
-    |          <para>item1</para>
-    |        </listitem>
-    |        <listitem>
-    |          <para>item2</para>
-    |        </listitem>
-    |        <listitem>
-    |          <para>item3</para>
-    |        </listitem>
-    |      </itemizedlist>
-    |    </para>
+        |<para><itemizedlist>
+        |<listitem><para>item1</para>
+        |</listitem><listitem><para>item2</para>
+        |</listitem><listitem><para>item3</para>
+        |</listitem></itemizedlist>
+        |</para>
     |  </briefdescription>
     |</memberdef>`);
 
@@ -96,21 +91,14 @@ test('Brief description with paragraphs in itemized list', async () => {
   const memberDef = await parse(`
   |<memberdef>
   |  <briefdescription>
-  |   <para>
-  |     <itemizedlist>
-  |       <listitem>
-  |         <para>item1 para1</para>
-  |         <para>item1 para2</para>
-  |         <para>item1 para3</para>
-  |       </listitem>
-  |       <listitem>
-  |         <para>item2</para>
-  |       </listitem>
-  |       <listitem>
-  |         <para>item3</para>
-  |       </listitem>
-  |     </itemizedlist>
-  |   </para>
+      |<para><itemizedlist>
+      |<listitem><para>item1 para1</para>
+      |<para>item1 para2</para>
+      |<para>item1 para3</para>
+      |</listitem><listitem><para>item2</para>
+      |</listitem><listitem><para>item3</para>
+      |</listitem></itemizedlist>
+      |</para>
   |  </briefdescription>
   |</memberdef>`);
 
@@ -131,19 +119,12 @@ test('Brief description with ordered list', async () => {
   const memberDef = await parse(`
   |<memberdef>
   |  <briefdescription>
-  |    <para>
-  |      <orderedlist>
-  |        <listitem>
-  |          <para>item1</para>
-  |        </listitem>
-  |        <listitem>
-  |          <para>item2</para>
-  |        </listitem>
-  |        <listitem>
-  |          <para>item3</para>
-  |        </listitem>
-  |      </orderedlist>
-  |    </para>
+      |<para><orderedlist>
+      |<listitem><para>item1</para>
+      |</listitem><listitem><para>item2</para>
+      |</listitem><listitem><para>item3</para>
+      |</listitem></orderedlist>
+      |</para>
   |  </briefdescription>
   |</memberdef>`);
 
@@ -160,21 +141,14 @@ test('Brief description with paragraphs in ordered list', async () => {
   const memberDef = await parse(`
     |<memberdef>
     |  <briefdescription>
-    |   <para>
-    |     <orderedlist>
-    |       <listitem>
-    |         <para>item1 para1</para>
-    |         <para>item1 para2</para>
-    |         <para>item1 para3</para>
-    |       </listitem>
-    |       <listitem>
-    |         <para>item2</para>
-    |       </listitem>
-    |       <listitem>
-    |         <para>item3</para>
-    |       </listitem>
-    |     </orderedlist>
-    |   </para>
+        |<para><orderedlist>
+        |<listitem><para>item1 para1</para>
+        |<para>item1 para2</para>
+        |<para>item1 para3</para>
+        |</listitem><listitem><para>item2</para>
+        |</listitem><listitem><para>item3</para>
+        |</listitem></orderedlist>
+        |</para>
     |  </briefdescription>
     |</memberdef>`);
 
@@ -195,33 +169,20 @@ test('Brief description with nested ordered list', async () => {
   const memberDef = await parse(`
     |<memberdef>
     |  <briefdescription>
-    |   <para>
-    |     <orderedlist>
-    |       <listitem>
-    |         <para>item1<orderedlist>
-    |           <listitem>
-    |             <para>item1 item1</para>
-    |           </listitem>
-    |           <listitem>
-    |             <para>item1 item2</para>
-    |           </listitem>
-    |         </orderedlist></para>
-    |       </listitem>
-    |       <listitem>
-    |         <para>item2<itemizedlist>
-    |           <listitem>
-    |             <para>item2 item1</para>
-    |           </listitem>
-    |           <listitem>
-    |             <para>item2 item2</para>
-    |           </listitem>
-    |         </itemizedlist></para>
-    |       </listitem>
-    |       <listitem>
-    |         <para>item3</para>
-    |       </listitem>
-    |     </orderedlist>
-    |   </para>
+        |<para><orderedlist>
+        |<listitem><para>item1<orderedlist>
+        |<listitem><para>item1 item1</para>
+        |</listitem><listitem><para>item1 item2</para>
+        |</listitem></orderedlist>
+        |</para>
+        |</listitem><listitem><para>item2<itemizedlist>
+        |<listitem><para>item2 item1</para>
+        |</listitem><listitem><para>item2 item2</para>
+        |</listitem></itemizedlist>
+        |</para>
+        |</listitem><listitem><para>item3</para>
+        |</listitem></orderedlist>
+        |</para>
     |  </briefdescription>
     |</memberdef>`);
 
@@ -242,33 +203,20 @@ test('Brief description with nested itemized list', async () => {
   const memberDef = await parse(`
     |<memberdef>
     |  <briefdescription>
-    |   <para>
-    |     <itemizedlist>
-    |       <listitem>
-    |         <para>item1<orderedlist>
-    |           <listitem>
-    |             <para>item1 item1</para>
-    |           </listitem>
-    |           <listitem>
-    |             <para>item1 item2</para>
-    |           </listitem>
-    |         </orderedlist></para>
-    |       </listitem>
-    |       <listitem>
-    |         <para>item2<itemizedlist>
-    |           <listitem>
-    |             <para>item2 item1</para>
-    |           </listitem>
-    |           <listitem>
-    |             <para>item2 item2</para>
-    |           </listitem>
-    |         </itemizedlist></para>
-    |       </listitem>
-    |       <listitem>
-    |         <para>item3</para>
-    |       </listitem>
-    |     </itemizedlist>
-    |   </para>
+        |<para><itemizedlist>
+        |<listitem><para>item1<orderedlist>
+        |<listitem><para>item1 item1</para>
+        |</listitem><listitem><para>item1 item2</para>
+        |</listitem></orderedlist>
+        |</para>
+        |</listitem><listitem><para>item2<itemizedlist>
+        |<listitem><para>item2 item1</para>
+        |</listitem><listitem><para>item2 item2</para>
+        |</listitem></itemizedlist>
+        |</para>
+        |</listitem><listitem><para>item3 </para>
+        |</listitem></itemizedlist>
+        |</para>
     |  </briefdescription>
     |</memberdef>`);
 
@@ -289,21 +237,14 @@ test('Brief description with itemized list between paragraphs', async () => {
   const memberDef = await parse(`
     |<memberdef>
     |  <briefdescription>
-    |   <para>text1</para>
-    |   <para>
-    |     <itemizedlist>
-    |       <listitem>
-    |         <para>item1</para>
-    |       </listitem>
-    |       <listitem>
-    |         <para>item2</para>
-    |       </listitem>
-    |       <listitem>
-    |         <para>item3</para>
-    |       </listitem>
-    |     </itemizedlist>
-    |   </para>
-    |   <para>text2</para>
+        |<para>text1</para>
+        |<para><itemizedlist>
+        |<listitem><para>item1</para>
+        |</listitem><listitem><para>item2</para>
+        |</listitem><listitem><para>item3</para>
+        |</listitem></itemizedlist>
+        |</para>
+        |<para>text2 </para>
     |  </briefdescription>
     |</memberdef>`);
 
@@ -325,6 +266,7 @@ async function parse(xmlText: string) {
     explicitChildren: true,
     preserveChildrenOrder: true,
     charsAsChildren: true,
+    includeWhiteChars: true,
   });
   return xml.memberdef as DoxMember;
 }

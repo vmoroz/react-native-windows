@@ -41,7 +41,7 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
 
   const sb = new StringBuilder();
   write(desc);
-  return sb.toString();
+  return sb.toString().trim();
 
   // eslint-disable-next-line complexity
   function transformElement(
@@ -53,16 +53,26 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
         return refLink(element);
       case '__text__':
         return autoLinks(element._);
+      case 'sp':
+        return write(' ');
+      case 'nonbreakablespace':
+        return write('&nbsp;');
+      case 'ensp':
+        return write('&ensp;');
+      case 'emsp':
+        return write('&emsp;');
+      case 'thinsp':
+        return write('&thinsp;');
+      case 'emphasis':
+        return write('*', element.$$, '*');
+      case 'bold':
+        return write('**', element.$$, '**');
       case 'para':
         return write(
           index ? '\n\n' : '',
           ' '.repeat(index ? indent : 0),
           element.$$,
         );
-      case 'emphasis':
-        return write('*', element.$$, '*');
-      case 'bold':
-        return write('**', element.$$, '**');
       case 'parameterlist':
         return write('\n### Parameters\n', element.$$, '\n\n');
       case 'parameteritem':
@@ -88,8 +98,6 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
           itemBullet,
           element.$$,
         );
-      case 'sp':
-        return write(' ', element.$$);
       case 'heading':
         return write('## ', element.$$);
       case 'xrefsect':
@@ -126,7 +134,7 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
       case 'mdash':
         return write('&mdash;');
       case 'ndash':
-        return write('&neath;');
+        return write('&ndash;');
       case 'linebreak':
         return write('<br/>');
       case 'ulink':
@@ -203,11 +211,19 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
   }
 
   function autoLinks(text?: string) {
-    if (text && linkResolver) {
-      text = applyStandardLibLinks(text, linkResolver.stdTypeLinks);
-      text = applyIdlGeneratedLinks(text, linkResolver.idlTypeLinks);
+    if (text) {
+      if (text.trim() === '') {
+        if (text.includes(' ')) {
+          write(' ');
+        }
+      } else {
+        if (linkResolver) {
+          text = applyStandardLibLinks(text, linkResolver.stdTypeLinks);
+          text = applyIdlGeneratedLinks(text, linkResolver.idlTypeLinks);
+        }
+        write(text);
+      }
     }
-    write(text);
   }
 
   function applyStandardLibLinks(text: string, stdTypeLinks: TypeLinks) {
@@ -282,9 +298,18 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
         sb.write(item);
       } else if (typeof item === 'object') {
         if (Array.isArray(item)) {
-          (item as DoxDescriptionElement[]).forEach((element, index) => {
-            transformElement(element, index);
-          });
+          (item as DoxDescriptionElement[])
+            .filter(
+              element =>
+                typeof element !== 'object' ||
+                element['#name'] !== '__text__' ||
+                !element._ ||
+                element._.trim() ||
+                element._.includes(' '),
+            )
+            .forEach((element, index) => {
+              transformElement(element, index);
+            });
         } else {
           transformElement(item as DoxDescriptionElement, 0);
         }

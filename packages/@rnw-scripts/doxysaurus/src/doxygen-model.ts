@@ -58,6 +58,7 @@ export class DoxModel {
         explicitChildren: true,
         preserveChildrenOrder: true,
         charsAsChildren: true,
+        includeWhiteChars: true,
       },
     );
     const compoundDef = compoundXml.doxygen.compounddef[0];
