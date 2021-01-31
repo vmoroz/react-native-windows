@@ -54,7 +54,11 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
       case '__text__':
         return autoLinks(element._);
       case 'para':
-        return write(index ? '\n\n' : '', ' '.repeat(index ? indent: 0), element.$$);
+        return write(
+          index ? '\n\n' : '',
+          ' '.repeat(index ? indent : 0),
+          element.$$,
+        );
       case 'emphasis':
         return write('*', element.$$, '*');
       case 'bold':
@@ -76,12 +80,7 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
       case 'itemizedlist':
         return write('\n\n', element.$$, '\n');
       case 'listitem':
-        return writeWithIndent(
-          ' '.repeat(indent),
-          last(context)?.['#name'] === 'orderedlist' ? '1. ' : '* ',
-          element.$$,
-          '\n',
-        );
+        return writeListItem(element);
       case 'sp':
         return write(' ', element.$$);
       case 'heading':
@@ -264,10 +263,13 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
     context.pop();
   }
 
-  function writeWithIndent(...items: DoxDescription[]) {
-    indent += 2;
-    write(...items);
-    indent -= 2;
+  function writeListItem(element: DoxDescriptionElement) {
+    const itemBullet =
+      last(context)?.['#name'] === 'orderedlist' ? '1. ' : '* ';
+    write(' '.repeat(indent), itemBullet);
+    indent += itemBullet.length;
+    write(element.$$, '\n');
+    indent -= itemBullet.length;
   }
 
   function write(...items: DoxDescription[]): void {

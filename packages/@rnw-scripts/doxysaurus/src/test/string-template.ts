@@ -50,8 +50,14 @@ export function applyTemplateRules(text: string, rules: TemplateRules): string {
       }
 
       // replace pipes with end of lines, and set the indentation
-      const indentCount = (match.length - lastPipePos - 1) / 2; // template uses two spaces for indent
-      return rules.EOL.repeat(pipeCount) + rules.indent.repeat(indentCount);
+      const spaceCount = match.length - lastPipePos - 1;
+      const indentCount = spaceCount / 2; // template uses two spaces for indent
+      const extraSpaces = spaceCount > 0 ? spaceCount % 2 : 0;
+      return (
+        rules.EOL.repeat(pipeCount) +
+        rules.indent.repeat(indentCount) +
+        ' '.repeat(extraSpaces)
+      );
     },
   );
 
