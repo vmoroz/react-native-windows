@@ -320,6 +320,18 @@ test('Hyphen and dashes', async () => {
   expect(text).toBe(t(`Dashes: hypen: - ndash: &ndash; mdash: &mdash;`));
 });
 
+test('Horizontal ruler', async () => {
+  const memberDef = await parse(`
+    |<memberdef>
+    |  <briefdescription>
+        |<para><hruler/></para>
+    |  </briefdescription>
+    |</memberdef>`);
+
+  const text = toMarkdown(memberDef.briefdescription);
+  expect(text).toBe(t(`---`));
+});
+
 async function parse(xmlText: string) {
   const xml = await xml2js.parseStringPromise(t(xmlText), {
     explicitChildren: true,

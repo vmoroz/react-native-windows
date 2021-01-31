@@ -49,10 +49,10 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
     index: number,
   ): void {
     switch (element['#name']) {
-      case 'ref':
-        return refLink(element);
       case '__text__':
         return autoLinks(element._);
+      case 'ref':
+        return refLink(element);
       case 'sp':
         return write(' ');
       case 'nonbreakablespace':
@@ -67,24 +67,18 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
         return write('*', element.$$, '*');
       case 'bold':
         return write('**', element.$$, '**');
+      case 'mdash':
+        return write('&mdash;');
+      case 'ndash':
+        return write('&ndash;');
+      case 'linebreak':
+        return write('<br/>');
       case 'para':
         return write(
           index ? '\n\n' : '',
           ' '.repeat(index ? indent : 0),
           element.$$,
         );
-      case 'parameterlist':
-        return write('\n### Parameters\n', element.$$, '\n\n');
-      case 'parameteritem':
-        return write('* ', element.$$, '\n');
-      case 'parametername':
-        return writeCode('`', element.$$, '` ');
-      case 'computeroutput':
-        return writeCode('`', element.$$, '`');
-      case 'programlisting':
-        return writeCode('\n```cpp\n', element.$$, '```\n');
-      case 'codeline':
-        return write(element.$$, '\n');
       case 'orderedlist':
       case 'itemizedlist':
         return writeWithContext(element, index ? '\n' : '', element.$$);
@@ -100,6 +94,18 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
         );
       case 'heading':
         return write('## ', element.$$);
+      case 'parameterlist':
+        return write('\n### Parameters\n', element.$$, '\n\n');
+      case 'parameteritem':
+        return write('* ', element.$$, '\n');
+      case 'parametername':
+        return writeCode('`', element.$$, '` ');
+      case 'computeroutput':
+        return writeCode('`', element.$$, '`');
+      case 'programlisting':
+        return writeCode('\n```cpp\n', element.$$, '```\n');
+      case 'codeline':
+        return write(element.$$, '\n');
       case 'xrefsect':
         return write('\n> ', element.$$);
       case 'simplesect':
@@ -131,12 +137,8 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
       case 'title':
         const level = Number((last(context)?.['#name'] || '0').slice(-1));
         return write('\n', '#'.repeat(level), ' ', element._, '\n\n');
-      case 'mdash':
-        return write('&mdash;');
-      case 'ndash':
-        return write('&ndash;');
-      case 'linebreak':
-        return write('<br/>');
+      case 'hruler':
+        return write('---');
       case 'ulink':
         return link(toMarkdown(element.$$), element.$.url);
       case 'xreftitle':
@@ -157,7 +159,6 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
       case 'parameternamelist':
       case 'xrefdescription':
       case 'verbatim':
-      case 'hruler':
       case undefined:
         return write(element.$$);
 
