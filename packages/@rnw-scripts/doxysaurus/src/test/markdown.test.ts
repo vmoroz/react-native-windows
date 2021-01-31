@@ -33,7 +33,7 @@ test('Empty brief description', async () => {
   expect(text).toBe('');
 });
 
-test('Brief description with a paragraph', async () => {
+test('One paragraph', async () => {
   const memberDef = await parse(`
     |<memberdef>
     |  <briefdescription>
@@ -45,7 +45,7 @@ test('Brief description with a paragraph', async () => {
   expect(text).toBe('Test');
 });
 
-test('Brief description with three paragraphs', async () => {
+test('Three paragraphs', async () => {
   const memberDef = await parse(`
     |<memberdef>
     |  <briefdescription>
@@ -65,7 +65,7 @@ test('Brief description with three paragraphs', async () => {
   );
 });
 
-test('Brief description with itemized list', async () => {
+test('Itemized list', async () => {
   const memberDef = await parse(`
     |<memberdef>
     |  <briefdescription>
@@ -87,7 +87,7 @@ test('Brief description with itemized list', async () => {
   );
 });
 
-test('Brief description with paragraphs in itemized list', async () => {
+test('Itemized list with paragraphs', async () => {
   const memberDef = await parse(`
   |<memberdef>
   |  <briefdescription>
@@ -115,7 +115,7 @@ test('Brief description with paragraphs in itemized list', async () => {
   );
 });
 
-test('Brief description with ordered list', async () => {
+test('Ordered list', async () => {
   const memberDef = await parse(`
   |<memberdef>
   |  <briefdescription>
@@ -137,7 +137,7 @@ test('Brief description with ordered list', async () => {
   );
 });
 
-test('Brief description with paragraphs in ordered list', async () => {
+test('Ordered list with paragraphs', async () => {
   const memberDef = await parse(`
     |<memberdef>
     |  <briefdescription>
@@ -165,7 +165,7 @@ test('Brief description with paragraphs in ordered list', async () => {
   );
 });
 
-test('Brief description with nested ordered list', async () => {
+test('Nested ordered list', async () => {
   const memberDef = await parse(`
     |<memberdef>
     |  <briefdescription>
@@ -199,7 +199,7 @@ test('Brief description with nested ordered list', async () => {
   );
 });
 
-test('Brief description with nested itemized list', async () => {
+test('Nested itemized list', async () => {
   const memberDef = await parse(`
     |<memberdef>
     |  <briefdescription>
@@ -233,7 +233,7 @@ test('Brief description with nested itemized list', async () => {
   );
 });
 
-test('Brief description with itemized list between paragraphs', async () => {
+test('Itemized list between paragraphs', async () => {
   const memberDef = await parse(`
     |<memberdef>
     |  <briefdescription>
@@ -257,6 +257,24 @@ test('Brief description with itemized list between paragraphs', async () => {
       |* item3
       |
       |text2
+      `),
+  );
+});
+
+test('Bold and emphasis', async () => {
+  const memberDef = await parse(`
+    |<memberdef>
+    |  <briefdescription>
+        |<para><bold>bold</bold> <bold>several words</bold></para>
+        |<para><emphasis>emphasis</emphasis> <emphasis>several words</emphasis></para>
+    |  </briefdescription>
+    |</memberdef>`);
+
+  const text = toMarkdown(memberDef.briefdescription);
+  expect(text).toBe(
+    t(`**bold** **several words**
+      |
+      |*emphasis* *several words*
       `),
   );
 });
