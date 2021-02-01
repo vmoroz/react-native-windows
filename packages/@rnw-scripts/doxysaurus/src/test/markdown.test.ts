@@ -538,6 +538,51 @@ test('Member ref not found', async () => {
   expect(text).toBe(t(`Member: \`Member1\` not found`));
 });
 
+test('std::vector ref found', async () => {
+  const memberDef = await parse(`
+    |<memberdef>
+    |  <detaileddescription>
+        |<para>Vector: std::vector found</para>
+    |  </detaileddescription>
+    |</memberdef>`);
+
+  const linkResolver: LinkResolver = {
+    resolveCompoundId: _ => undefined,
+    resolveMemberId: _ => [undefined, undefined],
+    stdTypeLinks: {
+      linkPrefix: 'ref_site/',
+      linkMap: new Map<string, string>([['std::vector', 'vector']]),
+    },
+    idlTypeLinks: {linkPrefix: '', linkMap: new Map<string, string>()},
+  };
+
+  const text = toMarkdown(memberDef.detaileddescription, linkResolver);
+  expect(text).toBe(t('Vector: [`std::vector`](ref_site/vector) found'));
+});
+
+test('std::vector ref not found', async () => {
+  const memberDef = await parse(`
+    |<memberdef>
+    |  <detaileddescription>
+        |<para>Vector: std::vector not found</para>
+    |  </detaileddescription>
+    |</memberdef>`);
+
+  const linkResolver: LinkResolver = {
+    resolveCompoundId: _ => undefined,
+    resolveMemberId: _ => [undefined, undefined],
+    stdTypeLinks: {
+      linkPrefix: 'ref_site/',
+      linkMap: new Map<string, string>(),
+    },
+    idlTypeLinks: {linkPrefix: '', linkMap: new Map<string, string>()},
+  };
+
+  const text = toMarkdown(memberDef.detaileddescription, linkResolver);
+  expect(text).toBe(t('Vector: std::vector not found'));
+});
+
+
 async function parse(xmlText: string) {
   const xml = await xml2js.parseStringPromise(t(xmlText), {
     explicitChildren: true,
