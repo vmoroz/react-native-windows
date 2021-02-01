@@ -7,8 +7,9 @@
 
 import * as xml2js from 'xml2js';
 import {applyTemplateRules} from './string-template';
+import {DocCompound, DocMemberOverload} from '../doc-model';
 import {DoxMember} from '../doxygen-model';
-import {toMarkdown} from '../markdown';
+import {LinkResolver, toMarkdown} from '../markdown';
 
 //
 // Test conversion from Doxygen XML to Markdown.
@@ -447,6 +448,94 @@ test('Parameters', async () => {
       |
       |function return value`),
   );
+});
+
+test('Compound ref found', async () => {
+  const memberDef = await parse(`
+    |<memberdef>
+    |  <detaileddescription>
+        |<para>Type: <ref refid="type1" kindref="compound">Type1</ref> found</para>
+    |  </detaileddescription>
+    |</memberdef>`);
+
+  const linkResolver: LinkResolver = {
+    resolveCompoundId: (doxCompoundId: string) => {
+      if (doxCompoundId === 'type1') {
+        return {docId: 'type1_ref'} as DocCompound;
+      } else {
+        return undefined;
+      }
+    },
+    resolveMemberId: (_: string) => [undefined, undefined],
+    stdTypeLinks: {linkPrefix: '', linkMap: new Map<string, string>()},
+    idlTypeLinks: {linkPrefix: '', linkMap: new Map<string, string>()},
+  };
+
+  const text = toMarkdown(memberDef.detaileddescription, linkResolver);
+  expect(text).toBe(t(`Type: [\`Type1\`](type1_ref) found`));
+});
+
+test('Compound ref not found', async () => {
+  const memberDef = await parse(`
+    |<memberdef>
+    |  <detaileddescription>
+        |<para>Type: <ref refid="type1" kindref="compound">Type1</ref> not found</para>
+    |  </detaileddescription>
+    |</memberdef>`);
+
+  const linkResolver: LinkResolver = {
+    resolveCompoundId: _ => undefined,
+    resolveMemberId: _ => [undefined, undefined],
+    stdTypeLinks: {linkPrefix: '', linkMap: new Map<string, string>()},
+    idlTypeLinks: {linkPrefix: '', linkMap: new Map<string, string>()},
+  };
+
+  const text = toMarkdown(memberDef.detaileddescription, linkResolver);
+  expect(text).toBe(t(`Type: \`Type1\` not found`));
+});
+
+test('Member ref found', async () => {
+  const memberDef = await parse(`
+    |<memberdef>
+    |  <detaileddescription>
+        |<para>Member: <ref refid="member1" kindref="member">Member1</ref> found</para>
+    |  </detaileddescription>
+    |</memberdef>`);
+
+  const linkResolver: LinkResolver = {
+    resolveCompoundId: _ => undefined,
+    resolveMemberId: (doxMemberId: string) =>
+      doxMemberId === 'member1'
+        ? [
+            {docId: 'type1_ref'} as DocCompound,
+            {anchor: '#member1'} as DocMemberOverload,
+          ]
+        : [undefined, undefined],
+    stdTypeLinks: {linkPrefix: '', linkMap: new Map<string, string>()},
+    idlTypeLinks: {linkPrefix: '', linkMap: new Map<string, string>()},
+  };
+
+  const text = toMarkdown(memberDef.detaileddescription, linkResolver);
+  expect(text).toBe(t(`Member: [\`Member1\`](type1_ref#member1) found`));
+});
+
+test('Member ref not found', async () => {
+  const memberDef = await parse(`
+    |<memberdef>
+    |  <detaileddescription>
+        |<para>Member: <ref refid="member1" kindref="member">Member1</ref> not found</para>
+    |  </detaileddescription>
+    |</memberdef>`);
+
+  const linkResolver: LinkResolver = {
+    resolveCompoundId: _ => undefined,
+    resolveMemberId: _ => [undefined, undefined],
+    stdTypeLinks: {linkPrefix: '', linkMap: new Map<string, string>()},
+    idlTypeLinks: {linkPrefix: '', linkMap: new Map<string, string>()},
+  };
+
+  const text = toMarkdown(memberDef.detaileddescription, linkResolver);
+  expect(text).toBe(t(`Member: \`Member1\` not found`));
 });
 
 async function parse(xmlText: string) {

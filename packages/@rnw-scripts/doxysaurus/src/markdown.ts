@@ -191,6 +191,8 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
       const compound = linkResolver.resolveCompoundId(element.$.refid);
       if (compound) {
         return linkCode(text, compound.docId);
+      } else {
+        return write('`', text, '`');
       }
     } else if (element.$.kindref === 'member') {
       const [compound, memberOverload] = linkResolver.resolveMemberId(
@@ -198,6 +200,8 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
       );
       if (compound) {
         return linkCode(text, compound.docId + memberOverload?.anchor);
+      } else {
+        return write('`', text, '`');
       }
     } else {
       log(`Warning: Unknown kindref={${element.$.kindref}}`);
