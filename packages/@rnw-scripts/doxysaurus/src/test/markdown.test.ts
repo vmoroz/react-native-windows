@@ -458,7 +458,7 @@ test('Compound ref found', async () => {
     |  </detaileddescription>
     |</memberdef>`);
 
-  const linkResolver: LinkResolver = {
+  const linkResolver = getLinkResolver({
     resolveCompoundId: (doxCompoundId: string) => {
       if (doxCompoundId === 'type1') {
         return {docId: 'type1_ref'} as DocCompound;
@@ -466,10 +466,7 @@ test('Compound ref found', async () => {
         return undefined;
       }
     },
-    resolveMemberId: (_: string) => [undefined, undefined],
-    stdTypeLinks: {linkPrefix: '', linkMap: new Map<string, string>()},
-    idlTypeLinks: {linkPrefix: '', linkMap: new Map<string, string>()},
-  };
+  });
 
   const text = toMarkdown(memberDef.detaileddescription, linkResolver);
   expect(text).toBe(t(`Type: [\`Type1\`](type1_ref) found`));
@@ -483,14 +480,7 @@ test('Compound ref not found', async () => {
     |  </detaileddescription>
     |</memberdef>`);
 
-  const linkResolver: LinkResolver = {
-    resolveCompoundId: _ => undefined,
-    resolveMemberId: _ => [undefined, undefined],
-    stdTypeLinks: {linkPrefix: '', linkMap: new Map<string, string>()},
-    idlTypeLinks: {linkPrefix: '', linkMap: new Map<string, string>()},
-  };
-
-  const text = toMarkdown(memberDef.detaileddescription, linkResolver);
+  const text = toMarkdown(memberDef.detaileddescription, getLinkResolver());
   expect(text).toBe(t(`Type: \`Type1\` not found`));
 });
 
@@ -502,8 +492,7 @@ test('Member ref found', async () => {
     |  </detaileddescription>
     |</memberdef>`);
 
-  const linkResolver: LinkResolver = {
-    resolveCompoundId: _ => undefined,
+  const linkResolver = getLinkResolver({
     resolveMemberId: (doxMemberId: string) =>
       doxMemberId === 'member1'
         ? [
@@ -511,9 +500,7 @@ test('Member ref found', async () => {
             {anchor: '#member1'} as DocMemberOverload,
           ]
         : [undefined, undefined],
-    stdTypeLinks: {linkPrefix: '', linkMap: new Map<string, string>()},
-    idlTypeLinks: {linkPrefix: '', linkMap: new Map<string, string>()},
-  };
+  });
 
   const text = toMarkdown(memberDef.detaileddescription, linkResolver);
   expect(text).toBe(t(`Member: [\`Member1\`](type1_ref#member1) found`));
@@ -527,14 +514,7 @@ test('Member ref not found', async () => {
     |  </detaileddescription>
     |</memberdef>`);
 
-  const linkResolver: LinkResolver = {
-    resolveCompoundId: _ => undefined,
-    resolveMemberId: _ => [undefined, undefined],
-    stdTypeLinks: {linkPrefix: '', linkMap: new Map<string, string>()},
-    idlTypeLinks: {linkPrefix: '', linkMap: new Map<string, string>()},
-  };
-
-  const text = toMarkdown(memberDef.detaileddescription, linkResolver);
+  const text = toMarkdown(memberDef.detaileddescription, getLinkResolver());
   expect(text).toBe(t(`Member: \`Member1\` not found`));
 });
 
@@ -546,15 +526,12 @@ test('std::vector ref found', async () => {
     |  </detaileddescription>
     |</memberdef>`);
 
-  const linkResolver: LinkResolver = {
-    resolveCompoundId: _ => undefined,
-    resolveMemberId: _ => [undefined, undefined],
+  const linkResolver = getLinkResolver({
     stdTypeLinks: {
       linkPrefix: 'ref_site/',
       linkMap: new Map<string, string>([['std::vector', 'vector']]),
     },
-    idlTypeLinks: {linkPrefix: '', linkMap: new Map<string, string>()},
-  };
+  });
 
   const text = toMarkdown(memberDef.detaileddescription, linkResolver);
   expect(text).toBe(t('Vector: [`std::vector`](ref_site/vector) found'));
@@ -568,20 +545,38 @@ test('std::vector ref not found', async () => {
     |  </detaileddescription>
     |</memberdef>`);
 
-  const linkResolver: LinkResolver = {
-    resolveCompoundId: _ => undefined,
-    resolveMemberId: _ => [undefined, undefined],
+  const linkResolver = getLinkResolver({
     stdTypeLinks: {
       linkPrefix: 'ref_site/',
       linkMap: new Map<string, string>(),
     },
-    idlTypeLinks: {linkPrefix: '', linkMap: new Map<string, string>()},
-  };
+  });
 
   const text = toMarkdown(memberDef.detaileddescription, linkResolver);
   expect(text).toBe(t('Vector: std::vector not found'));
 });
 
+// TODO: Make it pass:
+// test('std::vector of int', async () => {
+//   const memberDef = await parse(`
+//     |<memberdef>
+//     |  <detaileddescription>
+//         |<para>Vector std::vector&lt;int&gt; template</para>
+//     |  </detaileddescription>
+//     |</memberdef>`);
+
+//   const linkResolver = getLinkResolver({
+//     stdTypeLinks: {
+//       linkPrefix: 'ref_site/',
+//       linkMap: new Map<string, string>([['std::vector', 'vector']]),
+//     },
+//   });
+
+//   const text = toMarkdown(memberDef.detaileddescription, linkResolver);
+//   expect(text).toBe(
+//     t('Vector [`std::vector`](ref_site/vector)`<int>` template'),
+//   );
+// });
 
 async function parse(xmlText: string) {
   const xml = await xml2js.parseStringPromise(t(xmlText), {
@@ -595,4 +590,15 @@ async function parse(xmlText: string) {
 
 function t(text: string) {
   return applyTemplateRules(text, {indent: '  ', EOL: '\n'});
+}
+
+function getLinkResolver(init: Partial<LinkResolver> = {}): LinkResolver {
+  const emptyLinkResolver: LinkResolver = {
+    resolveCompoundId: _ => undefined,
+    resolveMemberId: _ => [undefined, undefined],
+    stdTypeLinks: {linkPrefix: '', linkMap: new Map<string, string>()},
+    idlTypeLinks: {linkPrefix: '', linkMap: new Map<string, string>()},
+  };
+
+  return Object.assign(emptyLinkResolver, init);
 }
