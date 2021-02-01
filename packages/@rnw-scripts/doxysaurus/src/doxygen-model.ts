@@ -123,6 +123,7 @@ export interface DoxDescriptionElement {
     kind: DoxDescriptionKind;
     thead: DoxBool;
     url: string;
+    level?: string;
   };
   $$: DoxDescription[];
   _?: string;

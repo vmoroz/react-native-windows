@@ -332,6 +332,70 @@ test('Horizontal ruler', async () => {
   expect(text).toBe(t(`---`));
 });
 
+test('Headings', async () => {
+  const memberDef = await parse(`
+    |<memberdef>
+    |  <briefdescription>
+        |<sect1 id="type_autotoc_md2">
+        |<title>heading 1</title>
+        |<para>text 1</para>
+        |<sect2 id="type_autotoc_md3">
+        |<title>heading 2</title>
+        |<para>text 2</para>
+        |<sect3 id="type_autotoc_md4">
+        |<title>heading 3</title>
+        |<para>text 3</para>
+        |<sect4 id="type_autotoc_md5">
+        |<title>heading 4</title>
+        |<para>text 4</para>
+        |<para><anchor id="type_autotoc_md6"/> <heading level="5">heading 5</heading>
+        |</para>
+        |<para>text 5</para>
+        |<para><heading level="6">heading 6</heading>
+        |</para>
+        |<para>text 6</para>
+        |<para><heading level="6"># heading 7</heading>
+        |</para>
+        |<para>text 7</para>
+        |</sect4>
+        |</sect3>
+        |</sect2>
+        |</sect1>
+    |  </briefdescription>
+    |</memberdef>`);
+
+  const text = toMarkdown(memberDef.briefdescription);
+  expect(text).toBe(
+    t(`# heading 1
+      |
+      |text 1
+      |
+      |## heading 2
+      |
+      |text 2
+      |
+      |### heading 3
+      |
+      |text 3
+      |
+      |#### heading 4
+      |
+      |text 4
+      |
+      |##### heading 5
+      |
+      |text 5
+      |
+      |###### heading 6
+      |
+      |text 6
+      |
+      |###### # heading 7
+      |
+      |text 7`),
+  );
+});
+
 async function parse(xmlText: string) {
   const xml = await xml2js.parseStringPromise(t(xmlText), {
     explicitChildren: true,

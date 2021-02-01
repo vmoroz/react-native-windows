@@ -92,8 +92,6 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
           itemBullet,
           element.$$,
         );
-      case 'heading':
-        return write('## ', element.$$);
       case 'parameterlist':
         return write('\n### Parameters\n', element.$$, '\n\n');
       case 'parameteritem':
@@ -133,10 +131,14 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
       case 'sect1':
       case 'sect2':
       case 'sect3':
-        return writeWithContext(element, '\n', element.$$, '\n');
+      case 'sect4':
+        return writeWithContext(element, index ? '\n\n' : '', element.$$);
       case 'title':
         const level = Number((last(context)?.['#name'] || '0').slice(-1));
-        return write('\n', '#'.repeat(level), ' ', element._, '\n\n');
+        return write('#'.repeat(level), ' ', element._);
+      case 'heading':
+        sb.removeLastIf(' ');
+        return write('#'.repeat(Number(element.$.level || 0)), ' ', element.$$);
       case 'hruler':
         return write('---');
       case 'ulink':
@@ -333,6 +335,12 @@ export class StringBuilder {
   writeIf(arg: string, condition: boolean) {
     if (condition) {
       this.parts.push(arg);
+    }
+  }
+
+  removeLastIf(text: string) {
+    if (last(this.parts) === text) {
+      this.parts.pop();
     }
   }
 
