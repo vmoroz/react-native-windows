@@ -220,6 +220,8 @@ export type DoxDescriptionKind =
   | 'attention'
   | 'return'
   | 'see'
+  | 'param'
+  | 'retval'
   | 'other';
 
 export type DoxBool = 'yes' | 'no';

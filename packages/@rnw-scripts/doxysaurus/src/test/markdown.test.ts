@@ -396,6 +396,59 @@ test('Headings', async () => {
   );
 });
 
+test('Parameters', async () => {
+  const memberDef = await parse(`
+    |<memberdef>
+    |  <detaileddescription>
+        |<para><parameterlist kind="param"><parameteritem>
+        |<parameternamelist>
+        |<parametername>param1</parametername>
+        |</parameternamelist>
+        |<parameterdescription>
+        |<para>the first parameter</para>
+        |</parameterdescription>
+        |</parameteritem>
+        |<parameteritem>
+        |<parameternamelist>
+        |<parametername>param2</parametername>
+        |</parameternamelist>
+        |<parameterdescription>
+        |<para>the second parameter</para>
+        |</parameterdescription>
+        |</parameteritem>
+        |</parameterlist>
+        |<parameterlist kind="retval"><parameteritem>
+        |<parameternamelist>
+        |<parametername>result</parametername>
+        |</parameternamelist>
+        |<parameterdescription>
+        |<para>the return parameter</para>
+        |</parameterdescription>
+        |</parameteritem>
+        |</parameterlist>
+        |<simplesect kind="return"><para>function return value</para>
+        |</simplesect>
+        |</para>
+    |  </detaileddescription>
+    |</memberdef>`);
+
+  const text = toMarkdown(memberDef.detaileddescription);
+  expect(text).toBe(
+    t(`### Parameters
+      |
+      |* \`param1\` the first parameter
+      |* \`param2\` the second parameter
+      |
+      |### Return values
+      |
+      |* \`result\` the return parameter
+      |
+      |### Returns
+      |
+      |function return value`),
+  );
+});
+
 async function parse(xmlText: string) {
   const xml = await xml2js.parseStringPromise(t(xmlText), {
     explicitChildren: true,

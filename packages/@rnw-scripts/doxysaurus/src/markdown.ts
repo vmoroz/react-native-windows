@@ -50,9 +50,7 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
   ): void {
     switch (element['#name']) {
       case '__text__':
-        return autoLinks(element._);
-      case 'ref':
-        return refLink(element);
+        return writeText(element._);
       case 'sp':
         return write(' ');
       case 'nonbreakablespace':
@@ -93,9 +91,17 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
           element.$$,
         );
       case 'parameterlist':
-        return write('\n### Parameters\n', element.$$, '\n\n');
+        if (element.$.kind === 'param') {
+          return write(index ? '\n\n' : '', '### Parameters\n', element.$$);
+        } else if (element.$.kind === 'retval') {
+          return write(index ? '\n\n' : '', '### Return values\n', element.$$);
+        } else {
+          return log(
+            `Warning: Unknown parameterlist kind {${element.$.kind}}.`,
+          );
+        }
       case 'parameteritem':
-        return write('* ', element.$$, '\n');
+        return write('\n* ', element.$$);
       case 'parametername':
         return writeCode('`', element.$$, '` ');
       case 'computeroutput':
@@ -110,7 +116,7 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
         if (element.$.kind === 'attention') {
           return write('> ', element.$$);
         } else if (element.$.kind === 'return') {
-          return write('\n### Returns\n', element.$$);
+          return write(index ? '\n\n' : '', '### Returns\n\n', element.$$);
         } else if (element.$.kind === 'see') {
           return write('**See also**: ', element.$$);
         } else {
@@ -141,6 +147,8 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
         return write('#'.repeat(Number(element.$.level || 0)), ' ', element.$$);
       case 'hruler':
         return write('---');
+      case 'ref':
+        return refLink(element);
       case 'ulink':
         return link(toMarkdown(element.$$), element.$.url);
       case 'xreftitle':
@@ -155,6 +163,7 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
         break;
       case 'entry':
         return write(escapeCell(toMarkdown(element.$$, linkResolver)), '|');
+      case 'anchor':
       case 'highlight':
       case 'table':
       case 'parameterdescription':
@@ -213,13 +222,14 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
     }
   }
 
-  function autoLinks(text?: string) {
+  function writeText(text?: string) {
     if (text) {
       if (text.trim() === '') {
         if (text.includes(' ')) {
           write(' ');
         }
       } else {
+        // Do auto-linking for known types
         if (linkResolver) {
           text = applyStandardLibLinks(text, linkResolver.stdTypeLinks);
           text = applyIdlGeneratedLinks(text, linkResolver.idlTypeLinks);
