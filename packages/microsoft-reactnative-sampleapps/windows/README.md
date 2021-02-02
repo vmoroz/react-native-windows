@@ -36,7 +36,7 @@ Where Headless JS allows JavaScript to run while the application is in the backg
 
 ### Conditions
 
-You many need a background task to run under specific conditions, for example, only when the user is not interacting with their device, only when they have an internet connection, or only when they are connected to AC power. These conditions are specified as part of the background task registration. You may specify multiple conditions as required.
+You may need a background task to run under specific conditions, for example, only when the user is not interacting with their device, only when they have an internet connection, or only when they are connected to AC power. These conditions are specified as part of the background task registration. You may specify multiple conditions as required.
 
 See here for a full list of [Windows triggers and conditions](https://docs.microsoft.com/en-us/uwp/api/windows.applicationmodel.background).
 
