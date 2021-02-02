@@ -2,11 +2,8 @@
  * Copyright (c) Microsoft Corporation.
  * Licensed under the MIT License.
  *
- * Code in this file is partially based on the moxygen project code
- * which in turn is based on the doxygen2md project.
- * https://github.com/sourcey/moxygen
- * https://github.com/pferdinand/doxygen2md
- * Copyright for the moxygen and doxygen2md code:
+ * This code is partially based on moxygen and doxygen2md code.
+ * The copyrights of moxygen and doxygen2md projects:
  * Copyright (c) 2016 Philippe FERDINAND
  * Copyright (c) 2016 Kam Low
  *
@@ -235,46 +232,137 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
       } else {
         // Do auto-linking for known types
         if (linkResolver) {
-          text = applyStandardLibLinks(text, linkResolver.stdTypeLinks);
-          text = applyIdlGeneratedLinks(text, linkResolver.idlTypeLinks);
+          applyStandardLibLinks(text, linkResolver.stdTypeLinks);
+          // text = applyIdlGeneratedLinks(text, linkResolver.idlTypeLinks);
+        } else {
+          write(text);
         }
-        write(text);
       }
     }
   }
 
+  //type AutoLinkState = 'text' | 'template-args';
+  //const autoLinkState: AutoLinkState = 'text';
+  //const linkedType = '';
+  //const linkedTemplateDepth = 0;
+  // let linkParsing
+
+  // We support the following syntax for standard library types and functions:
+  // - It must start 'std::' and follow by a type name.
+  // - Then we optionally may have template arguments in < >
+  // - Then we optionally may have '::' followed by method name or an operator.
   function applyStandardLibLinks(text: string, stdTypeLinks: TypeLinks) {
-    return text.replace(
-      /(std::\w+)(<\w+>)?(::\w+\(\)|::operator\[\])?/g,
-      (match, p1, _, p3) => {
-        const typeLink = stdTypeLinks.linkMap.get(p1);
-        if (typeLink) {
-          const ref = stdTypeLinks.linkPrefix + typeLink;
-          if (p3) {
-            if (p3.endsWith('()')) {
-              return `[\`${match}\`](${ref}/${p3.slice(2, -2)})`;
-            } else if (p3.endsWith('operator[]')) {
-              return `[\`${match}\`](${ref}/operator_at)`;
+    const typeExpr = /(std::\w+)|<|>/y;
+    let index = 0;
+    let templateDepth = 0;
+
+    for (let i = 0; i < text.length; ) {
+      typeExpr.lastIndex = i;
+      const match = typeExpr.exec(text);
+      if (match) {
+        if (match[1]) {
+          write(text.substring(index, match.index));
+          const typeLink = stdTypeLinks.linkMap.get(match[1]);
+          if (typeLink) {
+            write(
+              '[`',
+              match[0],
+              '`](',
+              stdTypeLinks.linkPrefix,
+              typeLink,
+              ')',
+            );
+            if (text.startsWith('<', typeExpr.lastIndex)) {
+              write('`');
             }
+          } else {
+            write(match[0]);
           }
-          return `[\`${match}\`](${ref})`;
-        } else {
-          return match;
+          index = typeExpr.lastIndex;
+        } else if (match[0] === '<') {
+          ++templateDepth;
+        } else if (match[0] === '>') {
+          --templateDepth;
+          if (templateDepth === 0) {
+            write(text.substring(index, typeExpr.lastIndex), '`');
+            index = typeExpr.lastIndex;
+          }
         }
-      },
-    );
+        i = typeExpr.lastIndex;
+      } else {
+        ++i;
+      }
+    }
+
+    write(text.substring(index));
   }
 
-  function applyIdlGeneratedLinks(text: string, idlTypeLinks: TypeLinks) {
-    return text.replace(/(\w+)(::\w+(\(\))?)?/g, (match, p1) => {
-      const ref = idlTypeLinks.linkMap.get(p1);
-      if (ref) {
-        return `[\`${match}\`](${idlTypeLinks.linkPrefix + ref})`;
-      } else {
-        return match;
-      }
-    });
-  }
+  // let index = 0;
+  // let codeStarted = false;
+
+  // const match = typeExpr.exec(text);
+  // if (match) {
+  //   if (match[1]) {
+  //     const typeLink = stdTypeLinks.linkMap.get(match[1]);
+  //     if (typeLink) {
+  //       write('[`', match[0], '`](', typeLink, ')');
+  //     } else {
+  //       codeStarted = true;
+  //       write('`', match[0]);
+  //     }
+  //     if (text.startsWith('<', typeExpr.lastIndex)) {
+  //       ++linkedTemplateDepth;
+  //       ++typeExpr.lastIndex;
+  //       if (!codeStarted) {
+  //         write('`');
+  //       }
+  //       write('<');
+  //     } else {
+  //       if (codeStarted) {
+  //         codeStarted = false;
+  //         write('`');
+  //       }
+  //     }
+  //     index = typeExpr.lastIndex;
+  //   } else if (linkedTemplateDepth) {
+  //     if (match[0] === '<') {
+  //       ++linkedTemplateDepth;
+  //     } else if (match[0] === '>') {
+  //       --linkedTemplateDepth;
+  //     }
+  //   }
+  // }
+  // return text.replace(
+  //   /(std::\w+)(<\w+>)?(::\w+\(\)|::operator\[\])?/g,
+  //   (match, p1, _, p3) => {
+  //     const typeLink = stdTypeLinks.linkMap.get(p1);
+  //     if (typeLink) {
+  //       const ref = stdTypeLinks.linkPrefix + typeLink;
+  //       if (p3) {
+  //         if (p3.endsWith('()')) {
+  //           return `[\`${match}\`](${ref}/${p3.slice(2, -2)})`;
+  //         } else if (p3.endsWith('operator[]')) {
+  //           return `[\`${match}\`](${ref}/operator_at)`;
+  //         }
+  //       }
+  //       return `[\`${match}\`](${ref})`;
+  //     } else {
+  //       return match;
+  //     }
+  //   },
+  // );
+  //}
+
+  // function applyIdlGeneratedLinks(text: string, idlTypeLinks: TypeLinks) {
+  //   return text.replace(/(\w+)(::\w+(\(\))?)?/g, (match, p1) => {
+  //     const ref = idlTypeLinks.linkMap.get(p1);
+  //     if (ref) {
+  //       return `[\`${match}\`](${idlTypeLinks.linkPrefix + ref})`;
+  //     } else {
+  //       return match;
+  //     }
+  //   });
+  // }
 
   function escapeRow(text: string): string {
     return text.replace(/\s*\|\s*$/, '');
@@ -316,13 +404,12 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
       } else if (typeof item === 'object') {
         if (Array.isArray(item)) {
           (item as DoxDescriptionElement[])
+            // Remove all non-meaningful white spaces
             .filter(
               element =>
                 typeof element !== 'object' ||
                 element['#name'] !== '__text__' ||
-                !element._ ||
-                element._.trim() ||
-                element._.includes(' '),
+                (element._ && (element._.trim() || element._.includes(' '))),
             )
             .forEach((element, index) => {
               transformElement(element, index);

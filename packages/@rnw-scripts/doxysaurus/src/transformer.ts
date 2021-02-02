@@ -2,11 +2,8 @@
  * Copyright (c) Microsoft Corporation.
  * Licensed under the MIT License.
  *
- * Code in this file is partially based on the moxygen project code
- * which in turn is based on the doxygen2md project.
- * https://github.com/sourcey/moxygen
- * https://github.com/pferdinand/doxygen2md
- * Copyright for the moxygen and doxygen2md code:
+ * This code is partially based on moxygen and doxygen2md code.
+ * The copyrights of moxygen and doxygen2md projects:
  * Copyright (c) 2016 Philippe FERDINAND
  * Copyright (c) 2016 Kam Low
  *

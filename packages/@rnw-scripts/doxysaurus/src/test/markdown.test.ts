@@ -556,27 +556,87 @@ test('std::vector ref not found', async () => {
   expect(text).toBe(t('Vector: std::vector not found'));
 });
 
-// TODO: Make it pass:
-// test('std::vector of int', async () => {
-//   const memberDef = await parse(`
-//     |<memberdef>
-//     |  <detaileddescription>
-//         |<para>Vector std::vector&lt;int&gt; template</para>
-//     |  </detaileddescription>
-//     |</memberdef>`);
+test('std::vector ref found and std::string not found', async () => {
+  const memberDef = await parse(`
+    |<memberdef>
+    |  <detaileddescription>
+        |<para>std::vector found and std::string not found</para>
+    |  </detaileddescription>
+    |</memberdef>`);
 
-//   const linkResolver = getLinkResolver({
-//     stdTypeLinks: {
-//       linkPrefix: 'ref_site/',
-//       linkMap: new Map<string, string>([['std::vector', 'vector']]),
-//     },
-//   });
+  const linkResolver = getLinkResolver({
+    stdTypeLinks: {
+      linkPrefix: 'ref_site/',
+      linkMap: new Map<string, string>([['std::vector', 'vector']]),
+    },
+  });
 
-//   const text = toMarkdown(memberDef.detaileddescription, linkResolver);
-//   expect(text).toBe(
-//     t('Vector [`std::vector`](ref_site/vector)`<int>` template'),
-//   );
-// });
+  const text = toMarkdown(memberDef.detaileddescription, linkResolver);
+  expect(text).toBe(
+    t('[`std::vector`](ref_site/vector) found and std::string not found'),
+  );
+});
+
+test('std::vector ref not found and std::string found', async () => {
+  const memberDef = await parse(`
+    |<memberdef>
+    |  <detaileddescription>
+        |<para>std::vector found and std::string not found</para>
+    |  </detaileddescription>
+    |</memberdef>`);
+
+  const linkResolver = getLinkResolver({
+    stdTypeLinks: {
+      linkPrefix: 'ref_site/',
+      linkMap: new Map<string, string>([['std::string', 'basic_string']]),
+    },
+  });
+
+  const text = toMarkdown(memberDef.detaileddescription, linkResolver);
+  expect(text).toBe(
+    t('std::vector found and [`std::string`](ref_site/basic_string) not found'),
+  );
+});
+
+test('std::vector find end of string', async () => {
+  const memberDef = await parse(`
+    |<memberdef>
+    |  <detaileddescription>
+        |<para>Vector: std::vector</para>
+    |  </detaileddescription>
+    |</memberdef>`);
+
+  const linkResolver = getLinkResolver({
+    stdTypeLinks: {
+      linkPrefix: 'ref_site/',
+      linkMap: new Map<string, string>([['std::vector', 'vector']]),
+    },
+  });
+
+  const text = toMarkdown(memberDef.detaileddescription, linkResolver);
+  expect(text).toBe(t('Vector: [`std::vector`](ref_site/vector)'));
+});
+
+test('std::vector of int', async () => {
+  const memberDef = await parse(`
+    |<memberdef>
+    |  <detaileddescription>
+        |<para>Vector std::vector&lt;int&gt; template</para>
+    |  </detaileddescription>
+    |</memberdef>`);
+
+  const linkResolver = getLinkResolver({
+    stdTypeLinks: {
+      linkPrefix: 'ref_site/',
+      linkMap: new Map<string, string>([['std::vector', 'vector']]),
+    },
+  });
+
+  const text = toMarkdown(memberDef.detaileddescription, linkResolver);
+  expect(text).toBe(
+    t('Vector [`std::vector`](ref_site/vector)`<int>` template'),
+  );
+});
 
 async function parse(xmlText: string) {
   const xml = await xml2js.parseStringPromise(t(xmlText), {
