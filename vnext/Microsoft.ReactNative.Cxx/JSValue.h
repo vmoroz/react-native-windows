@@ -25,7 +25,6 @@ IJSValueReader MakeJSValueTreeReader(JSValue &&root) noexcept;
 IJSValueWriter MakeJSValueTreeWriter() noexcept;
 JSValue TakeJSValue(IJSValueWriter const &writer) noexcept;
 
-//==============================================================================
 //! @brief JSValueObject builds JSValue object.
 //!        It is also used as a read-only JSValue object value.
 //!
@@ -222,7 +221,6 @@ bool operator==(JSValueObject const &left, JSValueObject const &right) noexcept;
 //! Gets negated result of JSValueObject::Equals() method call for `left.Equals(right)`.
 bool operator!=(JSValueObject const &left, JSValueObject const &right) noexcept;
 
-//==============================================================================
 //! @brief JSValueArray builds JSValue array.
 //!        It is also used as a read-only JSValue array value.
 //!
@@ -400,10 +398,6 @@ bool operator==(JSValueArray const &left, JSValueArray const &right) noexcept;
 //! @related JSValueArray
 //! Gets negated result of JSValueArray::Equals() method call for `left.Equals(right)`.
 bool operator!=(JSValueArray const &left, JSValueArray const &right) noexcept;
-
-//==============================================================================
-// JSValue declaration.
-//==============================================================================
 
 //! JSValue represents an immutable JavaScript value that can be passed as a parameter.
 //! It is created to simplify working with IJSValueReader in some complex cases.
