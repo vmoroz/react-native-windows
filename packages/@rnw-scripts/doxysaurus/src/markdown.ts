@@ -246,6 +246,7 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
   // - It must start 'std::' and follow by a type name.
   // - Then we optionally may have template arguments in < >
   // - Then we optionally may have '::' followed by method name or an operator.
+  // eslint-disable-next-line complexity
   function applyStandardLibLinks(text: string, stdTypeLinks: TypeLinks) {
     const typeExpr = /(std::\w+)|<|>|(::(\w+)\(\)|::(operator\[\]))/y;
     let index = 0;
@@ -332,7 +333,11 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
             } else {
               const operatorLink = stdTypeLinks.operatorMap.get(match[4]);
               if (operatorLink) {
-                write(
+                if (!inCode) {
+                  write('`');
+                }
+                write('::`');
+                  write(
                   '[`',
                   match[4],
                   '`](',
@@ -342,6 +347,11 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
                   operatorLink,
                   ')',
                 );
+              } else {
+                if (!inCode) {
+                  write('`');
+                }
+                write('::', match[4], '`');
               }
             }
             index = typeExpr.lastIndex;

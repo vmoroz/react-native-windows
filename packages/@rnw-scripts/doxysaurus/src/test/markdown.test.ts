@@ -734,6 +734,90 @@ test('std::vector method no template', async () => {
   );
 });
 
+test('std::vector operator[]', async () => {
+  const memberDef = await parse(`
+    |<memberdef>
+    |  <detaileddescription>
+        |<para>Text std::vector&lt;int&gt;::operator[] text</para>
+    |  </detaileddescription>
+    |</memberdef>`);
+
+  const linkResolver = getLinkResolver({
+    stdTypeLinks: {
+      linkPrefix: 'ref_site/',
+      linkMap: new Map<string, string>([['std::vector', 'vector']]),
+      operatorMap: new Map<string, string>([['operator[]', 'operator_at']]),
+    },
+  });
+
+  const text = toMarkdown(memberDef.detaileddescription, linkResolver);
+  expect(text).toBe(
+    'Text [`std::vector`](ref_site/vector)`<int>::`[`operator[]`](ref_site/vector/operator_at) text',
+  );
+});
+
+test('std::vector operator[] no template', async () => {
+  const memberDef = await parse(`
+    |<memberdef>
+    |  <detaileddescription>
+        |<para>Text std::vector::operator[] text</para>
+    |  </detaileddescription>
+    |</memberdef>`);
+
+  const linkResolver = getLinkResolver({
+    stdTypeLinks: {
+      linkPrefix: 'ref_site/',
+      linkMap: new Map<string, string>([['std::vector', 'vector']]),
+      operatorMap: new Map<string, string>([['operator[]', 'operator_at']]),
+    },
+  });
+
+  const text = toMarkdown(memberDef.detaileddescription, linkResolver);
+  expect(text).toBe(
+    'Text [`std::vector`](ref_site/vector)`::`[`operator[]`](ref_site/vector/operator_at) text',
+  );
+});
+
+test('std::vector unknown operator[]', async () => {
+  const memberDef = await parse(`
+    |<memberdef>
+    |  <detaileddescription>
+        |<para>Text std::vector&lt;int&gt;::operator[] text</para>
+    |  </detaileddescription>
+    |</memberdef>`);
+
+  const linkResolver = getLinkResolver({
+    stdTypeLinks: {
+      linkPrefix: 'ref_site/',
+      linkMap: new Map<string, string>([['std::vector', 'vector']]),
+    },
+  });
+
+  const text = toMarkdown(memberDef.detaileddescription, linkResolver);
+  expect(text).toBe(
+    'Text [`std::vector`](ref_site/vector)`<int>::operator[]` text',
+  );
+});
+
+test('std::vector unknown operator[] no template', async () => {
+  const memberDef = await parse(`
+    |<memberdef>
+    |  <detaileddescription>
+        |<para>Text std::vector::operator[] text</para>
+    |  </detaileddescription>
+    |</memberdef>`);
+
+  const linkResolver = getLinkResolver({
+    stdTypeLinks: {
+      linkPrefix: 'ref_site/',
+      linkMap: new Map<string, string>([['std::vector', 'vector']]),
+    },
+  });
+
+  const text = toMarkdown(memberDef.detaileddescription, linkResolver);
+  expect(text).toBe('Text [`std::vector`](ref_site/vector)`::operator[]` text');
+});
+
 async function parse(xmlText: string) {
   const xml = await xml2js.parseStringPromise(t(xmlText), {
     explicitChildren: true,
