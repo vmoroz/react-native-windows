@@ -250,9 +250,9 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
   function applyStandardLibLinks(text: string, stdTypeLinks: TypeLinks) {
     const typeExpr = regexp('y')`
       (?<typeName>std::\w+) // This is to capture type name
-      |<
-      |>
-      |(::(?<operator>operator(\[\]|\(\)))|::(\w+)\(\))`;
+      |(?<ltBracket><)
+      |(?<gtBracket>>)
+      |(?<member>::(?<operator>operator(\[\]|\(\)))|::(?<method>\w+)\(\))`;
     let index = 0;
     let templateDepth = 0;
     let wasInTemplateArgs = false;
@@ -296,11 +296,11 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
             write(match[0]);
           }
           index = typeExpr.lastIndex;
-        } else if (match[0] === '<') {
+        } else if (match.groups?.ltBracket) {
           if (inTemplateArgs) {
             ++templateDepth;
           }
-        } else if (match[0] === '>') {
+        } else if (match.groups?.gtBracket) {
           if (inTemplateArgs) {
             --templateDepth;
             if (templateDepth === 0) {
@@ -318,24 +318,26 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
           }
         } else if (inMember) {
           inMember = false;
-          if (match[2]) {
-            if (match[5]) {
+          if (match.groups?.member) {
+            if (match.groups.method) {
               if (!inCode) {
                 write('`');
               }
               write('::`');
               write(
                 '[`',
-                match[2].substring(2),
+                match.groups.member.substring(2),
                 '`](',
                 stdTypeLinks.linkPrefix,
                 typeLink,
                 '/',
-                match[5],
+                match.groups.method,
                 ')',
               );
-            } else if (match.groups?.operator) {
-              const operatorLink = stdTypeLinks.operatorMap.get(match.groups.operator);
+            } else if (match.groups.operator) {
+              const operatorLink = stdTypeLinks.operatorMap.get(
+                match.groups.operator,
+              );
               if (operatorLink) {
                 if (!inCode) {
                   write('`');
@@ -529,7 +531,7 @@ function last<T>(arr?: T[]): T | undefined {
   return arr ? arr[arr.length - 1] : undefined;
 }
 
-// Converted to TypeScript https://stackoverflow.com/a/62153852
+// Converted to TypeScript from https://stackoverflow.com/a/62153852
 interface TaggedTemplate {
   (strings: TemplateStringsArray, ...values: string[]): RegExp;
 }
