@@ -295,14 +295,7 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
             if (wasInTemplateArgs) {
               write('`');
             }
-            write(
-              '[`',
-              match[0],
-              '`](',
-              stdTypeLinks.linkPrefix,
-              typeLink,
-              ')',
-            );
+            writeCodeLink(match[0], stdTypeLinks.linkPrefix, typeLink);
             [wasInTemplateArgs, inTemplateArgs] = [false, wasInTemplateArgs];
             if (text.startsWith('<', typeExpr.lastIndex)) {
               inTemplateArgs = true;
@@ -346,15 +339,12 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
                 write('`');
               }
               write('::`');
-              write(
-                '[`',
+              writeCodeLink(
                 match.groups.member,
-                '`](',
                 stdTypeLinks.linkPrefix,
-                typeLink,
+                typeLink ?? '',
                 '/',
                 match.groups.method,
-                ')',
               );
             } else if (match.groups.operator) {
               const operatorLink = stdTypeLinks.operatorMap.get(
@@ -365,15 +355,12 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
                   write('`');
                 }
                 write('::`');
-                write(
-                  '[`',
+                writeCodeLink(
                   match.groups.operator,
-                  '`](',
                   stdTypeLinks.linkPrefix,
-                  typeLink,
+                  typeLink ?? '',
                   '/',
                   operatorLink,
-                  ')',
                 );
               } else {
                 if (!inCode) {
@@ -394,6 +381,10 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
     }
 
     write(text.substring(index));
+  }
+
+  function writeCodeLink(label: string, ...linkParts: string[]) {
+    write('[`', label, '`](', ...linkParts, ')');
   }
 
   // let index = 0;
