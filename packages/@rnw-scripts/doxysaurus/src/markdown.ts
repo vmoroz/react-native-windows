@@ -248,11 +248,33 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
   // - Then we optionally may have '::' followed by method name or an operator.
   // eslint-disable-next-line complexity
   function applyStandardLibLinks(text: string, stdTypeLinks: TypeLinks) {
-    const typeExpr = regexp('y')`
-      (?<typeName>std::\w+) // This is to capture type name
-      |(?<ltBracket><)
-      |(?<gtBracket>>)
-      |(?<member>::(?<operator>operator(\[\]|\(\)))|::(?<method>\w+)\(\))`;
+    const typeExpr = regex('y')`
+      (?<typeName>std::\w+)     // standard lib type name
+      |(?<ltBracket><)          // start template args
+      |(?<gtBracket>>)          // end template args
+      |::(?<member>
+           (?<operator>operator // list of all member operators
+             (\[\]
+             |\(\)
+             |,
+             |->\*
+             |-[-=>]?
+             |\+[+=]?
+             |\*=?
+             |/=?
+             |%=?
+             |\^=?
+             |~=?
+             |<<?=?>?
+             |>>?=?
+             |&&?=?
+             |\|\|?=?
+             |==?
+             |!=?
+             )
+           )
+         |(?<method>\w+)(\(\))? // method to match
+         )`;
     let index = 0;
     let templateDepth = 0;
     let wasInTemplateArgs = false;
@@ -326,7 +348,7 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
               write('::`');
               write(
                 '[`',
-                match.groups.member.substring(2),
+                match.groups.member,
                 '`](',
                 stdTypeLinks.linkPrefix,
                 typeLink,
@@ -535,9 +557,9 @@ function last<T>(arr?: T[]): T | undefined {
 interface TaggedTemplate {
   (strings: TemplateStringsArray, ...values: string[]): RegExp;
 }
-function regexp(arg0: string): TaggedTemplate;
-function regexp(strings: TemplateStringsArray, ...values: string[]): RegExp;
-function regexp(
+function regex(arg0: string): TaggedTemplate;
+function regex(strings: TemplateStringsArray, ...values: string[]): RegExp;
+function regex(
   arg0: string | TemplateStringsArray,
   ...args: string[]
 ): RegExp | TaggedTemplate {
