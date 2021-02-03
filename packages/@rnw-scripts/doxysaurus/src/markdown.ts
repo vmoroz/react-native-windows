@@ -248,7 +248,7 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
   // - Then we optionally may have '::' followed by method name or an operator.
   // eslint-disable-next-line complexity
   function applyStandardLibLinks(text: string, stdTypeLinks: TypeLinks) {
-    const typeExpr = regex('y')`
+    const typeExpr = regex('g')`
       (?<typeName>std::\w+)     // standard lib type name
       |(?<ltBracket><)          // start template args
       |(?<gtBracket>>)          // end template args
@@ -287,9 +287,10 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
       typeExpr.lastIndex = i;
       const match = typeExpr.exec(text);
       if (match) {
-        if (match.groups?.typeName) {
+        const groups = match.groups!;
+        if (groups.typeName) {
           write(text.substring(index, match.index));
-          typeLink = stdTypeLinks.linkMap.get(match.groups.typeName);
+          typeLink = stdTypeLinks.linkMap.get(groups.typeName);
           if (typeLink) {
             [wasInTemplateArgs, inTemplateArgs] = [inTemplateArgs, false];
             if (wasInTemplateArgs) {
@@ -311,11 +312,11 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
             write(match[0]);
           }
           index = typeExpr.lastIndex;
-        } else if (match.groups?.ltBracket) {
+        } else if (groups.ltBracket) {
           if (inTemplateArgs) {
             ++templateDepth;
           }
-        } else if (match.groups?.gtBracket) {
+        } else if (groups.gtBracket) {
           if (inTemplateArgs) {
             --templateDepth;
             if (templateDepth === 0) {
@@ -333,22 +334,22 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
           }
         } else if (inMember) {
           inMember = false;
-          if (match.groups?.member) {
-            if (match.groups.method) {
+          if (groups.member) {
+            if (groups.method) {
               if (!inCode) {
                 write('`');
               }
               write('::`');
               writeCodeLink(
-                match.groups.member,
+                groups.member,
                 stdTypeLinks.linkPrefix,
                 typeLink ?? '',
                 '/',
-                match.groups.method,
+                groups.method,
               );
-            } else if (match.groups.operator) {
+            } else if (groups.operator) {
               const operatorLink = stdTypeLinks.operatorMap.get(
-                match.groups.operator,
+                groups.operator,
               );
               if (operatorLink) {
                 if (!inCode) {
@@ -356,7 +357,7 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
                 }
                 write('::`');
                 writeCodeLink(
-                  match.groups.operator,
+                  groups.operator,
                   stdTypeLinks.linkPrefix,
                   typeLink ?? '',
                   '/',
@@ -366,7 +367,7 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
                 if (!inCode) {
                   write('`');
                 }
-                write('::', match.groups.operator, '`');
+                write('::', groups.operator, '`');
               }
             }
             index = typeExpr.lastIndex;
@@ -376,11 +377,11 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
         }
         i = typeExpr.lastIndex;
       } else {
-        ++i;
+        break;
       }
     }
 
-    write(text.substring(index));
+    write(index ? text.substring(index) : text);
   }
 
   function writeCodeLink(label: string, ...linkParts: string[]) {
