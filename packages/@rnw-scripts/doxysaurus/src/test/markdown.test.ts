@@ -818,6 +818,50 @@ test('std::vector unknown operator[] no template', async () => {
   expect(text).toBe('Text [`std::vector`](ref_site/vector)`::operator[]` text');
 });
 
+test('std::vector operator()', async () => {
+  const memberDef = await parse(`
+    |<memberdef>
+    |  <detaileddescription>
+        |<para>Text std::vector&lt;int&gt;::operator() text</para>
+    |  </detaileddescription>
+    |</memberdef>`);
+
+  const linkResolver = getLinkResolver({
+    stdTypeLinks: {
+      linkPrefix: 'ref_site/',
+      linkMap: new Map<string, string>([['std::vector', 'vector']]),
+      operatorMap: new Map<string, string>([['operator()', 'operator()']]),
+    },
+  });
+
+  const text = toMarkdown(memberDef.detaileddescription, linkResolver);
+  expect(text).toBe(
+    'Text [`std::vector`](ref_site/vector)`<int>::`[`operator()`](ref_site/vector/operator()) text',
+  );
+});
+
+test('std::vector operator() no template', async () => {
+  const memberDef = await parse(`
+    |<memberdef>
+    |  <detaileddescription>
+        |<para>Text std::vector::operator() text</para>
+    |  </detaileddescription>
+    |</memberdef>`);
+
+  const linkResolver = getLinkResolver({
+    stdTypeLinks: {
+      linkPrefix: 'ref_site/',
+      linkMap: new Map<string, string>([['std::vector', 'vector']]),
+      operatorMap: new Map<string, string>([['operator()', 'operator()']]),
+    },
+  });
+
+  const text = toMarkdown(memberDef.detaileddescription, linkResolver);
+  expect(text).toBe(
+    'Text [`std::vector`](ref_site/vector)`::`[`operator()`](ref_site/vector/operator()) text',
+  );
+});
+
 async function parse(xmlText: string) {
   const xml = await xml2js.parseStringPromise(t(xmlText), {
     explicitChildren: true,

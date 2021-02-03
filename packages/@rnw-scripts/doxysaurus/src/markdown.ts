@@ -248,7 +248,11 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
   // - Then we optionally may have '::' followed by method name or an operator.
   // eslint-disable-next-line complexity
   function applyStandardLibLinks(text: string, stdTypeLinks: TypeLinks) {
-    const typeExpr = /(std::\w+)|<|>|(::(\w+)\(\)|::(operator\[\]))/y;
+    const typeExpr = regexp('y')`
+      (?<typeName>std::\w+) // This is to capture type name
+      |<
+      |>
+      |(::(?<operator>operator(\[\]|\(\)))|::(\w+)\(\))`;
     let index = 0;
     let templateDepth = 0;
     let wasInTemplateArgs = false;
@@ -261,9 +265,9 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
       typeExpr.lastIndex = i;
       const match = typeExpr.exec(text);
       if (match) {
-        if (match[1]) {
+        if (match.groups?.typeName) {
           write(text.substring(index, match.index));
-          typeLink = stdTypeLinks.linkMap.get(match[1]);
+          typeLink = stdTypeLinks.linkMap.get(match.groups.typeName);
           if (typeLink) {
             [wasInTemplateArgs, inTemplateArgs] = [inTemplateArgs, false];
             if (wasInTemplateArgs) {
@@ -315,7 +319,7 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
         } else if (inMember) {
           inMember = false;
           if (match[2]) {
-            if (match[3]) {
+            if (match[5]) {
               if (!inCode) {
                 write('`');
               }
@@ -327,19 +331,19 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
                 stdTypeLinks.linkPrefix,
                 typeLink,
                 '/',
-                match[3],
+                match[5],
                 ')',
               );
-            } else {
-              const operatorLink = stdTypeLinks.operatorMap.get(match[4]);
+            } else if (match.groups?.operator) {
+              const operatorLink = stdTypeLinks.operatorMap.get(match.groups.operator);
               if (operatorLink) {
                 if (!inCode) {
                   write('`');
                 }
                 write('::`');
-                  write(
+                write(
                   '[`',
-                  match[4],
+                  match.groups.operator,
                   '`](',
                   stdTypeLinks.linkPrefix,
                   typeLink,
@@ -351,7 +355,7 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
                 if (!inCode) {
                   write('`');
                 }
-                write('::', match[4], '`');
+                write('::', match.groups.operator, '`');
               }
             }
             index = typeExpr.lastIndex;
@@ -523,4 +527,47 @@ export class StringBuilder {
 
 function last<T>(arr?: T[]): T | undefined {
   return arr ? arr[arr.length - 1] : undefined;
+}
+
+// Converted to TypeScript https://stackoverflow.com/a/62153852
+interface TaggedTemplate {
+  (strings: TemplateStringsArray, ...values: string[]): RegExp;
+}
+function regexp(arg0: string): TaggedTemplate;
+function regexp(strings: TemplateStringsArray, ...values: string[]): RegExp;
+function regexp(
+  arg0: string | TemplateStringsArray,
+  ...args: string[]
+): RegExp | TaggedTemplate {
+  function cleanup(str: string) {
+    // remove whitespace, single and multi-line comments
+    return str.replace(/\s+|\/\/.*|\/\*[\s\S]*?\*\//g, '');
+  }
+
+  function escape(str: string) {
+    // escape regular expression
+    return str.replace(/[-.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  function create(
+    flags: string,
+    strings: TemplateStringsArray,
+    ...values: string[]
+  ) {
+    let pattern = '';
+    for (let i = 0; i < values.length; ++i) {
+      pattern += cleanup(strings.raw[i]); // strings are cleaned up
+      pattern += escape(values[i]); // values are escaped
+    }
+    pattern += cleanup(strings.raw[values.length]);
+    return RegExp(pattern, flags);
+  }
+
+  if (Array.isArray(arg0)) {
+    // used as a template tag (no flags)
+    return create('', arg0 as TemplateStringsArray, ...args);
+  }
+
+  // used as a function (with flags)
+  return create.bind(void 0, arg0 as string);
 }
