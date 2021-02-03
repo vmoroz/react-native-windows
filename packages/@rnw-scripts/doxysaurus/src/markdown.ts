@@ -21,6 +21,7 @@ import {log} from './logger';
 export interface TypeLinks {
   linkPrefix: string;
   linkMap: Map<string, string>;
+  operatorMap: Map<string, string>;
 }
 
 export interface LinkResolver {
@@ -241,20 +242,19 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
     }
   }
 
-  //type AutoLinkState = 'text' | 'template-args';
-  //const autoLinkState: AutoLinkState = 'text';
-  //const linkedType = '';
-  //const linkedTemplateDepth = 0;
-  // let linkParsing
-
   // We support the following syntax for standard library types and functions:
   // - It must start 'std::' and follow by a type name.
   // - Then we optionally may have template arguments in < >
   // - Then we optionally may have '::' followed by method name or an operator.
   function applyStandardLibLinks(text: string, stdTypeLinks: TypeLinks) {
-    const typeExpr = /(std::\w+)|<|>/y;
+    const typeExpr = /(std::\w+)|<|>|(::(\w+)\(\)|::(operator\[\]))/y;
     let index = 0;
     let templateDepth = 0;
+    let wasInTemplateArgs = false;
+    let inTemplateArgs = false;
+    let typeLink: string | undefined;
+    let inMember = false;
+    let inCode = false;
 
     for (let i = 0; i < text.length; ) {
       typeExpr.lastIndex = i;
@@ -262,8 +262,12 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
       if (match) {
         if (match[1]) {
           write(text.substring(index, match.index));
-          const typeLink = stdTypeLinks.linkMap.get(match[1]);
+          typeLink = stdTypeLinks.linkMap.get(match[1]);
           if (typeLink) {
+            [wasInTemplateArgs, inTemplateArgs] = [inTemplateArgs, false];
+            if (wasInTemplateArgs) {
+              write('`');
+            }
             write(
               '[`',
               match[0],
@@ -272,7 +276,15 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
               typeLink,
               ')',
             );
+            [wasInTemplateArgs, inTemplateArgs] = [false, wasInTemplateArgs];
             if (text.startsWith('<', typeExpr.lastIndex)) {
+              inTemplateArgs = true;
+            } else if (text.startsWith('::', typeExpr.lastIndex)) {
+              inMember = true;
+            } else {
+              typeLink = undefined;
+            }
+            if (inTemplateArgs) {
               write('`');
             }
           } else {
@@ -280,13 +292,62 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
           }
           index = typeExpr.lastIndex;
         } else if (match[0] === '<') {
-          ++templateDepth;
+          if (inTemplateArgs) {
+            ++templateDepth;
+          }
         } else if (match[0] === '>') {
-          --templateDepth;
-          if (templateDepth === 0) {
-            write(text.substring(index, typeExpr.lastIndex), '`');
+          if (inTemplateArgs) {
+            --templateDepth;
+            if (templateDepth === 0) {
+              inTemplateArgs = false;
+              write(text.substring(index, typeExpr.lastIndex));
+              index = typeExpr.lastIndex;
+              if (text.startsWith('::', index)) {
+                inMember = true;
+                inCode = true;
+              } else {
+                typeLink = undefined;
+                write('`');
+              }
+            }
+          }
+        } else if (inMember) {
+          inMember = false;
+          if (match[2]) {
+            if (match[3]) {
+              if (!inCode) {
+                write('`');
+              }
+              write('::`');
+              write(
+                '[`',
+                match[2].substring(2),
+                '`](',
+                stdTypeLinks.linkPrefix,
+                typeLink,
+                '/',
+                match[3],
+                ')',
+              );
+            } else {
+              const operatorLink = stdTypeLinks.operatorMap.get(match[4]);
+              if (operatorLink) {
+                write(
+                  '[`',
+                  match[4],
+                  '`](',
+                  stdTypeLinks.linkPrefix,
+                  typeLink,
+                  '/',
+                  operatorLink,
+                  ')',
+                );
+              }
+            }
             index = typeExpr.lastIndex;
           }
+          inCode = false;
+          typeLink = undefined;
         }
         i = typeExpr.lastIndex;
       } else {

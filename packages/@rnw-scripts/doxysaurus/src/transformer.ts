@@ -51,10 +51,16 @@ export function transformToMarkdown(doxModel: DoxModel, config: Config) {
     stdTypeLinks: {
       linkPrefix: config.stdTypeLinks?.linkPrefix ?? '',
       linkMap: new Map<string, string>(config.stdTypeLinks?.linkMap ?? []),
+      operatorMap: new Map<string, string>(
+        config.stdTypeLinks?.operatorMap ?? [],
+      ),
     },
     idlTypeLinks: {
       linkPrefix: config.idlTypeLinks?.linkPrefix ?? '',
       linkMap: new Map<string, string>(config.idlTypeLinks?.linkMap ?? []),
+      operatorMap: new Map<string, string>(
+        config.idlTypeLinks?.operatorMap ?? [],
+      ),
     },
     resolveCompoundId: (doxCompoundId: string): DocCompound | undefined => {
       return doxIdToDocCompound.get(doxCompoundId);

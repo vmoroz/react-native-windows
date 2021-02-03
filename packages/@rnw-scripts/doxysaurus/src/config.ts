@@ -28,10 +28,12 @@ export interface Config {
   stdTypeLinks?: {
     linkPrefix?: string;
     linkMap: [string, string][];
+    operatorMap?: [string, string][];
   };
   idlTypeLinks?: {
     linkPrefix?: string;
     linkMap: [string, string][];
+    operatorMap?: [string, string][];
   };
 }
 

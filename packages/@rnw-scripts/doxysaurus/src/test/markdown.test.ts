@@ -9,7 +9,7 @@ import * as xml2js from 'xml2js';
 import {applyTemplateRules} from './string-template';
 import {DocCompound, DocMemberOverload} from '../doc-model';
 import {DoxMember} from '../doxygen-model';
-import {LinkResolver, toMarkdown} from '../markdown';
+import {LinkResolver, TypeLinks, toMarkdown} from '../markdown';
 
 //
 // Test conversion from Doxygen XML to Markdown.
@@ -638,6 +638,102 @@ test('std::vector of int', async () => {
   );
 });
 
+test('Not matching std::vector of int', async () => {
+  const memberDef = await parse(`
+    |<memberdef>
+    |  <detaileddescription>
+        |<para>Vector std::vector&lt;int&gt; template</para>
+    |  </detaileddescription>
+    |</memberdef>`);
+
+  const text = toMarkdown(memberDef.detaileddescription, getLinkResolver());
+  expect(text).toBe('Vector std::vector<int> template');
+});
+
+test('Do not change stand alone angle brackets', async () => {
+  const memberDef = await parse(`
+    |<memberdef>
+    |  <detaileddescription>
+        |<para>Text &lt;int&gt; std::vector&lt;int&gt; std::basic_string&lt;char&gt; &lt;uint&gt; text</para>
+    |  </detaileddescription>
+    |</memberdef>`);
+
+  const linkResolver = getLinkResolver({
+    stdTypeLinks: {
+      linkPrefix: 'ref_site/',
+      linkMap: new Map<string, string>([['std::vector', 'vector']]),
+    },
+  });
+
+  const text = toMarkdown(memberDef.detaileddescription, linkResolver);
+  expect(text).toBe(
+    'Text <int> [`std::vector`](ref_site/vector)`<int>` std::basic_string<char> <uint> text',
+  );
+});
+
+test('Nested std::vector', async () => {
+  const memberDef = await parse(`
+    |<memberdef>
+    |  <detaileddescription>
+        |<para>Text std::vector&lt;std::vector&lt;int&gt;&gt; text</para>
+    |  </detaileddescription>
+    |</memberdef>`);
+
+  const linkResolver = getLinkResolver({
+    stdTypeLinks: {
+      linkPrefix: 'ref_site/',
+      linkMap: new Map<string, string>([['std::vector', 'vector']]),
+    },
+  });
+
+  const text = toMarkdown(memberDef.detaileddescription, linkResolver);
+  expect(text).toBe(
+    'Text [`std::vector`](ref_site/vector)`<`[`std::vector`](ref_site/vector)`<int>>` text',
+  );
+});
+
+test('std::vector method', async () => {
+  const memberDef = await parse(`
+    |<memberdef>
+    |  <detaileddescription>
+        |<para>Text std::vector&lt;int&gt;::emplace_back() text</para>
+    |  </detaileddescription>
+    |</memberdef>`);
+
+  const linkResolver = getLinkResolver({
+    stdTypeLinks: {
+      linkPrefix: 'ref_site/',
+      linkMap: new Map<string, string>([['std::vector', 'vector']]),
+    },
+  });
+
+  const text = toMarkdown(memberDef.detaileddescription, linkResolver);
+  expect(text).toBe(
+    'Text [`std::vector`](ref_site/vector)`<int>::`[`emplace_back()`](ref_site/vector/emplace_back) text',
+  );
+});
+
+test('std::vector method no template', async () => {
+  const memberDef = await parse(`
+    |<memberdef>
+    |  <detaileddescription>
+        |<para>Text std::vector::emplace_back() text</para>
+    |  </detaileddescription>
+    |</memberdef>`);
+
+  const linkResolver = getLinkResolver({
+    stdTypeLinks: {
+      linkPrefix: 'ref_site/',
+      linkMap: new Map<string, string>([['std::vector', 'vector']]),
+    },
+  });
+
+  const text = toMarkdown(memberDef.detaileddescription, linkResolver);
+  expect(text).toBe(
+    'Text [`std::vector`](ref_site/vector)`::`[`emplace_back()`](ref_site/vector/emplace_back) text',
+  );
+});
+
 async function parse(xmlText: string) {
   const xml = await xml2js.parseStringPromise(t(xmlText), {
     explicitChildren: true,
@@ -652,13 +748,48 @@ function t(text: string) {
   return applyTemplateRules(text, {indent: '  ', EOL: '\n'});
 }
 
-function getLinkResolver(init: Partial<LinkResolver> = {}): LinkResolver {
+interface PartialLinkResolver {
+  resolveCompoundId?: (doxCompoundId: string) => DocCompound | undefined;
+  resolveMemberId?: (
+    doxMemberId: string,
+  ) => [DocCompound | undefined, DocMemberOverload | undefined];
+  stdTypeLinks?: Partial<TypeLinks>;
+  idlTypeLinks?: Partial<TypeLinks>;
+}
+
+function getLinkResolver(init: PartialLinkResolver = {}): LinkResolver {
   const emptyLinkResolver: LinkResolver = {
     resolveCompoundId: _ => undefined,
     resolveMemberId: _ => [undefined, undefined],
-    stdTypeLinks: {linkPrefix: '', linkMap: new Map<string, string>()},
-    idlTypeLinks: {linkPrefix: '', linkMap: new Map<string, string>()},
+    stdTypeLinks: {
+      linkPrefix: '',
+      linkMap: new Map<string, string>(),
+      operatorMap: new Map<string, string>(),
+    },
+    idlTypeLinks: {
+      linkPrefix: '',
+      linkMap: new Map<string, string>(),
+      operatorMap: new Map<string, string>(),
+    },
   };
 
-  return Object.assign(emptyLinkResolver, init);
+  if (init.resolveCompoundId) {
+    emptyLinkResolver.resolveCompoundId = init.resolveCompoundId;
+  }
+  if (init.resolveMemberId) {
+    emptyLinkResolver.resolveMemberId = init.resolveMemberId;
+  }
+  if (init.stdTypeLinks) {
+    emptyLinkResolver.stdTypeLinks = Object.assign(
+      emptyLinkResolver.stdTypeLinks,
+      init.stdTypeLinks,
+    );
+  }
+  if (init.idlTypeLinks) {
+    emptyLinkResolver.idlTypeLinks = Object.assign(
+      emptyLinkResolver.idlTypeLinks,
+      init.idlTypeLinks,
+    );
+  }
+  return emptyLinkResolver;
 }
