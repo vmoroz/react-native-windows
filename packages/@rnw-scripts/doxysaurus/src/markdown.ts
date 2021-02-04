@@ -37,10 +37,10 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
   const context: DoxDescriptionElement[] = [];
   let indent = 0;
 
-  type AutoLinkState = 'Start' | 'InTemplateArgs' | 'InMember';
-  let state: AutoLinkState = 'Start';
-  let templateDepth = 0;
-  let memberTypeLink: string | undefined;
+  type AutoLinkerState = 'Start' | 'InTemplateArgs' | 'InMember';
+  let linkerState: AutoLinkerState = 'Start';
+  let linkerTemplateDepth = 0;
+  let linkerTypeLink: string | undefined;
 
   const sb = new StringBuilder();
   write(desc);
@@ -231,8 +231,8 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
 
   function writeBlock(...items: DoxDescription[]) {
     write(...items);
-    state = 'Start';
-    templateDepth = 0;
+    linkerState = 'Start';
+    linkerTemplateDepth = 0;
   }
 
   function writeText(text?: string) {
@@ -257,9 +257,11 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
   }
 
   // We support the following syntax for standard library types and functions:
-  // - It must start 'std::' and follow by a type name.
-  // - Then we optionally may have template arguments in < >
-  // - Then we optionally may have '::' followed by method name or an operator.
+  // - Standard types must start with 'std::' and follow by a type name.
+  // - Then they may have template arguments in < >
+  // - Then they may have '::' followed by method name or an operator.
+  // - It also recognizes types generated from IDL.
+  //   They must start with an upper case letter.
   // eslint-disable-next-line complexity
   function applyAutoLinks(
     text: string,
@@ -302,18 +304,18 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
       const match = tokenExpr.exec(text);
       const token = match?.groups;
       if (!match || !token) break;
-      switch (state) {
+      switch (linkerState) {
         case 'Start': {
           if (token.stdType) {
-            memberTypeLink = writeTypeLink(stdTypeLinks, match, token.stdType);
-            if (memberTypeLink) {
+            linkerTypeLink = writeTypeLink(stdTypeLinks, match, token.stdType);
+            if (linkerTypeLink) {
               if (text.startsWith('<', index)) {
-                state = 'InTemplateArgs';
+                linkerState = 'InTemplateArgs';
               } else if (text.startsWith('::', index)) {
-                state = 'InMember';
+                linkerState = 'InMember';
               } else {
-                state = 'Start';
-                memberTypeLink = undefined;
+                linkerState = 'Start';
+                linkerTypeLink = undefined;
               }
             }
           } else if (token.idlType) {
@@ -332,14 +334,14 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
               startCode = true;
             }
           } else if (token.ltBracket) {
-            ++templateDepth;
+            ++linkerTemplateDepth;
           } else if (token.gtBracket) {
-            if (--templateDepth === 0) {
+            if (--linkerTemplateDepth === 0) {
               if (text.startsWith('::', tokenExpr.lastIndex)) {
-                state = 'InMember';
+                linkerState = 'InMember';
               } else {
                 completeText(tokenExpr.lastIndex);
-                state = 'Start';
+                linkerState = 'Start';
               }
             }
           }
@@ -357,8 +359,8 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
               completeText(tokenExpr.lastIndex);
             }
           }
-          memberTypeLink = undefined;
-          state = 'Start';
+          linkerTypeLink = undefined;
+          linkerState = 'Start';
           break;
         }
       }
@@ -405,7 +407,7 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
         startIndex,
         member,
         stdTypeLinks.linkPrefix,
-        memberTypeLink!,
+        linkerTypeLink!,
         '/',
         memberLink,
       );
@@ -503,6 +505,7 @@ function last<T>(arr?: T[]): T | undefined {
 }
 
 // Converted to TypeScript from https://stackoverflow.com/a/62153852
+// It allows to write RegExp with comments.
 interface TaggedTemplate {
   (strings: TemplateStringsArray, ...values: string[]): RegExp;
 }
