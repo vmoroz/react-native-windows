@@ -24,7 +24,7 @@ import {
   DocMember,
 } from './doc-model';
 import GithubSlugger from 'github-slugger';
-import * as path from 'path';
+import path from 'path';
 import {log} from './logger';
 import {toMarkdown, LinkResolver, StringBuilder} from './markdown';
 
@@ -233,7 +233,7 @@ export function transformToMarkdown(doxModel: DoxModel, config: Config) {
     for (const section of compound.sections) {
       for (const memberOverload of section.memberOverloads) {
         for (const member of memberOverload.members) {
-          const memberDef = memberToDoxMember.get(member);
+          const memberDef = memberToDoxMember.get(member)!;
           member.brief = toMarkdown(memberDef.briefdescription, linkResolver);
           member.details = toMarkdown(
             memberDef.detaileddescription,

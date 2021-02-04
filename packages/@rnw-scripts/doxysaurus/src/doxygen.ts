@@ -19,7 +19,6 @@
 import constants = require('doxygen/lib/constants');
 // @ts-ignore (no typings for doxygen)
 import doxygen from 'doxygen';
-import fs from 'fs';
 import path from 'path';
 import {exec} from 'child_process';
 import {log} from './logger';
@@ -31,7 +30,7 @@ export async function generateDoxygenXml(config: Config) {
   const doxygenConfigPath = path.join(config.output, 'doxygen.config');
   generateDoxygenConfig(config, doxygenConfigPath);
 
-  if (!isDoxygenExecutableInstalled(DOXYGEN_VERSION)) {
+  if (!doxygen.isDoxygenExecutableInstalled(DOXYGEN_VERSION)) {
     log(`[Downloading] Doxygen version {${DOXYGEN_VERSION}} ...`);
     await doxygen.downloadVersion(DOXYGEN_VERSION);
     log(`[Downloaded] Doxygen version {${DOXYGEN_VERSION}}`);
@@ -66,8 +65,7 @@ function generateDoxygenConfig(config: Config, doxygenConfigPath: string) {
 }
 
 // Modified from doxygen NPM.
-// the goal is to use the unpublished fix for Windows path:
-// https://github.com/EruantalonJS/node-doxygen/pull/34
+// This is a not exported method that we need for the runAsync implementation.
 // The code is modified for TypeScript, eslint, and the different __dirname.
 function doxygenExecutablePath(version?: any) {
   version = version ? version : constants.default.version;
@@ -84,14 +82,6 @@ function doxygenExecutablePath(version?: any) {
   return path.normalize(
     path.join(dirName, 'dist', version, doxygenFolder, 'doxygen' + ext),
   );
-}
-
-// Taken from doxygen NPM.
-// It is required to use the fixed doxygenExecutablePath.
-// The code is modified for TypeScript and eslint.
-function isDoxygenExecutableInstalled(version?: any) {
-  const execPath = doxygenExecutablePath(version);
-  return fs.existsSync(execPath);
 }
 
 // Modified from doxygen NPM.
