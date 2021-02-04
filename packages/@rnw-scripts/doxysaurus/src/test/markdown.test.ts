@@ -887,6 +887,34 @@ test('std::vector of IJSValue', async () => {
   );
 });
 
+test('std::vector of JSValue', async () => {
+  const memberDef = await parse(`
+    |<memberdef>
+    |  <detaileddescription>
+        |<para>Text std::vector&lt;<ref refid="type1" kindref="compound">JSValue</ref>&gt; text</para>
+    |  </detaileddescription>
+    |</memberdef>`);
+
+  const linkResolver = getLinkResolver({
+    stdTypeLinks: {
+      linkPrefix: 'std/',
+      linkMap: new Map<string, string>([['std::vector', 'vector']]),
+    },
+    resolveCompoundId: (doxCompoundId: string) => {
+      if (doxCompoundId === 'type1') {
+        return {docId: 'type1_ref'} as DocCompound;
+      } else {
+        return undefined;
+      }
+    },
+  });
+
+  const text = toMarkdown(memberDef.detaileddescription, linkResolver);
+  expect(text).toBe(
+    'Text [`std::vector`](std/vector)`<`[`JSValue`](type1_ref)`>` text',
+  );
+});
+
 async function parse(xmlText: string) {
   const xml = await xml2js.parseStringPromise(t(xmlText), {
     explicitChildren: true,

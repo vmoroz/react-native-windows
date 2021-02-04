@@ -1,8 +1,5 @@
 # TODO list for Doxysaurus
 
-[ ] Fix link substitution algorithm to avoid nested substitutions
-[ ] Better algorithm for std:: operator mapping
-[ ] Config: map std:: operators
 [ ] Refactoring: simplify doxygen-model
 [ ] Refactoring: split up the transform function into multiple small functions
 [ ] Refactoring: Implement a map for member overloads

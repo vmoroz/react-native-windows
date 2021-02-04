@@ -37,6 +37,11 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
   const context: DoxDescriptionElement[] = [];
   let indent = 0;
 
+  type AutoLinkState = 'Start' | 'InTemplateArgs' | 'InMember';
+  let state: AutoLinkState = 'Start';
+  let templateDepth = 0;
+  let memberTypeLink: string | undefined;
+
   const sb = new StringBuilder();
   write(desc);
   return sb.toString().trim();
@@ -70,7 +75,7 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
       case 'linebreak':
         return write('<br/>');
       case 'para':
-        return write(
+        return writeBlock(
           index ? '\n\n' : '',
           ' '.repeat(index ? indent : 0),
           element.$$,
@@ -224,6 +229,12 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
     }
   }
 
+  function writeBlock(...items: DoxDescription[]) {
+    write(...items);
+    state = 'Start';
+    templateDepth = 0;
+  }
+
   function writeText(text?: string) {
     if (text) {
       if (text.trim() === '') {
@@ -244,8 +255,6 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
       }
     }
   }
-
-  type AutoLinkState = 'Start' | 'InTemplateArgs' | 'InMember';
 
   // We support the following syntax for standard library types and functions:
   // - It must start 'std::' and follow by a type name.
@@ -289,10 +298,6 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
     let index = 0;
     let startCode = false;
 
-    let state: AutoLinkState = 'Start';
-    let templateDepth = 0;
-    let memberTypeLink: string | undefined;
-
     while (tokenExpr.lastIndex < text.length) {
       const match = tokenExpr.exec(text);
       const token = match?.groups;
@@ -304,10 +309,8 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
             if (memberTypeLink) {
               if (text.startsWith('<', index)) {
                 state = 'InTemplateArgs';
-                startCode = true;
               } else if (text.startsWith('::', index)) {
                 state = 'InMember';
-                startCode = true;
               } else {
                 state = 'Start';
                 memberTypeLink = undefined;
@@ -319,6 +322,7 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
           break;
         }
         case 'InTemplateArgs': {
+          startCode = true;
           if (token.stdType) {
             if (writeTypeLink(stdTypeLinks, match, token.stdType)) {
               startCode = true;
@@ -342,6 +346,7 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
           break;
         }
         case 'InMember': {
+          startCode = true;
           if (token.method) {
             writeMemberLink(match.index + 2, token.member, token.method);
           } else if (token.operator) {
