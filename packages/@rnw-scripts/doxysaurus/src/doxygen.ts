@@ -3,8 +3,6 @@
  * Licensed under the MIT License.
  *
  * This file contains some code taken from the doxygen project.
- * This is to fix/extend some doxygen package features.
- * https://github.com/EruantalonJS/node-doxygen
  * Copyright for the doxygen package code:
  * Copyright (c) 2016 Ivan Maria <iv.ivan.maria@gmail.com>;
  *
