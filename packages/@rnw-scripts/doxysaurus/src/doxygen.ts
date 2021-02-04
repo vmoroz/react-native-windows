@@ -16,6 +16,8 @@
 //
 
 // @ts-ignore (no typings for doxygen)
+import constants = require('doxygen/lib/constants');
+// @ts-ignore (no typings for doxygen)
 import doxygen from 'doxygen';
 import fs from 'fs';
 import path from 'path';
@@ -63,12 +65,7 @@ function generateDoxygenConfig(config: Config, doxygenConfigPath: string) {
   doxygen.createConfig(doxygenOptions, doxygenConfigPath);
 }
 
-// From doxygen NPM.
-// To access platform-specific constants
-// @ts-ignore (no typings for doxygen)
-import constants = require('doxygen/lib/constants');
-
-// From doxygen NPM.
+// Modified from doxygen NPM.
 // the goal is to use the unpublished fix for Windows path:
 // https://github.com/EruantalonJS/node-doxygen/pull/34
 // The code is modified for TypeScript, eslint, and the different __dirname.
@@ -89,7 +86,7 @@ function doxygenExecutablePath(version?: any) {
   );
 }
 
-// From doxygen NPM.
+// Taken from doxygen NPM.
 // It is required to use the fixed doxygenExecutablePath.
 // The code is modified for TypeScript and eslint.
 function isDoxygenExecutableInstalled(version?: any) {
@@ -97,7 +94,7 @@ function isDoxygenExecutableInstalled(version?: any) {
   return fs.existsSync(execPath);
 }
 
-// From doxygen NPM.
+// Modified from doxygen NPM.
 // Extends doxygen.run to return a Promise.
 // We cannot use util.promisify because it loses the stderr with warnings.
 async function runAsync(
