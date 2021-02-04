@@ -1,8 +1,42 @@
 # Change Log - react-native-windows
 
-This log was last generated on Fri, 29 Jan 2021 05:05:32 GMT and should not be manually modified.
+This log was last generated on Thu, 04 Feb 2021 05:05:58 GMT and should not be manually modified.
 
 <!-- Start content -->
+
+## 0.0.0-canary.249
+
+Thu, 04 Feb 2021 05:05:58 GMT
+
+### Changes
+
+- Initialize ETW provider only once (asklar@microsoft.com)
+
+## 0.0.0-canary.248
+
+Wed, 03 Feb 2021 05:05:12 GMT
+
+### Changes
+
+- Fix template for WinUI3 C# App by expanding namespace of argument in AppOnActivated (dannyvv@microsoft.com)
+- AllAnimations only exists on RS5 (asklar@microsoft.com)
+- Fix deep linking activation (vmorozov@microsoft.com)
+
+## 0.0.0-canary.247
+
+Tue, 02 Feb 2021 05:05:37 GMT
+
+### Changes
+
+- Allow custom view managers to be able to trigger our logic to run native layout (30809111+acoates-ms@users.noreply.github.com)
+
+## 0.0.0-canary.246
+
+Sat, 30 Jan 2021 05:06:38 GMT
+
+### Changes
+
+- App crashes at startup on RS3 because of RS4+ API usage (asklar@microsoft.com)
 
 ## 0.0.0-canary.245
 
