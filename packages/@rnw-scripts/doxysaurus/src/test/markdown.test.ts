@@ -862,6 +862,31 @@ test('std::vector operator() no template', async () => {
   );
 });
 
+test('std::vector of IJSValue', async () => {
+  const memberDef = await parse(`
+    |<memberdef>
+    |  <detaileddescription>
+        |<para>Text std::vector&lt;IJSValue&gt; text</para>
+    |  </detaileddescription>
+    |</memberdef>`);
+
+  const linkResolver = getLinkResolver({
+    stdTypeLinks: {
+      linkPrefix: 'std/',
+      linkMap: new Map<string, string>([['std::vector', 'vector']]),
+      operatorMap: new Map<string, string>([['operator()', 'operator()']]),
+    },
+    idlTypeLinks: {
+      linkMap: new Map<string, string>([['IJSValue', 'idl-IJSValue']]),
+    },
+  });
+
+  const text = toMarkdown(memberDef.detaileddescription, linkResolver);
+  expect(text).toBe(
+    'Text [`std::vector`](std/vector)`<`[`IJSValue`](idl-IJSValue)`>` text',
+  );
+});
+
 async function parse(xmlText: string) {
   const xml = await xml2js.parseStringPromise(t(xmlText), {
     explicitChildren: true,

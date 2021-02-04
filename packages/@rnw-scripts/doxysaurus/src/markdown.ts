@@ -233,8 +233,11 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
       } else {
         // Do auto-linking for known types
         if (linkResolver) {
-          applyStandardLibLinks(text, linkResolver.stdTypeLinks);
-          // text = applyIdlGeneratedLinks(text, linkResolver.idlTypeLinks);
+          applyAutoLinks(
+            text,
+            linkResolver.stdTypeLinks,
+            linkResolver.idlTypeLinks,
+          );
         } else {
           write(text);
         }
@@ -242,18 +245,25 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
     }
   }
 
+  type AutoLinkState = 'Start' | 'InTemplateArgs' | 'InMember';
+
   // We support the following syntax for standard library types and functions:
   // - It must start 'std::' and follow by a type name.
   // - Then we optionally may have template arguments in < >
   // - Then we optionally may have '::' followed by method name or an operator.
   // eslint-disable-next-line complexity
-  function applyStandardLibLinks(text: string, stdTypeLinks: TypeLinks) {
-    const typeExpr = regex('g')`
-      (?<typeName>std::\w+)     // standard lib type name
-      |(?<ltBracket><)          // start template args
-      |(?<gtBracket>>)          // end template args
+  function applyAutoLinks(
+    text: string,
+    stdTypeLinks: TypeLinks,
+    idlTypeLinks: TypeLinks,
+  ) {
+    const tokenExpr = regex('g')`
+       (?<stdType>std::\w+)                // standard lib type name
+      |(?<idlType>[A-Z]\w*)(::\w+(\(\))?)? // idl generated type
+      |(?<ltBracket><)                     // start template args
+      |(?<gtBracket>>)                     // end template args
       |::(?<member>
-           (?<operator>operator // list of all member operators
+           (?<operator>operator            // list of all member operators
              (\[\]
              |\(\)
              |,
@@ -273,187 +283,129 @@ export function toMarkdown(desc: DoxDescription, linkResolver?: LinkResolver) {
              |!=?
              )
            )
-         |(?<method>\w+)(\(\))? // method to match
+          |(?<method>\w+)(\(\))?           // method to match
          )`;
-    let index = 0;
-    let templateDepth = 0;
-    let wasInTemplateArgs = false;
-    let inTemplateArgs = false;
-    let typeLink: string | undefined;
-    let inMember = false;
-    let inCode = false;
 
-    for (let i = 0; i < text.length; ) {
-      typeExpr.lastIndex = i;
-      const match = typeExpr.exec(text);
-      if (match) {
-        const groups = match.groups!;
-        if (groups.typeName) {
-          write(text.substring(index, match.index));
-          typeLink = stdTypeLinks.linkMap.get(groups.typeName);
-          if (typeLink) {
-            [wasInTemplateArgs, inTemplateArgs] = [inTemplateArgs, false];
-            if (wasInTemplateArgs) {
-              write('`');
-            }
-            writeCodeLink(match[0], stdTypeLinks.linkPrefix, typeLink);
-            [wasInTemplateArgs, inTemplateArgs] = [false, wasInTemplateArgs];
-            if (text.startsWith('<', typeExpr.lastIndex)) {
-              inTemplateArgs = true;
-            } else if (text.startsWith('::', typeExpr.lastIndex)) {
-              inMember = true;
-            } else {
-              typeLink = undefined;
-            }
-            if (inTemplateArgs) {
-              write('`');
-            }
-          } else {
-            write(match[0]);
-          }
-          index = typeExpr.lastIndex;
-        } else if (groups.ltBracket) {
-          if (inTemplateArgs) {
-            ++templateDepth;
-          }
-        } else if (groups.gtBracket) {
-          if (inTemplateArgs) {
-            --templateDepth;
-            if (templateDepth === 0) {
-              inTemplateArgs = false;
-              write(text.substring(index, typeExpr.lastIndex));
-              index = typeExpr.lastIndex;
-              if (text.startsWith('::', index)) {
-                inMember = true;
-                inCode = true;
+    let index = 0;
+    let startCode = false;
+
+    let state: AutoLinkState = 'Start';
+    let templateDepth = 0;
+    let memberTypeLink: string | undefined;
+
+    while (tokenExpr.lastIndex < text.length) {
+      const match = tokenExpr.exec(text);
+      const token = match?.groups;
+      if (!match || !token) break;
+      switch (state) {
+        case 'Start': {
+          if (token.stdType) {
+            memberTypeLink = writeTypeLink(stdTypeLinks, match, token.stdType);
+            if (memberTypeLink) {
+              if (text.startsWith('<', index)) {
+                state = 'InTemplateArgs';
+                startCode = true;
+              } else if (text.startsWith('::', index)) {
+                state = 'InMember';
+                startCode = true;
               } else {
-                typeLink = undefined;
-                write('`');
+                state = 'Start';
+                memberTypeLink = undefined;
               }
             }
+          } else if (token.idlType) {
+            writeTypeLink(idlTypeLinks, match, token.idlType);
           }
-        } else if (inMember) {
-          inMember = false;
-          if (groups.member) {
-            if (groups.method) {
-              if (!inCode) {
-                write('`');
-              }
-              write('::`');
-              writeCodeLink(
-                groups.member,
-                stdTypeLinks.linkPrefix,
-                typeLink ?? '',
-                '/',
-                groups.method,
-              );
-            } else if (groups.operator) {
-              const operatorLink = stdTypeLinks.operatorMap.get(
-                groups.operator,
-              );
-              if (operatorLink) {
-                if (!inCode) {
-                  write('`');
-                }
-                write('::`');
-                writeCodeLink(
-                  groups.operator,
-                  stdTypeLinks.linkPrefix,
-                  typeLink ?? '',
-                  '/',
-                  operatorLink,
-                );
-              } else {
-                if (!inCode) {
-                  write('`');
-                }
-                write('::', groups.operator, '`');
-              }
-            }
-            index = typeExpr.lastIndex;
-          }
-          inCode = false;
-          typeLink = undefined;
+          break;
         }
-        i = typeExpr.lastIndex;
-      } else {
-        break;
+        case 'InTemplateArgs': {
+          if (token.stdType) {
+            if (writeTypeLink(stdTypeLinks, match, token.stdType)) {
+              startCode = true;
+            }
+          } else if (token.idlType) {
+            if (writeTypeLink(idlTypeLinks, match, token.idlType)) {
+              startCode = true;
+            }
+          } else if (token.ltBracket) {
+            ++templateDepth;
+          } else if (token.gtBracket) {
+            if (--templateDepth === 0) {
+              if (text.startsWith('::', tokenExpr.lastIndex)) {
+                state = 'InMember';
+              } else {
+                completeText(tokenExpr.lastIndex);
+                state = 'Start';
+              }
+            }
+          }
+          break;
+        }
+        case 'InMember': {
+          if (token.method) {
+            writeMemberLink(match.index + 2, token.member, token.method);
+          } else if (token.operator) {
+            const operatorLink = stdTypeLinks.operatorMap.get(token.operator);
+            if (operatorLink) {
+              writeMemberLink(match.index + 2, token.operator, operatorLink);
+            } else {
+              completeText(tokenExpr.lastIndex);
+            }
+          }
+          memberTypeLink = undefined;
+          state = 'Start';
+          break;
+        }
       }
     }
 
-    write(index ? text.substring(index) : text);
+    completeText(text.length);
+
+    function completeText(endIndex: number) {
+      const str = text.substring(index, endIndex);
+      const delimiter = startCode && str ? '`' : '';
+      startCode = false;
+      write(delimiter, str, delimiter);
+      index = endIndex;
+    }
+
+    function writeCodeLink(
+      startIndex: number,
+      label: string,
+      ...linkParts: string[]
+    ) {
+      completeText(startIndex);
+      write('[`', label, '`](', ...linkParts, ')');
+      index = tokenExpr.lastIndex;
+    }
+
+    function writeTypeLink(
+      typeLinks: TypeLinks,
+      match: RegExpExecArray,
+      type: string,
+    ) {
+      const typeLink = typeLinks.linkMap.get(type);
+      if (typeLink) {
+        writeCodeLink(match.index, match[0], typeLinks.linkPrefix, typeLink);
+      }
+      return typeLink;
+    }
+
+    function writeMemberLink(
+      startIndex: number,
+      member: string,
+      memberLink: string,
+    ) {
+      writeCodeLink(
+        startIndex,
+        member,
+        stdTypeLinks.linkPrefix,
+        memberTypeLink!,
+        '/',
+        memberLink,
+      );
+    }
   }
-
-  function writeCodeLink(label: string, ...linkParts: string[]) {
-    write('[`', label, '`](', ...linkParts, ')');
-  }
-
-  // let index = 0;
-  // let codeStarted = false;
-
-  // const match = typeExpr.exec(text);
-  // if (match) {
-  //   if (match[1]) {
-  //     const typeLink = stdTypeLinks.linkMap.get(match[1]);
-  //     if (typeLink) {
-  //       write('[`', match[0], '`](', typeLink, ')');
-  //     } else {
-  //       codeStarted = true;
-  //       write('`', match[0]);
-  //     }
-  //     if (text.startsWith('<', typeExpr.lastIndex)) {
-  //       ++linkedTemplateDepth;
-  //       ++typeExpr.lastIndex;
-  //       if (!codeStarted) {
-  //         write('`');
-  //       }
-  //       write('<');
-  //     } else {
-  //       if (codeStarted) {
-  //         codeStarted = false;
-  //         write('`');
-  //       }
-  //     }
-  //     index = typeExpr.lastIndex;
-  //   } else if (linkedTemplateDepth) {
-  //     if (match[0] === '<') {
-  //       ++linkedTemplateDepth;
-  //     } else if (match[0] === '>') {
-  //       --linkedTemplateDepth;
-  //     }
-  //   }
-  // }
-  // return text.replace(
-  //   /(std::\w+)(<\w+>)?(::\w+\(\)|::operator\[\])?/g,
-  //   (match, p1, _, p3) => {
-  //     const typeLink = stdTypeLinks.linkMap.get(p1);
-  //     if (typeLink) {
-  //       const ref = stdTypeLinks.linkPrefix + typeLink;
-  //       if (p3) {
-  //         if (p3.endsWith('()')) {
-  //           return `[\`${match}\`](${ref}/${p3.slice(2, -2)})`;
-  //         } else if (p3.endsWith('operator[]')) {
-  //           return `[\`${match}\`](${ref}/operator_at)`;
-  //         }
-  //       }
-  //       return `[\`${match}\`](${ref})`;
-  //     } else {
-  //       return match;
-  //     }
-  //   },
-  // );
-  //}
-
-  // function applyIdlGeneratedLinks(text: string, idlTypeLinks: TypeLinks) {
-  //   return text.replace(/(\w+)(::\w+(\(\))?)?/g, (match, p1) => {
-  //     const ref = idlTypeLinks.linkMap.get(p1);
-  //     if (ref) {
-  //       return `[\`${match}\`](${idlTypeLinks.linkPrefix + ref})`;
-  //     } else {
-  //       return match;
-  //     }
-  //   });
-  // }
 
   function escapeRow(text: string): string {
     return text.replace(/\s*\|\s*$/, '');
