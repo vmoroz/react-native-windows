@@ -43,23 +43,29 @@ export function transformToMarkdown(doxModel: DoxModel, config: Config) {
 
   const types = new Set<string>(config.types ?? []);
   const namespaceAliases = new Map<string, string[] | undefined>(
-    config.namespaceAliases ?? [],
+    Object.entries(config.namespaceAliases ?? {}),
   );
-  const knownSections = new Map<string, string>(config.sections ?? []);
+  const knownSections = new Map<string, string>(
+    Object.entries(config.sections ?? {}),
+  );
 
   const linkResolver: LinkResolver = {
     stdTypeLinks: {
       linkPrefix: config.stdTypeLinks?.linkPrefix ?? '',
-      linkMap: new Map<string, string>(config.stdTypeLinks?.linkMap ?? []),
+      linkMap: new Map<string, string>(
+        Object.entries(config.stdTypeLinks?.linkMap ?? {}),
+      ),
       operatorMap: new Map<string, string>(
-        config.stdTypeLinks?.operatorMap ?? [],
+        Object.entries(config.stdTypeLinks?.operatorMap ?? {}),
       ),
     },
     idlTypeLinks: {
       linkPrefix: config.idlTypeLinks?.linkPrefix ?? '',
-      linkMap: new Map<string, string>(config.idlTypeLinks?.linkMap ?? []),
+      linkMap: new Map<string, string>(
+        Object.entries(config.idlTypeLinks?.linkMap ?? {}),
+      ),
       operatorMap: new Map<string, string>(
-        config.idlTypeLinks?.operatorMap ?? [],
+        Object.entries(config.stdTypeLinks?.operatorMap ?? {}),
       ),
     },
     resolveCompoundId: (doxCompoundId: string): DocCompound | undefined => {
@@ -110,7 +116,7 @@ export function transformToMarkdown(doxModel: DoxModel, config: Config) {
       log(`[Skipped] {${doxCompoundName}}: not in config.types`);
       return;
     }
-    compound.docId = `${config.prefix}${compound.name.toLowerCase()}`;
+    compound.docId = `${config.docIdPrefix}${compound.name.toLowerCase()}`;
     compound.codeFileName = path.basename(doxCompound.location[0].$.file);
     docModel.compounds[compound.docId] = compound;
     docModel.classes.push(compound);
