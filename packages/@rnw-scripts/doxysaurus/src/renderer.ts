@@ -21,9 +21,7 @@ const templateCache: {[index: string]: string} = {};
 export async function renderDocFiles(docModel: DocModel, config: Config) {
   const renderedFiles: string[] = [];
   const outputPath = path.join(config.output, 'out');
-  await fs.mkdir(outputPath).catch(err => {
-    if (err.code !== 'EEXIST') throw err;
-  });
+  await fs.mkdir(outputPath, {recursive: true});
 
   const templatePath = path.normalize(
     path.join(__dirname, '..', 'templates', 'cpp', 'class.md'),
