@@ -223,13 +223,12 @@ export function transformToMarkdown(doxModel: DoxModel, config: Config) {
       }
 
       const sections: DocSection[] = Object.values(visibleSections);
-      // Put deprecated section to the end
-      sections.forEach(
-        s =>
-          (s.line = s.name.includes('Deprecated')
-            ? Number.MAX_SAFE_INTEGER
-            : s.line),
-      );
+      // Put deprecated sections to the end
+      for (const section of sections) {
+        if (section.name.includes('Deprecated')) {
+          section.line = Number.MAX_SAFE_INTEGER;
+        }
+      }
       sections.sort((a, b) => a.line - b.line);
       compound.sections = sections;
     }
