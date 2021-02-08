@@ -29,7 +29,7 @@ import {log} from './logger';
 import {toMarkdown, LinkResolver, StringBuilder} from './markdown';
 
 export function transformToMarkdown(doxModel: DoxModel, config: Config) {
-  const docModel = new DocModel();
+  const docModel: DocModel = {compounds: [], classes: []};
 
   const docIdToDoxCompound = new Map<string, DoxCompound | undefined>();
   const doxIdToDocCompound = new Map<string, DocCompound | undefined>();
@@ -95,7 +95,7 @@ export function transformToMarkdown(doxModel: DoxModel, config: Config) {
     }
   }
 
-  for (const compound of Object.values(docModel.compounds)) {
+  for (const compound of docModel.compounds) {
     compoundToMarkdown(compound);
   }
 
@@ -107,18 +107,26 @@ export function transformToMarkdown(doxModel: DoxModel, config: Config) {
     log(`[Transforming] ${doxCompoundName}`);
     const noTemplateName = doxCompoundName.split('<')[0];
     const nsp = noTemplateName.split('::');
-    const compound = new DocCompound();
-    compound.namespace = nsp.splice(0, nsp.length - 1).join('::');
-    compound.namespaceAliases = [];
-    compound.namespaceAliases = namespaceAliases.get(compound.namespace) ?? [];
-    compound.name = nsp[nsp.length - 1];
-    if (!types.has(compound.name)) {
+    const compoundName = nsp[nsp.length - 1];
+    if (!types.has(compoundName)) {
       log(`[Skipped] {${doxCompoundName}}: not in config.types`);
       return;
     }
-    compound.docId = `${config.docIdPrefix}${compound.name.toLowerCase()}`;
-    compound.codeFileName = path.basename(doxCompound.location[0].$.file);
-    docModel.compounds[compound.docId] = compound;
+    const compoundNamespace = nsp.splice(0, nsp.length - 1).join('::');
+    const compound: DocCompound = {
+      name: compoundName,
+      codeFileName: path.basename(doxCompound.location[0].$.file),
+      docId: `${config.docIdPrefix}${compoundName.toLowerCase()}`,
+      namespace: compoundNamespace,
+      namespaceAliases: namespaceAliases.get(compoundNamespace) ?? [],
+      declaration: '',
+      brief: '',
+      details: '',
+      summary: '',
+      sections: [],
+    };
+
+    docModel.compounds.push(compound);
     docModel.classes.push(compound);
     doxIdToDocCompound.set(doxCompound.$.id, compound);
     docIdToDoxCompound.set(compound.docId, doxCompound);
@@ -128,7 +136,7 @@ export function transformToMarkdown(doxModel: DoxModel, config: Config) {
     const slugger = new GithubSlugger();
 
     if (Array.isArray(doxCompound.sectiondef)) {
-      const visibleSections: {[index: string]: DocSection} = {};
+      const visibleSections = new Map<string, DocSection>();
 
       for (const sectionDef of doxCompound.sectiondef) {
         const sectionKind = sectionDef.$.kind;
@@ -142,28 +150,33 @@ export function transformToMarkdown(doxModel: DoxModel, config: Config) {
           continue;
         }
 
-        let section: DocSection;
-        if (sectionName === '<user defined>') {
-          section = new DocSection();
-          section.name = sectionDef.header[0]._;
-          visibleSections[section.name] = section;
-        } else {
-          section = visibleSections[sectionName];
-          if (typeof section === 'undefined') {
-            section = new DocSection();
-            section.name = sectionName;
-            visibleSections[sectionName] = section;
-          }
-        }
+        const section: DocSection =
+          sectionName === '<user defined>'
+            ? {
+                name: sectionDef.header[0]._,
+                memberOverloads: [],
+                line: Number.MAX_SAFE_INTEGER,
+              }
+            : visibleSections.get(sectionName) ?? {
+                name: sectionName,
+                memberOverloads: [],
+                line: Number.MAX_SAFE_INTEGER,
+              };
+        visibleSections.set(section.name, section);
 
         const memberOverloads = new Map<string, DocMemberOverload>();
 
         for (const memberDef of sectionDef.memberdef) {
           const memberName = memberDef.name[0]._;
-          const member = new DocMember();
-          member.line = Number(memberDef.location[0].$.line);
+          const member: DocMember = {
+            name: memberName,
+            line: Number(memberDef.location[0].$.line),
+            declaration: '',
+            brief: '',
+            details: '',
+            summary: '',
+          };
           memberToDoxMember.set(member, memberDef);
-          member.name = memberName;
           const overloadName =
             memberName === compound.name
               ? '(constructor)'
@@ -179,11 +192,15 @@ export function transformToMarkdown(doxModel: DoxModel, config: Config) {
               ? 'subscript operator[]'
               : memberName;
           let memberOverload = compoundMemberOverloads.get(overloadName);
-          if (typeof memberOverload === 'undefined') {
-            memberOverload = new DocMemberOverload();
+          if (!memberOverload) {
+            memberOverload = {
+              name: overloadName,
+              members: [],
+              anchor: '#',
+              summary: '',
+              line: member.line,
+            };
             memberOverloadToCompound.set(memberOverload, compound);
-            memberOverload.name = overloadName;
-            memberOverload.line = member.line;
             compoundMemberOverloads.set(overloadName, memberOverload);
           }
           if (!memberOverloads.has(overloadName)) {
