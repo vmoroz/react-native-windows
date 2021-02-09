@@ -9,39 +9,67 @@
  * Configuration for the Doxysaurus tool.
  */
 
-import path from 'path';
+import * as path from 'path';
+import * as t from 'io-ts';
 import {promises as fs, existsSync} from 'fs';
+import {PathReporter} from 'io-ts/lib/PathReporter';
+import {log} from './logger';
+
+/**
+ * Schema for the "doxysaurus.json" config file.
+ */
+const ConfigSchemaType = t.type({
+  configDir: t.union([t.undefined, t.string]),
+  input: t.union([t.undefined, t.string]),
+  buildDir: t.union([t.undefined, t.string]),
+  outputDir: t.union([t.undefined, t.string]),
+  filePatterns: t.union([t.undefined, t.array(t.string)]),
+  docIdPrefix: t.union([t.undefined, t.string]),
+  indexFilename: t.union([t.undefined, t.string]),
+  indexTemplatePath: t.union([t.undefined, t.string]),
+  projects: t.union([t.undefined, t.array(t.string)]),
+  types: t.union([t.undefined, t.array(t.string)]),
+  namespaceAliases: t.union([
+    t.undefined,
+    t.record(t.string, t.array(t.string)),
+  ]),
+  sections: t.union([t.undefined, t.record(t.string, t.string)]),
+  stdTypeLinks: t.union([
+    t.undefined,
+    t.type({
+      linkPrefix: t.union([t.undefined, t.string]),
+      linkMap: t.record(t.string, t.string),
+      operatorMap: t.union([t.undefined, t.record(t.string, t.string)]),
+    }),
+  ]),
+  idlTypeLinks: t.union([
+    t.undefined,
+    t.type({
+      linkPrefix: t.union([t.undefined, t.string]),
+      linkMap: t.record(t.string, t.string),
+      operatorMap: t.union([t.undefined, t.record(t.string, t.string)]),
+    }),
+  ]),
+});
+
+const LoadedConfigType = t.intersection([
+  ConfigSchemaType,
+  t.type({configDir: t.string, buildDir: t.string}),
+]);
+
+const ConfigType = t.intersection([
+  LoadedConfigType,
+  t.type({
+    input: t.string,
+    outputDir: t.string,
+    docIdPrefix: t.string,
+  }),
+]);
 
 /** Doxysaurus project configuration. */
-export interface Config {
-  configDir: string;
-  input: string;
-  buildDir: string;
-  outputDir: string;
-  filePatterns?: string[];
-  docIdPrefix: string;
-  indexFilename?: string;
-  indexTemplatePath?: string;
-  projects?: string[];
-  types?: string[];
-  namespaceAliases?: {[key: string]: string[]};
-  sections?: {[key: string]: string};
-  stdTypeLinks?: {
-    linkPrefix?: string;
-    linkMap: {[key: string]: string};
-    operatorMap?: {[key: string]: string};
-  };
-  idlTypeLinks?: {
-    linkPrefix?: string;
-    linkMap: {[key: string]: string};
-    operatorMap?: {[key: string]: string};
-  };
-}
-
-export type LoadedConfig = Partial<Config> & {
-  configDir: string;
-  buildDir: string;
-};
+export type ConfigSchema = t.TypeOf<typeof ConfigSchemaType>;
+export type Config = t.TypeOf<typeof ConfigType>;
+export type LoadedConfig = t.TypeOf<typeof LoadedConfigType>;
 
 /** Generates an async stream of project configs. */
 export async function* getProjectConfigs(
@@ -83,7 +111,17 @@ async function loadConfig(
   parentConfig?: LoadedConfig,
 ): Promise<LoadedConfig> {
   const configText = await fs.readFile(configPath, 'utf-8');
-  const config = JSON.parse(configText) as Partial<Config>;
+  const json = JSON.parse(configText);
+  const decodeResult = ConfigSchemaType.decode(json);
+  if (decodeResult._tag === 'Left') {
+    const errors = PathReporter.report(decodeResult);
+    log.error(`[Parse] config {${configPath}}`);
+    for (const error of errors) {
+      log.error(error);
+    }
+    process.exit(1);
+  }
+  const config = json as ConfigSchema;
   const configDir = path.dirname(configPath);
   if (parentConfig) {
     return {
@@ -121,7 +159,6 @@ function normalizeConfig(config: LoadedConfig): Config {
     buildDir,
     outputDir: config.outputDir || path.join(buildDir, 'out'),
     docIdPrefix: config.docIdPrefix || '',
-    indexFilename: config.indexFilename || 'index.md',
   };
 }
 
