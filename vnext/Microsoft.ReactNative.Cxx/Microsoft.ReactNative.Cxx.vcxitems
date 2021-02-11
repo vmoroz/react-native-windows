@@ -93,13 +93,19 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)TurboModuleProvider.cpp" />
   </ItemGroup>
   <ItemGroup Condition="'$(BuildMSRNCxx)' != 'false' and '$(BuildMSRNCxxReactCommon)' != 'false'">
-    <ClCompile Include="$(JSI_SourcePath)\jsi\jsi.cpp" />
-    <ClCompile Include="$(TurboModule_SourcePath)\ReactCommon\LongLivedObject.cpp" />
+    <ClCompile Include="$(JSI_SourcePath)\jsi\jsi.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="$(TurboModule_SourcePath)\ReactCommon\LongLivedObject.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="$(TurboModule_SourcePath)\ReactCommon\TurboModule.cpp">
       <DisableSpecificWarnings>4100;4267;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="$(TurboModule_SourcePath)\ReactCommon\TurboModuleUtils.cpp">
       <DisableSpecificWarnings>4100;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
