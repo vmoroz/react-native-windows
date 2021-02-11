@@ -186,6 +186,7 @@ ReactInstanceWin::ReactInstanceWin(
       m_useWebDebugger(options.UseWebDebugger()),
       m_useDirectDebugger(options.UseDirectDebugger()),
       m_debuggerBreakOnNextLine(options.DebuggerBreakOnNextLine()),
+      m_backgroundMode{options.BackgroundMode()},
       m_reactContext{Mso::Make<ReactContext>(
           this,
           options.Properties,
@@ -943,6 +944,10 @@ std::string ReactInstanceWin::JavaScriptBundleFile() const noexcept {
 
 bool ReactInstanceWin::UseDeveloperSupport() const noexcept {
   return m_options.UseDeveloperSupport();
+}
+
+bool ReactInstanceWin::BackgroundMode() const noexcept {
+  return m_options.BackgroundMode();
 }
 
 Mso::React::IReactContext &ReactInstanceWin::GetReactContext() const noexcept {

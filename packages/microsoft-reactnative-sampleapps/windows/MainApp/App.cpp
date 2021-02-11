@@ -96,6 +96,7 @@ void App::OnBackgroundActivated(winrt::Windows::ApplicationModel::Activation::Ba
   
   auto host = Host();
   if (Window::Current().Content().as<Frame>() == nullptr) {
+    host.InstanceSettings().BackgroundMode(true);
     host.LoadInstance();
     host.InstanceSettings().InstanceLoaded(
         [wkThis = get_weak(), host, taskName](

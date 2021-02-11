@@ -78,6 +78,7 @@ class ReactInstanceWin final : public Mso::ActiveObject<IReactInstanceInternal> 
   uint16_t SourceBundlePort() const noexcept;
   std::string JavaScriptBundleFile() const noexcept;
   bool UseDeveloperSupport() const noexcept;
+  bool BackgroundMode() const noexcept;
 #endif
 
  private:
@@ -143,6 +144,7 @@ class ReactInstanceWin final : public Mso::ActiveObject<IReactInstanceInternal> 
   const bool m_isLiveReloadEnabled : 1;
   const bool m_useDirectDebugger : 1;
   const bool m_useWebDebugger : 1;
+  const bool m_backgroundMode{false};
 
   const Mso::CntPtr<ReactContext> m_reactContext;
 

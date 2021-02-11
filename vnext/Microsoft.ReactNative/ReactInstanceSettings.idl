@@ -140,6 +140,13 @@ Subsequent runs of the application should be faster as the JavaScript will be lo
     UInt16 SourceBundlePort { get; set; };
 
     JSIEngine JSIEngineOverride { get; set; };
+
+    DOC_STRING(
+      "Runs ReactNative instance in a background mode.\n"
+      "In this mode the UI thread is not initialized. The system modules that need UI thread are not initialized too.")
+    DOC_DEFAULT("false")
+    Boolean BackgroundMode { get; set; };
+
     event Windows.Foundation.EventHandler<InstanceCreatedEventArgs> InstanceCreated;
     event Windows.Foundation.EventHandler<InstanceLoadedEventArgs> InstanceLoaded;
     event Windows.Foundation.EventHandler<InstanceDestroyedEventArgs> InstanceDestroyed;
