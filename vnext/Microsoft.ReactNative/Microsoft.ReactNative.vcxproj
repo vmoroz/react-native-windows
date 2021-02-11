@@ -18,6 +18,7 @@
     <CppWinRTNamespaceMergeDepth>
     </CppWinRTNamespaceMergeDepth>
     <CppWinRTLibs>true</CppWinRTLibs>
+    <BuildMSRNCxxReactCommon>false</BuildMSRNCxxReactCommon>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <Import Project="$(SolutionDir)\BuildFlags.props" Condition="Exists('$(SolutionDir)\BuildFlags.props')" />
@@ -102,20 +103,7 @@
       <ForcedIncludeFiles>pch.h</ForcedIncludeFiles>
       <WarningLevel>Level4</WarningLevel>
       <AdditionalOptions>/await %(AdditionalOptions) /bigobj</AdditionalOptions>
-      <AdditionalIncludeDirectories>
-        $(ReactNativeWindowsDir)Microsoft.ReactNative;
-        $(ReactNativeWindowsDir)Microsoft.ReactNative\Pch;
-        $(ReactNativeWindowsDir)Microsoft.ReactNative\ReactHost;
-        $(ReactNativeWindowsDir)Microsoft.ReactNative\Views;
-        $(ReactNativeWindowsDir);
-        $(ReactNativeWindowsDir)Common;
-        $(ReactNativeWindowsDir)include;
-        $(ReactNativeWindowsDir)Shared;
-        $(ReactNativeWindowsDir)Shared\tracing;
-        $(ReactNativeWindowsDir)include\Shared;
-        $(YogaDir);
-        %(AdditionalIncludeDirectories)
-      </AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>E:\GitHub\vmoroz\react-native-windows\vnext\build\x64\Debug\Microsoft.ReactNative\Generated Files;$(ReactNativeWindowsDir)Microsoft.ReactNative;$(ReactNativeWindowsDir)Microsoft.ReactNative\Pch;$(ReactNativeWindowsDir)Microsoft.ReactNative\ReactHost;$(ReactNativeWindowsDir)Microsoft.ReactNative\Views;$(ReactNativeWindowsDir);$(ReactNativeWindowsDir)Common;$(ReactNativeWindowsDir)include;$(ReactNativeWindowsDir)Shared;$(ReactNativeWindowsDir)Shared\tracing;$(ReactNativeWindowsDir)include\Shared;$(YogaDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>FOLLY_NO_CONFIG;NOMINMAX;_HAS_AUTO_PTR_ETC;RN_EXPORT=;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <!--
         REACTWINDOWS_BUILD - building with REACTWINDOWS_API as dll exports
