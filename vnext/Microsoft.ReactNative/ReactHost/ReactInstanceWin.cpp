@@ -281,12 +281,14 @@ void ReactInstanceWin::Initialize() noexcept {
     if (auto strongThis = weakThis.GetStrongPtr()) {
       strongThis->m_appTheme = std::make_shared<react::uwp::AppTheme>(
           strongThis->GetReactContext(), strongThis->m_uiMessageThread.LoadWithLock());
-      Microsoft::ReactNative::I18nManager::InitI18nInfo(
+      if (!strongThis->BackgroundMode()) {
+        Microsoft::ReactNative::I18nManager::InitI18nInfo(
+            winrt::Microsoft::ReactNative::ReactPropertyBag(strongThis->Options().Properties));
+      }
+      Microsoft::ReactNative::DeviceInfoHolder::InitDeviceInfoHolder(
           winrt::Microsoft::ReactNative::ReactPropertyBag(strongThis->Options().Properties));
       strongThis->m_appearanceListener =
           Mso::Make<react::uwp::AppearanceChangeListener>(strongThis->GetReactContext(), strongThis->m_uiQueue);
-      Microsoft::ReactNative::DeviceInfoHolder::InitDeviceInfoHolder(
-          winrt::Microsoft::ReactNative::ReactPropertyBag(strongThis->Options().Properties));
     }
   }).Then(Queue(), [this, weakThis = Mso::WeakPtr{this}]() noexcept {
     if (auto strongThis = weakThis.GetStrongPtr()) {

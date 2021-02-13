@@ -38,6 +38,10 @@ void LogBox::ShowOnUIThread() noexcept {
   if (!host)
     return;
 
+  if (m_context.Handle().SettingsSnapshot().BackgroundMode()) {
+    return;
+  }
+
   m_logBoxContent = React::ReactRootView();
   m_logBoxContent.ComponentName(L"LogBox");
   m_logBoxContent.ReactNativeHost(host);

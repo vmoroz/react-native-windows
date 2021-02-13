@@ -32,28 +32,34 @@ void DeviceInfoHolder::InitDeviceInfoHolder(
 
     propertyBag.Set(DeviceInfoHolderPropertyId(), std::move(deviceInfoHolder));
 
-    auto const &displayInfo = winrt::Windows::Graphics::Display::DisplayInformation::GetForCurrentView();
-
-    if (auto window = xaml::Window::Current()) {
-      auto const &coreWindow = window.CoreWindow();
-
+    auto coreWindow = GetCoreWindow();
+    if (coreWindow) {
       deviceInfoHolder->m_sizeChangedRevoker =
           coreWindow.SizeChanged(winrt::auto_revoke, [weakHolder = std::weak_ptr(deviceInfoHolder)](auto &&, auto &&) {
             if (auto strongHolder = weakHolder.lock()) {
               strongHolder->updateDeviceInfo();
             }
           });
+
+      auto const &displayInfo = winrt::Windows::Graphics::Display::DisplayInformation::GetForCurrentView();
+      deviceInfoHolder->m_dpiChangedRevoker = displayInfo.DpiChanged(
+          winrt::auto_revoke, [weakHolder = std::weak_ptr(deviceInfoHolder)](const auto &, const auto &) {
+            if (auto strongHolder = weakHolder.lock()) {
+              strongHolder->updateDeviceInfo();
+            }
+          });
     } else {
-      assert(react::uwp::IsXamlIsland());
+      // assert(react::uwp::IsXamlIsland());
       // TODO: WinUI 3 Islands - set up a listener for window size changed
     }
+  }
+}
 
-    deviceInfoHolder->m_dpiChangedRevoker = displayInfo.DpiChanged(
-        winrt::auto_revoke, [weakHolder = std::weak_ptr(deviceInfoHolder)](const auto &, const auto &) {
-          if (auto strongHolder = weakHolder.lock()) {
-            strongHolder->updateDeviceInfo();
-          }
-        });
+/*static*/ winrt::CoreWindow DeviceInfoHolder::GetCoreWindow() noexcept {
+  if (auto const &currentWindow = xaml::Window::Current()) {
+    return currentWindow.CoreWindow();
+  } else {
+    return nullptr;
   }
 }
 
@@ -97,23 +103,31 @@ void DeviceInfoHolder::SetCallback(
 }
 
 void DeviceInfoHolder::updateDeviceInfo() noexcept {
-  if (xaml::Window::Current()) {
+  if (xaml::Window::Current() && xaml::Window::Current().CoreWindow()) {
     auto const window = xaml::Window::Current().CoreWindow();
 
     m_windowWidth = window.Bounds().Width;
     m_windowHeight = window.Bounds().Height;
   } else {
     /// TODO: WinUI 3 Island - mock for now
-    m_windowWidth = 600;
-    m_windowHeight = 800;
+    m_windowWidth = 800;
+    m_windowHeight = 600;
   }
   winrt::Windows::UI::ViewManagement::UISettings uiSettings;
   m_textScaleFactor = uiSettings.TextScaleFactor();
-  auto const displayInfo = winrt::Windows::Graphics::Display::DisplayInformation::GetForCurrentView();
-  m_scale = static_cast<float>(displayInfo.ResolutionScale()) / 100;
-  m_dpi = displayInfo.LogicalDpi();
-  m_screenWidth = displayInfo.ScreenWidthInRawPixels();
-  m_screenHeight = displayInfo.ScreenHeightInRawPixels();
+  // REVIEW: What to do for WinUI 3?
+  if (xaml::Window::Current() && xaml::Window::Current().CoreWindow()) {
+    auto const displayInfo = winrt::Windows::Graphics::Display::DisplayInformation::GetForCurrentView();
+    m_scale = static_cast<float>(displayInfo.ResolutionScale()) / 100;
+    m_dpi = displayInfo.LogicalDpi();
+    m_screenWidth = displayInfo.ScreenWidthInRawPixels();
+    m_screenHeight = displayInfo.ScreenHeightInRawPixels();
+  } else {
+    m_scale = 1.0;
+    m_dpi = 96;
+    m_screenWidth = 800;
+    m_screenHeight = 600;
+  }
   notifyChanged();
 }
 
@@ -124,12 +138,14 @@ void DeviceInfo::GetConstants(React::ReactConstantProvider &provider) noexcept {
 void DeviceInfo::Initialize(React::ReactContext const &reactContext) noexcept {
   m_context = reactContext;
 
-  DeviceInfoHolder::SetCallback(
-      m_context.Properties(), [weakThis = weak_from_this()](React::JSValueObject &&dimensions) {
-        if (auto strongThis = weakThis.lock()) {
-          strongThis->m_context.EmitJSEvent(L"RCTDeviceEventEmitter", L"didUpdateDimensions", dimensions);
-        }
-      });
+  if (!m_context.Handle().SettingsSnapshot().BackgroundMode()) {
+    DeviceInfoHolder::SetCallback(
+        m_context.Properties(), [weakThis = weak_from_this()](React::JSValueObject &&dimensions) {
+          if (auto strongThis = weakThis.lock()) {
+            strongThis->m_context.EmitJSEvent(L"RCTDeviceEventEmitter", L"didUpdateDimensions", dimensions);
+          }
+        });
+  }
 }
 
 } // namespace Microsoft::ReactNative

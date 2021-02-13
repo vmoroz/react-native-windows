@@ -301,7 +301,11 @@ InstanceImpl::InstanceImpl(
 
 #ifdef ENABLE_ETW_TRACING
   // TODO :: Find a better place to initialize ETW once per process.
-  facebook::react::tracing::initializeETW();
+  static bool etwInitialized = false;
+  if (!etwInitialized) {
+    facebook::react::tracing::initializeETW();
+    etwInitialized = true;
+  }
 #endif
 
   // Default (common) NativeModules

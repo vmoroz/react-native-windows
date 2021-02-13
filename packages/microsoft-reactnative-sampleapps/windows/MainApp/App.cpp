@@ -3,9 +3,9 @@
 #include "App.h"
 
 #include "AutolinkedNativeModules.g.h"
-#include "ReactPackageProvider.h"
-#include <winrt/NativeModule.h>
 #include <ReactNotificationService.h>
+#include <winrt/NativeModule.h>
+#include "ReactPackageProvider.h"
 
 #include "winrt/Windows.ApplicationModel.Background.h"
 
@@ -51,7 +51,6 @@ App::App() noexcept {
   PackageProviders().Append(winrt::NativeModule::ReactPackageProvider()); // Includes all modules in this project
 
   InitializeComponent();
-
 }
 
 /// <summary>
@@ -59,12 +58,16 @@ App::App() noexcept {
 /// will be used such as when the application is launched to open a specific file.
 /// </summary>
 /// <param name="e">Details about the launch request and process.</param>
-void App::OnLaunched(activation::LaunchActivatedEventArgs const& e)
-{
-    super::OnLaunched(e);
+void App::OnLaunched(activation::LaunchActivatedEventArgs const &e) {
+  m_instanceLoaded.revoke();
+  if (Host().InstanceSettings().BackgroundMode()) {
+    Host().InstanceSettings().BackgroundMode(false);
+  }
 
-    Frame rootFrame = Window::Current().Content().as<Frame>();
-    rootFrame.Navigate(xaml_typename<MainApp::MainPage>(), box_value(e.Arguments()));
+  super::OnLaunched(e);
+
+  Frame rootFrame = Window::Current().Content().as<Frame>();
+  rootFrame.Navigate(xaml_typename<MainApp::MainPage>(), box_value(e.Arguments()));
 }
 
 /// <summary>
@@ -74,9 +77,8 @@ void App::OnLaunched(activation::LaunchActivatedEventArgs const& e)
 /// </summary>
 /// <param name="sender">The source of the suspend request.</param>
 /// <param name="e">Details about the suspend request.</param>
-void App::OnSuspending([[maybe_unused]] IInspectable const& sender, [[maybe_unused]] SuspendingEventArgs const& e)
-{
-    // Save application state and stop any background activity
+void App::OnSuspending([[maybe_unused]] IInspectable const &sender, [[maybe_unused]] SuspendingEventArgs const &e) {
+  // Save application state and stop any background activity
 }
 
 /// <summary>
@@ -84,21 +86,22 @@ void App::OnSuspending([[maybe_unused]] IInspectable const& sender, [[maybe_unus
 /// </summary>
 /// <param name="sender">The Frame which failed navigation</param>
 /// <param name="e">Details about the navigation failure</param>
-void App::OnNavigationFailed(IInspectable const&, NavigationFailedEventArgs const& e)
-{
-    throw hresult_error(E_FAIL, hstring(L"Failed to load Page ") + e.SourcePageType().Name);
+void App::OnNavigationFailed(IInspectable const &, NavigationFailedEventArgs const &e) {
+  throw hresult_error(E_FAIL, hstring(L"Failed to load Page ") + e.SourcePageType().Name);
 }
 
-void App::OnBackgroundActivated(winrt::Windows::ApplicationModel::Activation::BackgroundActivatedEventArgs const& args) {
+void App::OnBackgroundActivated(
+    winrt::Windows::ApplicationModel::Activation::BackgroundActivatedEventArgs const &args) {
+  m_instanceLoaded.revoke();
   auto taskInstance = args.TaskInstance();
   BackgroundTaskDeferral deferral = taskInstance.GetDeferral();
   auto taskName = winrt::to_hstring(taskInstance.Task().Name());
-  
+
   auto host = Host();
   if (Window::Current().Content().as<Frame>() == nullptr) {
     host.InstanceSettings().BackgroundMode(true);
-    host.LoadInstance();
-    host.InstanceSettings().InstanceLoaded(
+    m_instanceLoaded = host.InstanceSettings().InstanceLoaded(
+        auto_revoke_t{},
         [wkThis = get_weak(), host, taskName](
             auto sender, winrt::Microsoft::ReactNative::InstanceLoadedEventArgs args) {
           if (auto strongThis = wkThis.get()) {
@@ -110,6 +113,7 @@ void App::OnBackgroundActivated(winrt::Windows::ApplicationModel::Activation::Ba
             rns.SendNotification(backgroundNotificationId.Handle(), box_value(pb), box_value(42));
           }
         });
+    host.LoadInstance();
   } else {
     // Send background task name (as defined in registration) to native module handler
     auto eventPropName = ReactPropertyBagHelper::GetName(nullptr, L"TaskNameProperty");
@@ -121,7 +125,6 @@ void App::OnBackgroundActivated(winrt::Windows::ApplicationModel::Activation::Ba
   }
 
   deferral.Complete();
-
-  }
-
 }
+
+} // namespace winrt::MainApp::implementation
