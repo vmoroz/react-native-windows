@@ -4,6 +4,7 @@
 
 #include "AutolinkedNativeModules.g.h"
 #include <ReactNotificationService.h>
+#include <ReactPropertyBag.h>
 #include <winrt/NativeModule.h>
 #include "ReactPackageProvider.h"
 
@@ -21,7 +22,12 @@ using namespace winrt::Windows::ApplicationModel::Background;
 using namespace winrt::Windows::ApplicationModel::Activation;
 
 namespace winrt::MainApp::implementation {
-static const ReactNotificationId<int> backgroundNotificationId(L"NativeModuleClass", L"BackgroundNotification");
+
+static const ReactNotificationId<IReactPropertyBag> backgroundNotificationId(
+    L"NativeModuleClass",
+    L"BackgroundNotification");
+static const ReactPropertyId<hstring> eventPropName(L"NativeModuleClass", L"TaskNameProperty");
+static const ReactPropertyId<int> eventPayload(L"NativeModuleClass", L"TaskPayloadProperty");
 
 /// <summary>
 /// Initializes the singleton application object.  This is the first line of
@@ -105,23 +111,21 @@ void App::OnBackgroundActivated(
         [wkThis = get_weak(), host, taskName](
             auto sender, winrt::Microsoft::ReactNative::InstanceLoadedEventArgs args) {
           if (auto strongThis = wkThis.get()) {
-            auto eventPropName = ReactPropertyBagHelper::GetName(nullptr, L"TaskNameProperty");
-            IReactPropertyBag pb{ReactPropertyBagHelper::CreatePropertyBag()};
-            pb.Set(eventPropName, box_value(taskName));
-
-            auto rns = host.InstanceSettings().Notifications();
-            rns.SendNotification(backgroundNotificationId.Handle(), box_value(pb), box_value(42));
+            auto pb = ReactPropertyBag{ReactPropertyBagHelper::CreatePropertyBag()};
+            pb.Set(eventPropName, taskName);
+            pb.Set(eventPayload, 42);
+            auto rns = ReactNotificationService{host.InstanceSettings().Notifications()};
+            rns.SendNotification(backgroundNotificationId, pb.Handle());
           }
         });
     host.LoadInstance();
   } else {
     // Send background task name (as defined in registration) to native module handler
-    auto eventPropName = ReactPropertyBagHelper::GetName(nullptr, L"TaskNameProperty");
-    IReactPropertyBag pb{ReactPropertyBagHelper::CreatePropertyBag()};
-    pb.Set(eventPropName, box_value(taskName));
-
-    auto rns = InstanceSettings().Notifications();
-    rns.SendNotification(backgroundNotificationId.Handle(), box_value(pb), box_value(42));
+    auto pb = ReactPropertyBag{ReactPropertyBagHelper::CreatePropertyBag()};
+    pb.Set(eventPropName, taskName);
+    pb.Set(eventPayload, 42);
+    auto rns = ReactNotificationService{host.InstanceSettings().Notifications()};
+    rns.SendNotification(backgroundNotificationId, pb.Handle());
   }
 
   deferral.Complete();
