@@ -95,6 +95,13 @@ bool ReactSettingsSnapshot::UseDeveloperSupport() const noexcept {
   return false;
 }
 
+bool ReactSettingsSnapshot::BackgroundMode() const noexcept {
+  if (auto instance = m_reactInstance.GetStrongPtr()) {
+    return instance->BackgroundMode();
+  }
+  return false;
+}
+
 #endif
 
 //=============================================================================================

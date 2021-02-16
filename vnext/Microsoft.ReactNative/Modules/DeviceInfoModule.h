@@ -23,6 +23,7 @@ struct DeviceInfoHolder {
   static React::JSValueObject GetDimensions(const React::ReactPropertyBag &propertyBag) noexcept;
 
  private:
+  static winrt::CoreWindow GetCoreWindow() noexcept; 
   React::JSValueObject getDimensions() noexcept;
   void updateDeviceInfo() noexcept;
   void notifyChanged() noexcept;

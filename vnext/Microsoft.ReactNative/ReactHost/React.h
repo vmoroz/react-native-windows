@@ -103,6 +103,7 @@ struct IReactSettingsSnapshot : IUnknown {
   virtual uint16_t SourceBundlePort() const noexcept = 0;
   virtual std::string JavaScriptBundleFile() const noexcept = 0;
   virtual bool UseDeveloperSupport() const noexcept = 0;
+  virtual bool BackgroundMode() const noexcept = 0;
 };
 
 MSO_GUID(IReactContext, "a4309a29-8fc5-478e-abea-0ddb9ecc5e40")
@@ -299,6 +300,14 @@ struct ReactOptions {
       winrt::Microsoft::ReactNative::IReactPropertyBag const &properties,
       bool value) noexcept;
   static bool UseDirectDebugger(winrt::Microsoft::ReactNative::IReactPropertyBag const &properties) noexcept;
+
+  //! To run ReactNative instance in background mode, whether UI thread is not initialized and used.
+  void BackgroundMode(bool value) noexcept;
+  bool BackgroundMode() const noexcept;
+  static void BackgroundMode(
+      winrt::Microsoft::ReactNative::IReactPropertyBag const &properties,
+      bool value) noexcept;
+  static bool BackgroundMode(winrt::Microsoft::ReactNative::IReactPropertyBag const &properties) noexcept;
 
   //! Adds registered JS bundle to JSBundles.
   LIBLET_PUBLICAPI ReactOptions &AddRegisteredJSBundle(std::string_view jsBundleId) noexcept;

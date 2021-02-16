@@ -186,6 +186,7 @@ ReactInstanceWin::ReactInstanceWin(
       m_useWebDebugger(options.UseWebDebugger()),
       m_useDirectDebugger(options.UseDirectDebugger()),
       m_debuggerBreakOnNextLine(options.DebuggerBreakOnNextLine()),
+      m_backgroundMode{options.BackgroundMode()},
       m_reactContext{Mso::Make<ReactContext>(
           this,
           options.Properties,
@@ -280,12 +281,14 @@ void ReactInstanceWin::Initialize() noexcept {
     if (auto strongThis = weakThis.GetStrongPtr()) {
       strongThis->m_appTheme = std::make_shared<react::uwp::AppTheme>(
           strongThis->GetReactContext(), strongThis->m_uiMessageThread.LoadWithLock());
-      Microsoft::ReactNative::I18nManager::InitI18nInfo(
+      if (!strongThis->BackgroundMode()) {
+        Microsoft::ReactNative::I18nManager::InitI18nInfo(
+            winrt::Microsoft::ReactNative::ReactPropertyBag(strongThis->Options().Properties));
+      }
+      Microsoft::ReactNative::DeviceInfoHolder::InitDeviceInfoHolder(
           winrt::Microsoft::ReactNative::ReactPropertyBag(strongThis->Options().Properties));
       strongThis->m_appearanceListener =
           Mso::Make<react::uwp::AppearanceChangeListener>(strongThis->GetReactContext(), strongThis->m_uiQueue);
-      Microsoft::ReactNative::DeviceInfoHolder::InitDeviceInfoHolder(
-          winrt::Microsoft::ReactNative::ReactPropertyBag(strongThis->Options().Properties));
     }
   }).Then(Queue(), [this, weakThis = Mso::WeakPtr{this}]() noexcept {
     if (auto strongThis = weakThis.GetStrongPtr()) {
@@ -943,6 +946,10 @@ std::string ReactInstanceWin::JavaScriptBundleFile() const noexcept {
 
 bool ReactInstanceWin::UseDeveloperSupport() const noexcept {
   return m_options.UseDeveloperSupport();
+}
+
+bool ReactInstanceWin::BackgroundMode() const noexcept {
+  return m_options.BackgroundMode();
 }
 
 Mso::React::IReactContext &ReactInstanceWin::GetReactContext() const noexcept {

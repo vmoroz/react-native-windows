@@ -55,7 +55,7 @@ struct ReactInstanceSettings : ReactInstanceSettingsT<ReactInstanceSettings> {
 
   Windows::Foundation::Collections::IVector<IReactPackageProvider> PackageProviders() noexcept;
 
-  //! This controls the availiablility of various developer support functionality including
+  //! This controls the availability of various developer support functionality including
   //! RedBox, and the Developer Menu
   bool UseDeveloperSupport() noexcept;
   void UseDeveloperSupport(bool value) noexcept;
@@ -79,7 +79,7 @@ struct ReactInstanceSettings : ReactInstanceSettingsT<ReactInstanceSettings> {
   void UseFastRefresh(bool value) noexcept;
 
   //! Should the instance monitor for changes to the JS and reload the instance when a change is
-  //! detected.  Generally its prefered to use FastFreshed instead of this.  But if there is some
+  //! detected.  Generally its preferred to use FastFreshed instead of this.  But if there is some
   //! issue with hot reloading in your app, then this can be used instead
   bool UseLiveReload() noexcept;
   void UseLiveReload(bool value) noexcept;
@@ -135,6 +135,9 @@ struct ReactInstanceSettings : ReactInstanceSettingsT<ReactInstanceSettings> {
 
   JSIEngine JSIEngineOverride() noexcept;
   void JSIEngineOverride(JSIEngine value) noexcept;
+
+  bool BackgroundMode() noexcept;
+  void BackgroundMode(bool value) noexcept;
 
   winrt::event_token InstanceCreated(
       Windows::Foundation::EventHandler<winrt::Microsoft::ReactNative::InstanceCreatedEventArgs> const

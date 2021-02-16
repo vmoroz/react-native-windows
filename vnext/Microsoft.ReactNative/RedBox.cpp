@@ -104,7 +104,7 @@ struct RedBox : public std::enable_shared_from_this<RedBox> {
     m_reloadButton = m_redboxContent.FindName(L"ReloadButton").as<xaml::Controls::Button>();
 
     m_tokenDismiss = m_dismissButton.Click(
-        [&](IInspectable const & /*sender*/, xaml::RoutedEventArgs const & /*args*/) noexcept { Dismiss(); });
+        [&](winrt::IInspectable const & /*sender*/, xaml::RoutedEventArgs const & /*args*/) noexcept { Dismiss(); });
 
     m_tokenReload = m_reloadButton.Click([&](auto const & /*sender*/, xaml::RoutedEventArgs const & /*args*/) noexcept {
       Dismiss();
@@ -148,12 +148,12 @@ struct RedBox : public std::enable_shared_from_this<RedBox> {
           }
         });
 
-    m_tokenClosed = m_popup.Closed(
-        [wkThis = std::weak_ptr(shared_from_this())](auto const & /*sender*/, IInspectable const & /*args*/) noexcept {
-          if (auto pthis = wkThis.lock()) {
-            pthis->OnPopupClosed();
-          }
-        });
+    m_tokenClosed = m_popup.Closed([wkThis = std::weak_ptr(shared_from_this())](
+                                       auto const & /*sender*/, winrt::IInspectable const & /*args*/) noexcept {
+      if (auto pthis = wkThis.lock()) {
+        pthis->OnPopupClosed();
+      }
+    });
 
     m_popup.Child(m_redboxContent);
     m_popup.IsOpen(true);
@@ -216,7 +216,7 @@ struct RedBox : public std::enable_shared_from_this<RedBox> {
     // (since the setProperty calls resulted in undefined).
     // Finally, it's important to note that JS expressions of that are not of string type
     // need to be manually converted to string for them to get marshaled properly back here.
-    webView.NavigationCompleted([=](IInspectable const &, auto const &) {
+    webView.NavigationCompleted([=](winrt::IInspectable const &, auto const &) {
       std::wstring jsExpression =
           L"(document.body.style.setProperty('color', 'white'), "
           L"document.body.style.setProperty('background', '#d01926')) "
@@ -336,7 +336,8 @@ struct RedBox : public std::enable_shared_from_this<RedBox> {
 
       // When the user taps on a stack frame, tell the bundler to load that source in the users editor of choice
       frameContent.Tapped([weakReactHost = m_weakReactHost, f = frame](
-                              IInspectable const & /*sender*/, xaml::Input::TappedRoutedEventArgs const & /*e*/) {
+                              winrt::IInspectable const & /*sender*/,
+                              xaml::Input::TappedRoutedEventArgs const & /*e*/) {
         if (auto reactHost = weakReactHost.GetStrongPtr()) {
           auto devSettings = reactHost->Options().DeveloperSettings;
           Uri uri{

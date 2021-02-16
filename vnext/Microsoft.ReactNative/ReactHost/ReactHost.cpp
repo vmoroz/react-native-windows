@@ -11,6 +11,12 @@ namespace Mso::React {
 // ReactOptions internal properties
 //=============================================================================================
 
+winrt::Microsoft::ReactNative::IReactPropertyNamespace InstanceSettingsNamespace() noexcept {
+  static winrt::Microsoft::ReactNative::IReactPropertyNamespace value =
+      winrt::Microsoft::ReactNative::ReactPropertyBagHelper::GetNamespace(L"ReactNative.InstanceSettings");
+  return value;
+}
+
 winrt::Microsoft::ReactNative::IReactPropertyName FastRefreshEnabledProperty() noexcept {
   static winrt::Microsoft::ReactNative::IReactPropertyName propName =
       winrt::Microsoft::ReactNative::ReactPropertyBagHelper::GetName(
@@ -56,6 +62,13 @@ winrt::Microsoft::ReactNative::IReactPropertyName UseDirectDebuggerProperty() no
       winrt::Microsoft::ReactNative::ReactPropertyBagHelper::GetName(
           winrt::Microsoft::ReactNative::ReactPropertyBagHelper::GetNamespace(L"ReactNative.ReactOptions"),
           L"UseDirectDebugger");
+  return propName;
+}
+
+winrt::Microsoft::ReactNative::IReactPropertyName BackgroundModeProperty() noexcept {
+  static winrt::Microsoft::ReactNative::IReactPropertyName propName =
+      winrt::Microsoft::ReactNative::ReactPropertyBagHelper::GetName(InstanceSettingsNamespace(),
+          L"BackgroundMode");
   return propName;
 }
 
@@ -198,6 +211,25 @@ bool ReactOptions::UseDirectDebugger() const noexcept {
 /*static*/ bool ReactOptions::UseDirectDebugger(
     winrt::Microsoft::ReactNative::IReactPropertyBag const &properties) noexcept {
   return winrt::unbox_value_or<bool>(properties.Get(UseDirectDebuggerProperty()), false);
+}
+
+void ReactOptions::BackgroundMode(bool value) noexcept {
+  BackgroundMode(Properties, value);
+}
+
+bool ReactOptions::BackgroundMode() const noexcept {
+  return BackgroundMode(Properties);
+}
+
+/*static*/ void ReactOptions::BackgroundMode(
+    winrt::Microsoft::ReactNative::IReactPropertyBag const &properties,
+    bool value) noexcept {
+  properties.Set(BackgroundModeProperty(), winrt::box_value(value));
+}
+
+/*static*/ bool ReactOptions::BackgroundMode(
+    winrt::Microsoft::ReactNative::IReactPropertyBag const &properties) noexcept {
+  return winrt::unbox_value_or<bool>(properties.Get(BackgroundModeProperty()), false);
 }
 
 //=============================================================================================

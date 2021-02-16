@@ -33,13 +33,15 @@ AppTheme::AppTheme(
     m_isHighContrast = m_accessibilitySettings.HighContrast();
     m_highContrastColors = getHighContrastColors();
 
-    m_highContrastChangedRevoker =
-        m_accessibilitySettings.HighContrastChanged(winrt::auto_revoke, [this](const auto &, const auto &) {
-          folly::dynamic eventData = folly::dynamic::object("highContrastColors", getHighContrastColors())(
-              "isHighContrast", getIsHighContrast());
+    if (!context.SettingsSnapshot().BackgroundMode()) {
+      m_highContrastChangedRevoker =
+          m_accessibilitySettings.HighContrastChanged(winrt::auto_revoke, [this](const auto &, const auto &) {
+            folly::dynamic eventData = folly::dynamic::object("highContrastColors", getHighContrastColors())(
+                "isHighContrast", getIsHighContrast());
 
-          fireEvent("highContrastChanged", std::move(eventData));
-        });
+            fireEvent("highContrastChanged", std::move(eventData));
+          });
+    }
   }
 }
 

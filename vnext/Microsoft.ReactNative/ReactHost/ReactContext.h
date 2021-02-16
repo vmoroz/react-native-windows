@@ -30,6 +30,7 @@ class ReactSettingsSnapshot final : public Mso::UnknownObject<IReactSettingsSnap
   uint16_t SourceBundlePort() const noexcept override;
   std::string JavaScriptBundleFile() const noexcept override;
   bool UseDeveloperSupport() const noexcept override;
+  bool BackgroundMode() const noexcept override;
 
  private:
   Mso::WeakPtr<ReactInstanceWin> m_reactInstance;
