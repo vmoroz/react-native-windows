@@ -304,9 +304,7 @@ struct ReactOptions {
   //! To run ReactNative instance in background mode, whether UI thread is not initialized and used.
   void BackgroundMode(bool value) noexcept;
   bool BackgroundMode() const noexcept;
-  static void BackgroundMode(
-      winrt::Microsoft::ReactNative::IReactPropertyBag const &properties,
-      bool value) noexcept;
+  static void BackgroundMode(winrt::Microsoft::ReactNative::IReactPropertyBag const &properties, bool value) noexcept;
   static bool BackgroundMode(winrt::Microsoft::ReactNative::IReactPropertyBag const &properties) noexcept;
 
   //! Adds registered JS bundle to JSBundles.

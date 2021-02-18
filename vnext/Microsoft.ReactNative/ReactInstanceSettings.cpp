@@ -132,7 +132,6 @@ void ReactInstanceSettings::BackgroundMode(bool value) noexcept {
   Mso::React::ReactOptions::BackgroundMode(m_properties, value);
 }
 
-
 IReactPropertyNamespace InstanceSettingsNamespace() noexcept {
   static IReactPropertyNamespace value = ReactPropertyBagHelper::GetNamespace(L"ReactNative.InstanceSettings");
   return value;

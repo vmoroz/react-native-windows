@@ -150,12 +150,12 @@ struct RedBox : public std::enable_shared_from_this<RedBox> {
           }
         });
 
-    m_tokenClosed = m_popup.Closed([wkThis = std::weak_ptr(shared_from_this())](
-                                       auto const & /*sender*/, IInspectable const & /*args*/) noexcept {
-      if (auto pthis = wkThis.lock()) {
-        pthis->OnPopupClosed();
-      }
-    });
+    m_tokenClosed = m_popup.Closed(
+        [wkThis = std::weak_ptr(shared_from_this())](auto const & /*sender*/, IInspectable const & /*args*/) noexcept {
+          if (auto pthis = wkThis.lock()) {
+            pthis->OnPopupClosed();
+          }
+        });
 
     m_popup.Child(m_redboxContent);
     m_popup.IsOpen(true);
@@ -338,8 +338,7 @@ struct RedBox : public std::enable_shared_from_this<RedBox> {
 
       // When the user taps on a stack frame, tell the bundler to load that source in the users editor of choice
       frameContent.Tapped([weakReactHost = m_weakReactHost, f = frame](
-                              IInspectable const & /*sender*/,
-                              xaml::Input::TappedRoutedEventArgs const & /*e*/) {
+                              IInspectable const & /*sender*/, xaml::Input::TappedRoutedEventArgs const & /*e*/) {
         if (auto reactHost = weakReactHost.GetStrongPtr()) {
           auto devSettings = reactHost->Options().DeveloperSettings;
           Uri uri{

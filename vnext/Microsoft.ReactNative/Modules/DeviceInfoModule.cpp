@@ -36,15 +36,22 @@ void DeviceInfoHolder::InitDeviceInfoHolder(const Mso::React::IReactContext &con
     deviceInfoHolder->updateDeviceInfo();
     winrt::Microsoft::ReactNative::ReactPropertyBag pb{context.Properties()};
     pb.Set(DeviceInfoHolderPropertyId(), std::move(deviceInfoHolder));
+
+    if (auto window = xaml::Window::Current()) {
+      auto const &coreWindow = window.CoreWindow();
+
       deviceInfoHolder->m_sizeChangedRevoker =
           coreWindow.SizeChanged(winrt::auto_revoke, [weakHolder = std::weak_ptr(deviceInfoHolder)](auto &&, auto &&) {
             if (auto strongHolder = weakHolder.lock()) {
               strongHolder->updateDeviceInfo();
             }
           });
+    } else {
+      assert(react::uwp::IsXamlIsland());
       // This is either a WinUI 3 island or a system XAML island
       // system XAML islands have a CoreWindow so we want to use the GetForCurrentView APIs
       // For WinUI 3 islands we require the app to forward window messages as ReactNotifications
+    }
 
     if (!react::uwp::IsWinUI3Island()) {
       // UWP or system XAML island

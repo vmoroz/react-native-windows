@@ -67,8 +67,7 @@ winrt::Microsoft::ReactNative::IReactPropertyName UseDirectDebuggerProperty() no
 
 winrt::Microsoft::ReactNative::IReactPropertyName BackgroundModeProperty() noexcept {
   static winrt::Microsoft::ReactNative::IReactPropertyName propName =
-      winrt::Microsoft::ReactNative::ReactPropertyBagHelper::GetName(InstanceSettingsNamespace(),
-          L"BackgroundMode");
+      winrt::Microsoft::ReactNative::ReactPropertyBagHelper::GetName(InstanceSettingsNamespace(), L"BackgroundMode");
   return propName;
 }
 
