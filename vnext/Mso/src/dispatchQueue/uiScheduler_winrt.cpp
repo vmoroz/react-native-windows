@@ -179,7 +179,7 @@ int32_t __stdcall TaskDispatcherHandler::Invoke() noexcept {
 
 UISchedulerWinRT::UISchedulerWinRT(DispatcherQueue &&dispatcher) noexcept : m_dispatcher{std::move(dispatcher)} {
   m_shutdownCompletedRevoker = m_dispatcher.ShutdownCompleted(
-      winrt::auto_revoke, [](DispatcherQueue const &, winrt::IInspectable const &) noexcept {
+      winrt::auto_revoke, [](DispatcherQueue const &, IInspectable const &) noexcept {
         GetDispatchQueueRegistry().Remove(std::this_thread::get_id());
       });
 }
