@@ -22,7 +22,7 @@ class AppTheme : public std::enable_shared_from_this<AppTheme> {
 
  private:
   // High Contrast Color helper method
-  static std::string formatRGB(winrt::Windows::UI::Color ElementColor);
+  static std::string formatRGB(winrt::Windows::UI::Color elementColor);
   void NotifyHighContrastChanged() const;
   void fireEvent(std::string const &eventName, folly::dynamic &&eventData) const;
 

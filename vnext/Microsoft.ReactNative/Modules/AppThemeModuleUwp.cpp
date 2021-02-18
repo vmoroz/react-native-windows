@@ -41,21 +41,12 @@ AppTheme::AppTheme(
     m_isHighContrast = getIsHighContrast();
     m_highContrastColors = getHighContrastColors();
 
-    if (!context.SettingsSnapshot().BackgroundMode()) {
-      m_highContrastChangedRevoker =
-          m_accessibilitySettings.HighContrastChanged(winrt::auto_revoke, [this](const auto &, const auto &) {
-            folly::dynamic eventData = folly::dynamic::object("highContrastColors", getHighContrastColors())(
-                "isHighContrast", getIsHighContrast());
-
-            fireEvent("highContrastChanged", std::move(eventData));
-          });
-    }
     if (react::uwp::IsWinUI3Island()) {
       m_wmSubscription = SubscribeToWindowMessage(
           ReactNotificationService(m_context->Notifications()), WM_THEMECHANGED, [this](const auto &, const auto &) {
             NotifyHighContrastChanged();
           });
-    } else {
+    } else if (!context.SettingsSnapshot().BackgroundMode()) {
       m_highContrastChangedRevoker = m_accessibilitySettings.HighContrastChanged(
           winrt::auto_revoke, [this](const auto &, const auto &) { NotifyHighContrastChanged(); });
     }
@@ -85,9 +76,9 @@ folly::dynamic AppTheme::getHighContrastColors() const {
   return rbgValues;
 }
 
-/*static*/ std::string AppTheme::formatRGB(winrt::Windows::UI::Color ElementColor) {
+/*static*/ std::string AppTheme::formatRGB(winrt::Windows::UI::Color elementColor) {
   char colorChars[8];
-  sprintf_s(colorChars, "#%02x%02x%02x", ElementColor.R, ElementColor.G, ElementColor.B);
+  sprintf_s(colorChars, "#%02x%02x%02x", elementColor.R, elementColor.G, elementColor.B);
   return colorChars;
 }
 
@@ -98,9 +89,7 @@ void AppTheme::fireEvent(std::string const &eventName, folly::dynamic &&eventDat
 void AppTheme::NotifyHighContrastChanged() const {
   folly::dynamic eventData =
       folly::dynamic::object("highContrastColors", getHighContrastColors())("isHighContrast", getIsHighContrast());
-  this->
-
-      fireEvent("highContrastChanged", std::move(eventData));
+  fireEvent("highContrastChanged", std::move(eventData));
 }
 
 AppThemeModule::AppThemeModule(std::shared_ptr<AppTheme> &&appTheme) : m_appTheme(std::move(appTheme)) {}

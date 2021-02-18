@@ -51,13 +51,8 @@
 #include <boost/algorithm/string.hpp>
 #endif // RNW_FASTBUILD
 
-#include "Base/CxxReactIncludes.h"
 #include "CppWinRTIncludes.h"
 #include "HResult.h"
-
-#include <cxxreact/MessageQueueThread.h>
-
-#include <boost/algorithm/string.hpp>
 
 #include <algorithm>
 #include <atomic>
@@ -83,4 +78,3 @@
 #include <activeObject/activeObject.h>
 #include <functional/functorRef.h>
 #include <future/future.h>
-

@@ -136,18 +136,11 @@ void DeviceInfoHolder::updateDeviceInfo() noexcept {
   winrt::Windows::UI::ViewManagement::UISettings uiSettings;
   m_textScaleFactor = uiSettings.TextScaleFactor();
   if (!react::uwp::IsWinUI3Island()) {
-  if (xaml::Window::Current() && xaml::Window::Current().CoreWindow()) {
     auto const displayInfo = winrt::Windows::Graphics::Display::DisplayInformation::GetForCurrentView();
     m_scale = static_cast<float>(displayInfo.ResolutionScale()) / 100;
     m_dpi = displayInfo.LogicalDpi();
     m_screenWidth = displayInfo.ScreenWidthInRawPixels();
     m_screenHeight = displayInfo.ScreenHeightInRawPixels();
-  } else {
-    m_scale = 1.0;
-    m_dpi = 96;
-    m_screenWidth = 800;
-    m_screenHeight = 600;
-  }
     notifyChanged();
   } else {
     RECT desktopRect{};
