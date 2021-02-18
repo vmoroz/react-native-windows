@@ -285,8 +285,8 @@ void ReactInstanceWin::Initialize() noexcept {
         Microsoft::ReactNative::I18nManager::InitI18nInfo(
             winrt::Microsoft::ReactNative::ReactPropertyBag(strongThis->Options().Properties));
       }
-      Microsoft::ReactNative::DeviceInfoHolder::InitDeviceInfoHolder(
-          winrt::Microsoft::ReactNative::ReactPropertyBag(strongThis->Options().Properties));
+
+      Microsoft::ReactNative::DeviceInfoHolder::InitDeviceInfoHolder(strongThis->GetReactContext());
       strongThis->m_appearanceListener =
           Mso::Make<react::uwp::AppearanceChangeListener>(strongThis->GetReactContext(), strongThis->m_uiQueue);
     }

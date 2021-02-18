@@ -67,7 +67,7 @@
     <ClCompile Include="$(FollyDir)\folly\Unicode.cpp" />
     <ClCompile Include="$(FollyDir)\folly\memory\detail\MallocImpl.cpp" />
     <ClCompile Include="pch.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
+      <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -256,7 +256,7 @@
       <ForcedUsingFiles />
       <DisableSpecificWarnings>4244;4251;4267;4293;4305;4800;4804;4310;%(DisableSpecificWarnings)</DisableSpecificWarnings>
       <AdditionalOptions>/Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
-      <ForcedIncludeFiles Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">pch.h</ForcedIncludeFiles>
+      <ForcedIncludeFiles>pch.h</ForcedIncludeFiles>
     </ClCompile>
     <Link>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
