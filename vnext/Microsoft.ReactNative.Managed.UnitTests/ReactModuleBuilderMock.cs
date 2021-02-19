@@ -303,6 +303,8 @@ namespace Microsoft.ReactNative.Managed.UnitTests
 
   class ReactSettingsSnapshot : IReactSettingsSnapshot
   {
+    public bool BackgroundMode => throw new NotImplementedException();
+
     public bool DebuggerBreakOnNextLine => throw new NotImplementedException();
 
     public ushort DebuggerPort => throw new NotImplementedException();
