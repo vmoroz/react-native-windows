@@ -1,7 +1,7 @@
 {
   "type": "prerelease",
-  "comment": "Improve Microsoft.ReactNative compilation speed",
+  "comment": "Drop WebSocketModule integration tests",
   "packageName": "react-native-windows",
-  "email": "vmorozov@microsoft.com",
+  "email": "julio.rocha@microsoft.com",
   "dependentChangeType": "patch"
 }

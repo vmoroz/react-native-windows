@@ -1,7 +1,7 @@
 {
   "type": "prerelease",
-  "comment": "Integrate 1/31 Nightly RN Build",
+  "comment": "[Perf] Make DesktopWindowMessage a struct",
   "packageName": "react-native-windows",
-  "email": "ngerlem@microsoft.com",
+  "email": "asklar@microsoft.com",
   "dependentChangeType": "patch"
 }
