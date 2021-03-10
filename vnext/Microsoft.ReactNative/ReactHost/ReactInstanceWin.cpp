@@ -178,8 +178,6 @@ ReactInstanceWin::ReactInstanceWin(
     : Super{reactHost.NativeQueue()},
       m_weakReactHost{&reactHost},
       m_options{options},
-      m_whenCreated{std::move(whenCreated)},
-      m_whenLoaded{std::move(whenLoaded)},
       m_isFastReloadEnabled(options.UseFastRefresh()),
       m_isLiveReloadEnabled(options.UseLiveReload()),
       m_updateUI{std::move(updateUI)},
@@ -190,6 +188,31 @@ ReactInstanceWin::ReactInstanceWin(
           this,
           options.Properties,
           winrt::make<implementation::ReactNotificationService>(options.Notifications))} {
+  m_whenCreated.AsFuture()
+      .Then<Mso::Executors::Inline>(
+          [onCreated = m_options.OnInstanceCreated, reactContext = m_reactContext]() noexcept {
+            if (onCreated) {
+              onCreated.Get()->Invoke(reactContext);
+            }
+          })
+      .Then<Mso::Executors::Inline>([whenCreated = std::move(whenCreated)]() noexcept { whenCreated.SetValue(); });
+  m_whenLoaded.AsFuture()
+      .Then<Mso::Executors::Inline>(
+          [onLoaded = m_options.OnInstanceLoaded, reactContext = m_reactContext](Mso::Maybe<void> &&value) noexcept {
+            if (onLoaded) {
+              onLoaded.Get()->Invoke(reactContext, value.IsError() ? value.TakeError() : Mso::ErrorCode());
+            }
+          })
+      .Then<Mso::Executors::Inline>([whenLoaded = std::move(whenLoaded)](Mso::Maybe<void> &&value) noexcept {
+        whenLoaded.SetValue(std::move(value));
+      });
+  m_whenDestroyedResult = m_whenDestroyed.AsFuture().Then<Mso::Executors::Inline>(
+      [whenLoadFailed = m_whenLoaded, onDestroyed = m_options.OnInstanceDestroyed, reactContext = m_reactContext]() noexcept {
+        whenLoadFailed.TryCancel();
+        if (onDestroyed) {
+          onDestroyed.Get()->Invoke(reactContext);
+        }
+      });
   m_whenCreated.SetValue();
 }
 
@@ -396,10 +419,6 @@ void ReactInstanceWin::Initialize() noexcept {
 
         m_instanceWrapper.Exchange(std::move(instanceWrapper));
 
-        if (auto onCreated = m_options.OnInstanceCreated.Get()) {
-          onCreated->Invoke(Mso::CntPtr<Mso::React::IReactContext>(m_reactContext));
-        }
-
         LoadJSBundles();
 
         if (UseDeveloperSupport() && State() != ReactInstanceState::HasError) {
@@ -466,46 +485,29 @@ void ReactInstanceWin::LoadJSBundles() noexcept {
               return;
             }
 
-            auto &options = strongThis->m_options;
-
             try {
               instanceWrapper->loadBundleSync(Mso::Copy(strongThis->JavaScriptBundleFile()));
+              strongThis->OnReactInstanceLoaded(Mso::ErrorCode{});
             } catch (...) {
-              strongThis->m_state = ReactInstanceState::HasError;
-              strongThis->AbandonJSCallQueue();
               strongThis->OnReactInstanceLoaded(Mso::ExceptionErrorProvider().MakeErrorCode(std::current_exception()));
-              return;
             }
-
-            // All JS bundles successfully loaded.
-            strongThis->OnReactInstanceLoaded(Mso::ErrorCode{});
           }
         });
   }
 }
 
 void ReactInstanceWin::OnReactInstanceLoaded(const Mso::ErrorCode &errorCode) noexcept {
-  if (!m_isLoaded) {
-    Queue().InvokeElsePost([weakThis = Mso::WeakPtr{this}, errorCode]() noexcept {
-      if (auto strongThis = weakThis.GetStrongPtr()) {
-        if (!strongThis->m_isLoaded) {
-          strongThis->m_isLoaded = true;
-          if (!errorCode) {
-            strongThis->m_state = ReactInstanceState::Loaded;
-            strongThis->DrainJSCallQueue();
-          } else {
-            strongThis->m_state = ReactInstanceState::HasError;
-            strongThis->AbandonJSCallQueue();
-          }
-
-          if (auto onLoaded = strongThis->m_options.OnInstanceLoaded.Get()) {
-            onLoaded->Invoke(Mso::CntPtr<IReactContext>(strongThis->m_reactContext), errorCode);
-          }
-
-          strongThis->m_whenLoaded.SetValue();
-        }
-      }
-    });
+  bool isLoadedExpected = false;
+  if (m_isLoaded.compare_exchange_strong(isLoadedExpected, true)) {
+    if (!errorCode) {
+      m_state = ReactInstanceState::Loaded;
+      m_whenLoaded.SetValue();
+      DrainJSCallQueue();
+    } else {
+      m_state = ReactInstanceState::HasError;
+      m_whenLoaded.SetError(errorCode);
+      AbandonJSCallQueue();
+    }
   }
 }
 
@@ -514,7 +516,7 @@ Mso::Future<void> ReactInstanceWin::Destroy() noexcept {
   VerifyIsInQueueElseCrash();
 
   if (m_isDestroyed) {
-    return m_whenDestroyed.AsFuture();
+    return m_whenDestroyedResult;
   }
 
   m_isDestroyed = true;
@@ -523,10 +525,6 @@ Mso::Future<void> ReactInstanceWin::Destroy() noexcept {
 
   if (!m_isLoaded) {
     OnReactInstanceLoaded(Mso::CancellationErrorProvider().MakeErrorCode(true));
-  }
-
-  if (auto onDestroyed = m_options.OnInstanceDestroyed.Get()) {
-    onDestroyed->Invoke(Mso::CntPtr<Mso::React::IReactContext>(m_reactContext));
   }
 
   // Make sure that the instance is not destroyed yet
@@ -544,7 +542,7 @@ Mso::Future<void> ReactInstanceWin::Destroy() noexcept {
     m_jsDispatchQueue.Exchange(nullptr);
   }
 
-  return m_whenDestroyed.AsFuture();
+  return m_whenDestroyedResult;
 }
 
 const ReactOptions &ReactInstanceWin::Options() const noexcept {
