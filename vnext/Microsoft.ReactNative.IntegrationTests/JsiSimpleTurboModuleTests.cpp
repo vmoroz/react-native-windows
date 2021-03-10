@@ -74,18 +74,53 @@ struct MyTrivialTurboModulePackageProvider
 
 TEST_CLASS (JsiSimpleTurboModuleTests) {
   TEST_METHOD(TestInstanceReload) {
+    winrt::event_token onCreatedToken, onLoadedToken, onDestroyToken;
     TestEventService::Initialize();
 
     auto reactNativeHost =
-        TestReactNativeHostHolder(L"JsiSimpleTurboModuleTests", [](ReactNativeHost const &host) noexcept {
+        TestReactNativeHostHolder(L"JsiSimpleTurboModuleTests", [&](ReactNativeHost const &host) noexcept {
           host.PackageProviders().Append(winrt::make<MyTrivialTurboModulePackageProvider>());
+
+          onCreatedToken = host.InstanceSettings().InstanceCreated(
+              [](IInspectable const & /*sender*/, InstanceCreatedEventArgs const & /*args*/) {
+                TestEventService::LogEvent("Instance created event", nullptr);
+                // The created event may happen on any thread.
+              });
+
+          onLoadedToken = host.InstanceSettings().InstanceLoaded(
+              [](IInspectable const & /*sender*/, InstanceLoadedEventArgs const &args) {
+                TestEventService::LogEvent("Instance loaded event", nullptr);
+                // The loaded event must happen in JS thread.
+                TestCheck(ReactContext(args.Context()).JSDispatcher().HasThreadAccess());
+              });
+
+          onDestroyToken = host.InstanceSettings().InstanceDestroyed(
+              [&](IInspectable const & /*sender*/, InstanceDestroyedEventArgs const &args) {
+                TestEventService::LogEvent("Instance destroyed event", nullptr);
+                // The destroy event must happen in JS thread.
+                TestCheck(ReactContext(args.Context()).JSDispatcher().HasThreadAccess());
+              });
         });
 
-    TestEventService::ObserveEvents({TestEvent{"startFromJS called", nullptr}});
+    TestEventService::ObserveEvents({
+        TestEvent{"Instance created event", nullptr},
+        TestEvent{"startFromJS called", nullptr},
+        TestEvent{"Instance loaded event", nullptr},
+    });
 
-    reactNativeHost.Host().ReloadInstance();
+    reactNativeHost.Host().UnloadInstance();
 
-    TestEventService::ObserveEvents({TestEvent{"startFromJS called", nullptr}});
+    TestEventService::ObserveEvents({
+        TestEvent{"Instance destroyed event", nullptr},
+    });
+
+    reactNativeHost.Host().LoadInstance();
+
+    TestEventService::ObserveEvents({
+        TestEvent{"Instance created event", nullptr},
+        TestEvent{"startFromJS called", nullptr},
+        TestEvent{"Instance loaded event", nullptr},
+    });
   }
 };
 
