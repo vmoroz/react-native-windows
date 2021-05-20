@@ -649,7 +649,7 @@ TEST_CLASS (NativeModuleTest) {
 
   NativeModuleTest() {
     m_moduleBuilder = winrt::make<React::ReactModuleBuilderImpl>(m_builderMock);
-    auto provider = React::MakeModuleProvider<SimpleNativeModule>();
+    auto provider = React::MakeModuleProvider<SimpleNativeModule>(React::ReactModuleInfo(L"SimpleNativeModule"));
     m_moduleObject = m_builderMock.CreateModule(provider, m_moduleBuilder);
     m_module = React::ReactNonAbiValue<SimpleNativeModule>::GetPtrUnsafe(m_moduleObject);
   }

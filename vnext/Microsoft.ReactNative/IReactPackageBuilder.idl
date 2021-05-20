@@ -40,4 +40,17 @@ namespace Microsoft.ReactNative
     DOC_STRING("Adds a custom TurboModule that directly uses the JS Engine API (JSI).")
     void AddTurboModule(String moduleName, ReactModuleProvider moduleProvider);
   }
+
+  interface IReactPackageBuilder2 requires IReactPackageBuilder
+  {
+    DOC_STRING("Adds a custom native module. See @ReactModuleProvider.")
+    void AddDispatchedModule(String moduleName, ReactModuleProvider moduleProvider, IReactPropertyName dispatcherName);
+  }
+
+  runtimeclass ReactPackageBuilder :
+      [default]IReactPackageBuilder,
+      IReactPackageBuilderExperimental,
+      IReactPackageBuilder2
+  {
+  }
 } // namespace Microsoft.ReactNative

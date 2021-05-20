@@ -178,4 +178,13 @@ Microsoft::ReactNative::IReactPropertyBag ReactPropertyBagHelper::CreateProperty
   VerifyElseCrashSz(false, "Not implemented");
 }
 
+
+IReactPropertyName ReactDispatcherHelper::UIDispatcherProperty() {
+  return nullptr;
+}
+
+IReactPropertyName ReactDispatcherHelper::JSDispatcherProperty() {
+  return nullptr;
+}
+
 } // namespace winrt::Microsoft::ReactNative

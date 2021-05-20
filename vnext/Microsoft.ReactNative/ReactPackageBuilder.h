@@ -9,10 +9,13 @@
 #endif
 #include "winrt/Microsoft.ReactNative.h"
 
-namespace winrt::Microsoft::ReactNative {
+namespace winrt::Microsoft::ReactNative::implementation {
 
-struct ReactPackageBuilder
-    : winrt::implements<ReactPackageBuilder, IReactPackageBuilder, IReactPackageBuilderExperimental> {
+struct ReactPackageBuilder : winrt::implements<
+                                 ReactPackageBuilder,
+                                 IReactPackageBuilder,
+                                 IReactPackageBuilderExperimental,
+                                 IReactPackageBuilder2> {
   ReactPackageBuilder(
       std::shared_ptr<NativeModulesProvider> const &modulesProvider,
 #ifndef CORE_ABI
@@ -25,7 +28,15 @@ struct ReactPackageBuilder
 #ifndef CORE_ABI
   void AddViewManager(hstring const &viewManagerName, ReactViewManagerProvider const &viewManagerProvider) noexcept;
 #endif
+
+ public: // IReactPackageBuilderExperimental
   void AddTurboModule(hstring const &moduleName, ReactModuleProvider const &moduleProvider) noexcept;
+
+ public: // IReactPackageBuilder2
+  void AddDispatchedModule(
+      hstring const &moduleName,
+      ReactModuleProvider const &moduleProvider,
+      IReactPropertyName const &dispatcherName) noexcept;
 
  private:
   std::shared_ptr<NativeModulesProvider> m_modulesProvider;
@@ -35,4 +46,4 @@ struct ReactPackageBuilder
   std::shared_ptr<TurboModulesProvider> m_turboModulesProvider;
 };
 
-} // namespace winrt::Microsoft::ReactNative
+} // namespace winrt::Microsoft::ReactNative::implementation

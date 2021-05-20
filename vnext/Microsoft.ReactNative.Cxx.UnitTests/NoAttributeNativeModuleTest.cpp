@@ -551,8 +551,9 @@ struct SimpleNativeModule2 {
 
 /*static*/ std::string SimpleNativeModule2::StaticMessage;
 
-void GetReactModuleInfo(SimpleNativeModule2 *, React::ReactModuleBuilder<SimpleNativeModule2> &moduleBuilder) noexcept {
-  moduleBuilder.RegisterModuleName(L"SimpleNativeModule2");
+void RegisterReactModule(
+    SimpleNativeModule2 *,
+    React::ReactModuleBuilder<SimpleNativeModule2> &moduleBuilder) noexcept {
   moduleBuilder.RegisterInitMethod(&SimpleNativeModule2::Initialize);
   moduleBuilder.RegisterMethod(&SimpleNativeModule2::Add, L"Add");
   moduleBuilder.RegisterMethod(&SimpleNativeModule2::Negate, L"Negate");
@@ -654,7 +655,7 @@ TEST_CLASS (NoAttributeNativeModuleTest) {
 
   NoAttributeNativeModuleTest() {
     m_moduleBuilder = winrt::make<React::ReactModuleBuilderImpl>(m_builderMock);
-    auto provider = React::MakeModuleProvider<SimpleNativeModule2>();
+    auto provider = React::MakeModuleProvider<SimpleNativeModule2>(React::ReactModuleInfo(L"SimpleNativeModule2"));
     m_moduleObject = m_builderMock.CreateModule(provider, m_moduleBuilder);
     auto reactModule = m_moduleObject.as<React::IReactNonAbiValue>();
     m_module = React::ReactNonAbiValue<SimpleNativeModule2>::GetPtrUnsafe(m_moduleObject);
