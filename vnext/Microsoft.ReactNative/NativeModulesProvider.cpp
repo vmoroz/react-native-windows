@@ -55,7 +55,7 @@ void NativeModulesProvider::AddModuleProvider(
     winrt::hstring const &moduleName,
     ReactModuleProvider const &moduleProvider,
     IReactPropertyName const &dispatcherName) noexcept {
-  m_moduleProviders.emplace(to_string(moduleName), std::pair(moduleProvider, dispatcherName));
+  m_moduleProviders.emplace(to_string(moduleName), std::make_pair(moduleProvider, dispatcherName));
 }
 
 } // namespace winrt::Microsoft::ReactNative
