@@ -9,25 +9,24 @@
 
 namespace winrt::Microsoft::ReactNative {
 
-const ModuleRegistration *ModuleRegistration::s_head{nullptr};
+const ReactModuleRegistration *ReactModuleRegistration::s_head{nullptr};
 
-ModuleRegistration::ModuleRegistration(ReactModuleInfo &&moduleInfo) noexcept
-    : m_moduleInfo(std::move(moduleInfo)), m_next(s_head) {
+ReactModuleRegistration::ReactModuleRegistration(ReactModuleInfo &&moduleInfo) noexcept
+    : m_moduleInfo{std::move(moduleInfo)}, m_next{s_head} {
   s_head = this;
 }
 
 void AddAttributedModules(ReactPackageBuilder const &packageBuilder) noexcept {
-  for (auto const *reg = ModuleRegistration::Head(); reg != nullptr; reg = reg->Next()) {
+  for (auto const *reg = ReactModuleRegistration::Head(); reg != nullptr; reg = reg->Next()) {
     packageBuilder.AddDispatchedModule(
-        reg->ModuleInfo().ModuleName, reg->MakeModuleProvider(), reg->ModuleInfo().DispatcherName.Handle());
+        reg->ModuleInfo().ModuleName, reg->MakeModuleProvider(), reg->ModuleInfo().DispatcherName);
   }
 }
 
 bool TryAddAttributedModule(ReactPackageBuilder const &packageBuilder, std::wstring_view moduleName) noexcept {
-  for (auto const *reg = ModuleRegistration::Head(); reg != nullptr; reg = reg->Next()) {
+  for (auto const *reg = ReactModuleRegistration::Head(); reg != nullptr; reg = reg->Next()) {
     if (moduleName == reg->ModuleInfo().ModuleName) {
-      packageBuilder.AddDispatchedModule(
-          moduleName, reg->MakeModuleProvider(), reg->ModuleInfo().DispatcherName.Handle());
+      packageBuilder.AddDispatchedModule(moduleName, reg->MakeModuleProvider(), reg->ModuleInfo().DispatcherName);
       return true;
     }
   }

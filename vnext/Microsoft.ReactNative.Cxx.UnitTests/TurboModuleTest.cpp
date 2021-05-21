@@ -1244,8 +1244,7 @@ TEST_CLASS (TurboModuleTest) {
 
   TurboModuleTest() {
     m_moduleBuilder = winrt::make<React::ReactModuleBuilderImpl>(m_builderMock);
-    auto provider =
-        React::MakeTurboModuleProvider<MyTurboModule, MyTurboModuleSpec>(React::ReactModuleInfo(L"MyTurboModule"));
+    auto provider = React::MakeTurboModuleProvider<MyTurboModule, MyTurboModuleSpec>();
     m_moduleObject = m_builderMock.CreateModule(provider, m_moduleBuilder);
     m_module = React::ReactNonAbiValue<MyTurboModule>::GetPtrUnsafe(m_moduleObject);
   }

@@ -41,8 +41,8 @@
 // REACT_MODULE(MyModule, dispatcherName = UIDispatcher, moduleName = L"myModule")
 // REACT_MODULE(MyModule, L"myModule", dispatcherName = UIDispatcher)
 #define REACT_MODULE(                                                                                           \
-    /* moduleStruct, [opt, named] moduleName, [opt, named] eventEmitterName, [opt, named] dispatcherName */...) \
-  INTERNAL_REACT_MODULE(__VA_ARGS__)(__VA_ARGS__)
+    moduleStruct, /* [opt, named] moduleName, [opt, named] eventEmitterName, [opt, named] dispatcherName */...) \
+  INTERNAL_REACT_MODULE(moduleStruct, __VA_ARGS__)
 
 // REACT_INIT(method)
 // Arguments:
@@ -883,7 +883,7 @@ struct ReactModuleBuilder {
         m_eventEmitterName(info.EventEmitterName) {}
 
   template <int I>
-  void RegisterModule(ReactAttributeId<I>) noexcept {
+  void VisitModuleMembers(ReactAttributeId<I>) noexcept {
     ReactMemberInfoIterator<TModule>{}.template ForEachMember<I + 1>(*this);
   }
 
@@ -981,7 +981,7 @@ template <class TModule>
 struct ReactModuleVerifier {
   static constexpr VerificationResult VerifyMember(std::wstring_view name, ReactMemberKind memberKind) noexcept {
     ReactModuleVerifier verifier{name, memberKind};
-    RegisterReactModule(static_cast<TModule *>(nullptr), verifier);
+    VisitReactModuleMembers(static_cast<TModule *>(nullptr), verifier);
     return verifier.m_result;
   }
 
@@ -989,7 +989,7 @@ struct ReactModuleVerifier {
       : m_memberName{memberName}, m_memberKind{memberKind} {}
 
   template <int I>
-  constexpr void RegisterModule(ReactAttributeId<I>) noexcept {
+  constexpr void VisitModuleMembers(ReactAttributeId<I>) noexcept {
     ReactMemberInfoIterator<TModule>{}.template ForEachMember<I + 1>(*this);
   }
 
@@ -1185,11 +1185,11 @@ struct ReactModuleTraits {
 
 // Create a module provider for TModule type.
 template <class TModule>
-inline ReactModuleProvider MakeModuleProvider(ReactModuleInfo const &moduleInfo) noexcept {
-  return [moduleInfo](IReactModuleBuilder const &moduleBuilder) noexcept {
+inline ReactModuleProvider MakeModuleProvider() noexcept {
+  return [](IReactModuleBuilder const &moduleBuilder) noexcept {
     auto [moduleWrapper, module] = ReactModuleTraits<TModule>::Factory();
-    auto builder = ReactModuleBuilder(module, moduleBuilder, moduleInfo);
-    RegisterReactModule(module, builder);
+    auto builder = ReactModuleBuilder(module, moduleBuilder, GetReactModuleInfo(module));
+    VisitReactModuleMembers(module, builder);
     builder.CompleteRegistration();
     return moduleWrapper;
   };
@@ -1197,9 +1197,9 @@ inline ReactModuleProvider MakeModuleProvider(ReactModuleInfo const &moduleInfo)
 
 // Create a module provider for TModule type that satisfies the TModuleSpec.
 template <class TModule, class TModuleSpec>
-inline ReactModuleProvider MakeTurboModuleProvider(ReactModuleInfo const &moduleInfo) noexcept {
+inline ReactModuleProvider MakeTurboModuleProvider() noexcept {
   TModuleSpec::template ValidateModule<TModule>();
-  return MakeModuleProvider<TModule>(moduleInfo);
+  return MakeModuleProvider<TModule>();
 }
 
 } // namespace winrt::Microsoft::ReactNative
