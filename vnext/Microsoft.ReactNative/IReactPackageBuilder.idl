@@ -41,12 +41,19 @@ namespace Microsoft.ReactNative
     void AddTurboModule(String moduleName, ReactModuleProvider moduleProvider);
   }
 
+  [webhosthidden]
+  DOC_STRING("Extends the @IReactPackageBuilder interface with the new @.AddDispatchedModule method.")
   interface IReactPackageBuilder2 requires IReactPackageBuilder
   {
-    DOC_STRING("Adds a custom native module. See @ReactModuleProvider.")
+    DOC_STRING(
+      "Adds a custom native module with a dispatcher name where to run the module methods. "
+      "The dispatcher name is used to retrieve the @IReactDispatcher from the @IReactContext.Properties. "
+      "See @ReactModuleProvider, @IReactPropertyName.")
     void AddDispatchedModule(String moduleName, ReactModuleProvider moduleProvider, IReactPropertyName dispatcherName);
   }
 
+  [webhosthidden]
+  DOC_STRING("Builds ReactNative package with the set of native modules and view managers.")
   runtimeclass ReactPackageBuilder :
       [default]IReactPackageBuilder,
       IReactPackageBuilderExperimental,
