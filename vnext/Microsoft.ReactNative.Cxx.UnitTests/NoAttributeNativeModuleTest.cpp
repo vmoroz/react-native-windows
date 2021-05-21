@@ -552,7 +552,7 @@ struct SimpleNativeModule2 {
 /*static*/ std::string SimpleNativeModule2::StaticMessage;
 
 React::ReactModuleInfo const &GetReactModuleInfo(SimpleNativeModule2 *) {
-  static React::ReactModuleInfo moduleInfo(L"SimpleNativeModule2", L"", nullptr);
+  static React::ReactModuleInfo moduleInfo(L"SimpleNativeModule2");
   return moduleInfo;
 }
 

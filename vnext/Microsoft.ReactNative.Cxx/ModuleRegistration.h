@@ -5,9 +5,8 @@
 // vnext/Microsoft.ReactNative.Cxx/README.md
 
 #pragma once
-#include <string>
+#include <string_view>
 #include <tuple>
-#include "ReactPropertyBag.h"
 #include "winrt/Microsoft.ReactNative.h"
 
 // We implement optional parameter macros based on the StackOverflow discussion:
@@ -100,6 +99,7 @@
 
 namespace winrt::Microsoft::ReactNative {
 
+// Support optional named arguments for the REACT_MODULE macro-attribute.
 struct ReactNamedArgs {
   template <typename T>
   struct Arg {
@@ -140,6 +140,7 @@ struct ReactNamedArgs {
   }
 };
 
+// The module information required for its registration.
 struct ReactModuleInfo {
   std::wstring_view ModuleName;
   std::wstring_view EventEmitterName;
@@ -156,6 +157,7 @@ struct ReactModuleInfo {
   }
 };
 
+// The base abstract class for module registration.
 struct ReactModuleRegistration {
   ReactModuleRegistration(ReactModuleInfo &&moduleInfo) noexcept;
 
@@ -180,9 +182,11 @@ struct ReactModuleRegistration {
   static const ReactModuleRegistration *s_head;
 };
 
+// Adds all registered modules to the package builder.
 void AddAttributedModules(ReactPackageBuilder const &packageBuilder) noexcept;
 void AddAttributedModules(IReactPackageBuilder const &packageBuilder) noexcept;
 
+// Tries to add a registered module with the moduleName. It returns true if succeeded, or false otherwise.
 bool TryAddAttributedModule(ReactPackageBuilder const &packageBuilder, std::wstring_view moduleName) noexcept;
 bool TryAddAttributedModule(IReactPackageBuilder const &packageBuilder, std::wstring_view moduleName) noexcept;
 
