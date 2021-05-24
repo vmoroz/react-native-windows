@@ -610,16 +610,22 @@ void ReactInstanceWin::InitJSMessageThread() noexcept {
 
 void ReactInstanceWin::InitNativeMessageThread() noexcept {
   // Native queue was already given us in constructor.
-  m_nativeMessageThread.Exchange(
-      std::make_shared<MessageDispatchQueue>(Queue(), Mso::MakeWeakMemberFunctor(this, &ReactInstanceWin::OnError)));
+  m_nativeMessageThread.Exchange(std::make_shared<MessageDispatchQueue>(
+      Queue(), MessageDispatchQueueCallbacks{Mso::MakeWeakMemberFunctor(this, &ReactInstanceWin::OnError)}));
 }
 
 void ReactInstanceWin::InitUIMessageThread() noexcept {
   // Native queue was already given us in constructor.
-  m_uiQueue = winrt::Microsoft::ReactNative::implementation::ReactDispatcher::GetUIDispatchQueue(m_options.Properties);
+  using namespace winrt::Microsoft::ReactNative;
+  m_uiQueue = implementation::ReactDispatcher::GetUIDispatchQueue(m_options.Properties);
   VerifyElseCrashSz(m_uiQueue, "No UI Dispatcher provided");
-  m_uiMessageThread.Exchange(
-      std::make_shared<MessageDispatchQueue>(m_uiQueue, Mso::MakeWeakMemberFunctor(this, &ReactInstanceWin::OnError)));
+  MessageDispatchQueueCallbacks callbacks{};
+  callbacks.OnError = Mso::MakeWeakMemberFunctor(this, &ReactInstanceWin::OnError);
+  callbacks.OnShutdownStarting = [reactContext = m_reactContext]() noexcept {
+    reactContext->Notifications().SendNotification(
+        implementation::ReactDispatcherHelper::UIDispatcherShutdownNotificationName(), nullptr, nullptr);
+  };
+  m_uiMessageThread.Exchange(std::make_shared<MessageDispatchQueue>(m_uiQueue, std::move(callbacks)));
 
   auto batchingUIThread = Microsoft::ReactNative::MakeBatchingQueueThread(m_uiMessageThread.Load());
   m_batchingUIThread = batchingUIThread;

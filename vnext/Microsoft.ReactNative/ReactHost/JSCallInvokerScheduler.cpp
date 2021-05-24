@@ -49,8 +49,11 @@ JSCallInvokerScheduler::JSCallInvokerScheduler(
     Mso::Functor<void(const Mso::ErrorCode &)> &&errorHandler,
     Mso::Promise<void> &&whenQuit) noexcept
     : m_callInvoker(callInvoker) {
-  m_jsMessageThread = std::make_shared<Mso::React::MessageDispatchQueue>(
-      Mso::DispatchQueue::MakeLooperQueue(), std::move(errorHandler), std::move(whenQuit));
+  Mso::React::MessageDispatchQueueCallbacks callbacks{};
+  callbacks.OnError = std::move(errorHandler);
+  callbacks.OnShutdownCompleted = [whenQuit = std::move(whenQuit)]() noexcept { whenQuit.SetValue(); };
+  m_jsMessageThread =
+      std::make_shared<Mso::React::MessageDispatchQueue>(Mso::DispatchQueue::MakeLooperQueue(), std::move(callbacks));
 }
 
 JSCallInvokerScheduler::~JSCallInvokerScheduler() noexcept {

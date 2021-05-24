@@ -11,7 +11,7 @@ using namespace Windows::Foundation;
 namespace winrt::Microsoft::ReactNative::implementation {
 
 ReactDispatcher::ReactDispatcher(Mso::DispatchQueue &&queue) noexcept
-    : m_queue(std::move(queue)), m_messageQueue(std::make_shared<Mso::React::MessageDispatchQueue>(m_queue, nullptr)) {}
+    : m_queue(std::move(queue)), m_messageQueue(std::make_shared<Mso::React::MessageDispatchQueue>(m_queue)) {}
 
 bool ReactDispatcher::HasThreadAccess() noexcept {
   return m_queue.HasThreadAccess();
@@ -68,6 +68,12 @@ std::shared_ptr<facebook::react::MessageQueueThread> ReactDispatcher::GetMessage
 
 /*static*/ void ReactDispatcher::SetUIThreadDispatcher(IReactPropertyBag const &properties) noexcept {
   properties.Set(UIDispatcherProperty(), UIThreadDispatcher());
+}
+
+/*static*/ IReactPropertyName ReactDispatcher::UIDispatcherShutdownNotificationName() noexcept {
+  static IReactPropertyName uiDispatcherShutdownNotificationName{ReactPropertyBagHelper::GetName(
+      ReactPropertyBagHelper::GetNamespace(L"ReactNative.Dispatcher"), L"UIDispatcherShutdown")};
+  return uiDispatcherShutdownNotificationName;
 }
 
 /*static*/ IReactPropertyName ReactDispatcher::JSDispatcherProperty() noexcept {

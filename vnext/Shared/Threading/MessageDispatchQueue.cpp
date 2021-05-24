@@ -6,6 +6,7 @@
 #include <errorCode/exceptionErrorProvider.h>
 #include <eventWaitHandle/eventWaitHandle.h>
 #include "MessageDispatchQueue.h"
+#include "MsoUtils.h"
 
 namespace Mso::React {
 
@@ -15,12 +16,8 @@ namespace Mso::React {
 
 MessageDispatchQueue::MessageDispatchQueue(
     Mso::DispatchQueue const &dispatchQueue,
-    Mso::Functor<void(const Mso::ErrorCode &)> &&errorHandler,
-    Mso::Promise<void> &&whenQuit) noexcept
-    : m_dispatchQueue{dispatchQueue},
-      m_stopped{false},
-      m_errorHandler{std::move(errorHandler)},
-      m_whenQuit{std::move(whenQuit)} {}
+    MessageDispatchQueueCallbacks &&callbacks) noexcept
+    : m_dispatchQueue{dispatchQueue}, m_stopped{false}, m_callbacks{std::move(callbacks)} {}
 
 MessageDispatchQueue::~MessageDispatchQueue() noexcept {}
 
@@ -40,7 +37,7 @@ void MessageDispatchQueue::tryFunc(const std::function<void()> &func) noexcept {
   try {
     func();
   } catch (const std::exception & /*ex*/) {
-    if (auto errorHandler = m_errorHandler.Get()) {
+    if (auto errorHandler = m_callbacks.OnError.Get()) {
       errorHandler->Invoke(Mso::ExceptionErrorProvider().MakeErrorCode(std::current_exception()));
     }
   }
@@ -77,14 +74,10 @@ void MessageDispatchQueue::runOnQueueSync(std::function<void()> &&func) {
 // Once quitSynchronous() returns, no further work should run on the queue.
 void MessageDispatchQueue::quitSynchronous() {
   m_stopped = true;
-  runSync([]() noexcept {});
+  runSync(m_callbacks.OnShutdownStarting ? m_callbacks.OnShutdownStarting : Mso::VoidFunctor::DoNothing());
 
-  if (m_whenQuit) {
-    m_dispatchQueue.Post([sharedThis = shared_from_this()]() noexcept {
-      if (auto thisPtr = sharedThis.get()) {
-        thisPtr->m_whenQuit.SetValue();
-      }
-    });
+  if (m_callbacks.OnShutdownCompleted) {
+    m_dispatchQueue.Post(Mso::Copy(m_callbacks.OnShutdownCompleted));
   }
 }
 
