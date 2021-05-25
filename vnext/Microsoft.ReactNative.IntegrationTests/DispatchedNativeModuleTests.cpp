@@ -103,7 +103,7 @@ struct TestDispatchedModule4 {
   void Initialize(ReactContext const &reactContext) noexcept {
     m_reactContext = reactContext;
     // Check that the method is run in the JS dispatcher thread.
-    TestCheck(m_reactContext.JSDispatcher().HasThreadAccess());
+    TestCheck(m_reactContext.Properties().Get(CustomDispatcherId()).HasThreadAccess());
     TestEventService::LogEvent("TestDispatchedModule4::Initialize", nullptr);
   }
 

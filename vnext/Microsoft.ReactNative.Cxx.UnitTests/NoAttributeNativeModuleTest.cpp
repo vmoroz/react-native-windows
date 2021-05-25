@@ -558,7 +558,7 @@ React::ReactModuleInfo const &GetReactModuleInfo(SimpleNativeModule2 *) {
 
 void VisitReactModuleMembers(
     SimpleNativeModule2 *,
-    React::ReactModuleBuilder<SimpleNativeModule2> &moduleBuilder) noexcept {
+    React::ReactModuleWrapper<SimpleNativeModule2> &moduleBuilder) noexcept {
   moduleBuilder.RegisterInitMethod(&SimpleNativeModule2::Initialize);
   moduleBuilder.RegisterMethod(&SimpleNativeModule2::Add, L"Add");
   moduleBuilder.RegisterMethod(&SimpleNativeModule2::Negate, L"Negate");
