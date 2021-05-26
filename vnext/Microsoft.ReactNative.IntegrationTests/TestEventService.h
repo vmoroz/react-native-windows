@@ -49,7 +49,7 @@ struct TestEventService {
     LogEvent(eventName, JSValue{std::forward<TValue>(value)});
   }
 
-    // Logs new event for value types that need an explicit call to JSValue constructor.
+  // Logs new event for value types that need an explicit call to JSValue constructor.
   static void LogEvent(std::string_view eventName) noexcept {
     LogEvent(eventName, JSValue(nullptr));
   }
