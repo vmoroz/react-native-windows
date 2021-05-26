@@ -887,6 +887,7 @@ template <class TModule>
 struct ReactModuleWrapper {
   ReactModuleWrapper(IReactModuleBuilder const &moduleBuilder, ReactModuleInfo const &info) noexcept
       : m_moduleBuilder(moduleBuilder), m_moduleInfo(info) {
+    VisitReactModuleMembers(static_cast<TModule *>(nullptr), *this);
     m_moduleBuilder.AddInitializer([this](IReactContext const &reactContext) noexcept {
       m_reactContext = reactContext;
       if (m_moduleInfo.DispatcherName && m_moduleInfo.DispatcherName != ReactDispatcherHelper::JSDispatcherProperty()) {
@@ -943,7 +944,10 @@ struct ReactModuleWrapper {
   template <class TMethod>
   void RegisterSyncMethod(TMethod method, std::wstring_view name) noexcept {
     auto syncMethodDelegate = ModuleSyncMethodInfo<TMethod>::GetMethodDelegate(this, method);
-    m_moduleBuilder.AddSyncMethod(name, syncMethodDelegate);
+    m_moduleBuilder.AddSyncMethod(
+        name, [this, syncMethodDelegate](IJSValueReader const &argReader, IJSValueWriter const &argWriter) noexcept {
+          RunSync([syncMethodDelegate, argReader, argWriter]() noexcept { syncMethodDelegate(argReader, argWriter); });
+        });
   }
 
   template <class TMethod>
@@ -994,6 +998,7 @@ struct ReactModuleWrapper {
       std::unique_lock lock{mutex};
       m_dispatcher.Post([&]() noexcept {
         std::unique_lock lock{mutex};
+        callback();
         isCompleted = true;
         lock.unlock();
         cv.notify_all();
@@ -1238,8 +1243,6 @@ inline ReactModuleProvider MakeModuleProvider() noexcept {
   return [](IReactModuleBuilder const &moduleBuilder) noexcept {
     ReactNonAbiValue<ReactModuleWrapper<TModule>> moduleWrapper{
         std::in_place, moduleBuilder, GetReactModuleInfo(static_cast<TModule *>(nullptr))};
-    ReactModuleWrapper<TModule> *wrapperPtr = moduleWrapper.GetPtr();
-    VisitReactModuleMembers(static_cast<TModule *>(nullptr), *wrapperPtr);
     return moduleWrapper;
   };
 }

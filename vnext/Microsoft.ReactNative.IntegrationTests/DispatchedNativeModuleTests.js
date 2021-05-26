@@ -3,14 +3,35 @@
 
 import { NativeModules } from 'react-native';
 
-const {
-  TestDispatchedModule1,
-  TestDispatchedModule2,
-  TestDispatchedModule3,
-  TestDispatchedModule4,
-} = NativeModules;
+// The test class which methods are called from C++ code.
+class TestDriver {
+  testDefaultDispatchedModule() {
+    const { DefaultDispatchedModule } = NativeModules;
+    const myConst = DefaultDispatchedModule.myConst;
+    DefaultDispatchedModule.testAsyncMethod(myConst);
+    DefaultDispatchedModule.testSyncMethod(myConst);
+  }
 
-TestDispatchedModule1.testCheckDispatcher();
-TestDispatchedModule2.testCheckDispatcher();
-TestDispatchedModule3.testCheckDispatcher();
-TestDispatchedModule4.testCheckDispatcher();
+  testUIDispatchedModule() {
+    const { UIDispatchedModule } = NativeModules;
+    const myConst = UIDispatchedModule.myConst;
+    UIDispatchedModule.testAsyncMethod(myConst);
+    UIDispatchedModule.testSyncMethod(myConst);
+  }
+
+  testJSDispatchedModule() {
+    const { JSDispatchedModule } = NativeModules;
+    const myConst = JSDispatchedModule.myConst;
+    JSDispatchedModule.testAsyncMethod(myConst);
+    JSDispatchedModule.testSyncMethod(myConst);
+  }
+
+  testCustomDispatchedModule() {
+    const { CustomDispatchedModule } = NativeModules;
+    const myConst = CustomDispatchedModule.myConst;
+    CustomDispatchedModule.testAsyncMethod(myConst);
+    CustomDispatchedModule.testSyncMethod(myConst);
+  }
+}
+
+global.__fbBatchedBridge.registerLazyCallableModule('TestDriver', () => new TestDriver());

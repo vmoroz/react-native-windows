@@ -19,46 +19,76 @@ namespace ReactNativeIntegrationTests {
 namespace {
 
 // The default dispatcher is the JSDispatcher.
-REACT_MODULE(TestDispatchedModule1)
-struct TestDispatchedModule1 {
+// We check that all methods run in the JSDispatcher.
+REACT_MODULE(DefaultDispatchedModule)
+struct DefaultDispatchedModule {
   REACT_INIT(Initialize)
   void Initialize(ReactContext const &reactContext) noexcept {
     m_reactContext = reactContext;
-    // Check that the method is run in the JS dispatcher thread.
     TestCheck(m_reactContext.JSDispatcher().HasThreadAccess());
-    TestEventService::LogEvent("TestDispatchedModule1::Initialize", nullptr);
+    TestEventService::LogEvent("DefaultDispatchedModule::Initialize");
   }
 
-  REACT_METHOD(TestCheckDispatcher, L"testCheckDispatcher")
-  void TestCheckDispatcher() noexcept {
-    // Check that the method is run in the JS dispatcher thread.
+  REACT_CONSTANT_PROVIDER(GetConstants)
+  void GetConstants(ReactConstantProvider &constantProvider) noexcept {
+    constantProvider.Add(L"myConst", 42);
     TestCheck(m_reactContext.JSDispatcher().HasThreadAccess());
-    TestCheck(!m_reactContext.UIDispatcher().HasThreadAccess());
-    TestEventService::LogEvent("TestDispatchedModule1::testCheckDispatcher completed", nullptr);
+    TestEventService::LogEvent("DefaultDispatchedModule::GetConstants");
+  }
+
+  REACT_METHOD(TestAsyncMethod, L"testAsyncMethod")
+  void TestAsyncMethod(int32_t value) noexcept {
+    TestCheck(m_reactContext.JSDispatcher().HasThreadAccess());
+    TestCheckEqual(42, value);
+    TestEventService::LogEvent("DefaultDispatchedModule::TestAsyncMethod");
+  }
+
+  REACT_SYNC_METHOD(TestSyncMethod, L"testSyncMethod")
+  int32_t TestSyncMethod(int32_t value) noexcept {
+    TestCheck(m_reactContext.JSDispatcher().HasThreadAccess());
+    TestCheckEqual(42, value);
+    TestEventService::LogEvent("DefaultDispatchedModule::TestSyncMethod");
+    return value;
   }
 
  private:
   ReactContext m_reactContext;
 };
 
-// The UIDispatcher is the STA thread dispatcher. The UIDispatcher is a special predefined
-// alias for ReactDispatcherHelper::UIDispatcherProperty() that only can be used in the REACT_MODULE macro.
-REACT_MODULE(TestDispatchedModule2, dispatcherName = UIDispatcher)
-struct TestDispatchedModule2 {
+// The UIDispatcher is the STA thread dispatcher.
+// The UIDispatcher name used in the attribute macro is a special predefined alias
+// for ReactDispatcherHelper::UIDispatcherProperty() that only can be used in the REACT_MODULE macro.
+// Alternatively, we can use the ReactDispatcherHelper::UIDispatcherProperty() directly.
+// We check that all module methods run in the UI thread.
+REACT_MODULE(UIDispatchedModule, dispatcherName = UIDispatcher)
+struct UIDispatchedModule {
   REACT_INIT(Initialize)
   void Initialize(ReactContext const &reactContext) noexcept {
     m_reactContext = reactContext;
-    // Check that the method is run in the JS dispatcher thread.
     TestCheck(m_reactContext.UIDispatcher().HasThreadAccess());
-    TestEventService::LogEvent("TestDispatchedModule2::Initialize", nullptr);
+    TestEventService::LogEvent("UIDispatchedModule::Initialize");
   }
 
-  REACT_METHOD(TestCheckDispatcher, L"testCheckDispatcher")
-  void TestCheckDispatcher() noexcept {
-    // Check that the method is run in the UI dispatcher thread.
+  REACT_CONSTANT_PROVIDER(GetConstants)
+  void GetConstants(ReactConstantProvider &constantProvider) noexcept {
+    constantProvider.Add(L"myConst", 42);
     TestCheck(m_reactContext.UIDispatcher().HasThreadAccess());
-    TestCheck(!m_reactContext.JSDispatcher().HasThreadAccess());
-    TestEventService::LogEvent("TestDispatchedModule2::testCheckDispatcher completed", nullptr);
+    TestEventService::LogEvent("UIDispatchedModule::GetConstants");
+  }
+
+  REACT_METHOD(TestAsyncMethod, L"testAsyncMethod")
+  void TestAsyncMethod(int32_t value) noexcept {
+    TestCheck(m_reactContext.UIDispatcher().HasThreadAccess());
+    TestCheckEqual(42, value);
+    TestEventService::LogEvent("UIDispatchedModule::TestAsyncMethod");
+  }
+
+  REACT_SYNC_METHOD(TestSyncMethod, L"testSyncMethod")
+  int32_t TestSyncMethod(int32_t value) noexcept {
+    TestCheck(m_reactContext.UIDispatcher().HasThreadAccess());
+    TestCheckEqual(42, value);
+    TestEventService::LogEvent("UIDispatchedModule::TestSyncMethod");
+    return value;
   }
 
  private:
@@ -67,22 +97,35 @@ struct TestDispatchedModule2 {
 
 // The JSDispatcher is the default dispatcher. The JSDispatcher is a special predefined
 // alias for ReactDispatcherHelper::JSDispatcherProperty() that only can be used in the REACT_MODULE macro.
-REACT_MODULE(TestDispatchedModule3, dispatcherName = JSDispatcher)
-struct TestDispatchedModule3 {
+REACT_MODULE(JSDispatchedModule, dispatcherName = JSDispatcher)
+struct JSDispatchedModule {
   REACT_INIT(Initialize)
   void Initialize(ReactContext const &reactContext) noexcept {
     m_reactContext = reactContext;
-    // Check that the method is run in the JS dispatcher thread.
     TestCheck(m_reactContext.JSDispatcher().HasThreadAccess());
-    TestEventService::LogEvent("TestDispatchedModule3::Initialize", nullptr);
+    TestEventService::LogEvent("JSDispatchedModule::Initialize");
   }
 
-  REACT_METHOD(TestCheckDispatcher, L"testCheckDispatcher")
-  void TestCheckDispatcher() noexcept {
-    // Check that the method is run in the JS dispatcher thread.
+  REACT_CONSTANT_PROVIDER(GetConstants)
+  void GetConstants(ReactConstantProvider &constantProvider) noexcept {
+    constantProvider.Add(L"myConst", 42);
     TestCheck(m_reactContext.JSDispatcher().HasThreadAccess());
-    TestCheck(!m_reactContext.UIDispatcher().HasThreadAccess());
-    TestEventService::LogEvent("TestDispatchedModule3::testCheckDispatcher completed", nullptr);
+    TestEventService::LogEvent("JSDispatchedModule::GetConstants");
+  }
+
+  REACT_METHOD(TestAsyncMethod, L"testAsyncMethod")
+  void TestAsyncMethod(int32_t value) noexcept {
+    TestCheck(m_reactContext.JSDispatcher().HasThreadAccess());
+    TestCheckEqual(42, value);
+    TestEventService::LogEvent("JSDispatchedModule::TestAsyncMethod");
+  }
+
+  REACT_SYNC_METHOD(TestSyncMethod, L"testSyncMethod")
+  int32_t TestSyncMethod(int32_t value) noexcept {
+    TestCheck(m_reactContext.JSDispatcher().HasThreadAccess());
+    TestCheckEqual(42, value);
+    TestEventService::LogEvent("JSDispatchedModule::TestSyncMethod");
+    return value;
   }
 
  private:
@@ -97,23 +140,35 @@ ReactPropertyId<IReactDispatcher> CustomDispatcherId() noexcept {
 
 // Use custom dispatcher to run tasks sequentially in background threads.
 // We must provide the IReactPropertyName as a value to dispatcherName argument.
-REACT_MODULE(TestDispatchedModule4, dispatcherName = CustomDispatcherId().Handle())
-struct TestDispatchedModule4 {
+REACT_MODULE(CustomDispatchedModule, dispatcherName = CustomDispatcherId().Handle())
+struct CustomDispatchedModule {
   REACT_INIT(Initialize)
   void Initialize(ReactContext const &reactContext) noexcept {
     m_reactContext = reactContext;
-    // Check that the method is run in the JS dispatcher thread.
     TestCheck(m_reactContext.Properties().Get(CustomDispatcherId()).HasThreadAccess());
-    TestEventService::LogEvent("TestDispatchedModule4::Initialize", nullptr);
+    TestEventService::LogEvent("CustomDispatchedModule::Initialize");
   }
 
-  REACT_METHOD(TestCheckDispatcher, L"testCheckDispatcher")
-  void TestCheckDispatcher() noexcept {
-    // Check that the method is run in the custom dispatcher thread, and not in JS or UI dispatcher threads.
+  REACT_CONSTANT_PROVIDER(GetConstants)
+  void GetConstants(ReactConstantProvider &constantProvider) noexcept {
+    constantProvider.Add(L"myConst", 42);
     TestCheck(m_reactContext.Properties().Get(CustomDispatcherId()).HasThreadAccess());
-    TestCheck(!m_reactContext.JSDispatcher().HasThreadAccess());
-    TestCheck(!m_reactContext.UIDispatcher().HasThreadAccess());
-    TestEventService::LogEvent("TestDispatchedModule4::testCheckDispatcher completed", nullptr);
+    TestEventService::LogEvent("CustomDispatchedModule::GetConstants");
+  }
+
+  REACT_METHOD(TestAsyncMethod, L"testAsyncMethod")
+  void TestAsyncMethod(int32_t value) noexcept {
+    TestCheck(m_reactContext.Properties().Get(CustomDispatcherId()).HasThreadAccess());
+    TestCheckEqual(42, value);
+    TestEventService::LogEvent("CustomDispatchedModule::TestAsyncMethod");
+  }
+
+  REACT_SYNC_METHOD(TestSyncMethod, L"testSyncMethod")
+  int32_t TestSyncMethod(int32_t value) noexcept {
+    TestCheck(m_reactContext.Properties().Get(CustomDispatcherId()).HasThreadAccess());
+    TestCheckEqual(42, value);
+    TestEventService::LogEvent("CustomDispatchedModule::TestSyncMethod");
+    return value;
   }
 
  private:
@@ -122,10 +177,10 @@ struct TestDispatchedModule4 {
 
 struct TestPackageProvider : ReactPackageProvider<TestPackageProvider> {
   void CreatePackage(IReactPackageBuilder const &packageBuilder) noexcept {
-    AddModule<TestDispatchedModule1>(packageBuilder);
-    AddModule<TestDispatchedModule2>(packageBuilder);
-    AddModule<TestDispatchedModule3>(packageBuilder);
-    AddModule<TestDispatchedModule4>(packageBuilder);
+    AddModule<DefaultDispatchedModule>(packageBuilder);
+    AddModule<UIDispatchedModule>(packageBuilder);
+    AddModule<JSDispatchedModule>(packageBuilder);
+    AddModule<CustomDispatchedModule>(packageBuilder);
   }
 };
 
@@ -139,25 +194,57 @@ TEST_CLASS (DispatchedNativeModuleTests) {
     auto queueController = DispatcherQueueController::CreateOnDedicatedThread();
     auto uiDispatcher = queueController.DispatcherQueue();
     std::unique_ptr<TestReactNativeHostHolder> reactNativeHost;
+    ReactContext context;
+    IReactInstanceSettings::InstanceLoaded_revoker eventRevoker;
     uiDispatcher.TryEnqueue([&]() noexcept {
       reactNativeHost = std::make_unique<TestReactNativeHostHolder>(
-          L"DispatchedNativeModuleTests", [](ReactNativeHost const &host) noexcept {
+          L"DispatchedNativeModuleTests", [&](ReactNativeHost const &host) noexcept {
             host.PackageProviders().Append(winrt::make<TestPackageProvider>());
-            // Create and store custom dispatcher in the instance property bag. 
+            // Create and store custom dispatcher in the instance property bag.
             host.InstanceSettings().Properties().Set(
                 CustomDispatcherId().Handle(), ReactDispatcher::CreateSerialDispatcher().Handle());
+            eventRevoker = host.InstanceSettings().InstanceLoaded(
+                winrt::auto_revoke, [&](auto &&, InstanceLoadedEventArgs const &args) {
+                  context = ReactContext(args.Context());
+                  TestEventService::LogEvent("ContextAssigned");
+                });
           });
     });
 
     TestEventService::ObserveEvents({
-        TestEvent{"TestDispatchedModule1::Initialize", nullptr},
-        TestEvent{"TestDispatchedModule2::Initialize", nullptr},
-        TestEvent{"TestDispatchedModule3::Initialize", nullptr},
-        TestEvent{"TestDispatchedModule4::Initialize", nullptr},
-        TestEvent{"TestDispatchedModule2::testCheckDispatcher completed", nullptr},
-        TestEvent{"TestDispatchedModule4::testCheckDispatcher completed", nullptr},
-        TestEvent{"TestDispatchedModule1::testCheckDispatcher completed", nullptr},
-        TestEvent{"TestDispatchedModule3::testCheckDispatcher completed", nullptr},
+        TestEvent{"ContextAssigned"},
+    });
+
+    context.CallJSFunction(L"TestDriver", L"testDefaultDispatchedModule");
+    TestEventService::ObserveEvents({
+        TestEvent{"DefaultDispatchedModule::Initialize"},
+        TestEvent{"DefaultDispatchedModule::GetConstants"},
+        TestEvent{"DefaultDispatchedModule::TestSyncMethod"},
+        TestEvent{"DefaultDispatchedModule::TestAsyncMethod"},
+    });
+
+    context.CallJSFunction(L"TestDriver", L"testUIDispatchedModule");
+    TestEventService::ObserveEvents({
+        TestEvent{"UIDispatchedModule::Initialize"},
+        TestEvent{"UIDispatchedModule::GetConstants"},
+        TestEvent{"UIDispatchedModule::TestSyncMethod"},
+        TestEvent{"UIDispatchedModule::TestAsyncMethod"},
+    });
+
+    context.CallJSFunction(L"TestDriver", L"testJSDispatchedModule");
+    TestEventService::ObserveEvents({
+        TestEvent{"JSDispatchedModule::Initialize"},
+        TestEvent{"JSDispatchedModule::GetConstants"},
+        TestEvent{"JSDispatchedModule::TestSyncMethod"},
+        TestEvent{"JSDispatchedModule::TestAsyncMethod"},
+    });
+
+    context.CallJSFunction(L"TestDriver", L"testCustomDispatchedModule");
+    TestEventService::ObserveEvents({
+        TestEvent{"CustomDispatchedModule::Initialize"},
+        TestEvent{"CustomDispatchedModule::GetConstants"},
+        TestEvent{"CustomDispatchedModule::TestSyncMethod"},
+        TestEvent{"CustomDispatchedModule::TestAsyncMethod"},
     });
 
     queueController.ShutdownQueueAsync().get();

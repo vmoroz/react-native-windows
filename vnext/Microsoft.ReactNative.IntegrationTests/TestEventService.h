@@ -20,8 +20,12 @@ using namespace winrt::Microsoft::ReactNative;
 
 struct TestEvent {
   TestEvent() = default;
+
   template <typename TName, typename TValue>
   TestEvent(TName &&name, TValue &&value) : EventName(std::forward<TName>(name)), Value(std::forward<TValue>(value)) {}
+
+  template <typename TName>
+  explicit TestEvent(TName &&name) : EventName(std::forward<TName>(name)) {}
 
   std::string EventName;
   JSValue Value;
@@ -43,6 +47,11 @@ struct TestEventService {
   template <typename TValue>
   static void LogEvent(std::string_view eventName, TValue &&value) noexcept {
     LogEvent(eventName, JSValue{std::forward<TValue>(value)});
+  }
+
+    // Logs new event for value types that need an explicit call to JSValue constructor.
+  static void LogEvent(std::string_view eventName) noexcept {
+    LogEvent(eventName, JSValue(nullptr));
   }
 
   // Blocks current thread and observes all incoming events until we see them all.
