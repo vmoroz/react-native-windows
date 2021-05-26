@@ -22,11 +22,17 @@ namespace {
 // We check that all methods run in the JSDispatcher.
 REACT_MODULE(DefaultDispatchedModule)
 struct DefaultDispatchedModule {
-  REACT_INIT(Initialize)
+  REACT_INITIALIZER(Initialize)
   void Initialize(ReactContext const &reactContext) noexcept {
     m_reactContext = reactContext;
     TestCheck(m_reactContext.JSDispatcher().HasThreadAccess());
     TestEventService::LogEvent("DefaultDispatchedModule::Initialize");
+  }
+
+  REACT_FINALIZER(Finalize)
+  void Finalize() noexcept {
+    TestCheck(m_reactContext.JSDispatcher().HasThreadAccess());
+    TestEventService::LogEvent("DefaultDispatchedModule::Finalize");
   }
 
   REACT_CONSTANT_PROVIDER(GetConstants)
@@ -221,6 +227,7 @@ TEST_CLASS (DispatchedNativeModuleTests) {
         TestEvent{"DefaultDispatchedModule::GetConstants"},
         TestEvent{"DefaultDispatchedModule::TestSyncMethod"},
         TestEvent{"DefaultDispatchedModule::TestAsyncMethod"},
+        TestEvent{"DefaultDispatchedModule::Finalize"},
     });
 
     context.CallJSFunction(L"TestDriver", L"testUIDispatchedModule");
