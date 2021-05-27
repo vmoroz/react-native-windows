@@ -1,6 +1,6 @@
 {
   "type": "prerelease",
-  "comment": "[Fabric] Add support for PlatformColor",
+  "comment": "I18n.AllowRTL should default to true",
   "packageName": "react-native-windows",
   "email": "30809111+acoates-ms@users.noreply.github.com",
   "dependentChangeType": "patch"

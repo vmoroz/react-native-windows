@@ -1,7 +1,7 @@
 {
   "type": "prerelease",
-  "comment": "Fixes bug in BatchingEventEmitter",
+  "comment": "Add uwp version 2.2.12",
   "packageName": "react-native-windows",
-  "email": "erozell@outlook.com",
+  "email": "agnel@microsoft.com",
   "dependentChangeType": "patch"
 }
