@@ -198,60 +198,65 @@ TEST_CLASS (DispatchedNativeModuleTests) {
 
     // Simulate the UI thread using DispatcherQueueController
     auto queueController = DispatcherQueueController::CreateOnDedicatedThread();
-    auto uiDispatcher = queueController.DispatcherQueue();
-    std::unique_ptr<TestReactNativeHostHolder> reactNativeHost;
-    ReactContext context;
-    IReactInstanceSettings::InstanceLoaded_revoker eventRevoker;
-    uiDispatcher.TryEnqueue([&]() noexcept {
-      reactNativeHost = std::make_unique<TestReactNativeHostHolder>(
-          L"DispatchedNativeModuleTests", [&](ReactNativeHost const &host) noexcept {
-            host.PackageProviders().Append(winrt::make<TestPackageProvider>());
-            // Create and store custom dispatcher in the instance property bag.
-            host.InstanceSettings().Properties().Set(
-                CustomDispatcherId().Handle(), ReactDispatcher::CreateSerialDispatcher().Handle());
-            eventRevoker = host.InstanceSettings().InstanceLoaded(
-                winrt::auto_revoke, [&](auto &&, InstanceLoadedEventArgs const &args) {
-                  context = ReactContext(args.Context());
-                  TestEventService::LogEvent("ContextAssigned");
-                });
-          });
-    });
+    {
+      auto uiDispatcher = queueController.DispatcherQueue();
+      std::unique_ptr<TestReactNativeHostHolder> reactNativeHost;
+      ReactContext context;
+      IReactInstanceSettings::InstanceLoaded_revoker eventRevoker;
+      uiDispatcher.TryEnqueue([&]() noexcept {
+        reactNativeHost = std::make_unique<TestReactNativeHostHolder>(
+            L"DispatchedNativeModuleTests", [&](ReactNativeHost const &host) noexcept {
+              host.PackageProviders().Append(winrt::make<TestPackageProvider>());
+              // Create and store custom dispatcher in the instance property bag.
+              host.InstanceSettings().Properties().Set(
+                  CustomDispatcherId().Handle(), ReactDispatcher::CreateSerialDispatcher().Handle());
+              eventRevoker = host.InstanceSettings().InstanceLoaded(
+                  winrt::auto_revoke, [&](auto &&, InstanceLoadedEventArgs const &args) {
+                    context = ReactContext(args.Context());
+                    TestEventService::LogEvent("ContextAssigned");
+                  });
+            });
+      });
+
+      TestEventService::ObserveEvents({
+          TestEvent{"ContextAssigned"},
+      });
+
+      context.CallJSFunction(L"TestDriver", L"testDefaultDispatchedModule");
+      TestEventService::ObserveEvents({
+          TestEvent{"DefaultDispatchedModule::Initialize"},
+          TestEvent{"DefaultDispatchedModule::GetConstants"},
+          TestEvent{"DefaultDispatchedModule::TestSyncMethod"},
+          TestEvent{"DefaultDispatchedModule::TestAsyncMethod"},
+      });
+
+      // context.CallJSFunction(L"TestDriver", L"testUIDispatchedModule");
+      // TestEventService::ObserveEvents({
+      //    TestEvent{"UIDispatchedModule::Initialize"},
+      //    TestEvent{"UIDispatchedModule::GetConstants"},
+      //    TestEvent{"UIDispatchedModule::TestSyncMethod"},
+      //    TestEvent{"UIDispatchedModule::TestAsyncMethod"},
+      //});
+
+      // context.CallJSFunction(L"TestDriver", L"testJSDispatchedModule");
+      // TestEventService::ObserveEvents({
+      //    TestEvent{"JSDispatchedModule::Initialize"},
+      //    TestEvent{"JSDispatchedModule::GetConstants"},
+      //    TestEvent{"JSDispatchedModule::TestSyncMethod"},
+      //    TestEvent{"JSDispatchedModule::TestAsyncMethod"},
+      //});
+
+      // context.CallJSFunction(L"TestDriver", L"testCustomDispatchedModule");
+      // TestEventService::ObserveEvents({
+      //    TestEvent{"CustomDispatchedModule::Initialize"},
+      //    TestEvent{"CustomDispatchedModule::GetConstants"},
+      //    TestEvent{"CustomDispatchedModule::TestSyncMethod"},
+      //    TestEvent{"CustomDispatchedModule::TestAsyncMethod"},
+      //});
+    }
 
     TestEventService::ObserveEvents({
-        TestEvent{"ContextAssigned"},
-    });
-
-    context.CallJSFunction(L"TestDriver", L"testDefaultDispatchedModule");
-    TestEventService::ObserveEvents({
-        TestEvent{"DefaultDispatchedModule::Initialize"},
-        TestEvent{"DefaultDispatchedModule::GetConstants"},
-        TestEvent{"DefaultDispatchedModule::TestSyncMethod"},
-        TestEvent{"DefaultDispatchedModule::TestAsyncMethod"},
         TestEvent{"DefaultDispatchedModule::Finalize"},
-    });
-
-    context.CallJSFunction(L"TestDriver", L"testUIDispatchedModule");
-    TestEventService::ObserveEvents({
-        TestEvent{"UIDispatchedModule::Initialize"},
-        TestEvent{"UIDispatchedModule::GetConstants"},
-        TestEvent{"UIDispatchedModule::TestSyncMethod"},
-        TestEvent{"UIDispatchedModule::TestAsyncMethod"},
-    });
-
-    context.CallJSFunction(L"TestDriver", L"testJSDispatchedModule");
-    TestEventService::ObserveEvents({
-        TestEvent{"JSDispatchedModule::Initialize"},
-        TestEvent{"JSDispatchedModule::GetConstants"},
-        TestEvent{"JSDispatchedModule::TestSyncMethod"},
-        TestEvent{"JSDispatchedModule::TestAsyncMethod"},
-    });
-
-    context.CallJSFunction(L"TestDriver", L"testCustomDispatchedModule");
-    TestEventService::ObserveEvents({
-        TestEvent{"CustomDispatchedModule::Initialize"},
-        TestEvent{"CustomDispatchedModule::GetConstants"},
-        TestEvent{"CustomDispatchedModule::TestSyncMethod"},
-        TestEvent{"CustomDispatchedModule::TestAsyncMethod"},
     });
 
     queueController.ShutdownQueueAsync().get();

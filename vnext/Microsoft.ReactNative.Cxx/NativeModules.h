@@ -937,6 +937,12 @@ struct ReactModuleWrapper {
     });
   }
 
+  ~ReactModuleWrapper() {
+    for (auto const &finalizer : m_moduleFinalizers) {
+      finalizer();
+    }
+  }
+
   void InitializeModule() noexcept;
 
   template <int I>
