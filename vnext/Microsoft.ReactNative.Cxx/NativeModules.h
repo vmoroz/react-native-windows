@@ -20,7 +20,9 @@
 #include <type_traits>
 
 // REACT_MODULE(moduleStruct, [opt, named] moduleName, [opt, named] eventEmitterName, [opt, named] dispatcherName)
-// Arguments:
+// Annotates a C++ struct as a ReactNative module.
+//
+// ### Parameters
 // - moduleStruct (required) - the struct name the macro is attached to.
 // - moduleName (optional, named) - the module name visible to JavaScript. Default is the moduleStruct name.
 // - eventEmitterName (optional, named) - the default event emitter name used by REACT_EVENT.
@@ -30,12 +32,12 @@
 //     The ReactDispatcher is used to call all module methods including the constructor and destructor.
 //     Default is the JSDispatcher.
 //
-// REACT_MODULE annotates a C++ struct as a ReactNative module.
-// It can be any struct which can be instantiated using a default constructor.
-// Note that it must be a 'struct', not 'class' because macro does a forward declaration using the 'struct' keyword.
+// ### Remarks
+// The native module can be any struct which can be instantiated using a default constructor.
+// Note that it must be a 'struct', not 'class' because macro does a forward declaration using the `struct` keyword.
 //
-// The optional properties can be provided either in the right position or using a named assignment in any order.
-// The only requirement is that the named properties must be after the positional properties.
+// The optional arguments can be provided either in the right position or using a named assignment in any order.
+// The only requirement is that the named arguments must be after the positional arguments.
 // For example:
 // REACT_MODULE(MyModule)
 // REACT_MODULE(MyModule, L"myModule", L"RCTDeviceEventEmitter", UIDispatcher)
@@ -46,113 +48,213 @@
     moduleStruct, /* [opt, named] moduleName, [opt, named] eventEmitterName, [opt, named] dispatcherName */...) \
   INTERNAL_REACT_MODULE(moduleStruct, __VA_ARGS__)
 
-// REACT_INITIALIZER(method)
-// Arguments:
-// - method (required) - the method name the macro is attached to.
+// REACT_INITIALIZER(method, [opt, named] useJSDispatcher)
+// Annotates a method that is called when a native module is initialized.
 //
+// ### Parameters
+// - method (required) - the method name the macro is attached to.
+// - useJSDispatcher (optional, named) - Boolean value indicating to use JSDispatcher to call the method. Otherwise,
+//     it is called in the dispatcher associated with the module.
+//
+// ### Remarks
 // REACT_INITIALIZER annotates a method that is called when a native module is initialized.
-// It must have 'ReactContext const &' parameter. It must be an instance method.
+// It must have 'ReactContext const &' parameter. It must be an instance method. There can be zero or more
+// initializer methods.
 // The method is called in the dispatcher associated with the module before any other method. It is a good place to
 // initialize thread-specific resources. It provides the ReactContext to the module which can be used to interact with
 // other parts of React Native application.
-#define REACT_INITIALIZER(method) INTERNAL_REACT_MEMBER_2_ARGS(InitializerMethod, method)
+// The useJSDispatcher parameter can be used to call the method in JSDispatcher instead of the module dispatcher.
+// It is possible to have two or more initializers that are called in module dispatcher and/or JSDispatcher.
+//
+// The optional arguments can be provided either in the right position or using a named assignment in any order.
+// The only requirement is that the named arguments must be after the positional arguments.
+// For example:
+// REACT_INITIALIZER(Initializer)
+// REACT_INITIALIZER(Initializer, useJSDispatcher = true)
+// REACT_INITIALIZER(Initializer, true)
+#define REACT_INITIALIZER(method, /* [opt, named] useJSDispatcher */...) \
+  INTERNAL_REACT_MEMBER(InitializerMethod, method, unused1, unused2, useJSDispatcher, invalid, invalid, 0, __VA_ARGS__)
 
 // An alias for REACT_INITIALIZER for backward compatibility.
-#define REACT_INIT(method) REACT_INITIALIZER(method)
+#define REACT_INIT(method, ...) REACT_INITIALIZER(method, __VA_ARGS__)
 
-// REACT_FINALIZER(method)
-// Arguments:
+// REACT_FINALIZER(method, [opt, named] useJSDispatcher)
+// ### Parameters
 // - method (required) - the method name the macro is attached to.
+// - useJSDispatcher (optional, named) - Boolean value indicating to use JSDispatcher to call the method. Otherwise,
+//     it is called in the dispatcher associated with the module.
 //
+// ### Remarks
 // REACT_FINALIZER annotates a method that is called when the native module is destroyed.
-// It must not have any arguments. It must be an instance method.
+// It must be an instance method. There can be zero or more finalizer methods.
 // This method is called when the React Native instance destroys native module.
 // It is called in the dispatcher associated with the module and it is a good place to release thread-specific
 // resources. It is different from the destructor because it is possible that the module instance is kept alive by some
 // other code. E.g. when a module inherits from std::enable_shared_from_this and some other code keeps a std::shared_ptr
 // to the module.
-#define REACT_FINALIZER(method) INTERNAL_REACT_MEMBER_2_ARGS(FinalizerMethod, method)
-
-// REACT_METHOD(method, [opt] methodName)
-// Arguments:
-// - method (required) - the method name the macro is attached to.
-// - methodName (optional) - the method name visible to JavaScript. Default is the method name.
+// The useJSDispatcher parameter can be used to call the method in JSDispatcher instead of the module dispatcher.
+// It is possible to have two or more finalizers that are called in module dispatcher and/or JSDispatcher.
 //
+// The optional arguments can be provided either in the right position or using a named assignment in any order.
+// The only requirement is that the named arguments must be after the positional arguments.
+// For example:
+// REACT_FINALIZER(Finalizer)
+// REACT_FINALIZER(Finalizer, useJSDispatcher = true)
+// REACT_FINALIZER(Finalizer, true)
+#define REACT_FINALIZER(method, /* [opt, named] useJSDispatcher */...) \
+  INTERNAL_REACT_MEMBER(FinalizerMethod, method, unused1, unused2, useJSDispatcher, invalid, invalid, 0, __VA_ARGS__)
+
+// REACT_METHOD(method, [opt, named] methodName, [opt, named] useJSDispatcher)
+// ### Parameters
+// - method (required) - the method name the macro is attached to.
+// - methodName (optional, named) - the method name visible to JavaScript. Default is the method name.
+// - useJSDispatcher (optional, named) - Boolean value indicating to use JSDispatcher to call the method. Otherwise,
+//     it is called in the dispatcher associated with the module.
+//
+// ### Remarks
 // REACT_METHOD annotates an asynchronous method exported to JavaScript.
-// The method is called in the dispatcher associated with the module.
+// It can be an instance or static method.
+// The method is called in the dispatcher associated with the module. The call
+// is always asynchronous even// if it is done in JSDispatcher.
+// The useJSDispatcher parameter can be used to call the method in JSDispatcher instead of the module dispatcher.
+//
 // To return a value:
-// - Return void and have a Callback as a last parameter. The Callback type can be any std::function like type. E.g.
+// - Return void and have a Callback as a last parameter. The Callback type can be any std::function-like type. E.g.
 //   Func<void(Args...)>.
-// - Return void and have two callbacks as last parameters. One is used to return value and another an error.
+// - Return void and have two callbacks as last parameters. One is used to return value and another an error. The order
+//   of the callbacks could be different and must match the JavaScript code conventions.
 // - Return void and have a ReactPromise as a last parameter. In JavaScript the method returns Promise.
 // - Instead of void we can return winrt::fire_and_forget to enable co-routines.
 // - Return non-void value. In JavaScript it is treated as a method with one Callback. Return std::pair<Error, Value> to
 //   be able to communicate error condition.
-// It can be an instance or static method.
-#define REACT_METHOD(/* method, [opt] methodName */...) INTERNAL_REACT_MEMBER(__VA_ARGS__)(AsyncMethod, __VA_ARGS__)
-
-// REACT_SYNC_METHOD(method, [opt] methodName)
-// Arguments:
-// - method (required) - the method name the macro is attached to.
-// - methodName (optional) - the method name visible to JavaScript. Default is the method name.
 //
-// REACT_SYNC_METHOD annotates a method that is called synchronously.
+// The optional arguments can be provided either in the right position or using a named assignment in any order.
+// The only requirement is that the named arguments must be after the positional arguments.
+// For example:
+// REACT_METHOD(MyMethod)
+// REACT_METHOD(MyMethod, L"myMethod")
+// REACT_METHOD(MyMethod, L"myMethod", true)
+// REACT_METHOD(MyMethod, L"myMethod", useJSDispatcher = true)
+// REACT_METHOD(MyMethod, useJSDispatcher = true)
+// REACT_METHOD(MyMethod, methodName = L"myMethod", useJSDispatcher = true)
+#define REACT_METHOD(method, /* [opt, named] methodName, [opt, named] useJSDispatcher */...) \
+  INTERNAL_REACT_MEMBER(AsyncMethod, method, methodName, unused, useJSDispatcher, 0, invalid, 1, __VA_ARGS__)
+
+// REACT_SYNC_METHOD(method, [opt, named] methodName, [opt, named] useJSDispatcher)
+// Annotates a method that is called synchronously.
+//
+// ### Parameters
+// - method (required) - the method name the macro is attached to.
+// - methodName (optional, named) - the method name visible to JavaScript. Default is the method name.
+// - useJSDispatcher (optional, named) - Boolean value indicating to use JSDispatcher to call the method. Otherwise,
+//     it is called in the dispatcher associated with the module.
+//
+// ### Remarks
+// The method must return non-void value type. It can be an instance or static method.
 // It must be used rarely because it may cause out-of-order execution when used along with asynchronous methods.
 // The method is called in the dispatcher associated with the module. It means that for non-JSDispatcher we block the JS
-// thread until the method is completed in the module's dispatcher. The method must return non-void value type. It can
-// be an instance or static method.
-#define REACT_SYNC_METHOD(/* method, [opt] methodName */...) INTERNAL_REACT_MEMBER(__VA_ARGS__)(SyncMethod, __VA_ARGS__)
-
-// REACT_CONSTANT_PROVIDER(method)
-// Arguments:
-// - method (required) - the method name the macro is attached to.
+// thread until the method is completed in the module's dispatcher.
+// The useJSDispatcher parameter can be used to call the method in JSDispatcher instead of the module dispatcher.
 //
-// REACT_CONSTANT_PROVIDER annotates a method that defines constants.
-// It must have 'ReactConstantProvider &' parameter.
+// The optional arguments can be provided either in the right position or using a named assignment in any order.
+// The only requirement is that the named arguments must be after the positional arguments.
+// For example:
+// REACT_SYNC_METHOD(MyMethod)
+// REACT_SYNC_METHOD(MyMethod, L"myMethod")
+// REACT_SYNC_METHOD(MyMethod, L"myMethod", true)
+// REACT_SYNC_METHOD(MyMethod, L"myMethod", useJSDispatcher = true)
+// REACT_SYNC_METHOD(MyMethod, useJSDispatcher = true)
+// REACT_SYNC_METHOD(MyMethod, methodName = L"myMethod", useJSDispatcher = true)
+#define REACT_SYNC_METHOD(method, /* [opt, named] methodName, [opt, named] useJSDispatcher */...) \
+  INTERNAL_REACT_MEMBER(SyncMethod, method, methodName, unused, useJSDispatcher, 0, invalid, 1, __VA_ARGS__)
+
+// REACT_CONSTANT_PROVIDER(method, [opt, named] useJSDispatcher)
+// Annotates a method that provides constants.
+//
+// ### Parameters
+// - method (required) - the method name the macro is attached to.
+// - useJSDispatcher (optional, named) - Boolean value indicating to use JSDispatcher to call the method. Otherwise,
+//     it is called in the dispatcher associated with the module.
+//
+// ### Remarks
+// It must have 'ReactConstantProvider &' parameter. It can be an instance or static method. There can be zero or more
+// constant provider methods.
+// The constant providers are always called after the initializer methods.
 // The method is called in the dispatcher associated with the module. It means that for non-JSDispatcher we block
 // the JS thread until the method is completed in the module's dispatcher.
-// It can be an instance or static method.
-#define REACT_CONSTANT_PROVIDER(method) INTERNAL_REACT_MEMBER_2_ARGS(ConstantMethod, method)
-
-// REACT_CONSTANT(field, [opt] constantName)
-// Arguments:
-// - field (required) - the field name the macro is attached to.
-// - constantName (optional) - the constant name visible to JavaScript. Default is the field name.
+// The useJSDispatcher parameter can be used to call the method in JSDispatcher instead of the module dispatcher.
+// It is possible to have two or more constant providers that are called in module dispatcher and/or JSDispatcher.
 //
-// REACT_CONSTANT annotates a field that defines a constant.
+// The optional arguments can be provided either in the right position or using a named assignment in any order.
+// The only requirement is that the named arguments must be after the positional arguments.
+// For example:
+// REACT_CONSTANT_PROVIDER(GetConstants)
+// REACT_CONSTANT_PROVIDER(GetConstants, useJSDispatcher = true)
+// REACT_CONSTANT_PROVIDER(GetConstants, true)
+#define REACT_CONSTANT_PROVIDER(method, /* [opt, named] useJSDispatcher */...) \
+  INTERNAL_REACT_MEMBER(ConstantMethod, method, unused1, unused2, useJSDispatcher, invalid, invalid, 0, __VA_ARGS__)
+
+// REACT_CONSTANT(field, [opt, named] constantName, [opt, named] useJSDispatcher)
+// Annotates a field that defines a constant.
+//
+// ### Parameters
+// - field (required) - the field name the macro is attached to.
+// - constantName (optional, named) - the constant name visible to JavaScript. Default is the field name.
+// - useJSDispatcher (optional, named) - Boolean value indicating to use JSDispatcher to call the method that reads
+//     the constant. Otherwise, it is called in the dispatcher associated with the module.
+//
+// ### Remarks
 // It can be an instance or static field.
 // This annotation creates an internal constant provider method which is called in the dispatcher associated with the
 // module. It means that for non-JSDispatcher we block the JS thread until the method is completed in the module's
 // dispatcher.
-#define REACT_CONSTANT(/* field, [opt] constantName */...) \
-  INTERNAL_REACT_MEMBER(__VA_ARGS__)(ConstantField, __VA_ARGS__)
-
-// REACT_EVENT(field, [opt] eventName, [opt] eventEmitterName)
-// Arguments:
-// - field (required) - the field name the macro is attached to.
-// - eventName (optional) - the JavaScript event name. Default is the field name.
-// - eventEmitterName (optional) - the JavaScript module event emitter name. Default is module's eventEmitterName which
-//   is by default 'RCTDeviceEventEmitter'.
+// The useJSDispatcher parameter can be used to call the method in JSDispatcher instead of the module dispatcher.
+// It is possible to have two or more constant providers that are called in module dispatcher and/or JSDispatcher.
 //
-// REACT_EVENT annotates a field that helps raising a JavaScript event.
+// The optional arguments can be provided either in the right position or using a named assignment in any order.
+// The only requirement is that the named arguments must be after the positional arguments.
+// For example:
+// REACT_CONSTANT(MyConst)
+// REACT_CONSTANT(MyConst, L"myConst")
+// REACT_CONSTANT(MyConst, L"myConst", true)
+// REACT_CONSTANT(MyConst, L"myConst", useJSDispatcher = true)
+// REACT_CONSTANT(MyConst, useJSDispatcher = true)
+// REACT_CONSTANT(MyConst, constantName = L"myConst", useJSDispatcher = true)
+#define REACT_CONSTANT(field, /* [opt, named] constantName, [opt, named] useJSDispatcher */...) \
+  INTERNAL_REACT_MEMBER(ConstantField, field, constantName, unused, useJSDispatcher, 0, invalid, 1, __VA_ARGS__)
+
+// REACT_EVENT(field, [opt, named] eventName, [opt, named] eventEmitterName, [opt, named] useJSDispatcher)
+// Annotates a field that helps raising a JavaScript event.
+//
+// ### Parameters
+// - field (required) - the field name the macro is attached to.
+// - eventName (optional, named) - the JavaScript event name. Default is the field name.
+// - eventEmitterName (optional, named) - the JavaScript module event emitter name. Default is module's eventEmitterName
+//   which is by default 'RCTDeviceEventEmitter'.
+// - useJSDispatcher (optional, named) - Boolean value indicating to use JSDispatcher to call the method that reads
+//     the constant. Otherwise, it is called in the dispatcher associated with the module.
+//
+// ### Remarks
 // The field type can be any std::function like type. E.g. Func<void(Args...)>.
-// It can have zero or more event arguments.
-// It must be an instance field.
+// It can have zero or more event arguments. It must be an instance field.
 // This annotation creates an internal initializer method which is called in the dispatcher associated with the
 // module. The JS thread is not blocked. All initializers are coalesced into a single call. The event initializers are
 // called before initializers annotated with the REACT_INITIALIZER macro.
 // In JavaScript we use `NativeEventEmitter` to handle events.
-#define REACT_EVENT(/* field, [opt] eventName, [opt] eventEmitterName */...) \
-  INTERNAL_REACT_MEMBER(__VA_ARGS__)(EventField, __VA_ARGS__)
+#define REACT_EVENT(                                                                                     \
+    field, /* [opt, named] eventName, [opt, named] eventEmitterName, [opt, named] useJSDispatcher */...) \
+  INTERNAL_REACT_MEMBER(EventField, field, eventName, eventEmitterName, useJSDispatcher, 0, 1, 2, __VA_ARGS__)
 
-// REACT_FUNCTION(field, [opt] functionName, [opt] moduleName)
-// Arguments:
+// REACT_FUNCTION(field, [opt, named] functionName, [opt, named] moduleName, [opt, named] useJSDispatcher)
+// Annotates a field that helps calling a JavaScript function.
+//
+// ### Parameters
 // - field (required) - the field name the macro is attached to.
 // - functionName (optional) - the JavaScript function name. Default is the field name.
 // - moduleName (optional) - the JavaScript module name. Default is module's moduleName which is by default the class
 //   name.
 //
-// REACT_FUNCTION annotates a field that helps calling a JavaScript function.
+// ### Remarks
 // The field type can be any std::function like type. E.g. Func<void(Args...)>.
 // It can have zero or more event arguments.
 // It must be an instance field.
@@ -160,8 +262,9 @@
 // module. The JS thread is not blocked. All initializers are coalesced into a single call. The function initializers
 // are called before initializers annotated with the REACT_INITIALIZER macro.
 // In JavaScript we use `global.__fbBatchedBridge.registerLazyCallableModule` to register a callable function.
-#define REACT_FUNCTION(/* field, [opt] functionName, [opt] moduleName */...) \
-  INTERNAL_REACT_MEMBER(__VA_ARGS__)(FunctionField, __VA_ARGS__)
+#define REACT_FUNCTION(                                                                               \
+    field, /* [opt, named] functionName, [opt, named] moduleName, [opt, named] useJSDispatcher */...) \
+  INTERNAL_REACT_MEMBER(EventField, field, functionName, moduleName, useJSDispatcher, 0, 1, 2, __VA_ARGS__)
 
 #define REACT_SHOW_METHOD_SIGNATURES(methodName, signatures)                      \
   " (see details below in output).\n"                                             \
@@ -900,11 +1003,15 @@ enum class ReactMemberKind {
 
 template <ReactMemberKind MemberKind>
 struct ReactMemberAttribute : std::integral_constant<ReactMemberKind, MemberKind> {
-  constexpr ReactMemberAttribute(std::wstring_view jsMemberName, std::wstring_view jsModuleName) noexcept
-      : JSMemberName{jsMemberName}, JSModuleName{jsModuleName} {}
+  constexpr ReactMemberAttribute(
+      std::wstring_view jsMemberName,
+      std::wstring_view jsModuleName,
+      bool useJSDispatcher) noexcept
+      : JSMemberName{jsMemberName}, JSModuleName{jsModuleName}, UseJSDispatcher{useJSDispatcher} {}
 
   std::wstring_view JSMemberName;
   std::wstring_view JSModuleName;
+  bool UseJSDispatcher;
 };
 
 using ReactInitializerMethodAttribute = ReactMemberAttribute<ReactMemberKind::InitializerMethod>;
