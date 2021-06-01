@@ -26,9 +26,10 @@ struct ReactDispatcher : implements<ReactDispatcher, default_interface<IReactDis
   static IReactPropertyName UIDispatcherProperty() noexcept;
   static IReactDispatcher GetUIDispatcher(IReactPropertyBag const &properties) noexcept;
   static void SetUIThreadDispatcher(IReactPropertyBag const &properties) noexcept;
-  static IReactPropertyName UIDispatcherShutdownNotificationName() noexcept;
+  static IReactPropertyName UIDispatcherShutdownNotification() noexcept;
 
   static IReactPropertyName JSDispatcherProperty() noexcept;
+  static IReactPropertyName JSDispatcherShutdownNotification() noexcept;
 
  private:
   Mso::DispatchQueue m_queue;
@@ -50,12 +51,16 @@ struct ReactDispatcherHelper {
     return ReactDispatcher::UIDispatcherProperty();
   }
 
-  static IReactPropertyName UIDispatcherShutdownNotificationName() noexcept {
-    return ReactDispatcher::UIDispatcherShutdownNotificationName();
+  static IReactPropertyName UIDispatcherShutdownNotification() noexcept {
+    return ReactDispatcher::UIDispatcherShutdownNotification();
   }
 
   static IReactPropertyName JSDispatcherProperty() noexcept {
     return ReactDispatcher::JSDispatcherProperty();
+  }
+
+  static IReactPropertyName JSDispatcherShutdownNotification() noexcept {
+    return ReactDispatcher::JSDispatcherShutdownNotification();
   }
 };
 

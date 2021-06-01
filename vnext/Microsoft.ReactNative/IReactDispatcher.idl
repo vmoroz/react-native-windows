@@ -59,6 +59,13 @@ namespace Microsoft.ReactNative
       "Use this notification to run completion tasks that require @IReactContext.UIDispatcher. "
       "After this notification no other work can be done in the @IReactContext.UIDispatcher by the module until "
       "the React instance is reloaded.")
-    static IReactPropertyName UIDispatcherShutdownNotificationName { get; };
+    static IReactPropertyName UIDispatcherShutdownNotification { get; };
+
+    DOC_STRING(
+      "Gets name of the `JSDispatcher` shutdown notification name for the @IReactNotificationService.\n"
+      "Use this notification to run completion tasks that require @IReactContext.JSDispatcher. "
+      "After this notification no other work can be done in the @IReactContext.JSDispatcher by the module until "
+      "the React instance is reloaded.")
+    static IReactPropertyName JSDispatcherShutdownNotification { get; };
   }
 } // namespace ReactNative

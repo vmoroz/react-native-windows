@@ -70,16 +70,22 @@ std::shared_ptr<facebook::react::MessageQueueThread> ReactDispatcher::GetMessage
   properties.Set(UIDispatcherProperty(), UIThreadDispatcher());
 }
 
-/*static*/ IReactPropertyName ReactDispatcher::UIDispatcherShutdownNotificationName() noexcept {
-  static IReactPropertyName uiDispatcherShutdownNotificationName{ReactPropertyBagHelper::GetName(
+/*static*/ IReactPropertyName ReactDispatcher::UIDispatcherShutdownNotification() noexcept {
+  static IReactPropertyName uiDispatcherShutdownNotification{ReactPropertyBagHelper::GetName(
       ReactPropertyBagHelper::GetNamespace(L"ReactNative.Dispatcher"), L"UIDispatcherShutdown")};
-  return uiDispatcherShutdownNotificationName;
+  return uiDispatcherShutdownNotification;
 }
 
 /*static*/ IReactPropertyName ReactDispatcher::JSDispatcherProperty() noexcept {
   static IReactPropertyName jsThreadDispatcherProperty{ReactPropertyBagHelper::GetName(
       ReactPropertyBagHelper::GetNamespace(L"ReactNative.Dispatcher"), L"JSDispatcher")};
   return jsThreadDispatcherProperty;
+}
+
+/*static*/ IReactPropertyName ReactDispatcher::JSDispatcherShutdownNotification() noexcept {
+  static IReactPropertyName jsDispatcherShutdownNotification{ReactPropertyBagHelper::GetName(
+      ReactPropertyBagHelper::GetNamespace(L"ReactNative.Dispatcher"), L"JSDispatcherShutdown")};
+  return jsDispatcherShutdownNotification;
 }
 
 } // namespace winrt::Microsoft::ReactNative::implementation

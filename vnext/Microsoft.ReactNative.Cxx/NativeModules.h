@@ -551,21 +551,6 @@ struct MethodSignature {
 // Module registration helpers
 //==============================================================================
 
-template <class TMethod>
-struct ModuleInitMethodInfo;
-
-template <class TModule>
-struct ModuleInitMethodInfo<void (TModule::*)(ReactContext const &) noexcept> {
-  using ModuleType = TModule;
-  using MethodType = void (TModule::*)(ReactContext const &) noexcept;
-
-  static InitializerDelegate GetInitializer(void *moduleWrapper, MethodType method) noexcept {
-    return [moduleWrapper, method](ReactContext const &reactContext) noexcept {
-      (UnwrapReactModule<ModuleType>(moduleWrapper)->*method)(reactContext);
-    };
-  }
-};
-
 // ==== MakeCallbackSignatures =================================================
 
 template <class TResult, class TOutputCallbackTuple>
@@ -1032,6 +1017,14 @@ template <class TModule>
 struct ReactModuleWrapper {
   ReactModuleWrapper(IReactModuleBuilder const &moduleBuilder, ReactModuleInfo const &info) noexcept
       : m_moduleBuilder(moduleBuilder), m_moduleInfo(info) {
+    if (!info.DispatcherName || info.DispatcherName == ReactDispatcherHelper::JSDispatcherProperty()) {
+      m_isJSDispatcherModule = true;
+    } else if (info.DispatcherName == ReactDispatcherHelper::UIDispatcherProperty()) {
+      m_isUIDispatcherModule = true;
+    } else {
+      m_isCustomDispatcherModule = true;
+    }
+
     VisitReactModuleMembers(static_cast<TModule *>(nullptr), *this);
     m_moduleBuilder.AddInitializer([this](IReactContext const &reactContext) noexcept {
       m_reactContext = reactContext;
@@ -1041,16 +1034,52 @@ struct ReactModuleWrapper {
       } else {
         InitializeModule();
       }
+
+      if (!m_hasUIFinalizer || m_hasJSFinalizer || m_hasCustomFinalizer) {
+        m_jsDispatcherShutdownSubscription = m_reactContext.Notifications().Subscribe(
+            ReactDispatcherHelper::JSDispatcherShutdownNotification(),
+            nullptr,
+            [this](auto && /*sender*/, auto && /*args*/) { FinalizeInJSDispatcher(); });
+      }
+      if (m_hasUIFinalizer) {
+        m_uiDispatcherShutdownSubscription = m_reactContext.Notifications().Subscribe(
+            ReactDispatcherHelper::UIDispatcherShutdownNotification(),
+            nullptr,
+            [this](auto && /*sender*/, auto && /*args*/) { FinalizeInUIDispatcher(); });
+      }
     });
   }
 
-  ~ReactModuleWrapper() {
-    for (auto const &finalizer : m_moduleFinalizers) {
-      finalizer();
+  void InitializeModule() noexcept;
+
+  void FinalizeInJSDispatcher() noexcept {
+    for (auto const &finalizer : m_finalizers) {
+      if (finalizer.UseJSDispatcher || m_isJSDispatcherModule) {
+        finalizer.Delegate();
+      }
     }
+
+    if (m_isCustomDispatcherModule) {
+      RunSync([this]() {
+        for (auto const &finalizer : m_finalizers) {
+          if (!finalizer.UseJSDispatcher) {
+            finalizer.Delegate();
+          }
+        }
+      });
+    }
+
+    m_module = nullptr;
+    m_moduleHolder = nullptr;
   }
 
-  void InitializeModule() noexcept;
+  void FinalizeInUIDispatcher() noexcept {
+    for (auto const &finalizer : m_finalizers) {
+      if (!finalizer.UseJSDispatcher && m_isUIDispatcherModule) {
+        finalizer.Delegate();
+      }
+    }
+  }
 
   template <int I>
   void VisitModuleMembers(ReactAttributeId<I>) noexcept {
@@ -1063,80 +1092,119 @@ struct ReactModuleWrapper {
       ReactAttributeId<I> /*attributeId*/,
       [[maybe_unused]] TAttribute attributeInfo) noexcept {
     if constexpr (std::is_same_v<TAttribute, ReactInitializerMethodAttribute>) {
-      RegisterInitializerMethod(member);
+      RegisterInitializerMethod(member, attributeInfo.UseJSDispatcher);
     } else if constexpr (std::is_same_v<TAttribute, ReactFinalizerMethodAttribute>) {
-      RegisterFinalizerMethod(member);
+      RegisterFinalizerMethod(member, attributeInfo.UseJSDispatcher);
     } else if constexpr (std::is_same_v<TAttribute, ReactAsyncMethodAttribute>) {
-      RegisterMethod(member, attributeInfo.JSMemberName);
+      RegisterMethod(member, attributeInfo.JSMemberName, attributeInfo.UseJSDispatcher);
     } else if constexpr (std::is_same_v<TAttribute, ReactSyncMethodAttribute>) {
-      RegisterSyncMethod(member, attributeInfo.JSMemberName);
+      RegisterSyncMethod(member, attributeInfo.JSMemberName, attributeInfo.UseJSDispatcher);
     } else if constexpr (std::is_same_v<TAttribute, ReactConstantMethodAttribute>) {
-      RegisterConstantMethod(member);
+      RegisterConstantMethod(member, attributeInfo.UseJSDispatcher);
     } else if constexpr (std::is_same_v<TAttribute, ReactConstantFieldAttribute>) {
-      RegisterConstantField(member, attributeInfo.JSMemberName);
+      RegisterConstantField(member, attributeInfo.JSMemberName, attributeInfo.UseJSDispatcher);
     } else if constexpr (std::is_same_v<TAttribute, ReactEventFieldAttribute>) {
-      RegisterEventField(member, attributeInfo.JSMemberName, attributeInfo.JSModuleName);
+      RegisterEventField(member, attributeInfo.JSMemberName, attributeInfo.JSModuleName, attributeInfo.UseJSDispatcher);
     } else if constexpr (std::is_same_v<TAttribute, ReactFunctionFieldAttribute>) {
-      RegisterFunctionField(member, attributeInfo.JSMemberName, attributeInfo.JSModuleName);
+      RegisterFunctionField(
+          member, attributeInfo.JSMemberName, attributeInfo.JSModuleName, attributeInfo.UseJSDispatcher);
     }
   }
 
   template <class TMethod>
-  void RegisterInitializerMethod(TMethod method) noexcept {
-    auto initializer = ModuleInitMethodInfo<TMethod>::GetInitializer(this, method);
-    m_moduleInitializers.push_back(std::move(initializer));
+  void RegisterInitializerMethod(TMethod method, bool useJSDispatcher) noexcept {
+    m_initializers.emplace_back(
+        [this, method](ReactContext const &reactContext) noexcept {
+          (UnwrapReactModule<TModule>(this)->*method)(reactContext);
+        },
+        /*IsField:*/ false,
+        /*UseJSDispatcher*/ useJSDispatcher);
   }
 
   template <class TMethod>
-  void RegisterFinalizerMethod(TMethod method) noexcept {
-    m_moduleFinalizers.push_back([this, method]() noexcept { (UnwrapReactModule<TModule>(this)->*method)(); });
+  void RegisterFinalizerMethod(TMethod method, bool useJSDispatcher) noexcept {
+    if (useJSDispatcher || !m_moduleInfo.DispatcherName ||
+        m_moduleInfo.DispatcherName == ReactDispatcher::JSDispatcherName()) {
+      m_hasJSFinalizer = true;
+    } else if (m_moduleInfo.DispatcherName == ReactDispatcher::UIDispatcherName()) {
+      m_hasUIFinalizer = true;
+    } else {
+      m_hasCustomFinalizer = true;
+    }
+    m_finalizers.emplace_back(
+        [this, method]() noexcept { (UnwrapReactModule<TModule>(this)->*method)(); },
+        /*UseJSDispatcher*/ useJSDispatcher);
   }
 
   template <class TMethod>
-  void RegisterMethod(TMethod method, std::wstring_view name) noexcept {
+  void RegisterMethod(TMethod method, std::wstring_view name, bool useJSDispatcher) noexcept {
     MethodReturnType returnType;
     auto methodDelegate = ModuleMethodInfo<TMethod>::GetMethodDelegate(this, method, /*out*/ returnType);
-    m_moduleBuilder.AddMethod(name, returnType, methodDelegate);
+    // The asynchronous methods are run by default in the module's dispatcher.
+    // We override the default dispatcher only if the useJSDispatcher is true.
+    if (useJSDispatcher) {
+      m_moduleBuilder.AddDispatchedMethod(
+          ReactDispatcherHelper::JSDispatcherProperty(), m_module name, returnType, methodDelegate);
+    } else {
+      m_moduleBuilder.AddMethod(name, returnType, methodDelegate);
+    }
   }
 
   template <class TMethod>
-  void RegisterSyncMethod(TMethod method, std::wstring_view name) noexcept {
+  void RegisterSyncMethod(TMethod method, std::wstring_view name, bool useJSDispatcher) noexcept {
     auto syncMethodDelegate = ModuleSyncMethodInfo<TMethod>::GetMethodDelegate(this, method);
-    m_moduleBuilder.AddSyncMethod(
-        name, [this, syncMethodDelegate](IJSValueReader const &argReader, IJSValueWriter const &argWriter) noexcept {
-          RunSync([syncMethodDelegate, argReader, argWriter]() noexcept { syncMethodDelegate(argReader, argWriter); });
-        });
+    // The synchronous methods by default run in the JS dispatcher.
+    // For Native Modules 2.0 we want to use the module's dispatcher.
+    // Thus, we override the default dispatcher only if the useJSDispatcher is false.
+    if (!useJSDispatcher) {
+      m_moduleBuilder.AddDispatchedSyncMethod(m_moduleInfo.DispatcherName, name, syncMethodDelegate);
+    } else {
+      m_moduleBuilder.AddSyncMethod(name, syncMethodDelegate);
+    }
   }
 
   template <class TMethod>
-  void RegisterConstantMethod(TMethod method) noexcept {
+  void RegisterConstantMethod(TMethod method, bool useJSDispatcher) noexcept {
     auto constantProvider = ModuleConstantInfo<TMethod>::GetConstantProvider(this, method);
-    AddConstantProvider(constantProvider);
+    AddConstantProvider(constantProvider, useJSDispatcher);
   }
 
   template <class TField>
-  void RegisterConstantField(TField field, std::wstring_view name) noexcept {
+  void RegisterConstantField(TField field, std::wstring_view name, bool useJSDispatcher) noexcept {
     auto constantProvider = ModuleConstFieldInfo<TField>::GetConstantProvider(this, name, field);
-    AddConstantProvider(constantProvider);
+    AddConstantProvider(constantProvider, useJSDispatcher);
   }
 
   template <class TField>
-  void
-  RegisterEventField(TField field, std::wstring_view eventName, std::wstring_view eventEmitterName = L"") noexcept {
+  void RegisterEventField(
+      TField field,
+      std::wstring_view eventName,
+      std::wstring_view eventEmitterName = L"",
+      bool useJSDispatcher = false) noexcept {
     auto eventHandlerInitializer = ModuleEventFieldInfo<TField>::GetEventHandlerInitializer(
         this, field, eventName, !eventEmitterName.empty() ? eventEmitterName : m_moduleInfo.EventEmitterName);
-    m_fieldInitializers.push_back(eventHandlerInitializer);
+    m_initializers.emplace_back(
+        eventHandlerInitializer,
+        /*IsField:*/ true,
+        /*UseJSDispatcher*/ useJSDispatcher);
   }
 
   template <class TField>
-  void RegisterFunctionField(TField field, std::wstring_view name, std::wstring_view moduleName = L"") noexcept {
+  void RegisterFunctionField(
+      TField field,
+      std::wstring_view name,
+      std::wstring_view moduleName = L"",
+      bool useJSDispatcher = false) noexcept {
     auto functionInitializer = ModuleFunctionFieldInfo<TField>::GetFunctionInitializer(
         this, field, name, !moduleName.empty() ? moduleName : m_moduleInfo.ModuleName);
-    m_fieldInitializers.push_back(functionInitializer);
+    m_initializers.emplace_back(
+        functionInitializer,
+        /*IsField:*/ true,
+        /*UseJSDispatcher*/ useJSDispatcher);
   }
 
-  void AddConstantProvider(ConstantProviderDelegate const &constantProvider) noexcept {
-    m_constantProviders.push_back(constantProvider);
+  void AddConstantProvider(ConstantProviderDelegate const &constantProvider, bool useJSDispatcher) noexcept {
+    m_constantProviders.emplace_back(constantProvider, useJSDispatcher);
     if (m_constantProviders.size() == 1) {
       m_moduleBuilder.AddConstantProvider([this](IJSValueWriter const &constantWriter) noexcept {
         RunSync([this, constantWriter]() noexcept {
@@ -1171,17 +1239,40 @@ struct ReactModuleWrapper {
     return m_module;
   }
 
+  struct InitializerEntry {
+    InitializerDelegate Delegate;
+    bool IsField;
+    bool UseJSDispatcher;
+  };
+
+  struct FinalizerEntry {
+    ReactDispatcherCallback Delegate;
+    bool UseJSDispatcher;
+  };
+
+  struct ConstructorEntry {
+    ConstantProviderDelegate Delegate;
+    bool UseJSDispatcher;
+  };
+
  private:
   void *m_module{};
   IInspectable m_moduleHolder;
   IReactModuleBuilder m_moduleBuilder;
   ReactModuleInfo m_moduleInfo;
-  std::vector<InitializerDelegate> m_fieldInitializers;
-  std::vector<InitializerDelegate> m_moduleInitializers;
-  std::vector<ReactDispatcherCallback> m_moduleFinalizers;
-  std::vector<ConstantProviderDelegate> m_constantProviders;
+  std::vector<InitializerEntry> m_initializers;
+  std::vector<FinalizerEntry> m_finalizers;
+  std::vector<ConstructorEntry> m_constantProviders;
   IReactContext m_reactContext;
   IReactDispatcher m_dispatcher;
+  IReactNotificationSubscription m_jsDispatcherShutdownSubscription;
+  IReactNotificationSubscription m_uiDispatcherShutdownSubscription;
+  bool m_isJSDispatcherModule{false};
+  bool m_isUIDispatcherModule{false};
+  bool m_isCustomDispatcherModule{false};
+  bool m_hasJSFinalizer{false};
+  bool m_hasUIFinalizer{false};
+  bool m_hasCustomFinalizer{false};
 };
 
 struct VerificationResult {
@@ -1441,11 +1532,15 @@ void ReactModuleWrapper<TModule>::InitializeModule() noexcept {
   m_module = module;
 
   // Initialize fields before running the module initializers
-  for (auto const &initializer : m_fieldInitializers) {
-    initializer(m_reactContext);
+  for (auto const &initializer : m_initializers) {
+    if (initializer.IsField) {
+      initializer.Delegate(m_reactContext);
+    }
   }
-  for (auto const &initializer : m_moduleInitializers) {
-    initializer(m_reactContext);
+  for (auto const &initializer : m_initializers) {
+    if (!initializer.IsField) {
+      initializer.Delegate(m_reactContext);
+    }
   }
 }
 
