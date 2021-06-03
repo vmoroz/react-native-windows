@@ -305,6 +305,8 @@
 
 namespace winrt::Microsoft::ReactNative {
 
+using IInspectable = winrt::Windows::Foundation::IInspectable;
+
 // Forward declarations
 template <class TModule>
 TModule *UnwrapReactModule(void *moduleWrapper) noexcept;
@@ -551,6 +553,26 @@ struct MethodSignature {
 // Module registration helpers
 //==============================================================================
 
+template <class TModule>
+struct ModuleInitializerMethodInfo {
+  using MethodType = void (TModule::*)(ReactContext const &) noexcept;
+  static InitializerDelegate
+  GetInitializer(TModule *module, IInspectable const &moduleWrapper, MethodType method) noexcept {
+    return [module, moduleWrapper, method](IReactContext const &reactContext) noexcept {
+      (module->*method)(ReactContext{reactContext});
+    };
+  }
+};
+
+template <class TModule>
+struct ModuleFinalizerMethodInfo {
+  using MethodType = void (TModule::*)() noexcept;
+  static FinalizerDelegate
+  GetFinalizer(TModule *module, IInspectable const &moduleWrapper, MethodType method) noexcept {
+    return [module, moduleWrapper, method]() noexcept { (module->*method)(); };
+  }
+};
+
 // ==== MakeCallbackSignatures =================================================
 
 template <class TResult, class TOutputCallbackTuple>
@@ -634,22 +656,21 @@ struct ModuleMethodInfo;
 template <class TModule, class TResult, class... TArgs>
 struct ModuleMethodInfo<TResult (TModule::*)(TArgs...) noexcept> : ModuleMethodInfoBase<TResult(TArgs...) noexcept> {
   using Super = ModuleMethodInfoBase<TResult(TArgs...) noexcept>;
-  using ModuleType = TModule;
   using MethodType = TResult (TModule::*)(TArgs...) noexcept;
 
   template <size_t... ArgIndex, size_t... CallbackIndex, size_t... PromiseIndex>
   static MethodDelegate GetMethodDelegate(
-      void *moduleWrapper,
+      TModule *module,
+      IInspectable const &moduleWrapper,
       MethodType method,
       std::index_sequence<ArgIndex...>,
       std::index_sequence<CallbackIndex...>,
       std::index_sequence<PromiseIndex...>) noexcept {
-    return [moduleWrapper, method](
+    return [module, moduleWrapper, method](
                IJSValueReader const &argReader,
                [[maybe_unused]] IJSValueWriter const &argWriter,
                [[maybe_unused]] MethodResultCallback const &resolve,
                [[maybe_unused]] MethodResultCallback const &reject) mutable noexcept {
-      ModuleType *module = UnwrapReactModule<ModuleType>(moduleWrapper);
       typename Super::InputArgTuple inputArgs{};
       ReadArgs(argReader, std::get<ArgIndex>(inputArgs)...);
       if constexpr (!Super::IsVoidResult) {
@@ -672,11 +693,15 @@ struct ModuleMethodInfo<TResult (TModule::*)(TArgs...) noexcept> : ModuleMethodI
     };
   }
 
-  static MethodDelegate
-  GetMethodDelegate(void *moduleWrapper, MethodType method, MethodReturnType &returnType) noexcept {
+  static MethodDelegate GetMethodDelegate(
+      TModule *module,
+      IInspectable const moduleWrapper,
+      MethodType method,
+      MethodReturnType &returnType) noexcept {
     (ValidateCoroutineArg<TResult, TArgs>(), ...);
     returnType = Super::GetMethodReturnType();
     return GetMethodDelegate(
+        module,
         moduleWrapper,
         method,
         std::make_index_sequence<Super::InputArgCount>{},
@@ -729,8 +754,11 @@ struct ModuleMethodInfo<TResult (*)(TArgs...) noexcept> : ModuleMethodInfoBase<T
     };
   }
 
-  static MethodDelegate
-  GetMethodDelegate(void * /*moduleWrapper*/, MethodType method, MethodReturnType &returnType) noexcept {
+  static MethodDelegate GetMethodDelegate(
+      void * /*module*/,
+      IInspectable const & /*moduleWrapper*/,
+      MethodType method,
+      MethodReturnType &returnType) noexcept {
     (ValidateCoroutineArg<TResult, TArgs>(), ...);
     returnType = Super::GetMethodReturnType();
     return GetMethodDelegate(
@@ -764,22 +792,24 @@ template <class TModule, class TResult, class... TArgs>
 struct ModuleSyncMethodInfo<TResult (TModule::*)(TArgs...) noexcept>
     : ModuleSyncMethodInfoBase<TResult(TArgs...) noexcept> {
   using Super = ModuleSyncMethodInfoBase<TResult(TArgs...) noexcept>;
-  using ModuleType = TModule;
   using MethodType = TResult (TModule::*)(TArgs...) noexcept;
 
   template <size_t... I>
-  static SyncMethodDelegate GetFunc(void *moduleWrapper, MethodType method, std::index_sequence<I...>) noexcept {
-    return [moduleWrapper, method](IJSValueReader const &argReader, IJSValueWriter const &argWriter) mutable noexcept {
+  static SyncMethodDelegate
+  GetFunc(TModule *module, IInspectable const &moduleWrapper, MethodType method, std::index_sequence<I...>) noexcept {
+    return [module, moduleWrapper, method](
+               IJSValueReader const &argReader, IJSValueWriter const &argWriter) mutable noexcept {
       using ArgTuple = std::tuple<std::remove_reference_t<TArgs>...>;
       ArgTuple typedArgs{};
       ReadArgs(argReader, std::get<I>(typedArgs)...);
-      TResult result = (UnwrapReactModule<ModuleType>(moduleWrapper)->*method)(std::get<I>(std::move(typedArgs))...);
+      TResult result = (module->*method)(std::get<I>(std::move(typedArgs))...);
       WriteValue(argWriter, result);
     };
   }
 
-  static SyncMethodDelegate GetMethodDelegate(void *moduleWrapper, MethodType method) noexcept {
-    return GetFunc(moduleWrapper, method, std::make_index_sequence<sizeof...(TArgs)>{});
+  static SyncMethodDelegate
+  GetMethodDelegate(TModule *module, IInspectable const &moduleWrapper, MethodType method) noexcept {
+    return GetFunc(module, moduleWrapper, method, std::make_index_sequence<sizeof...(TArgs)>{});
   }
 
   template <class TMethodSpec>
@@ -806,7 +836,8 @@ struct ModuleSyncMethodInfo<TResult (*)(TArgs...) noexcept> : ModuleSyncMethodIn
     };
   }
 
-  static SyncMethodDelegate GetMethodDelegate(void * /*moduleWrapper*/, MethodType method) noexcept {
+  static SyncMethodDelegate
+  GetMethodDelegate(void * /*module*/, IInspectable const & /*moduleWrapper*/, MethodType method) noexcept {
     return GetFunc(method, std::make_index_sequence<sizeof...(TArgs)>{});
   }
 
@@ -818,27 +849,32 @@ struct ModuleSyncMethodInfo<TResult (*)(TArgs...) noexcept> : ModuleSyncMethodIn
 };
 
 template <class TField>
-struct ModuleConstFieldInfo;
+struct ModuleConstantFieldInfo;
 
 template <class TModule, class TValue>
-struct ModuleConstFieldInfo<TValue TModule::*> {
-  using ModuleType = TModule;
+struct ModuleConstantFieldInfo<TValue TModule::*> {
   using FieldType = TValue TModule::*;
 
-  static ConstantProviderDelegate
-  GetConstantProvider(void *moduleWrapper, std::wstring_view name, FieldType field) noexcept {
-    return [moduleWrapper, name, field](IJSValueWriter const &argWriter) mutable noexcept {
-      WriteProperty(argWriter, name, UnwrapReactModule<ModuleType>(moduleWrapper)->*field);
+  static ConstantProviderDelegate GetConstantProvider(
+      TModule *module,
+      IInspectable const &moduleWrapper,
+      std::wstring_view name,
+      FieldType field) noexcept {
+    return [module, moduleWrapper, name, field](IJSValueWriter const &argWriter) mutable noexcept {
+      WriteProperty(argWriter, name, module->*field);
     };
   }
 };
 
 template <class TValue>
-struct ModuleConstFieldInfo<TValue *> {
+struct ModuleConstantFieldInfo<TValue *> {
   using FieldType = TValue *;
 
-  static ConstantProviderDelegate
-  GetConstantProvider(void * /*moduleWrapper*/, std::wstring_view name, FieldType field) noexcept {
+  static ConstantProviderDelegate GetConstantProvider(
+      void * /*moduleWrapper*/,
+      IInspectable const & /*moduleWrapper*/,
+      std::wstring_view name,
+      FieldType field) noexcept {
     return [name, field](IJSValueWriter const &argWriter) mutable noexcept { WriteProperty(argWriter, name, *field); };
   }
 };
@@ -860,26 +896,27 @@ struct ReactConstantProvider {
 };
 
 template <class TMethod>
-struct ModuleConstantInfo;
+struct ModuleConstantProviderInfo;
 
 template <class TModule>
-struct ModuleConstantInfo<void (TModule::*)(ReactConstantProvider &) noexcept> {
-  using ModuleType = TModule;
+struct ModuleConstantProviderInfo<void (TModule::*)(ReactConstantProvider &) noexcept> {
   using MethodType = void (TModule::*)(ReactConstantProvider &) noexcept;
 
-  static ConstantProviderDelegate GetConstantProvider(void *moduleWrapper, MethodType method) noexcept {
-    return [moduleWrapper, method](IJSValueWriter const &argWriter) mutable noexcept {
+  static ConstantProviderDelegate
+  GetConstantProvider(TModule *module, IInspectable const &moduleWrapper, MethodType method) noexcept {
+    return [module, moduleWrapper, method](IJSValueWriter const &argWriter) mutable noexcept {
       ReactConstantProvider constantProvider{argWriter};
-      (UnwrapReactModule<ModuleType>(moduleWrapper)->*method)(constantProvider);
+      (module->*method)(constantProvider);
     };
   }
 };
 
 template <>
-struct ModuleConstantInfo<void (*)(ReactConstantProvider &) noexcept> {
+struct ModuleConstantProviderInfo<void (*)(ReactConstantProvider &) noexcept> {
   using MethodType = void (*)(ReactConstantProvider &) noexcept;
 
-  static ConstantProviderDelegate GetConstantProvider(void * /*moduleWrapper*/, MethodType method) noexcept {
+  static ConstantProviderDelegate
+  GetConstantProvider(void * /*module*/, IInspectable const & /*moduleWrapper*/, MethodType method) noexcept {
     return [method](IJSValueWriter const &argWriter) mutable noexcept {
       ReactConstantProvider constantProvider{argWriter};
       (*method)(constantProvider);
@@ -892,27 +929,28 @@ struct ModuleEventFieldInfo;
 
 template <class TModule, template <class> class TFunc, class... TArgs>
 struct ModuleEventFieldInfo<TFunc<void(TArgs...)> TModule::*> {
-  using ModuleType = TModule;
   using EventType = TFunc<void(TArgs...)>;
   using FieldType = EventType TModule::*;
 
   static InitializerDelegate GetEventHandlerInitializer(
-      void *moduleWrapper,
+      TModule *module,
+      IInspectable const &moduleWrapper,
       FieldType field,
       std::wstring_view eventName,
       std::wstring_view eventEmitterName) noexcept {
-    return
-        [moduleWrapper, field, eventName = std::wstring(eventName), eventEmitterName = std::wstring(eventEmitterName)](
-            IReactContext const &reactContext) noexcept {
-          UnwrapReactModule<ModuleType>(moduleWrapper)->*field =
-              [reactContext, eventEmitterName, eventName](TArgs... args) noexcept {
-                reactContext.EmitJSEvent(
-                    eventEmitterName, eventName, [&args...]([[maybe_unused]] IJSValueWriter const &argWriter) noexcept {
-                      (void)argWriter; // [[maybe_unused]] above does not work
-                      (WriteValue(argWriter, args), ...);
-                    });
-              };
-        };
+    return [module,
+            moduleWrapper,
+            field,
+            eventName = std::wstring(eventName),
+            eventEmitterName = std::wstring(eventEmitterName)](IReactContext const &reactContext) noexcept {
+      module->*field = [reactContext, eventEmitterName, eventName](TArgs... args) noexcept {
+        reactContext.EmitJSEvent(
+            eventEmitterName, eventName, [&args...]([[maybe_unused]] IJSValueWriter const &argWriter) noexcept {
+              (void)argWriter; // [[maybe_unused]] above does not work
+              (WriteValue(argWriter, args), ...);
+            });
+      };
+    };
   }
 };
 
@@ -921,23 +959,25 @@ struct ModuleFunctionFieldInfo;
 
 template <class TModule, template <class> class TFunc, class... TArgs>
 struct ModuleFunctionFieldInfo<TFunc<void(TArgs...)> TModule::*> {
-  using ModuleType = TModule;
   using FunctionType = TFunc<void(TArgs...)>;
   using FieldType = FunctionType TModule::*;
 
   static InitializerDelegate GetFunctionInitializer(
-      void *moduleWrapper,
+      TModule *module,
+      IInspectable const &moduleWrapper,
       FieldType field,
       std::wstring_view functionName,
       std::wstring_view moduleName) noexcept {
-    return [moduleWrapper, field, functionName = std::wstring(functionName), moduleName = std::wstring(moduleName)](
-               IReactContext const &reactContext) noexcept {
-      UnwrapReactModule<ModuleType>(moduleWrapper)->*field =
-          [reactContext, functionName, moduleName](TArgs... args) noexcept {
-            reactContext.CallJSFunction(moduleName, functionName, [&args...](IJSValueWriter const &argWriter) noexcept {
-              WriteArgs(argWriter, args...);
-            });
-          };
+    return [module,
+            moduleWrapper,
+            field,
+            functionName = std::wstring(functionName),
+            moduleName = std::wstring(moduleName)](IReactContext const &reactContext) noexcept {
+      module->*field = [reactContext, functionName, moduleName](TArgs... args) noexcept {
+        reactContext.CallJSFunction(moduleName, functionName, [&args...](IJSValueWriter const &argWriter) noexcept {
+          WriteArgs(argWriter, args...);
+        });
+      };
     };
   }
 };
@@ -1014,72 +1054,13 @@ template <ReactMemberKind MemberKind>
 struct IsReactMemberAttribute<ReactMemberAttribute<MemberKind>> : std::true_type {};
 
 template <class TModule>
-struct ReactModuleWrapper {
-  ReactModuleWrapper(ReactModuleBuilder const &moduleBuilder, ReactModuleInfo const &info) noexcept
-      : m_moduleBuilder(moduleBuilder), m_moduleInfo(info) {
-    if (!info.DispatcherName || info.DispatcherName == ReactDispatcherHelper::JSDispatcherProperty()) {
-      m_isJSDispatcherModule = true;
-    } else if (info.DispatcherName == ReactDispatcherHelper::UIDispatcherProperty()) {
-      m_isUIDispatcherModule = true;
-    } else {
-      m_isCustomDispatcherModule = true;
-    }
-
-    VisitReactModuleMembers(static_cast<TModule *>(nullptr), *this);
-    m_moduleBuilder.AddInitializer([this](IReactContext const &reactContext) noexcept {
-      m_reactContext = reactContext;
-      if (m_moduleInfo.DispatcherName && m_moduleInfo.DispatcherName != ReactDispatcherHelper::JSDispatcherProperty()) {
-        m_dispatcher = m_reactContext.Properties().Get(m_moduleInfo.DispatcherName).as<IReactDispatcher>();
-        m_dispatcher.Post([this]() noexcept { InitializeModule(); });
-      } else {
-        InitializeModule();
-      }
-
-      if (!m_hasUIFinalizer || m_hasJSFinalizer || m_hasCustomFinalizer) {
-        m_jsDispatcherShutdownSubscription = m_reactContext.Notifications().Subscribe(
-            ReactDispatcherHelper::JSDispatcherShutdownNotification(),
-            nullptr,
-            [this](auto && /*sender*/, auto && /*args*/) { FinalizeInJSDispatcher(); });
-      }
-      if (m_hasUIFinalizer) {
-        m_uiDispatcherShutdownSubscription = m_reactContext.Notifications().Subscribe(
-            ReactDispatcherHelper::UIDispatcherShutdownNotification(),
-            nullptr,
-            [this](auto && /*sender*/, auto && /*args*/) { FinalizeInUIDispatcher(); });
-      }
-    });
-  }
-
-  void InitializeModule() noexcept;
-
-  void FinalizeInJSDispatcher() noexcept {
-    for (auto const &finalizer : m_finalizers) {
-      if (finalizer.UseJSDispatcher || m_isJSDispatcherModule) {
-        finalizer.Delegate();
-      }
-    }
-
-    if (m_isCustomDispatcherModule) {
-      RunSync([this]() {
-        for (auto const &finalizer : m_finalizers) {
-          if (!finalizer.UseJSDispatcher) {
-            finalizer.Delegate();
-          }
-        }
-      });
-    }
-
-    m_module = nullptr;
-    m_moduleHolder = nullptr;
-  }
-
-  void FinalizeInUIDispatcher() noexcept {
-    for (auto const &finalizer : m_finalizers) {
-      if (!finalizer.UseJSDispatcher && m_isUIDispatcherModule) {
-        finalizer.Delegate();
-      }
-    }
-  }
+struct ReactModuleMemberRegistrar {
+  ReactModuleMemberRegistrar(
+      TModule *module,
+      winrt::Windows::Foundation::IInspectable const &moduleWrapper,
+      ReactModuleBuilder const &moduleBuilder,
+      ReactModuleInfo const &moduleInfo) noexcept
+      : m_module{module}, m_moduleWrapper{moduleWrapper}, m_moduleBuilder{moduleBuilder}, m_moduleInfo{moduleInfo} {}
 
   template <int I>
   void VisitModuleMembers(ReactAttributeId<I>) noexcept {
@@ -1112,48 +1093,42 @@ struct ReactModuleWrapper {
   }
 
   template <class TMethod>
-  void RegisterInitializerMethod(TMethod method, bool useJSDispatcher) noexcept {
-    auto initializer = InitializerDelegate([this, method](ReactContext const &reactContext) noexcept {
-      (UnwrapReactModule<TModule>(this)->*method)(reactContext);
-    });
-    m_moduleBuilder.AddDispatchedInitializer(
-        initializer, ReactInitializerPriority::Normal, GetDispatcherName(useJSDispatcher));
+  void RegisterInitializerMethod(TMethod method, bool useJSDispatcher = false) noexcept {
+    auto initializer = ModuleInitializerMethodInfo<TModule>::GetInitializer(m_module, m_moduleWrapper, method);
+    m_moduleBuilder.AddDispatchedInitializer(initializer, ReactInitializerType::Method, useJSDispatcher);
   }
 
   template <class TMethod>
-  void RegisterFinalizerMethod(TMethod method, bool useJSDispatcher) noexcept {
-    auto finalizer = FinalizerDelegate([this, method]() noexcept { (UnwrapReactModule<TModule>(this)->*method)(); });
-    m_moduleBuilder.AddDispatchedFinalizer(finalizer, GetDispatcherName(useJSDispatcher));
+  void RegisterFinalizerMethod(TMethod method, bool useJSDispatcher = false) noexcept {
+    auto finalizer = ModuleFinalizerMethodInfo<TModule>::GetFinalizer(m_module, m_moduleWrapper, method);
+    m_moduleBuilder.AddDispatchedFinalizer(finalizer, useJSDispatcher);
   }
 
   template <class TMethod>
-  void RegisterMethod(TMethod method, std::wstring_view name, bool useJSDispatcher) noexcept {
+  void RegisterMethod(TMethod method, std::wstring_view name, bool useJSDispatcher = false) noexcept {
     MethodReturnType returnType;
-    auto methodDelegate = ModuleMethodInfo<TMethod>::GetMethodDelegate(this, method, /*out*/ returnType);
-    m_moduleBuilder.AddDispatchedMethod(name, returnType, methodDelegate, GetDispatcherName(useJSDispatcher));
+    auto methodDelegate =
+        ModuleMethodInfo<TMethod>::GetMethodDelegate(m_module, m_moduleWrapper, method, /*out*/ returnType);
+    m_moduleBuilder.AddDispatchedMethod(name, returnType, methodDelegate, useJSDispatcher);
   }
 
   template <class TMethod>
-  void RegisterSyncMethod(TMethod method, std::wstring_view name, bool useJSDispatcher) noexcept {
-    auto syncMethodDelegate = ModuleSyncMethodInfo<TMethod>::GetMethodDelegate(this, method);
-    m_moduleBuilder.AddDispatchedSyncMethod(name, syncMethodDelegate, GetDispatcherName(useJSDispatcher));
+  void RegisterSyncMethod(TMethod method, std::wstring_view name, bool useJSDispatcher = false) noexcept {
+    auto syncMethodDelegate = ModuleSyncMethodInfo<TMethod>::GetMethodDelegate(m_module, m_moduleWrapper, method);
+    m_moduleBuilder.AddDispatchedSyncMethod(name, syncMethodDelegate, useJSDispatcher);
   }
 
   template <class TMethod>
-  void RegisterConstantMethod(TMethod method, bool useJSDispatcher) noexcept {
-    auto constantProvider = ModuleConstantInfo<TMethod>::GetConstantProvider(this, method);
-    AddConstantProvider(constantProvider, useJSDispatcher);
+  void RegisterConstantMethod(TMethod method, bool useJSDispatcher = false) noexcept {
+    auto constantProvider = ModuleConstantProviderInfo<TMethod>::GetConstantProvider(m_module, m_moduleWrapper, method);
+    m_moduleBuilder.AddDispatchedConstantProvider(constantProvider, useJSDispatcher);
   }
 
   template <class TField>
-  void RegisterConstantField(TField field, std::wstring_view name, bool useJSDispatcher) noexcept {
-    auto constantProvider = ModuleConstFieldInfo<TField>::GetConstantProvider(this, name, field);
-    AddConstantProvider(constantProvider, useJSDispatcher);
-  }
-
-  void AddConstantProvider(ConstantProviderDelegate const &constantProvider, bool useJSDispatcher) noexcept {
-    m_constantProviders.emplace_back(constantProvider, useJSDispatcher);
-    m_moduleBuilder.AddDispatchedConstantProvider(constantProvider, GetDispatcherName(useJSDispatcher));
+  void RegisterConstantField(TField field, std::wstring_view name, bool useJSDispatcher = false) noexcept {
+    auto constantProvider =
+        ModuleConstantFieldInfo<TField>::GetConstantProvider(m_module, m_moduleWrapper, name, field);
+    m_moduleBuilder.AddDispatchedConstantProvider(constantProvider, useJSDispatcher);
   }
 
   template <class TField>
@@ -1162,81 +1137,31 @@ struct ReactModuleWrapper {
       std::wstring_view eventName,
       std::wstring_view eventEmitterName = L"",
       bool useJSDispatcher = false) noexcept {
-    auto eventHandlerInitializer = ModuleEventFieldInfo<TField>::GetEventHandlerInitializer(
-        this, field, eventName, !eventEmitterName.empty() ? eventEmitterName : m_moduleInfo.EventEmitterName);
-    m_moduleBuilder.AddDispatchedInitializer(
-        eventHandlerInitializer, ReactInitializerPriority::High, GetDispatcherName(useJSDispatcher));
+    auto eventInitializer = ModuleEventFieldInfo<TField>::GetEventHandlerInitializer(
+        m_module,
+        m_moduleWrapper,
+        field,
+        eventName,
+        !eventEmitterName.empty() ? eventEmitterName : m_moduleInfo.EventEmitterName);
+    m_moduleBuilder.AddDispatchedInitializer(eventInitializer, ReactInitializerType::Field, useJSDispatcher);
   }
 
   template <class TField>
   void RegisterFunctionField(
       TField field,
-      std::wstring_view name,
+      std::wstring_view functionName,
       std::wstring_view moduleName = L"",
       bool useJSDispatcher = false) noexcept {
     auto functionInitializer = ModuleFunctionFieldInfo<TField>::GetFunctionInitializer(
-        this, field, name, !moduleName.empty() ? moduleName : m_moduleInfo.ModuleName);
-    m_moduleBuilder.AddDispatchedInitializer(
-        functionInitializer, ReactInitializerPriority::High, GetDispatcherName(useJSDispatcher));
+        m_module, m_moduleWrapper, field, functionName, !moduleName.empty() ? moduleName : m_moduleInfo.ModuleName);
+    m_moduleBuilder.AddDispatchedInitializer(functionInitializer, ReactInitializerType::Field, useJSDispatcher);
   }
-
-  void RunSync(ReactDispatcherCallback callback) noexcept {
-    if (m_dispatcher) {
-      bool isCompleted{false};
-      std::mutex mutex;
-      std::condition_variable cv;
-      std::unique_lock lock{mutex};
-      m_dispatcher.Post([&]() noexcept {
-        std::unique_lock lock{mutex};
-        callback();
-        isCompleted = true;
-        lock.unlock();
-        cv.notify_all();
-      });
-      cv.wait(lock, [&isCompleted]() { return isCompleted; });
-    } else {
-      callback();
-    }
-  }
-
-  void *GetModule() {
-    return m_module;
-  }
-
-  struct InitializerEntry {
-    InitializerDelegate Delegate;
-    bool IsField;
-    bool UseJSDispatcher;
-  };
-
-  struct FinalizerEntry {
-    ReactDispatcherCallback Delegate;
-    bool UseJSDispatcher;
-  };
-
-  struct ConstructorEntry {
-    ConstantProviderDelegate Delegate;
-    bool UseJSDispatcher;
-  };
 
  private:
-  void *m_module{};
-  IInspectable m_moduleHolder;
+  TModule *m_module{};
+  IInspectable m_moduleWrapper;
   ReactModuleBuilder m_moduleBuilder;
   ReactModuleInfo m_moduleInfo;
-  std::vector<InitializerEntry> m_initializers;
-  std::vector<FinalizerEntry> m_finalizers;
-  std::vector<ConstructorEntry> m_constantProviders;
-  IReactContext m_reactContext;
-  IReactDispatcher m_dispatcher;
-  IReactNotificationSubscription m_jsDispatcherShutdownSubscription;
-  IReactNotificationSubscription m_uiDispatcherShutdownSubscription;
-  bool m_isJSDispatcherModule{false};
-  bool m_isUIDispatcherModule{false};
-  bool m_isCustomDispatcherModule{false};
-  bool m_hasJSFinalizer{false};
-  bool m_hasUIFinalizer{false};
-  bool m_hasCustomFinalizer{false};
 };
 
 struct VerificationResult {
@@ -1454,9 +1379,12 @@ struct ReactModuleTraits {
 // Create a module provider for TModule type.
 template <class TModule>
 inline ReactModuleProvider MakeModuleProvider() noexcept {
-  return [](IReactModuleBuilder const &moduleBuilder) noexcept -> winrt::Windows::Foundation::IInspectable {
-    return winrt::make<ReactModuleWrapper<TModule>>(
-        moduleBuilder.as<ReactModuleBuilder>(), GetReactModuleInfo(static_cast<TModule *>(nullptr)));
+  return [](IReactModuleBuilder const &moduleBuilder) noexcept {
+    auto [moduleWrapper, module] = ReactModuleTraits<TModule>::Factory();
+    ReactModuleMemberRegistrar registrar{
+        module, moduleWrapper, moduleBuilder.as<ReactModuleBuilder>(), GetReactModuleInfo(module)};
+    VisitReactModuleMembers(module, registrar);
+    return moduleWrapper;
   };
 }
 
@@ -1482,30 +1410,6 @@ struct ReactPackageProvider : implements<TDerived, IReactPackageProvider> {
         GetReactModuleInfo<TModule>().DispatcherName);
   }
 };
-
-template <class TModule>
-TModule *UnwrapReactModule(void *moduleWrapper) noexcept {
-  return static_cast<TModule *>(static_cast<ReactModuleWrapper<TModule> *>(moduleWrapper)->GetModule());
-}
-
-template <class TModule>
-void ReactModuleWrapper<TModule>::EnsureNativeModuleInitializeModule() noexcept {
-  auto [moduleHolder, module] = ReactModuleTraits<TModule>::Factory();
-  m_moduleHolder = moduleHolder;
-  m_module = module;
-
-  // Initialize fields before running the module initializers
-  for (auto const &initializer : m_initializers) {
-    if (initializer.IsField) {
-      initializer.Delegate(m_reactContext);
-    }
-  }
-  for (auto const &initializer : m_initializers) {
-    if (!initializer.IsField) {
-      initializer.Delegate(m_reactContext);
-    }
-  }
-}
 
 } // namespace winrt::Microsoft::ReactNative
 

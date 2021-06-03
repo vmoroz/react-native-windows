@@ -26,11 +26,10 @@ namespace Microsoft.ReactNative
     Promise,
   };
 
-  enum ReactInitializerPriority
+  enum ReactInitializerType
   {
-    Low,
-    Normal,
-    High,
+    Method,
+    Field,
   };
 
   DOC_STRING("A callback to call JS code with results.")
@@ -85,20 +84,19 @@ namespace Microsoft.ReactNative
       "See @InitializerDelegate.\n"
       "There can be multiple initializer methods which are called in the order they were registered.")
     void AddDispatchedInitializer(
-      InitializerDelegate initializer, ReactInitializerPriority priority, IReactPropertyName dispatcherName);
+        InitializerDelegate initializer, ReactInitializerType initializerType, Boolean useJSDispatcher);
 
-    void AddDispatchedFinalizer(FinalizerDelegate finalizer, IReactPropertyName dispatcherName);
+    void AddDispatchedFinalizer(FinalizerDelegate finalizer, Boolean useJSDispatcher);
 
     DOC_STRING(
       "Adds a constant provider method to define constants for the native module. See @ConstantProviderDelegate.")
-    void AddDispatchedConstantProvider(ConstantProviderDelegate constantProvider, IReactPropertyName dispatcherName);
+    void AddDispatchedConstantProvider(ConstantProviderDelegate constantProvider, Boolean useJSDispatcher);
 
     DOC_STRING("Adds an asynchronous method to the native module. See @MethodDelegate.")
-    void AddDispatchedMethod(
-        String name, MethodReturnType returnType, MethodDelegate method, IReactPropertyName dispatcherName);
+    void AddDispatchedMethod(String name, MethodReturnType returnType, MethodDelegate method, Boolean useJSDispatcher);
 
     DOC_STRING("Adds a synchronous method to the native module. See @SyncMethodDelegate.")
-    void AddDispatchedSyncMethod(String name, SyncMethodDelegate method, IReactPropertyName dispatcherName);
+    void AddDispatchedSyncMethod(String name, SyncMethodDelegate method, Boolean useJSDispatcher);
   };
 
   [webhosthidden]
