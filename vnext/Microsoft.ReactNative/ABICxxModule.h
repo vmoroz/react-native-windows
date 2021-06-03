@@ -17,10 +17,12 @@
 namespace winrt::Microsoft::ReactNative {
 
 struct ABICxxModule : facebook::xplat::module::CxxModule {
+  using ConstantProvider = std::function<std::map<std::string, folly::dynamic>()>;
+
   ABICxxModule(
       winrt::Windows::Foundation::IInspectable const &nativeModule,
       std::string &&name,
-      std::vector<ConstantProviderDelegate> &&constantProviders,
+      ConstantProvider &&constantProvider,
       std::vector<facebook::xplat::module::CxxModule::Method> &&methods) noexcept;
 
  public: // CxxModule implementation
@@ -31,7 +33,7 @@ struct ABICxxModule : facebook::xplat::module::CxxModule {
  private:
   winrt::Windows::Foundation::IInspectable m_nativeModule; // just to keep native module alive
   std::string m_name;
-  std::vector<ConstantProviderDelegate> m_constantProviders;
+  ConstantProvider m_constantProvider;
   std::vector<facebook::xplat::module::CxxModule::Method> m_methods;
 };
 

@@ -623,7 +623,7 @@ void ReactInstanceWin::InitUIMessageThread() noexcept {
   callbacks.OnError = Mso::MakeWeakMemberFunctor(this, &ReactInstanceWin::OnError);
   callbacks.OnShutdownStarting = [reactContext = m_reactContext]() noexcept {
     reactContext->Notifications().SendNotification(
-        implementation::ReactDispatcherHelper::UIDispatcherShutdownNotificationName(), nullptr, nullptr);
+        implementation::ReactDispatcherHelper::UIDispatcherShutdownNotification(), nullptr, nullptr);
   };
   m_uiMessageThread.Exchange(std::make_shared<MessageDispatchQueue>(m_uiQueue, std::move(callbacks)));
 

@@ -4,6 +4,7 @@
 #include "pch.h"
 #include "IReactModuleBuilder.h"
 #include "ReactModuleBuilder.g.cpp"
+#include <eventWaitHandle/eventWaitHandle.h>
 #include <strsafe.h>
 #include "DynamicWriter.h"
 #include "ReactHost/MsoUtils.h"
@@ -72,72 +73,82 @@ struct TerminateExceptionGuard final {
 ReactModuleBuilder::ReactModuleBuilder(
     IReactContext const &reactContext,
     IReactPropertyName const &dispatcherName) noexcept
-    : m_reactContext{reactContext}, m_dispatcherName{dispatcherName} {}
+    : m_reactContext{reactContext}, m_dispatcherName{dispatcherName} {
+  IReactDispatcher m_moduleDispatcher;
+  m_jsDispatcher = reactContext.Properties().Get(ReactDispatcherHelper::JSDispatcherProperty()).as<IReactDispatcher>();
+  if (dispatcherName && dispatcherName != ReactDispatcherHelper::JSDispatcherProperty()) {
+    m_moduleDispatcher = reactContext.Properties().Get(dispatcherName).as<IReactDispatcher>();
+  }
+}
 
 void ReactModuleBuilder::AddInitializer(InitializerDelegate const &initializer) noexcept {
-  AddDispatchedInitializer(initializer, ReactInitializerPriority::Normal, nullptr);
+  AddDispatchedInitializer(initializer, ReactInitializerType::Method, false);
 }
 
 void ReactModuleBuilder::AddConstantProvider(ConstantProviderDelegate const &constantProvider) noexcept {
-  AddDispatchedConstantProvider(constantProvider, nullptr);
+  AddDispatchedConstantProvider(constantProvider, false);
 }
 
 void ReactModuleBuilder::AddMethod(
     hstring const &name,
     MethodReturnType const &returnType,
     MethodDelegate const &method) noexcept {
-  AddDispatchedMethod(name, returnType, method, nullptr);
+  AddDispatchedMethod(name, returnType, method, false);
 }
 
 void ReactModuleBuilder::AddSyncMethod(hstring const &name, SyncMethodDelegate const &method) noexcept {
-  AddDispatchedSyncMethod(name, method, nullptr);
+  AddDispatchedSyncMethod(name, method, false);
 }
 
 void ReactModuleBuilder::AddDispatchedInitializer(
     InitializerDelegate const &initializer,
-    ReactInitializerPriority const &priority,
-    IReactPropertyName const &dispatcherName) noexcept {
-  m_initializers.emplace_back(initializer, priority, dispatcherName);
+    ReactInitializerType const &initializerType,
+    bool useJSDispatcher) noexcept {
+  m_initializers.push_back(InitializerEntry{initializer, initializerType, useJSDispatcher});
 }
 
-void ReactModuleBuilder::AddDispatchedFinalizer(
-    FinalizerDelegate const &finalizer,
-    IReactPropertyName const &dispatcherName) noexcept {
-  m_finalizers.emplace_back(finalizer, dispatcherName);
+void ReactModuleBuilder::AddDispatchedFinalizer(FinalizerDelegate const &finalizer, bool useJSDispatcher) noexcept {
+  m_finalizers.push_back(FinalizerEntry{finalizer, useJSDispatcher});
 }
 
 void ReactModuleBuilder::AddDispatchedConstantProvider(
     ConstantProviderDelegate const &constantProvider,
-    IReactPropertyName const &dispatcherName) noexcept {
-  m_constantProviders.emplace_back(constantProvider, dispatcherName);
+    bool useJSDispatcher) noexcept {
+  m_constantProviders.push_back(ConstantProviderEntry{constantProvider, useJSDispatcher});
 }
 
 void ReactModuleBuilder::AddDispatchedMethod(
     hstring const &name,
     MethodReturnType const &returnType,
     MethodDelegate const &method,
-    IReactPropertyName const &dispatcherName) noexcept {
-  auto cxxMethodCallback = [method](
-                               folly::dynamic args, CxxModule::Callback resolve, CxxModule::Callback reject) noexcept {
-    auto argReader = make<DynamicReader>(args);
-    auto resultWriter = make<DynamicWriter>();
-    auto resolveCallback = MakeMethodResultCallback(std::move(resolve));
-    auto rejectCallback = MakeMethodResultCallback(std::move(reject));
+    bool useJSDispatcher) noexcept {
+  using FuncType = decltype(std::declval<CxxModule::Method>().func);
+  auto cxxMethodCallback =
+      FuncType([method](folly::dynamic args, CxxModule::Callback resolve, CxxModule::Callback reject) noexcept {
+        auto argReader = make<DynamicReader>(args);
+        auto resultWriter = make<DynamicWriter>();
+        auto resolveCallback = MakeMethodResultCallback(std::move(resolve));
+        auto rejectCallback = MakeMethodResultCallback(std::move(reject));
 
         REACT_TERMINATE_GUARD(term);
 
-    method(argReader, resultWriter, resolveCallback, rejectCallback);
-  };
+        method(argReader, resultWriter, resolveCallback, rejectCallback);
+      });
 
-  if (!IsModuleDispatcher(dispatcherName)) {
-    [method](folly::dynamic args, CxxModule::Callback resolve, CxxModule::Callback reject) noexcept {
-      dispatcher.Post([]() mutable noexcept { cxxMethodCallback(std::move(args), std::move(resolve), std::move(reject))});
-    };
+  if (m_moduleDispatcher && useJSDispatcher) {
+    cxxMethodCallback =
+        FuncType([cxxMethodCallback, jsDispatcher = m_jsDispatcher](
+                     folly::dynamic args, CxxModule::Callback resolve, CxxModule::Callback reject) mutable noexcept {
+          jsDispatcher.Post([cxxMethodCallback = std::move(cxxMethodCallback),
+                             args = std::move(args),
+                             resolve = std::move(resolve),
+                             reject = std::move(reject)]() mutable noexcept {
+            cxxMethodCallback(std::move(args), std::move(resolve), std::move(reject));
+          });
+        });
   }
 
-  CxxModule::Method cxxMethod(
-      to_string(name), cxxMethodCallback
-  );
+  CxxModule::Method cxxMethod(to_string(name), std::move(cxxMethodCallback));
 
   switch (returnType) {
     case MethodReturnType::Callback:
@@ -163,16 +174,27 @@ void ReactModuleBuilder::AddDispatchedMethod(
 void ReactModuleBuilder::AddDispatchedSyncMethod(
     hstring const &name,
     SyncMethodDelegate const &method,
-    IReactPropertyName const &dispatcherName) noexcept {
-  m_methods.emplace_back(
-      to_string(name),
-      [method](folly::dynamic args) noexcept {
-        auto argReader = make<DynamicReader>(args);
-        auto resultWriter = make<DynamicWriter>();
-        method(argReader, resultWriter);
-        return get_self<DynamicWriter>(resultWriter)->TakeValue();
-      },
-      CxxModule::SyncTag);
+    bool useJSDispatcher) noexcept {
+  using SyncFuncType = decltype(std::declval<CxxModule::Method>().syncFunc);
+  auto cxxMethodCallback = SyncFuncType([method](folly::dynamic args) noexcept {
+    auto argReader = make<DynamicReader>(args);
+    auto resultWriter = make<DynamicWriter>();
+    method(argReader, resultWriter);
+    return get_self<DynamicWriter>(resultWriter)->TakeValue();
+  });
+
+  if (m_moduleDispatcher && !useJSDispatcher) {
+    cxxMethodCallback =
+        SyncFuncType([dispatcher = m_moduleDispatcher, cxxMethodCallback](folly::dynamic args) noexcept {
+          folly::dynamic result;
+          RunSync(dispatcher, [cxxMethodCallback, &result, &args]() mutable {
+            result = cxxMethodCallback(std::move(args));
+          });
+          return result;
+        });
+  }
+
+  m_methods.emplace_back(to_string(name), std::move(cxxMethodCallback), CxxModule::SyncTag);
 }
 
 /*static*/ MethodResultCallback ReactModuleBuilder::MakeMethodResultCallback(CxxModule::Callback &&callback) noexcept {
@@ -190,14 +212,92 @@ void ReactModuleBuilder::AddDispatchedSyncMethod(
   return {};
 }
 
+/*static*/ void ReactModuleBuilder::RunSync(
+    IReactDispatcher const &dispatcher,
+    ReactDispatcherCallback const &callback) noexcept {
+  Mso::ManualResetEvent event;
+  auto cancellationGuard = [&event](int * /*ptr*/) { event.Set(); };
+  auto guard = std::unique_ptr<int, decltype(cancellationGuard)>{static_cast<int *>(nullptr), cancellationGuard};
+  dispatcher.Post([&callback, &event, guard = std::move(guard)]() noexcept {
+    callback();
+    event.Set();
+  });
+  event.Wait();
+}
+
 std::unique_ptr<CxxModule> ReactModuleBuilder::MakeCxxModule(
     std::string const &name,
     IInspectable const &nativeModule) noexcept {
-  for (auto &initializer : m_initializers) {
-    initializer(m_reactContext);
+  InitializeModule();
+  return std::make_unique<ABICxxModule>(nativeModule, Mso::Copy(name), GetConstantProvider(), Mso::Copy(m_methods));
+}
+
+void ReactModuleBuilder::InitializeModule() noexcept {
+  for (auto const &initializer : m_initializers) {
+    if (initializer.InitializerType == ReactInitializerType::Field &&
+        (!m_moduleDispatcher || initializer.UseJSDispatcher)) {
+      initializer.Delegate(m_reactContext);
+    }
   }
-  return std::make_unique<ABICxxModule>(
-      nativeModule, Mso::Copy(name), Mso::Copy(m_constantProviders), Mso::Copy(m_methods));
+
+  for (auto const &initializer : m_initializers) {
+    if (initializer.InitializerType == ReactInitializerType::Method &&
+        (!m_moduleDispatcher || initializer.UseJSDispatcher)) {
+      initializer.Delegate(m_reactContext);
+    }
+  }
+
+  if (m_moduleDispatcher) {
+    m_moduleDispatcher.Post([initializers = std::move(m_initializers), reactContext = m_reactContext]() {
+      for (auto const &initializer : initializers) {
+        if (initializer.InitializerType == ReactInitializerType::Field && !initializer.UseJSDispatcher) {
+          initializer.Delegate(reactContext);
+        }
+      }
+
+      for (auto const &initializer : initializers) {
+        if (initializer.InitializerType == ReactInitializerType::Method && !initializer.UseJSDispatcher) {
+          initializer.Delegate(reactContext);
+        }
+      }
+    });
+  }
+}
+
+ABICxxModule::ConstantProvider ReactModuleBuilder::GetConstantProvider() noexcept {
+  auto writeConstants = [constantProviders = m_constantProviders](auto &&result, auto &&predicate) {
+    IJSValueWriter argWriter = winrt::make<DynamicWriter>();
+    argWriter.WriteObjectBegin();
+    for (auto const &constantProvider : constantProviders) {
+      if (predicate(constantProvider)) {
+        constantProvider.Delegate(argWriter);
+      }
+    }
+    argWriter.WriteObjectEnd();
+    folly::dynamic constants = argWriter.as<DynamicWriter>()->TakeValue();
+    if (constants.isObject()) {
+      for (auto &item : constants.items()) {
+        result[item.first.asString()] = std::move(item.second);
+      }
+    }
+  };
+
+  return [writeConstants, moduleDispatcher = m_moduleDispatcher]() {
+    std::map<std::string, folly::dynamic> result;
+
+    writeConstants(result, [moduleDispatcher](ConstantProviderEntry const &constantProvider) {
+      return !moduleDispatcher || constantProvider.UseJSDispatcher;
+    });
+
+    if (moduleDispatcher) {
+      RunSync(moduleDispatcher, [writeConstants, &result]() {
+        writeConstants(
+            result, [](ConstantProviderEntry const &constantProvider) { return !constantProvider.UseJSDispatcher; });
+      });
+    }
+
+    return result;
+  };
 }
 
 } // namespace winrt::Microsoft::ReactNative::implementation

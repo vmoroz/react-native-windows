@@ -37,13 +37,15 @@ std::vector<facebook::react::NativeModuleDescription> NativeModulesProvider::Get
   auto winrtReactContext = winrt::make<implementation::ReactContext>(Mso::Copy(reactContext));
 
   for (auto &entry : m_moduleProviders) {
-    auto messageQueueThread = GetMessageQueueThread(*reactContext, entry.second.second, defaultQueueThread);
+    auto dispatcherName = entry.second.second;
+    auto messageQueueThread = GetMessageQueueThread(*reactContext, dispatcherName, defaultQueueThread);
     modules.emplace_back(
         entry.first,
-        [moduleName = entry.first, moduleProvider = entry.second.first, winrtReactContext]() noexcept {
-          IReactModuleBuilder moduleBuilder = winrt::make<ReactModuleBuilder>(winrtReactContext);
+        [moduleName = entry.first, moduleProvider = entry.second.first, winrtReactContext, dispatcherName]() noexcept {
+          IReactModuleBuilder moduleBuilder =
+              winrt::make<implementation::ReactModuleBuilder>(winrtReactContext, dispatcherName);
           auto nativeModule = moduleProvider(moduleBuilder);
-          return moduleBuilder.as<ReactModuleBuilder>()->MakeCxxModule(moduleName, nativeModule);
+          return moduleBuilder.as<implementation::ReactModuleBuilder>()->MakeCxxModule(moduleName, nativeModule);
         },
         messageQueueThread);
   }
