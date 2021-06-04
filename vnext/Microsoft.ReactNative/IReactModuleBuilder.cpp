@@ -6,6 +6,7 @@
 #include "ReactModuleBuilder.g.cpp"
 #include <eventWaitHandle/eventWaitHandle.h>
 #include <strsafe.h>
+#include "DynamicReader.h"
 #include "DynamicWriter.h"
 #include "ReactHost/MsoUtils.h"
 
@@ -74,7 +75,6 @@ ReactModuleBuilder::ReactModuleBuilder(
     IReactContext const &reactContext,
     IReactPropertyName const &dispatcherName) noexcept
     : m_reactContext{reactContext}, m_dispatcherName{dispatcherName} {
-  IReactDispatcher m_moduleDispatcher;
   m_jsDispatcher = reactContext.Properties().Get(ReactDispatcherHelper::JSDispatcherProperty()).as<IReactDispatcher>();
   if (dispatcherName && dispatcherName != ReactDispatcherHelper::JSDispatcherProperty()) {
     m_moduleDispatcher = reactContext.Properties().Get(dispatcherName).as<IReactDispatcher>();
@@ -82,11 +82,11 @@ ReactModuleBuilder::ReactModuleBuilder(
 }
 
 void ReactModuleBuilder::AddInitializer(InitializerDelegate const &initializer) noexcept {
-  AddDispatchedInitializer(initializer, ReactInitializerType::Method, false);
+  AddDispatchedInitializer(initializer, ReactInitializerType::Method, true);
 }
 
 void ReactModuleBuilder::AddConstantProvider(ConstantProviderDelegate const &constantProvider) noexcept {
-  AddDispatchedConstantProvider(constantProvider, false);
+  AddDispatchedConstantProvider(constantProvider, true);
 }
 
 void ReactModuleBuilder::AddMethod(
@@ -97,7 +97,7 @@ void ReactModuleBuilder::AddMethod(
 }
 
 void ReactModuleBuilder::AddSyncMethod(hstring const &name, SyncMethodDelegate const &method) noexcept {
-  AddDispatchedSyncMethod(name, method, false);
+  AddDispatchedSyncMethod(name, method, true);
 }
 
 void ReactModuleBuilder::AddDispatchedInitializer(
@@ -166,6 +166,7 @@ void ReactModuleBuilder::AddDispatchedMethod(
     default:
       cxxMethod.callbacks = 0;
       cxxMethod.isPromise = false;
+      break;
   }
 
   m_methods.push_back(std::move(cxxMethod));
@@ -229,7 +230,7 @@ std::unique_ptr<CxxModule> ReactModuleBuilder::MakeCxxModule(
     std::string const &name,
     IInspectable const &nativeModule) noexcept {
   InitializeModule();
-  return std::make_unique<ABICxxModule>(nativeModule, Mso::Copy(name), GetConstantProvider(), Mso::Copy(m_methods));
+  return std::make_unique<ABICxxModule>(nativeModule, Mso::Copy(name), GetFinalizer(),  GetConstantProvider(), Mso::Copy(m_methods));
 }
 
 void ReactModuleBuilder::InitializeModule() noexcept {
@@ -262,6 +263,10 @@ void ReactModuleBuilder::InitializeModule() noexcept {
       }
     });
   }
+}
+
+ABICxxModule::Finalizer ReactModuleBuilder::GetFinalizer() noexcept {
+  return []() {};
 }
 
 ABICxxModule::ConstantProvider ReactModuleBuilder::GetConstantProvider() noexcept {

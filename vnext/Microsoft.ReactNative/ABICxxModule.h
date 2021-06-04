@@ -8,9 +8,6 @@
 
 #pragma once
 
-#include "DynamicReader.h"
-#include "DynamicWriter.h"
-#include "ReactHost/React.h"
 #include "cxxreact/CxxModule.h"
 #include "winrt/Microsoft.ReactNative.h"
 
@@ -18,12 +15,15 @@ namespace winrt::Microsoft::ReactNative {
 
 struct ABICxxModule : facebook::xplat::module::CxxModule {
   using ConstantProvider = std::function<std::map<std::string, folly::dynamic>()>;
+  using Finalizer = std::function<void()>;
 
   ABICxxModule(
-      winrt::Windows::Foundation::IInspectable const &nativeModule,
+      IInspectable const &nativeModule,
       std::string &&name,
+      Finalizer &&finalizer,
       ConstantProvider &&constantProvider,
       std::vector<facebook::xplat::module::CxxModule::Method> &&methods) noexcept;
+  ~ABICxxModule() noexcept;
 
  public: // CxxModule implementation
   std::string getName() noexcept override;
@@ -31,8 +31,9 @@ struct ABICxxModule : facebook::xplat::module::CxxModule {
   std::vector<facebook::xplat::module::CxxModule::Method> getMethods() noexcept override;
 
  private:
-  winrt::Windows::Foundation::IInspectable m_nativeModule; // just to keep native module alive
+  IInspectable m_nativeModule; // just to keep native module alive
   std::string m_name;
+  Finalizer m_finalizer;
   ConstantProvider m_constantProvider;
   std::vector<facebook::xplat::module::CxxModule::Method> m_methods;
 };

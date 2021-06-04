@@ -3,21 +3,26 @@
 
 #include "pch.h"
 #include "ABICxxModule.h"
-#include "DynamicWriter.h"
 
 using namespace facebook::xplat::module;
 
 namespace winrt::Microsoft::ReactNative {
 
 ABICxxModule::ABICxxModule(
-    winrt::Windows::Foundation::IInspectable const &nativeModule,
+    IInspectable const &nativeModule,
     std::string &&name,
+    Finalizer &&finalizer,
     ConstantProvider &&constantProvider,
-    std::vector<facebook::xplat::module::CxxModule::Method> &&methods) noexcept
+    std::vector<CxxModule::Method> &&methods) noexcept
     : m_nativeModule{nativeModule},
       m_name{std::move(name)},
+      m_finalizer{std::move(finalizer)},
       m_constantProvider{std::move(constantProvider)},
       m_methods(std::move(methods)) {}
+
+ABICxxModule::~ABICxxModule() noexcept {
+  m_finalizer();
+}
 
 std::string ABICxxModule::getName() noexcept {
   return m_name;

@@ -38,6 +38,7 @@ struct ReactModuleBuilder : ReactModuleBuilderT<ReactModuleBuilder> {
       facebook::xplat::module::CxxModule::Callback &&callback) noexcept;
   static void RunSync(IReactDispatcher const &dispatcher, ReactDispatcherCallback const &callback) noexcept;
   void InitializeModule() noexcept;
+  ABICxxModule::Finalizer GetFinalizer() noexcept;
   ABICxxModule::ConstantProvider GetConstantProvider() noexcept;
 
  private:
