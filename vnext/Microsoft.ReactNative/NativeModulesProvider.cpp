@@ -34,18 +34,13 @@ std::vector<facebook::react::NativeModuleDescription> NativeModulesProvider::Get
     std::shared_ptr<facebook::react::MessageQueueThread> const &defaultQueueThread) {
   std::vector<facebook::react::NativeModuleDescription> modules;
 
-  auto winrtReactContext = winrt::make<implementation::ReactContext>(Mso::Copy(reactContext));
-
   for (auto &entry : m_moduleProviders) {
     auto dispatcherName = entry.second.second;
     auto messageQueueThread = GetMessageQueueThread(*reactContext, dispatcherName, defaultQueueThread);
     modules.emplace_back(
         entry.first,
-        [moduleName = entry.first, moduleProvider = entry.second.first, winrtReactContext, dispatcherName]() noexcept {
-          IReactModuleBuilder moduleBuilder =
-              winrt::make<implementation::ReactModuleBuilder>(winrtReactContext, dispatcherName);
-          auto nativeModule = moduleProvider(moduleBuilder);
-          return moduleBuilder.as<implementation::ReactModuleBuilder>()->MakeCxxModule(moduleName, nativeModule);
+        [moduleName = entry.first, moduleProvider = entry.second.first, reactContext, dispatcherName]() noexcept {
+          return std::make_unique<ABICxxModule>(moduleName, moduleProvider, reactContext, dispatcherName);
         },
         messageQueueThread);
   }

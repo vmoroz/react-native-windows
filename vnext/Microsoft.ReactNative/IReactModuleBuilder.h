@@ -3,18 +3,57 @@
 // Licensed under the MIT License.
 
 #include "ReactModuleBuilder.g.h"
-#include "ABICxxModule.h"
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 namespace winrt::Microsoft::ReactNative::implementation {
 
 struct ReactModuleBuilder : ReactModuleBuilderT<ReactModuleBuilder> {
-  ReactModuleBuilder(IReactContext const &reactContext, IReactPropertyName const &dispatcherName) noexcept;
+ public:
+  struct Initializer {
+    InitializerDelegate Delegate;
+    ReactInitializerType InitializerType;
+    bool UseJSDispatcher{};
+  };
+
+  struct Finalizer {
+    FinalizerDelegate Delegate;
+    bool UseJSDispatcher{};
+  };
+
+  struct ConstantProvider {
+    ConstantProviderDelegate Delegate;
+    bool UseJSDispatcher{};
+  };
+
+  struct Method {
+    MethodReturnType ReturnType{};
+    MethodDelegate Delegate;
+    bool UseJSDispatcher{};
+  };
+
+  struct SyncMethod {
+    SyncMethodDelegate Delegate;
+    bool UseJSDispatcher{};
+  };
+
+ public:
+  ReactModuleBuilder() noexcept;
+
+  std::vector<Initializer> const &GetInitializers() const noexcept;
+  std::vector<Finalizer> const &GetFinalizers() const noexcept;
+  std::vector<ConstantProvider> GetConstantProviders() const noexcept;
+  std::unordered_map<std::string, Method> GetMethods() const noexcept;
+  std::unordered_map<std::string, SyncMethod> GetSyncMethods() const noexcept;
 
  public: // IReactModuleBuilder
   void AddInitializer(InitializerDelegate const &initializer) noexcept;
   void AddConstantProvider(ConstantProviderDelegate const &constantProvider) noexcept;
   void AddMethod(hstring const &name, MethodReturnType const &returnType, MethodDelegate const &method) noexcept;
   void AddSyncMethod(hstring const &name, SyncMethodDelegate const &method) noexcept;
+
+ public: // IReactModuleBuilder2
   void AddDispatchedInitializer(
       InitializerDelegate const &initializer,
       ReactInitializerType const &initializerType,
@@ -28,46 +67,15 @@ struct ReactModuleBuilder : ReactModuleBuilderT<ReactModuleBuilder> {
       bool useJSDispatcher) noexcept;
   void AddDispatchedSyncMethod(hstring const &name, SyncMethodDelegate const &method, bool useJSDispatcher) noexcept;
 
- public:
-  std::unique_ptr<facebook::xplat::module::CxxModule> MakeCxxModule(
-      std::string const &name,
-      IInspectable const &nativeModule) noexcept;
+ private:
+  void EnsureMemberNotSet(std::string const &key, bool checkingMethod) noexcept;
 
  private:
-  static MethodResultCallback MakeMethodResultCallback(
-      facebook::xplat::module::CxxModule::Callback &&callback) noexcept;
-  static void RunSync(IReactDispatcher const &dispatcher, ReactDispatcherCallback const &callback) noexcept;
-  void InitializeModule() noexcept;
-  ABICxxModule::Finalizer GetFinalizer() noexcept;
-  ABICxxModule::ConstantProvider GetConstantProvider() noexcept;
-
- private:
-  struct InitializerEntry {
-    InitializerDelegate Delegate;
-    ReactInitializerType InitializerType;
-    bool UseJSDispatcher{};
-  };
-
-  struct FinalizerEntry {
-    FinalizerDelegate Delegate;
-    bool UseJSDispatcher{};
-  };
-
-  struct ConstantProviderEntry {
-    ConstantProviderDelegate Delegate;
-    bool UseJSDispatcher{};
-  };
-
- private:
-  IReactContext m_reactContext{nullptr};
-  IReactPropertyName m_dispatcherName{nullptr};
-  IReactDispatcher m_moduleDispatcher{nullptr};
-  IReactDispatcher m_jsDispatcher{nullptr};
-
-  std::vector<InitializerEntry> m_initializers;
-  std::vector<FinalizerEntry> m_finalizers;
-  std::vector<ConstantProviderEntry> m_constantProviders;
-  std::vector<facebook::xplat::module::CxxModule::Method> m_methods;
+  std::vector<Initializer> m_initializers;
+  std::vector<Finalizer> m_finalizers;
+  std::vector<ConstantProvider> m_constantProviders;
+  std::unordered_map<std::string, Method> m_methods;
+  std::unordered_map<std::string, SyncMethod> m_syncMethods;
 };
 
 } // namespace winrt::Microsoft::ReactNative::implementation
