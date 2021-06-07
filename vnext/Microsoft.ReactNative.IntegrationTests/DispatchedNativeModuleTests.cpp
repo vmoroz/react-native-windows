@@ -184,9 +184,9 @@ struct CustomDispatchedModule {
 struct TestPackageProvider : ReactPackageProvider<TestPackageProvider> {
   void CreatePackage(IReactPackageBuilder const &packageBuilder) noexcept {
     AddModule<DefaultDispatchedModule>(packageBuilder);
-    AddModule<UIDispatchedModule>(packageBuilder);
-    AddModule<JSDispatchedModule>(packageBuilder);
-    AddModule<CustomDispatchedModule>(packageBuilder);
+//    AddModule<UIDispatchedModule>(packageBuilder);
+//    AddModule<JSDispatchedModule>(packageBuilder);
+//    AddModule<CustomDispatchedModule>(packageBuilder);
   }
 };
 

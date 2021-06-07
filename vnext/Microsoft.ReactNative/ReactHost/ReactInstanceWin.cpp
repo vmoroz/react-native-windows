@@ -587,10 +587,14 @@ ReactInstanceState ReactInstanceWin::State() const noexcept {
 void ReactInstanceWin::InitJSMessageThread() noexcept {
   m_instance.Exchange(std::make_shared<facebook::react::Instance>());
 
-  auto scheduler = Mso::MakeJSCallInvokerScheduler(
-      m_instance.Load()->getJSCallInvoker(),
-      Mso::MakeWeakMemberFunctor(this, &ReactInstanceWin::OnError),
-      Mso::Copy(m_whenDestroyed));
+  MessageDispatchQueueCallbacks callbacks{};
+  callbacks.OnError = Mso::MakeWeakMemberFunctor(this, &ReactInstanceWin::OnError);
+  callbacks.OnShutdownStarting = [reactContext = m_reactContext]() noexcept {
+    reactContext->Notifications().SendNotification(
+        implementation::ReactDispatcherHelper::JSDispatcherShutdownNotification(), nullptr, nullptr);
+  };
+  callbacks.OnShutdownCompleted = [whenDestroyed = m_whenDestroyed]() noexcept { whenDestroyed.TrySetValue(); };
+  auto scheduler = MakeJSCallInvokerScheduler(m_instance.Load()->getJSCallInvoker(), std::move(callbacks));
   auto jsDispatchQueue = Mso::DispatchQueue::MakeCustomQueue(Mso::CntPtr(scheduler));
 
   // This work item will be processed as a first item in JS queue when the react instance is created.
@@ -604,7 +608,7 @@ void ReactInstanceWin::InitJSMessageThread() noexcept {
       winrt::make<winrt::Microsoft::ReactNative::implementation::ReactDispatcher>(Mso::Copy(jsDispatchQueue));
   m_options.Properties.Set(ReactDispatcherHelper::JSDispatcherProperty(), jsDispatcher);
 
-  m_jsMessageThread.Exchange(qi_cast<Mso::IJSCallInvokerQueueScheduler>(scheduler.Get())->GetMessageQueue());
+  m_jsMessageThread.Exchange(qi_cast<IJSCallInvokerQueueScheduler>(scheduler.Get())->GetMessageQueue());
   m_jsDispatchQueue.Exchange(std::move(jsDispatchQueue));
 }
 

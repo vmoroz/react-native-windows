@@ -7,6 +7,7 @@
 #include "pch.h"
 #include "TurboModulesProvider.h"
 #include <ReactCommon/TurboModuleUtils.h>
+#include "IReactModuleBuilder.h"
 #include "JsiApi.h"
 #include "JsiReader.h"
 #include "JsiWriter.h"
@@ -20,58 +21,6 @@ using namespace winrt;
 using namespace Windows::Foundation;
 
 namespace winrt::Microsoft::ReactNative {
-/*-------------------------------------------------------------------------------
-  TurboModuleBuilder
--------------------------------------------------------------------------------*/
-
-struct TurboModuleMethodInfo {
-  MethodReturnType ReturnType;
-  MethodDelegate Method;
-};
-
-struct TurboModuleBuilder : winrt::implements<TurboModuleBuilder, IReactModuleBuilder> {
-  TurboModuleBuilder(const IReactContext &reactContext) noexcept : m_reactContext(reactContext) {}
-
- public: // IReactModuleBuilder
-  void AddInitializer(InitializerDelegate const &initializer) noexcept {
-    initializer(m_reactContext);
-  }
-
-  void AddConstantProvider(ConstantProviderDelegate const &constantProvider) noexcept {
-    EnsureMemberNotSet("getConstants", false);
-    m_constantProviders.push_back(constantProvider);
-  }
-
-  void AddMethod(hstring const &name, MethodReturnType returnType, MethodDelegate const &method) noexcept {
-    auto key = to_string(name);
-    EnsureMemberNotSet(key, true);
-    m_methods.insert({key, {returnType, method}});
-  }
-
-  void AddSyncMethod(hstring const &name, SyncMethodDelegate const &method) noexcept {
-    auto key = to_string(name);
-    EnsureMemberNotSet(key, true);
-    m_syncMethods.insert({key, method});
-  }
-
- public:
-  std::unordered_map<std::string, TurboModuleMethodInfo> m_methods;
-  std::unordered_map<std::string, SyncMethodDelegate> m_syncMethods;
-  std::vector<ConstantProviderDelegate> m_constantProviders;
-  bool m_constantsEvaluated = false;
-
- private:
-  void EnsureMemberNotSet(const std::string &key, bool checkingMethod) noexcept {
-    VerifyElseCrash(m_methods.find(key) == m_methods.end());
-    VerifyElseCrash(m_syncMethods.find(key) == m_syncMethods.end());
-    if (checkingMethod && key == "getConstants") {
-      VerifyElseCrash(m_constantProviders.size() == 0);
-    }
-  }
-
- private:
-  IReactContext m_reactContext;
-};
 
 /*-------------------------------------------------------------------------------
   TurboModuleImpl
@@ -84,8 +33,22 @@ class TurboModuleImpl : public facebook::react::TurboModule {
       const std::string &name,
       std::shared_ptr<facebook::react::CallInvoker> jsInvoker,
       ReactModuleProvider reactModuleProvider)
-      : facebook::react::TurboModule(name, jsInvoker), m_moduleBuilder(winrt::make<TurboModuleBuilder>(reactContext)) {
+      : facebook::react::TurboModule(name, jsInvoker),
+        m_moduleBuilder(winrt::make<implementation::ReactModuleBuilder>()) {
     providedModule = reactModuleProvider(m_moduleBuilder);
+
+    for (auto const &initializer : m_moduleBuilder.as<implementation::ReactModuleBuilder>()->GetInitializers()) {
+      if (initializer.InitializerType == ReactInitializerType::Field) {
+        initializer.Delegate(reactContext);
+      }
+    }
+
+    for (auto const &initializer : m_moduleBuilder.as<implementation::ReactModuleBuilder>()->GetInitializers()) {
+      if (initializer.InitializerType == ReactInitializerType::Method) {
+        initializer.Delegate(reactContext);
+      }
+    }
+
     if (auto hostObject = providedModule.try_as<IJsiHostObject>()) {
       m_hostObjectWrapper = std::make_shared<implementation::HostObjectWrapper>(hostObject);
     }
@@ -97,8 +60,8 @@ class TurboModuleImpl : public facebook::react::TurboModule {
     }
 
     std::vector<facebook::jsi::PropNameID> props;
-    auto tmb = m_moduleBuilder.as<TurboModuleBuilder>();
-    for (auto &it : tmb->m_methods) {
+    auto tmb = m_moduleBuilder.as<implementation::ReactModuleBuilder>();
+    for (auto &it : tmb->GetMethods()) {
       props.push_back(facebook::jsi::PropNameID::forAscii(rt, it.first));
     }
     return props;
@@ -110,10 +73,10 @@ class TurboModuleImpl : public facebook::react::TurboModule {
     }
 
     // it is not safe to assume that "runtime" never changes, so members are not cached here
-    auto tmb = m_moduleBuilder.as<TurboModuleBuilder>();
+    auto tmb = m_moduleBuilder.as<implementation::ReactModuleBuilder>();
     auto key = propName.utf8(runtime);
 
-    if (key == "getConstants" && tmb->m_constantProviders.size() > 0) {
+    if (key == "getConstants" && tmb->GetConstantProviders().size() > 0) {
       // try to find getConstants if there is any constant
       return facebook::jsi::Function::createFromHostFunction(
           runtime,
@@ -127,8 +90,8 @@ class TurboModuleImpl : public facebook::react::TurboModule {
             // collect all constants to an object
             auto writer = winrt::make<JsiWriter>(runtime);
             writer.WriteObjectBegin();
-            for (auto cp : tmb->m_constantProviders) {
-              cp(writer);
+            for (auto const& cp : tmb->GetConstantProviders()) {
+              cp.Delegate(writer);
             }
             writer.WriteObjectEnd();
             return writer.as<JsiWriter>()->MoveResult();
@@ -137,8 +100,8 @@ class TurboModuleImpl : public facebook::react::TurboModule {
 
     {
       // try to find a Method
-      auto it = tmb->m_methods.find(key);
-      if (it != tmb->m_methods.end()) {
+      auto it = tmb->GetMethods().find(key);
+      if (it != tmb->GetMethods().end()) {
         return facebook::jsi::Function::createFromHostFunction(
             runtime,
             propName,
@@ -176,13 +139,13 @@ class TurboModuleImpl : public facebook::react::TurboModule {
               // call the function
               switch (method.ReturnType) {
                 case MethodReturnType::Void: {
-                  method.Method(argReader, argWriter, nullptr, nullptr);
+                  method.Delegate(argReader, argWriter, nullptr, nullptr);
                   return facebook::jsi::Value::undefined();
                 }
                 case MethodReturnType::Promise: {
                   return facebook::react::createPromiseAsJSIValue(
                       runtime, [=](facebook::jsi::Runtime &runtime, std::shared_ptr<facebook::react::Promise> promise) {
-                        method.Method(
+                        method.Delegate(
                             argReader,
                             argWriter,
                             [promise, &runtime](const IJSValueWriter &writer) {
@@ -244,7 +207,7 @@ class TurboModuleImpl : public facebook::react::TurboModule {
                     };
                   };
 
-                  method.Method(
+                  method.Delegate(
                       argReader,
                       argWriter,
                       makeCallback(resolveFunction),
@@ -260,8 +223,8 @@ class TurboModuleImpl : public facebook::react::TurboModule {
 
     {
       // try to find a SyncMethod
-      auto it = tmb->m_syncMethods.find(key);
-      if (it != tmb->m_syncMethods.end()) {
+      auto it = tmb->GetSyncMethods().find(key);
+      if (it != tmb->GetSyncMethods().end()) {
         return facebook::jsi::Function::createFromHostFunction(
             runtime,
             propName,
@@ -278,7 +241,7 @@ class TurboModuleImpl : public facebook::react::TurboModule {
               auto writer = winrt::make<JsiWriter>(runtime);
 
               // call the function
-              method(argReader, writer);
+              method.Delegate(argReader, writer);
 
               return writer.as<JsiWriter>()->MoveResult();
             });

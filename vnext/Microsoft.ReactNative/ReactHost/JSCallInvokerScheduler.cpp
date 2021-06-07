@@ -7,14 +7,13 @@
 #include <cxxreact/MessageQueueThread.h>
 #include "eventWaitHandle/eventWaitHandle.h"
 
-namespace Mso {
+namespace Mso::React {
 
 struct JSCallInvokerScheduler
     : Mso::UnknownObject<Mso::RefCountStrategy::WeakRef, IDispatchQueueScheduler, IJSCallInvokerQueueScheduler> {
   JSCallInvokerScheduler(
       std::shared_ptr<facebook::react::CallInvoker> &&callInvoker,
-      Mso::Functor<void(const Mso::ErrorCode &)> &&errorHandler,
-      Mso::Promise<void> &&whenQuit) noexcept;
+      MessageDispatchQueueCallbacks &&callbacks) noexcept;
   ~JSCallInvokerScheduler() noexcept override;
 
  public:
@@ -46,12 +45,8 @@ std::shared_ptr<facebook::react::MessageQueueThread> JSCallInvokerScheduler::Get
 
 JSCallInvokerScheduler::JSCallInvokerScheduler(
     std::shared_ptr<facebook::react::CallInvoker> &&callInvoker,
-    Mso::Functor<void(const Mso::ErrorCode &)> &&errorHandler,
-    Mso::Promise<void> &&whenQuit) noexcept
+    MessageDispatchQueueCallbacks &&callbacks) noexcept
     : m_callInvoker(callInvoker) {
-  Mso::React::MessageDispatchQueueCallbacks callbacks{};
-  callbacks.OnError = std::move(errorHandler);
-  callbacks.OnShutdownCompleted = [whenQuit = std::move(whenQuit)]() noexcept { whenQuit.SetValue(); };
   m_jsMessageThread =
       std::make_shared<Mso::React::MessageDispatchQueue>(Mso::DispatchQueue::MakeLooperQueue(), std::move(callbacks));
 }
@@ -95,10 +90,8 @@ void JSCallInvokerScheduler::AwaitTermination() noexcept {
 
 Mso::CntPtr<IDispatchQueueScheduler> MakeJSCallInvokerScheduler(
     std::shared_ptr<facebook::react::CallInvoker> &&callInvoker,
-    Mso::Functor<void(const Mso::ErrorCode &)> &&errorHandler,
-    Mso::Promise<void> &&whenQuit) noexcept {
-  return Mso::Make<JSCallInvokerScheduler, IDispatchQueueScheduler>(
-      std::move(callInvoker), std::move(errorHandler), std::move(whenQuit));
+    MessageDispatchQueueCallbacks &&callbacks) noexcept {
+  return Mso::Make<JSCallInvokerScheduler, IDispatchQueueScheduler>(std::move(callInvoker), std::move(callbacks));
 }
 
-} // namespace Mso
+} // namespace Mso::React

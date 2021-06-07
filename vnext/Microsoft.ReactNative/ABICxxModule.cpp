@@ -201,7 +201,7 @@ void ABICxxModule::SetupFinalizers(Mso::CntPtr<Mso::React::IReactContext> const 
           auto && /*sender*/, IReactNotificationArgs const &args) {
         VerifyElseCrashSz(jsDispatcher.HasThreadAccess(), "Must run in JS dispatcher");
         runFinalizers(true);
-        if (!isUIModule) {
+        if (moduleDispatcher && !isUIModule) {
           RunSync(moduleDispatcher, [&runFinalizers]() { runFinalizers(false); });
         }
         args.Subscription().Unsubscribe();
