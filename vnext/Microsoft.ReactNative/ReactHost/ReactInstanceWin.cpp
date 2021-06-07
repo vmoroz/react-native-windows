@@ -591,7 +591,7 @@ void ReactInstanceWin::InitJSMessageThread() noexcept {
   callbacks.OnError = Mso::MakeWeakMemberFunctor(this, &ReactInstanceWin::OnError);
   callbacks.OnShutdownStarting = [reactContext = m_reactContext]() noexcept {
     reactContext->Notifications().SendNotification(
-        implementation::ReactDispatcherHelper::JSDispatcherShutdownNotification(), nullptr, nullptr);
+        ReactDispatcherHelper::JSDispatcherShutdownNotification(), nullptr, nullptr);
   };
   callbacks.OnShutdownCompleted = [whenDestroyed = m_whenDestroyed]() noexcept { whenDestroyed.TrySetValue(); };
   auto scheduler = MakeJSCallInvokerScheduler(m_instance.Load()->getJSCallInvoker(), std::move(callbacks));
@@ -627,7 +627,7 @@ void ReactInstanceWin::InitUIMessageThread() noexcept {
   callbacks.OnError = Mso::MakeWeakMemberFunctor(this, &ReactInstanceWin::OnError);
   callbacks.OnShutdownStarting = [reactContext = m_reactContext]() noexcept {
     reactContext->Notifications().SendNotification(
-        implementation::ReactDispatcherHelper::UIDispatcherShutdownNotification(), nullptr, nullptr);
+        ReactDispatcherHelper::UIDispatcherShutdownNotification(), nullptr, nullptr);
   };
   m_uiMessageThread.Exchange(std::make_shared<MessageDispatchQueue>(m_uiQueue, std::move(callbacks)));
 

@@ -115,7 +115,7 @@ std::map<std::string, folly::dynamic> ABICxxModule::getConstants() noexcept {
   auto jsDispatcherConstants = getConstants(true);
   folly::dynamic moduleDispatcherConstants;
   if (m_moduleDispatcher && HasNonJSEntry(constantProviders)) {
-    moduleDispatcherConstants = getConstants(false);
+    RunSync(m_moduleDispatcher, [&]() { moduleDispatcherConstants = getConstants(false); });
   }
 
   auto addDynamicConstants = [](auto &&constantMap, folly::dynamic &&constants) noexcept {
@@ -213,7 +213,7 @@ void ABICxxModule::SetupFinalizers(Mso::CntPtr<Mso::React::IReactContext> const 
         nullptr,
         [runFinalizers, uiDispatcher = m_moduleDispatcher](auto && /*sender*/, IReactNotificationArgs const &args) {
           VerifyElseCrashSz(uiDispatcher.HasThreadAccess(), "Must run in UI dispatcher");
-          runFinalizers(true);
+          runFinalizers(false);
           args.Subscription().Unsubscribe();
         });
   }
