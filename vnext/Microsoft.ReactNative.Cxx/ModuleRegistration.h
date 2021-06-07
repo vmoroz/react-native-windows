@@ -80,7 +80,7 @@
   constexpr static void GetReactMemberAttribute(                                                              \
       TVisitor &visitor, winrt::Microsoft::ReactNative::ReactAttributeId<__COUNTER__> attributeId) noexcept { \
     using namespace winrt::Microsoft::ReactNative;                                                            \
-    const auto invalid = std::numeric_limits<size_t>::max(); /* used as an invalid index */                   \
+    constexpr auto invalid = std::numeric_limits<size_t>::max(); /* used as an invalid index */               \
     /* Named arguments with default values. */                                                                \
     ReactNamedArg<std::wstring_view> memberName{L## #member};                                                 \
     ReactNamedArg<std::wstring_view> moduleName{L""};                                                         \
