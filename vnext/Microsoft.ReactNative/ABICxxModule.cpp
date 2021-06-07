@@ -87,8 +87,7 @@ ABICxxModule::ABICxxModule(
   }
 
   RunInitializers(reactContext);
-
-  SetupFinalizers(reactContext, dispatcherName == ReactDispatcherHelper::UIDispatcherProperty());
+  SetupFinalizers(reactContext);
 }
 
 std::string ABICxxModule::getName() noexcept {
@@ -178,8 +177,7 @@ void ABICxxModule::RunInitializers(Mso::CntPtr<Mso::React::IReactContext> const 
   }
 }
 
-void ABICxxModule::SetupFinalizers(Mso::CntPtr<Mso::React::IReactContext> const &reactContext, bool isUIModule)
-    const noexcept {
+void ABICxxModule::SetupFinalizers(Mso::CntPtr<Mso::React::IReactContext> const &reactContext) const noexcept {
   auto const &finalizers = m_moduleBuilder->GetFinalizers();
   if (finalizers.empty()) {
     return;
@@ -197,26 +195,15 @@ void ABICxxModule::SetupFinalizers(Mso::CntPtr<Mso::React::IReactContext> const 
   reactContext->Notifications().Subscribe(
       ReactDispatcherHelper::JSDispatcherShutdownNotification(),
       nullptr,
-      [runFinalizers, jsDispatcher = m_jsDispatcher, moduleDispatcher = m_moduleDispatcher, isUIModule](
+      [runFinalizers, jsDispatcher = m_jsDispatcher, moduleDispatcher = m_moduleDispatcher](
           auto && /*sender*/, IReactNotificationArgs const &args) {
         VerifyElseCrashSz(jsDispatcher.HasThreadAccess(), "Must run in JS dispatcher");
-        runFinalizers(true);
-        if (moduleDispatcher && !isUIModule) {
+        if (moduleDispatcher) {
           RunSync(moduleDispatcher, [&runFinalizers]() { runFinalizers(false); });
         }
+        runFinalizers(true);
         args.Subscription().Unsubscribe();
       });
-
-  if (isUIModule && HasNonJSEntry(finalizers)) {
-    reactContext->Notifications().Subscribe(
-        ReactDispatcherHelper::UIDispatcherShutdownNotification(),
-        nullptr,
-        [runFinalizers, uiDispatcher = m_moduleDispatcher](auto && /*sender*/, IReactNotificationArgs const &args) {
-          VerifyElseCrashSz(uiDispatcher.HasThreadAccess(), "Must run in UI dispatcher");
-          runFinalizers(false);
-          args.Subscription().Unsubscribe();
-        });
-  }
 }
 
 ABICxxModule::CxxMethod ABICxxModule::CreateCxxMethod(

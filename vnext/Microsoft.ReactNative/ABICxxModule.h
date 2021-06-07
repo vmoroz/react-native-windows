@@ -32,7 +32,7 @@ struct ABICxxModule : facebook::xplat::module::CxxModule {
 
  private:
   void RunInitializers(Mso::CntPtr<Mso::React::IReactContext> const &reactContext) const noexcept;
-  void SetupFinalizers(Mso::CntPtr<Mso::React::IReactContext> const &reactContext, bool isUIModule) const noexcept;
+  void SetupFinalizers(Mso::CntPtr<Mso::React::IReactContext> const &reactContext) const noexcept;
   CxxMethod CreateCxxMethod(std::string const &name, implementation::ReactModuleBuilder::Method const &method)
       const noexcept;
   CxxMethod CreateCxxMethod(std::string const &name, implementation::ReactModuleBuilder::SyncMethod const &method)
