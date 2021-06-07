@@ -118,6 +118,12 @@ struct JSDispatchedModule {
     TestEventService::LogEvent("JSDispatchedModule::Initialize");
   }
 
+  REACT_FINALIZER(Finalize)
+  void Finalize() noexcept {
+    TestCheck(m_reactContext.JSDispatcher().HasThreadAccess());
+    TestEventService::LogEvent("JSDispatchedModule::Finalize");
+  }
+
   REACT_CONSTANT_PROVIDER(GetConstants)
   void GetConstants(ReactConstantProvider &constantProvider) noexcept {
     constantProvider.Add(L"myConst", 42);
@@ -159,6 +165,12 @@ struct CustomDispatchedModule {
     m_reactContext = reactContext;
     TestCheck(m_reactContext.Properties().Get(CustomDispatcherId()).HasThreadAccess());
     TestEventService::LogEvent("CustomDispatchedModule::Initialize");
+  }
+
+  REACT_FINALIZER(Finalize)
+  void Finalize() noexcept {
+    TestCheck(m_reactContext.Properties().Get(CustomDispatcherId()).HasThreadAccess());
+    TestEventService::LogEvent("CustomDispatchedModule::Finalize");
   }
 
   REACT_CONSTANT_PROVIDER(GetConstants)
@@ -259,25 +271,39 @@ TEST_CLASS (DispatchedNativeModuleTests) {
         TestEvent{"UIDispatchedModule::TestAsyncMethod"},
     });
 
-    // context.CallJSFunction(L"TestDriver", L"testJSDispatchedModule");
-    // TestEventService::ObserveEvents({
-    //    TestEvent{"JSDispatchedModule::Initialize"},
-    //    TestEvent{"JSDispatchedModule::GetConstants"},
-    //    TestEvent{"JSDispatchedModule::TestSyncMethod"},
-    //    TestEvent{"JSDispatchedModule::TestAsyncMethod"},
-    //});
-
-    // context.CallJSFunction(L"TestDriver", L"testCustomDispatchedModule");
-    // TestEventService::ObserveEvents({
-    //    TestEvent{"CustomDispatchedModule::Initialize"},
-    //    TestEvent{"CustomDispatchedModule::GetConstants"},
-    //    TestEvent{"CustomDispatchedModule::TestSyncMethod"},
-    //    TestEvent{"CustomDispatchedModule::TestAsyncMethod"},
-    //});
-
     m_reactNativeHost = nullptr;
     TestEventService::ObserveEvents({
         TestEvent{"UIDispatchedModule::Finalize"},
+    });
+  }
+
+  TEST_METHOD(TestJSDispatchedModule) {
+    m_context.CallJSFunction(L"TestDriver", L"testJSDispatchedModule");
+    TestEventService::ObserveEvents({
+        TestEvent{"JSDispatchedModule::Initialize"},
+        TestEvent{"JSDispatchedModule::GetConstants"},
+        TestEvent{"JSDispatchedModule::TestSyncMethod"},
+        TestEvent{"JSDispatchedModule::TestAsyncMethod"},
+    });
+
+    m_reactNativeHost = nullptr;
+    TestEventService::ObserveEvents({
+        TestEvent{"JSDispatchedModule::Finalize"},
+    });
+  }
+
+  TEST_METHOD(TestCustomDispatchedModule) {
+    m_context.CallJSFunction(L"TestDriver", L"testCustomDispatchedModule");
+    TestEventService::ObserveEvents({
+        TestEvent{"CustomDispatchedModule::Initialize"},
+        TestEvent{"CustomDispatchedModule::GetConstants"},
+        TestEvent{"CustomDispatchedModule::TestSyncMethod"},
+        TestEvent{"CustomDispatchedModule::TestAsyncMethod"},
+    });
+
+    m_reactNativeHost = nullptr;
+    TestEventService::ObserveEvents({
+        TestEvent{"CustomDispatchedModule::Finalize"},
     });
   }
 };
