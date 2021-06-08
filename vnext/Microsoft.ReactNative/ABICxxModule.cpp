@@ -76,14 +76,14 @@ static bool HasNonJSEntry(T &&entries) {
 ABICxxModule::ABICxxModule(
     std::string const &name,
     ReactModuleProvider const &moduleProvider,
-    Mso::CntPtr<Mso::React::IReactContext> const &reactContext,
+    IReactContext const &reactContext,
     IReactPropertyName const &dispatcherName) noexcept
     : m_name{name},
-      m_moduleBuilder{make_self<implementation::ReactModuleBuilder>()},
+      m_moduleBuilder{make_self<implementation::ReactModuleBuilder>(reactContext)},
       m_nativeModule{moduleProvider(m_moduleBuilder.as<IReactModuleBuilder>())} {
-  m_jsDispatcher = reactContext->Properties().Get(ReactDispatcherHelper::JSDispatcherProperty()).as<IReactDispatcher>();
+  m_jsDispatcher = reactContext.JSDispatcher();
   if (dispatcherName && dispatcherName != ReactDispatcherHelper::JSDispatcherProperty()) {
-    m_moduleDispatcher = reactContext->Properties().Get(dispatcherName).as<IReactDispatcher>();
+    m_moduleDispatcher = reactContext.Properties().Get(dispatcherName).as<IReactDispatcher>();
   }
 
   RunInitializers(reactContext);
@@ -146,7 +146,7 @@ std::vector<CxxModule::Method> ABICxxModule::getMethods() noexcept {
   return modules;
 }
 
-void ABICxxModule::RunInitializers(Mso::CntPtr<Mso::React::IReactContext> const &reactContext) const noexcept {
+void ABICxxModule::RunInitializers(IReactContext const &reactContext) const noexcept {
   VerifyElseCrashSz(m_jsDispatcher.HasThreadAccess(), "RunInitializers must be run from the JS dispatcher.");
 
   auto const &initializers = m_moduleBuilder->GetInitializers();
@@ -154,14 +154,12 @@ void ABICxxModule::RunInitializers(Mso::CntPtr<Mso::React::IReactContext> const 
     return;
   }
 
-  auto runInitializers = [initializers,
-                          winrtReactContext = winrt::make<implementation::ReactContext>(Mso::Copy(reactContext)),
-                          hasModuleDispatcher = static_cast<bool>(m_moduleDispatcher)](
+  auto runInitializers = [initializers, reactContext, hasModuleDispatcher = static_cast<bool>(m_moduleDispatcher)](
                              ReactInitializerType initializerType, bool useJSDispatcher) {
     for (auto const &initializer : initializers) {
       if (initializer.InitializerType == initializerType &&
           useJSDispatcher == (!hasModuleDispatcher || initializer.UseJSDispatcher)) {
-        initializer.Delegate(winrtReactContext);
+        initializer.Delegate(reactContext);
       }
     }
   };
@@ -177,7 +175,7 @@ void ABICxxModule::RunInitializers(Mso::CntPtr<Mso::React::IReactContext> const 
   }
 }
 
-void ABICxxModule::SetupFinalizers(Mso::CntPtr<Mso::React::IReactContext> const &reactContext) const noexcept {
+void ABICxxModule::SetupFinalizers(IReactContext const &reactContext) const noexcept {
   auto const &finalizers = m_moduleBuilder->GetFinalizers();
   if (finalizers.empty()) {
     return;
@@ -192,7 +190,7 @@ void ABICxxModule::SetupFinalizers(Mso::CntPtr<Mso::React::IReactContext> const 
     }
   };
 
-  reactContext->Notifications().Subscribe(
+  reactContext.Notifications().Subscribe(
       ReactDispatcherHelper::JSDispatcherShutdownNotification(),
       nullptr,
       [runFinalizers, jsDispatcher = m_jsDispatcher, moduleDispatcher = m_moduleDispatcher](
@@ -223,7 +221,7 @@ ABICxxModule::CxxMethod ABICxxModule::CreateCxxMethod(
       });
 
   // By default the async methods are run in module dispatcher.
-  // If we want to run them in JS dispatcher, then we must use the JS dispatcher explictly.
+  // If we want to run them in JS dispatcher, then we must use the JS dispatcher explicitly.
   if (m_moduleDispatcher && method.UseJSDispatcher) {
     cxxMethodCallback =
         FuncType([cxxMethodCallback = std::move(cxxMethodCallback), jsDispatcher = m_jsDispatcher](

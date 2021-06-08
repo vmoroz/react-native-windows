@@ -11,7 +11,7 @@ namespace winrt::Microsoft::ReactNative::implementation {
 // ReactModuleBuilder implementation
 //===========================================================================
 
-ReactModuleBuilder::ReactModuleBuilder() noexcept {}
+ReactModuleBuilder::ReactModuleBuilder(IReactContext const reactContext) noexcept : m_reactContext{reactContext} {}
 
 std::vector<ReactModuleBuilder::Initializer> const &ReactModuleBuilder::GetInitializers() const noexcept {
   return m_initializers;
@@ -21,15 +21,16 @@ std::vector<ReactModuleBuilder::Finalizer> const &ReactModuleBuilder::GetFinaliz
   return m_finalizers;
 }
 
-std::vector<ReactModuleBuilder::ConstantProvider> ReactModuleBuilder::GetConstantProviders() const noexcept {
+std::vector<ReactModuleBuilder::ConstantProvider> const &ReactModuleBuilder::GetConstantProviders() const noexcept {
   return m_constantProviders;
 }
 
-std::unordered_map<std::string, ReactModuleBuilder::Method> ReactModuleBuilder::GetMethods() const noexcept {
+std::unordered_map<std::string, ReactModuleBuilder::Method> const &ReactModuleBuilder::GetMethods() const noexcept {
   return m_methods;
 }
 
-std::unordered_map<std::string, ReactModuleBuilder::SyncMethod> ReactModuleBuilder::GetSyncMethods() const noexcept {
+std::unordered_map<std::string, ReactModuleBuilder::SyncMethod> const &ReactModuleBuilder::GetSyncMethods()
+    const noexcept {
   return m_syncMethods;
 }
 
@@ -50,6 +51,10 @@ void ReactModuleBuilder::AddMethod(
 
 void ReactModuleBuilder::AddSyncMethod(hstring const &name, SyncMethodDelegate const &method) noexcept {
   AddDispatchedSyncMethod(name, method, true);
+}
+
+IReactContext ReactModuleBuilder::Context() noexcept {
+  return m_reactContext;
 }
 
 void ReactModuleBuilder::AddDispatchedInitializer(

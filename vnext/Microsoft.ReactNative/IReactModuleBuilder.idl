@@ -78,6 +78,8 @@ namespace Microsoft.ReactNative
     "See [Native Modules](native-modules) for more usage information.")
   interface IReactModuleBuilder2
   {
+    IReactContext Context { get; };
+
     DOC_STRING(
       "Adds an initializer method called on the native module initialization.\n"
       "It provides the native module with the @IReactContext for the running ReactNative instance. "

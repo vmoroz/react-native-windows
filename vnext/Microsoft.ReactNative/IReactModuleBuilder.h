@@ -39,13 +39,13 @@ struct ReactModuleBuilder : ReactModuleBuilderT<ReactModuleBuilder> {
   };
 
  public:
-  ReactModuleBuilder() noexcept;
+  ReactModuleBuilder(IReactContext const reactContext) noexcept;
 
   std::vector<Initializer> const &GetInitializers() const noexcept;
   std::vector<Finalizer> const &GetFinalizers() const noexcept;
-  std::vector<ConstantProvider> GetConstantProviders() const noexcept;
-  std::unordered_map<std::string, Method> GetMethods() const noexcept;
-  std::unordered_map<std::string, SyncMethod> GetSyncMethods() const noexcept;
+  std::vector<ConstantProvider> const &GetConstantProviders() const noexcept;
+  std::unordered_map<std::string, Method> const &GetMethods() const noexcept;
+  std::unordered_map<std::string, SyncMethod> const &GetSyncMethods() const noexcept;
 
  public: // IReactModuleBuilder
   void AddInitializer(InitializerDelegate const &initializer) noexcept;
@@ -54,6 +54,7 @@ struct ReactModuleBuilder : ReactModuleBuilderT<ReactModuleBuilder> {
   void AddSyncMethod(hstring const &name, SyncMethodDelegate const &method) noexcept;
 
  public: // IReactModuleBuilder2
+  IReactContext Context() noexcept;
   void AddDispatchedInitializer(
       InitializerDelegate const &initializer,
       ReactInitializerType const &initializerType,
@@ -71,6 +72,7 @@ struct ReactModuleBuilder : ReactModuleBuilderT<ReactModuleBuilder> {
   void EnsureMemberNotSet(std::string const &key, bool checkingMethod) noexcept;
 
  private:
+  IReactContext m_reactContext;
   std::vector<Initializer> m_initializers;
   std::vector<Finalizer> m_finalizers;
   std::vector<ConstantProvider> m_constantProviders;

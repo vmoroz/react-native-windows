@@ -264,7 +264,7 @@
 // In JavaScript we use `global.__fbBatchedBridge.registerLazyCallableModule` to register a callable function.
 #define REACT_FUNCTION(                                                                               \
     field, /* [opt, named] functionName, [opt, named] moduleName, [opt, named] useJSDispatcher */...) \
-  INTERNAL_REACT_MEMBER(EventField, field, functionName, moduleName, useJSDispatcher, 0, 1, 2, __VA_ARGS__)
+  INTERNAL_REACT_MEMBER(FunctionField, field, functionName, moduleName, useJSDispatcher, 0, 1, 2, __VA_ARGS__)
 
 #define REACT_SHOW_METHOD_SIGNATURES(methodName, signatures)                      \
   " (see details below in output).\n"                                             \
@@ -420,7 +420,7 @@ struct IsPromise<ReactPromise<T>> : std::true_type {};
 template <class TArgsTuple>
 constexpr size_t GetPromiseCount() noexcept {
   if constexpr (
-      std::tuple_size_v < TArgsTuple >> 0 &&
+      std::tuple_size_v<TArgsTuple> > 0 &&
       IsPromise<TupleElementOrVoid<std::tuple_size_v<TArgsTuple> - 1, TArgsTuple>>::value) {
     return 1;
   } else {

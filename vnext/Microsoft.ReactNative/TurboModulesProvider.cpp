@@ -34,7 +34,7 @@ class TurboModuleImpl : public facebook::react::TurboModule {
       std::shared_ptr<facebook::react::CallInvoker> jsInvoker,
       ReactModuleProvider reactModuleProvider)
       : facebook::react::TurboModule(name, jsInvoker),
-        m_moduleBuilder(winrt::make<implementation::ReactModuleBuilder>()) {
+        m_moduleBuilder(winrt::make<implementation::ReactModuleBuilder>(reactContext)) {
     providedModule = reactModuleProvider(m_moduleBuilder);
 
     for (auto const &initializer : m_moduleBuilder.as<implementation::ReactModuleBuilder>()->GetInitializers()) {
@@ -90,7 +90,7 @@ class TurboModuleImpl : public facebook::react::TurboModule {
             // collect all constants to an object
             auto writer = winrt::make<JsiWriter>(runtime);
             writer.WriteObjectBegin();
-            for (auto const& cp : tmb->GetConstantProviders()) {
+            for (auto const &cp : tmb->GetConstantProviders()) {
               cp.Delegate(writer);
             }
             writer.WriteObjectEnd();

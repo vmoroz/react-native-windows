@@ -9,7 +9,6 @@
 #pragma once
 
 #include "IReactModuleBuilder.h"
-#include "ReactContext.h"
 #include "cxxreact/CxxModule.h"
 #include "winrt/Microsoft.ReactNative.h"
 
@@ -22,7 +21,7 @@ struct ABICxxModule : facebook::xplat::module::CxxModule {
   ABICxxModule(
       std::string const &name,
       ReactModuleProvider const &moduleProvider,
-      Mso::CntPtr<Mso::React::IReactContext> const &reactContext,
+      IReactContext const &reactContext,
       IReactPropertyName const &dispatcherName) noexcept;
 
  public: // CxxModule implementation
@@ -31,8 +30,8 @@ struct ABICxxModule : facebook::xplat::module::CxxModule {
   std::vector<facebook::xplat::module::CxxModule::Method> getMethods() noexcept override;
 
  private:
-  void RunInitializers(Mso::CntPtr<Mso::React::IReactContext> const &reactContext) const noexcept;
-  void SetupFinalizers(Mso::CntPtr<Mso::React::IReactContext> const &reactContext) const noexcept;
+  void RunInitializers(IReactContext const &reactContext) const noexcept;
+  void SetupFinalizers(IReactContext const &reactContext) const noexcept;
   CxxMethod CreateCxxMethod(std::string const &name, implementation::ReactModuleBuilder::Method const &method)
       const noexcept;
   CxxMethod CreateCxxMethod(std::string const &name, implementation::ReactModuleBuilder::SyncMethod const &method)

@@ -345,7 +345,7 @@ struct UIDispatchedModule3 {
   }
 
   REACT_INITIALIZER(UIInitialize)
-  void UIInitialize(ReactContext const &/*reactContext*/) noexcept {
+  void UIInitialize(ReactContext const & /*reactContext*/) noexcept {
     TestCheck(m_reactContext.UIDispatcher().HasThreadAccess());
     TestEventService::LogEvent("UIDispatchedModule3::UIInitialize");
   }
