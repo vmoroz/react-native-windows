@@ -30,6 +30,12 @@
     <ENABLE_JS_SYSTRACE_TO_ETW Condition="'$(ENABLE_JS_SYSTRACE_TO_ETW)' == ''">true</ENABLE_JS_SYSTRACE_TO_ETW>
   </PropertyGroup>
 
+  <PropertyGroup Label="ExternalDependencies">
+    <!-- Google Test Adapter -->
+    <!-- Property sheets in the adapter's NuGet doesn't consider PlatformToolset=v143 -->
+    <Force-Enable-Microsoft-googletest-v140-windesktop-msvcstl-static-rt-dyn>false</Force-Enable-Microsoft-googletest-v140-windesktop-msvcstl-static-rt-dyn>
+  </PropertyGroup>
+
   <!--
     Tracing definitions may be checked in Facebook headers. Make sure they get
     defined for anything with the potential to include them.
@@ -41,10 +47,11 @@
     </ClCompile>
   </ItemDefinitionGroup>
 
-  <Import Condition="'$(UseHermes)' == '' or '$(UseV8)' == ''" Project="$(ReactNativeWindowsDir)PropertySheets\JSEngine.props" />
+  <Import Condition="'$(JsEnginePropsDefined)' == ''" Project="$(ReactNativeWindowsDir)PropertySheets\JSEngine.props" />
   <ItemDefinitionGroup>
     <ClCompile>
       <PreprocessorDefinitions Condition="'$(UseHermes)'=='true'">USE_HERMES;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions Condition="'$(EnableDevServerHBCBundles)'=='true'">ENABLE_DEVSERVER_HBCBUNDLES;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PreprocessorDefinitions Condition="'$(UseV8)'=='true'">USE_V8;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PreprocessorDefinitions Condition="'$(UseFabric)'=='true'">USE_FABRIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>

@@ -3,19 +3,23 @@
     ".flowconfig",
     "src/**"
   ],
-  "baseVersion": "0.0.0-438a4cf59",
+  "excludePatterns": [
+    "**/__snapshots__/**",
+    "src/rntypes/**"
+  ],
+  "baseVersion": "0.0.0-20211021-2008-eccbf9b5c",
   "overrides": [
     {
       "type": "derived",
       "file": ".flowconfig",
       "baseFile": ".flowconfig",
-      "baseHash": "4ffdd0f412a3de45ad8a532a4d105b22f0d5ea49"
+      "baseHash": "1920d4cf4c839eb21889eb28e4596fbbfcc4a0cd"
     },
     {
       "type": "derived",
       "file": "src/index.win32.js",
       "baseFile": "index.js",
-      "baseHash": "ef954129bcecf1cba9f786bd2a32327adfb735a5"
+      "baseHash": "3f55b3104a728f68008ba473bb64bbe8fc7ad8c9"
     },
     {
       "type": "patch",
@@ -54,13 +58,6 @@
     },
     {
       "type": "copy",
-      "file": "src/Libraries/Components/DatePickerAndroid/DatePickerAndroid.win32.js",
-      "baseFile": "Libraries/Components/DatePickerAndroid/DatePickerAndroid.ios.js",
-      "baseHash": "09d82215c57ca5873a53523a63006daebf07ffbc",
-      "issue": 4378
-    },
-    {
-      "type": "copy",
       "file": "src/Libraries/Components/DrawerAndroid/DrawerLayoutAndroid.js",
       "baseFile": "Libraries/Components/DrawerAndroid/DrawerLayoutAndroid.ios.js",
       "baseHash": "e5bb18f4dc9ddbf96ab9b83cfc21b1c0495ac59a",
@@ -75,24 +72,6 @@
       "file": "src/Libraries/Components/MaskedView/MaskedViewIOS.win32.js",
       "baseFile": "Libraries/Components/MaskedView/MaskedViewIOS.android.js",
       "baseHash": "0b409391c852a1001cee74a84414a13c4fe88f8b",
-      "issue": 4378
-    },
-    {
-      "type": "platform",
-      "file": "src/Libraries/Components/Picker/Picker.win32.tsx"
-    },
-    {
-      "type": "copy",
-      "file": "src/Libraries/Components/Picker/PickerAndroid.js",
-      "baseFile": "Libraries/Components/Picker/PickerAndroid.ios.js",
-      "baseHash": "e5bb18f4dc9ddbf96ab9b83cfc21b1c0495ac59a",
-      "issue": 4378
-    },
-    {
-      "type": "copy",
-      "file": "src/Libraries/Components/Picker/PickerIOS.js",
-      "baseFile": "Libraries/Components/Picker/PickerIOS.android.js",
-      "baseHash": "0c6bf0751e053672123cbad30d67851ba0007af6",
       "issue": 4378
     },
     {
@@ -145,13 +124,13 @@
       "type": "derived",
       "file": "src/Libraries/Components/TextInput/TextInput.win32.tsx",
       "baseFile": "Libraries/Components/TextInput/TextInput.js",
-      "baseHash": "5eb78ac95aeaa6ea8c5128050a2e908759af6aff"
+      "baseHash": "d88f479a06105b51ff32122ae898b04ee66c0d33"
     },
     {
       "type": "patch",
       "file": "src/Libraries/Components/TextInput/TextInputState.win32.js",
       "baseFile": "Libraries/Components/TextInput/TextInputState.js",
-      "baseHash": "9b941d27fadc82ac74153cd52c08080b0b1c7c8f"
+      "baseHash": "c2797c00e77fa75b029851de14ce94c00bef7683"
     },
     {
       "type": "copy",
@@ -194,7 +173,7 @@
       "type": "patch",
       "file": "src/Libraries/Components/View/ReactNativeViewViewConfig.win32.js",
       "baseFile": "Libraries/Components/View/ReactNativeViewViewConfig.js",
-      "baseHash": "7d6114901e76fa8f73f84dbb3f486ea2e1c9ce0e"
+      "baseHash": "cf2b9765b9002b0724662417ac77d24153de02bb"
     },
     {
       "type": "platform",
@@ -204,7 +183,7 @@
       "type": "patch",
       "file": "src/Libraries/Components/View/View.win32.js",
       "baseFile": "Libraries/Components/View/View.js",
-      "baseHash": "77bfbef8e835e4fee49311779bb039a99ae44372"
+      "baseHash": "689895e8755aed42e913460d1fa964907a74f06c"
     },
     {
       "type": "platform",
@@ -222,10 +201,16 @@
       "issue": 5170
     },
     {
+      "type": "copy",
+      "file": "src/Libraries/DeprecatedPropTypes/DeprecatedImagePropType.win32.js",
+      "baseFile": "Libraries/DeprecatedPropTypes/DeprecatedImagePropType.ios.js",
+      "baseHash": "ae3ac9add2e9ac83b7b538f82b57fb3f8fdd9526"
+    },
+    {
       "type": "derived",
       "file": "src/Libraries/Image/Image.win32.js",
       "baseFile": "Libraries/Image/Image.ios.js",
-      "baseHash": "c20b0134e74a8e8d69d0b2694b4296fe2bf69d3f",
+      "baseHash": "c8d495e707fc61bbfb929b9a343f5460c3b60c28",
       "issue": 4320
     },
     {
@@ -279,13 +264,72 @@
       "type": "patch",
       "file": "src/Libraries/Inspector/Inspector.win32.js",
       "baseFile": "Libraries/Inspector/Inspector.js",
-      "baseHash": "fb36e8419f4cb0b358505e991d59e1dc938432f9"
+      "baseHash": "356c1439a84636333d253a385470b9cf4d0311b7"
     },
     {
       "type": "patch",
       "file": "src/Libraries/Inspector/InspectorOverlay.win32.js",
       "baseFile": "Libraries/Inspector/InspectorOverlay.js",
       "baseHash": "b11d03daa2e3f828a350667f543b2cda4fa65dbf"
+    },
+    {
+      "type": "copy",
+      "file": "src/Libraries/Lists/__tests__/CellRenderMask-test.js",
+      "baseFile": "Libraries/Lists/__tests__/CellRenderMask-test.js",
+      "baseHash": "9b194f61db28366f5fb490b033d940636a9c7bb2"
+    },
+    {
+      "type": "copy",
+      "file": "src/Libraries/Lists/__tests__/FillRateHelper-test.js",
+      "baseFile": "Libraries/Lists/__tests__/FillRateHelper-test.js",
+      "baseHash": "3bb080ba811b837f69c82bc609fb6b328c20bd6d"
+    },
+    {
+      "type": "copy",
+      "file": "src/Libraries/Lists/__tests__/FlatList-test.js",
+      "baseFile": "Libraries/Lists/__tests__/FlatList-test.js",
+      "baseHash": "88824e737ffe548ce9cbe56fe84973bed8f73884"
+    },
+    {
+      "type": "copy",
+      "file": "src/Libraries/Lists/__tests__/SectionList-test.js",
+      "baseFile": "Libraries/Lists/__tests__/SectionList-test.js",
+      "baseHash": "e930bdfd0c4be6b06d156099fb2f7efe903c3644"
+    },
+    {
+      "type": "copy",
+      "file": "src/Libraries/Lists/__tests__/ViewabilityHelper-test.js",
+      "baseFile": "Libraries/Lists/__tests__/ViewabilityHelper-test.js",
+      "baseHash": "f23a66cfc475ee1e2eda1065e56e05e547b7030e"
+    },
+    {
+      "type": "copy",
+      "file": "src/Libraries/Lists/__tests__/VirtualizedList-test.js",
+      "baseFile": "Libraries/Lists/__tests__/VirtualizedList-test.js",
+      "baseHash": "2d3b7dae890a42fc0b94c9700a72e6606f32625f"
+    },
+    {
+      "type": "copy",
+      "file": "src/Libraries/Lists/__tests__/VirtualizedSectionList-test.js",
+      "baseFile": "Libraries/Lists/__tests__/VirtualizedSectionList-test.js",
+      "baseHash": "c258bcae6ee2ded65303e0c5099d20b0569f400f"
+    },
+    {
+      "type": "copy",
+      "file": "src/Libraries/Lists/__tests__/VirtualizeUtils-test.js",
+      "baseFile": "Libraries/Lists/__tests__/VirtualizeUtils-test.js",
+      "baseHash": "b0ff4ee36692d119b7bd7a50a770813e8b96153c"
+    },
+    {
+      "type": "platform",
+      "file": "src/Libraries/Lists/VirtualizedList.win32.js"
+    },
+    {
+      "type": "patch",
+      "file": "src/Libraries/LogBox/UI/LogBoxInspectorHeader.win32.js",
+      "baseFile": "Libraries/LogBox/UI/LogBoxInspectorHeader.js",
+      "baseHash": "03ecf9d83da622e51396fe37136d5c15d26ccbe2",
+      "issue": 7952
     },
     {
       "type": "derived",
@@ -321,6 +365,28 @@
       "file": "src/Libraries/PersonaCoin/PersonaCoinTypes.ts"
     },
     {
+      "type": "platform",
+      "file": "src/Libraries/QuirkSettings/CachingNativeQuirkSettings.js"
+    },
+    {
+      "type": "platform",
+      "file": "src/Libraries/QuirkSettings/NativeQuirkSettings.js"
+    },
+    {
+      "type": "platform",
+      "file": "src/Libraries/QuirkSettings/Quirks.js"
+    },
+    {
+      "type": "platform",
+      "file": "src/Libraries/QuirkSettings/QuirkSettings.js"
+    },
+    {
+      "type": "patch",
+      "file": "src/Libraries/ReactNative/PaperUIManager.win32.js",
+      "baseFile": "Libraries/ReactNative/PaperUIManager.js",
+      "baseHash": "9940bfdf0c803eb1d6905563803fa9deac1c7770"
+    },
+    {
       "type": "derived",
       "file": "src/Libraries/Settings/Settings.win32.js",
       "baseFile": "Libraries/Settings/Settings.android.js",
@@ -342,7 +408,7 @@
       "type": "patch",
       "file": "src/Libraries/StyleSheet/StyleSheet.win32.js",
       "baseFile": "Libraries/StyleSheet/StyleSheet.js",
-      "baseHash": "95ed8a2da162e168c7d740640a9d6c0fdb282c84"
+      "baseHash": "afe4fc1e9aa91d08a7a1098e3bbd3b17a73b4a65"
     },
     {
       "type": "derived",
@@ -368,7 +434,7 @@
       "type": "derived",
       "file": "src/Libraries/Utilities/Dimensions.win32.js",
       "baseFile": "Libraries/Utilities/Dimensions.js",
-      "baseHash": "cc2a5b68d9207ece63b461f875ea91b7d1949cb6"
+      "baseHash": "b21270e8a971fe6fb09ef38004de3b23a3538c4a"
     },
     {
       "type": "platform",

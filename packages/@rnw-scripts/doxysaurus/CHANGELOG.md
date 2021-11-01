@@ -1,8 +1,48 @@
 # Change Log - @rnw-scripts/doxysaurus
 
-This log was last generated on Thu, 03 Jun 2021 05:09:47 GMT and should not be manually modified.
+This log was last generated on Thu, 21 Oct 2021 05:08:01 GMT and should not be manually modified.
 
 <!-- Start content -->
+
+## 0.1.9
+
+Thu, 21 Oct 2021 05:08:01 GMT
+
+### Patches
+
+- Update to typescript 4 (30809111+acoates-ms@users.noreply.github.com)
+
+## 0.1.8
+
+Wed, 08 Sep 2021 05:08:53 GMT
+
+### Patches
+
+- Set consistent node requirements on our packages (ngerlem@microsoft.com)
+
+## 0.1.7
+
+Wed, 01 Sep 2021 05:07:18 GMT
+
+### Patches
+
+- Add doxysaurus README (ngerlem@microsoft.com)
+
+## 0.1.6
+
+Fri, 11 Jun 2021 05:08:55 GMT
+
+### Patches
+
+- Bump @rnw-scripts/just-task to v2.2.0 (ngerlem@microsoft.com)
+
+## 0.1.5
+
+Wed, 09 Jun 2021 05:10:07 GMT
+
+### Patches
+
+- Integrate May 19th (igklemen@microsoft.com)
 
 ## 0.1.4
 

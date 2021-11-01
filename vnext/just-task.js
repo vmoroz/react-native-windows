@@ -7,7 +7,6 @@
 
 const path = require('path');
 const {
-  cleanTask,
   task,
   series,
   condition,
@@ -26,21 +25,12 @@ const fs = require('fs');
 option('production');
 option('clean');
 
-task(
-  'codegen',
-  series(cleanTask({paths: ['./codegen']}), () => {
-    execSync(
-      'npx --no-install @react-native-windows/codegen --files Libraries/**/*Native*.js --namespace Microsoft::ReactNativeSpecs --libraryName rnwcore',
-    );
-    execSync(
-      'npx --no-install @react-native-windows/codegen --files Libraries/**/*NativeComponent.js --namespace Microsoft::ReactNativeSpecs --libraryName rnwcore',
-    );
-    fs.writeFileSync(
-      'codegen/.clang-format',
-      'DisableFormat: true\nSortIncludes: false',
-    );
-  }),
-);
+task('codegen', () => {
+  execSync(
+    'react-native-windows-codegen --files Libraries/**/*[Nn]ative*.js --namespace Microsoft::ReactNativeSpecs --libraryName rnwcore',
+    {env: process.env},
+  );
+});
 
 task('copyReadmeAndLicenseFromRoot', () => {
   fs.copyFileSync(

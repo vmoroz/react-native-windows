@@ -4,6 +4,7 @@
 #pragma once
 
 #include <Threading/MessageDispatchQueue.h>
+#include "future/future.h"
 
 namespace facebook::react {
 class CallInvoker;

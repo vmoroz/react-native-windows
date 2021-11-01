@@ -261,8 +261,13 @@ bool FrameworkElementViewManager::UpdateProperty(
       AnnounceLiveRegionChangedIfNeeded(element);
     } else if (propertyName == "accessible") {
       if (propertyValue.Type() == winrt::Microsoft::ReactNative::JSValueType::Boolean) {
-        if (!propertyValue.AsBoolean())
-          xaml::Automation::AutomationProperties::SetAccessibilityView(element, winrt::Peers::AccessibilityView::Raw);
+        if (propertyValue.AsBoolean()) {
+          xaml::Automation::AutomationProperties::SetAccessibilityView(element, winrt::AccessibilityView::Content);
+        } else {
+          xaml::Automation::AutomationProperties::SetAccessibilityView(element, winrt::AccessibilityView::Raw);
+        }
+      } else if (propertyValue.IsNull()) {
+        element.ClearValue(xaml::Automation::AutomationProperties::AccessibilityViewProperty());
       }
     } else if (propertyName == "accessibilityLiveRegion") {
       if (propertyValue.Type() == winrt::Microsoft::ReactNative::JSValueType::String) {
@@ -382,6 +387,9 @@ bool FrameworkElementViewManager::UpdateProperty(
         else if (role == "timer")
           DynamicAutomationProperties::SetAccessibilityRole(
               element, winrt::Microsoft::ReactNative::AccessibilityRoles::Timer);
+        else if (role == "togglebutton")
+          DynamicAutomationProperties::SetAccessibilityRole(
+              element, winrt::Microsoft::ReactNative::AccessibilityRoles::ToggleButton);
         else if (role == "toolbar")
           DynamicAutomationProperties::SetAccessibilityRole(
               element, winrt::Microsoft::ReactNative::AccessibilityRoles::ToolBar);

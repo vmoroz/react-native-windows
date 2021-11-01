@@ -6,7 +6,7 @@
 
 import React from 'react'
 import RN = require('react-native');
-import { View, findNodeHandle, NativeModules } from 'react-native';
+import { View, findNodeHandle, UIManager } from 'react-native';
 import { IViewWin32Props, UseFrom } from './ViewWin32.Props';
 const setAndForwardRef = require('../../Utilities/setAndForwardRef');
 
@@ -31,11 +31,13 @@ export const ViewWin32 = React.forwardRef(
      * Check for raw text in the DOM.
      */
     if (__DEV__) {
-      React.Children.toArray(props.children).forEach(item => {
-        if (typeof item === 'string') {
-          console.error(`Unexpected text node: ${item}. A text node cannot be a child of a <View>.`);
-        }
-      });
+      if (props) {
+        React.Children.toArray(props.children).forEach(item => {
+          if (typeof item === 'string') {
+            console.error(`Unexpected text node: ${item}. A text node cannot be a child of a <View>.`);
+          }
+        });
+      }
     }
 
     /**
@@ -96,9 +98,9 @@ export const ViewWin32 = React.forwardRef(
         if (localRef)
         {
           localRef.focus = () => {
-            NativeModules.UIManager.dispatchViewManagerCommand(
+            UIManager.dispatchViewManagerCommand(
               findNodeHandle(localRef),
-              NativeModules.UIManager.getViewManagerConfig('RCTView').Commands.focus,
+              UIManager.getViewManagerConfig('RCTView').Commands.focus,
               null
               );
           };

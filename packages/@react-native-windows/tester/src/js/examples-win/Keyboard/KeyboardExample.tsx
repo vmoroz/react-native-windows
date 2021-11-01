@@ -6,7 +6,7 @@
 
 import React from 'react';
 import {Text, TouchableHighlight, View, ViewStyle} from 'react-native';
-import {Picker} from 'react-native-windows';
+import {Picker} from '@react-native-picker/picker';
 
 class TabStopExample extends React.Component {
   public render() {
@@ -22,7 +22,14 @@ class TabStopExample extends React.Component {
     return (
       <View>
         <Text>No tab index, this item will be tabbed to last</Text>
-        <TouchableHighlight style={itemStyle}>
+        <TouchableHighlight
+          style={itemStyle}
+          {...{
+            focusable: true,
+          }}
+          onPress={() => {
+            //onPress, even if empty, is required for TouchableWithoutFeedback to be focusable
+          }}>
           <Text>tabIndex default</Text>
         </TouchableHighlight>
 
@@ -35,13 +42,37 @@ class TabStopExample extends React.Component {
             flexDirection: 'row',
             justifyContent: 'space-between',
           }}>
-          <TouchableHighlight style={itemStyle} {...{tabIndex: 1}}>
+          <TouchableHighlight
+            style={itemStyle}
+            onPress={() => {
+              //onPress, even if empty, is required for Touchable components to be focusable
+            }}
+            {...{
+              focusable: true,
+              tabIndex: 1,
+            }}>
             <Text>tabIndex 1</Text>
           </TouchableHighlight>
-          <TouchableHighlight style={itemStyle} {...{tabIndex: 3}}>
+          <TouchableHighlight
+            style={itemStyle}
+            onPress={() => {
+              //onPress, even if empty, is required for Touchable components to be focusable
+            }}
+            {...{
+              focusable: true,
+              tabIndex: 3,
+            }}>
             <Text>tabIndex 3</Text>
           </TouchableHighlight>
-          <TouchableHighlight style={itemStyle} {...{tabIndex: 2}}>
+          <TouchableHighlight
+            style={itemStyle}
+            onPress={() => {
+              //onPress, even if empty, is required for Touchable components to be focusable
+            }}
+            {...{
+              focusable: true,
+              tabIndex: 2,
+            }}>
             <Text>tabIndex 2</Text>
           </TouchableHighlight>
         </View>

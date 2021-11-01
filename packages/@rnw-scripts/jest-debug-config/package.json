@@ -1,13 +1,18 @@
 {
   "name": "@rnw-scripts/jest-debug-config",
-  "version": "1.2.2",
+  "version": "1.2.4",
   "license": "MIT",
   "main": "jest.debug.config.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/microsoft/react-native-windows.git",
+    "directory": "packages/@rnw-scripts/jest-debug-config"
+  },
   "dependencies": {
-    "@rnw-scripts/babel-node-config": "2.0.0"
+    "@rnw-scripts/babel-node-config": "2.0.2"
   },
   "devDependencies": {
-    "@babel/core": "^7.8.4",
+    "@babel/core": "^7.14.0",
     "@babel/preset-env": "^7.8.4",
     "@babel/preset-typescript": "^7.8.3",
     "babel-jest": "^26.3.0",
@@ -18,5 +23,8 @@
   "peerDependencies": {
     "babel-jest": "^26.3.0",
     "jest": "^26.4.0"
+  },
+  "engines": {
+    "node": ">= 12.0.0"
   }
 }

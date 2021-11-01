@@ -17,6 +17,13 @@ const rnwTesterPath = fs.realpathSync(
   path.dirname(require.resolve('@react-native-windows/tester/package.json')),
 );
 
+const virtualizedListPath = fs.realpathSync(
+  path.resolve(
+    require.resolve('@react-native-windows/virtualized-list/package.json'),
+    '..',
+  ),
+);
+
 const devPackages = {
   'react-native': path.normalize(rnwPath),
   'react-native-windows': path.normalize(rnwPath),
@@ -149,6 +156,8 @@ module.exports = {
     // Include react-native-windows
     rnwPath,
     rnwTesterPath,
+    // Add virtualized-list dependency, whose unsymlinked representation is not in node_modules, only in our repo
+    virtualizedListPath,
   ],
 
   resolver: {
@@ -156,15 +165,17 @@ module.exports = {
       // Redirect react-native-windows to avoid symlink (metro doesn't like symlinks)
       'react-native-windows': rnwPath,
       '@react-native-windows/tester': rnwTesterPath,
+      '@react-native-windows/virtualized-list': virtualizedListPath,
     },
     blockList: exclusionList([
-      // Avoid error EBUSY: resource busy or locked, open 'D:\a\1\s\packages\playground\msbuild.ProjectImports.zip' in pipeline
-      /.*\.ProjectImports\.zip/,
-
       // This stops "react-native run-windows" from causing the metro server to crash if its already running
       new RegExp(
         `${path.resolve(__dirname, 'windows').replace(/[/\\]/g, '/')}.*`,
       ),
+      // This prevents "react-native run-windows" from hitting: EBUSY: resource busy or locked, open msbuild.ProjectImports.zip or other files produced by msbuild
+      new RegExp(`${rnwPath}/build/.*`),
+      new RegExp(`${rnwPath}/target/.*`),
+      /.*\.ProjectImports\.zip/,
       /.*.tlog/,
     ]),
     resolveRequest: devResolveRequest,

@@ -2,9 +2,9 @@ parameters:
   - name: buildEnvironment
     type: string
     default: PullRequest
-    values: 
-     - PullRequest 
-     - Continuous 
+    values:
+      - PullRequest
+      - Continuous
 
 stages:
   - stage: Build
@@ -19,12 +19,16 @@ stages:
       - template: jobs/desktop.yml
         parameters:
           buildEnvironment: ${{ parameters.buildEnvironment }}
-  
+
       - template: jobs/nuget-desktop.yml
 
+      - template: jobs/project-reunion.yml
+        parameters:
+          buildEnvironment: ${{ parameters.buildEnvironment }}
+
+      # NuGet using tests rely on "UniversalBuild" which is done in the build stage
       - template: jobs/cli-init.yml
         parameters:
-          # The Nuget CLI verification is part of 'Build' to speed up the verification
           buildEnvironment: ${{ parameters.buildEnvironment }}
           buildNuGetOnly: true
 
@@ -63,3 +67,4 @@ stages:
       - template: jobs/cli-init.yml
         parameters:
           buildEnvironment: ${{ parameters.buildEnvironment }}
+          buildNuGetOnly: false

@@ -4,15 +4,17 @@
 #include "ReactRootView.h"
 #include "ReactRootView.g.cpp"
 
+#include <QuirkSettings.h>
 #include <ReactHost/MsoUtils.h>
 #include <UI.Xaml.Input.h>
 #include <UI.Xaml.Media.Media3D.h>
 #include <Utils/Helpers.h>
 #include <dispatchQueue/dispatchQueue.h>
 #include <winrt/Windows.UI.Core.h>
-#include "DynamicWriter.h"
 #include "ReactNativeHost.h"
 #include "ReactViewInstance.h"
+
+#include <winrt/Microsoft.UI.Xaml.Controls.h>
 
 #ifdef USE_FABRIC
 #include <Fabric/FabricUIManagerModule.h>
@@ -64,7 +66,6 @@ ReactNative::JSValueArgWriter ReactRootView::InitialProps() noexcept {
 void ReactRootView::InitialProps(ReactNative::JSValueArgWriter const &value) noexcept {
   if (m_initialPropsWriter != value) {
     m_initialPropsWriter = value;
-    m_initialProps = DynamicWriter::ToDynamic(m_initialPropsWriter);
     ReloadView();
   }
 }
@@ -83,7 +84,7 @@ void ReactRootView::ReloadView() noexcept {
   if (m_reactNativeHost && !m_componentName.empty()) {
     Mso::React::ReactViewOptions viewOptions{};
     viewOptions.ComponentName = to_string(m_componentName);
-    viewOptions.InitialProps = m_initialProps;
+    viewOptions.InitialProps = m_initialPropsWriter;
     viewOptions.UseFabric = m_useFabric;
     if (auto reactViewHost = ReactViewHost()) {
       reactViewHost->ReloadViewInstanceWithOptions(std::move(viewOptions));
@@ -254,15 +255,32 @@ void ReactRootView::EnsureLoadingUI() noexcept {
     // Create Grid & TextBlock to hold text
     if (m_waitingTextBlock == nullptr) {
       m_waitingTextBlock = winrt::TextBlock();
+
       m_greenBoxGrid = winrt::Grid{};
-      m_greenBoxGrid.Background(xaml::Media::SolidColorBrush(winrt::ColorHelper::FromArgb(0xff, 0x03, 0x59, 0)));
+      auto c = xaml::Controls::ColumnDefinition{};
+      m_greenBoxGrid.ColumnDefinitions().Append(c);
+      c = xaml::Controls::ColumnDefinition{};
+      c.Width(xaml::GridLengthHelper::Auto());
+      m_greenBoxGrid.ColumnDefinitions().Append(c);
+      c = xaml::Controls::ColumnDefinition{};
+      c.Width(xaml::GridLengthHelper::Auto());
+      m_greenBoxGrid.ColumnDefinitions().Append(c);
+      c = xaml::Controls::ColumnDefinition{};
+      m_greenBoxGrid.ColumnDefinitions().Append(c);
+
+      m_waitingTextBlock.SetValue(xaml::Controls::Grid::ColumnProperty(), winrt::box_value(1));
+      m_greenBoxGrid.Background(xaml::Media::SolidColorBrush(winrt::ColorHelper::FromArgb(0x80, 0x03, 0x29, 0x29)));
       m_greenBoxGrid.Children().Append(m_waitingTextBlock);
       m_greenBoxGrid.VerticalAlignment(xaml::VerticalAlignment::Center);
+      Microsoft::UI::Xaml::Controls::ProgressRing ring{};
+      ring.SetValue(xaml::Controls::Grid::ColumnProperty(), winrt::box_value(2));
+      ring.IsActive(true);
+      m_greenBoxGrid.Children().Append(ring);
 
       // Format TextBlock
       m_waitingTextBlock.TextAlignment(winrt::TextAlignment::Center);
       m_waitingTextBlock.TextWrapping(xaml::TextWrapping::Wrap);
-      m_waitingTextBlock.FontFamily(winrt::FontFamily(L"Consolas"));
+      m_waitingTextBlock.FontFamily(winrt::FontFamily(L"Segoe UI"));
       m_waitingTextBlock.Foreground(xaml::Media::SolidColorBrush(winrt::Colors::White()));
       winrt::Thickness margin = {10.0f, 10.0f, 10.0f, 10.0f};
       m_waitingTextBlock.Margin(margin);
@@ -319,9 +337,6 @@ void ReactRootView::ShowInstanceLoading() noexcept {
 
 void ReactRootView::EnsureFocusSafeHarbor() noexcept {
   if (!m_focusSafeHarbor) {
-    // focus safe harbor is delayed to be inserted to the visual tree
-    VerifyElseCrash(Children().Size() == 1);
-
     m_focusSafeHarbor = xaml::Controls::ContentControl{};
     m_focusSafeHarbor.Width(0.0);
     m_focusSafeHarbor.IsTabStop(false);
@@ -341,6 +356,11 @@ void ReactRootView::AttachBackHandlers() noexcept {
    * crash with XamlIslands so we can't just bail if that call fails.
    */
   if (::Microsoft::ReactNative::IsXamlIsland())
+    return;
+
+  if (winrt::Microsoft::ReactNative::implementation::QuirkSettings::GetBackHandlerKind(
+          winrt::Microsoft::ReactNative::ReactPropertyBag(m_context->Properties())) !=
+      winrt::Microsoft::ReactNative::BackNavigationHandlerKind::JavaScript)
     return;
 
   auto weakThis = this->get_weak();
@@ -501,6 +521,34 @@ Windows::Foundation::Size ReactRootView::ArrangeOverride(Windows::Foundation::Si
   }
 #endif
   return finalSize;
+}
+
+// Maps react-native's view of the root view to the actual UI
+// react-native is unaware that there are non-RN elements within the ReactRootView
+uint32_t ReactRootView::RNIndexToXamlIndex(uint32_t index) noexcept {
+  // If m_focusSafeHarbor exists, it should be at index 0
+  // m_xamlRootView is the next element, followed by any RN content.
+#if DEBUG
+  uint32_t findIndex{0};
+  Assert(!m_focusSafeHarbor || Children().IndexOf(m_focusSafeHarbor, findIndex) && findIndex == 0);
+  Assert(Children().IndexOf(m_xamlRootView, findIndex) && findIndex == (m_focusSafeHarbor ? 1 : 0));
+#endif
+
+  return index + (m_focusSafeHarbor ? 2 : 1);
+}
+
+void ReactRootView::AddView(uint32_t index, xaml::UIElement child) {
+  Children().InsertAt(RNIndexToXamlIndex(index), child);
+}
+
+void ReactRootView::RemoveAllChildren() {
+  const uint32_t numLeft = m_focusSafeHarbor ? 2 : 1;
+  while (Children().Size() > numLeft)
+    Children().RemoveAt(numLeft);
+}
+
+void ReactRootView::RemoveChildAt(uint32_t index) {
+  Children().RemoveAt(RNIndexToXamlIndex(index));
 }
 
 } // namespace winrt::Microsoft::ReactNative::implementation

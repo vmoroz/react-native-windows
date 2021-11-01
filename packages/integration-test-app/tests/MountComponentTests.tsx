@@ -95,18 +95,6 @@ componentTest(
 // Need a real implementaion here once we supoprt Modal
 componentTest.skip('Modal', mountAndMeasure(RN.Modal));
 
-componentTest('Picker', props => {
-  const PickerTestComponent = mountAndMeasure(
-    React.forwardRef<RN.Image>((_, ref) => (
-      <RN.Picker ref={ref}>
-        <RN.Picker.Item label="foo" value="bar" />
-      </RN.Picker>
-    )),
-  );
-
-  return <PickerTestComponent {...props} />;
-});
-
 componentTest(
   'Pressable',
   mountAndMeasure(
@@ -144,9 +132,7 @@ componentTest(
 // Slider needs a height set to render (#5437)
 componentTest.skip('Slider', mountAndMeasure(RN.Slider));
 
-// Skip until we merge the upstream fix for broken forward ref.
-// https://github.com/facebook/react-native/pull/31629
-componentTest.skip('Switch', mountAndMeasure(RN.Switch));
+componentTest('Switch', mountAndMeasure(RN.Switch));
 
 componentTest(
   'Text',

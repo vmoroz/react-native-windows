@@ -1,8 +1,270 @@
 # Change Log - @office-iss/react-native-win32
 
-This log was last generated on Thu, 03 Jun 2021 05:09:47 GMT and should not be manually modified.
+This log was last generated on Mon, 01 Nov 2021 18:33:36 GMT and should not be manually modified.
 
 <!-- Start content -->
+
+## 0.0.0-canary.120
+
+Mon, 01 Nov 2021 18:33:36 GMT
+
+### Changes
+
+- Integrate 10/21 Nightly RN Build (ngerlem@microsoft.com)
+- Bump @react-native-windows/virtualized-list to v0.0.0-canary.17
+
+## 0.0.0-canary.120
+
+Mon, 01 Nov 2021 18:33:05 GMT
+
+### Changes
+
+- Integrate 10/21 Nightly RN Build (ngerlem@microsoft.com)
+- Bump @react-native-windows/virtualized-list to v0.0.0-canary.17
+
+## 0.0.0-canary.118
+
+Tue, 26 Oct 2021 05:06:56 GMT
+
+### Changes
+
+- Integrate 10/16 Nightly Build (Base of 0.67) (ngerlem@microsoft.com)
+- Bump @react-native-windows/virtualized-list to v0.0.0-canary.15
+- Bump react-native-platform-override to v1.6.0
+
+## 0.0.0-canary.118
+
+Tue, 26 Oct 2021 05:06:24 GMT
+
+### Changes
+
+- Integrate 10/16 Nightly Build (Base of 0.67) (ngerlem@microsoft.com)
+- Bump @react-native-windows/virtualized-list to v0.0.0-canary.15
+- Bump react-native-platform-override to v1.6.0
+
+## 0.0.0-canary.117
+
+Thu, 21 Oct 2021 05:08:01 GMT
+
+### Changes
+
+- Update to typescript 4 (30809111+acoates-ms@users.noreply.github.com)
+- Bump @react-native-windows/virtualized-list to v0.0.0-canary.14
+- Bump react-native-platform-override to v1.5.1
+
+## 0.0.0-canary.116
+
+Sat, 09 Oct 2021 05:06:48 GMT
+
+### Changes
+
+- Export complete type information (30809111+acoates-ms@users.noreply.github.com)
+- Integrate 10-8-21 Nightly Build (ngerlem@microsoft.com)
+- Bump @react-native-windows/virtualized-list to v0.0.0-canary.13
+
+## 0.0.0-canary.115
+
+Wed, 06 Oct 2021 05:07:05 GMT
+
+### Patches
+
+- Bump react-native-platform-override to v1.5.0 (ngerlem@microsoft.com)
+
+## 0.0.0-canary.114
+
+Tue, 28 Sep 2021 05:07:03 GMT
+
+### Changes
+
+- Integrate 9/23 (34109996+chiaramooney@users.noreply.github.com)
+
+## 0.0.0-canary.113
+
+Fri, 24 Sep 2021 05:06:42 GMT
+
+### Changes
+
+- Integrate RN nightly 9/16. (igklemen@microsoft.com)
+
+## 0.0.0-canary.112
+
+Tue, 21 Sep 2021 05:08:39 GMT
+
+### Changes
+
+- Integrate RN nightly build 9/9. (igklemen@microsoft.com)
+
+## 0.0.0-canary.111
+
+Fri, 17 Sep 2021 05:06:53 GMT
+
+### Changes
+
+- Fix exception in View when props are undefined (30809111+acoates-ms@users.noreply.github.com)
+
+## 0.0.0-canary.110
+
+Thu, 09 Sep 2021 05:07:46 GMT
+
+### Changes
+
+- Adding accessibilityItemType property to ViewWin32 (safreibe@microsoft.com)
+
+## 0.0.0-canary.109
+
+Wed, 08 Sep 2021 05:08:53 GMT
+
+### Patches
+
+- Bump @rnw-scripts/jest-out-of-tree-snapshot-resolver to v1.0.2 (ngerlem@microsoft.com)
+- Bump @rnw-scripts/eslint-config to v1.1.8 (ngerlem@microsoft.com)
+
+### Changes
+
+- Set consistent node requirements on our packages (ngerlem@microsoft.com)
+- Integrate 9/2 (34109996+chiaramooney@users.noreply.github.com)
+
+## 0.0.0-canary.108
+
+Fri, 03 Sep 2021 05:06:04 GMT
+
+### Changes
+
+- Integrate 8/25 Nightly RN Build (Base of 0.66) (ngerlem@microsoft.com)
+
+## 0.0.0-canary.107
+
+Wed, 01 Sep 2021 05:07:18 GMT
+
+### Changes
+
+- Integrate 8/11 Nightly RN Build (ngerlem@microsoft.com)
+
+## 0.0.0-canary.106
+
+Wed, 25 Aug 2021 05:07:15 GMT
+
+### Changes
+
+- Integrate 7/28 Nightly RN Build (ngerlem@microsoft.com)
+
+## 0.0.0-canary.105
+
+Mon, 23 Aug 2021 05:10:28 GMT
+
+### Changes
+
+- Integrate 7/7 Nightly RN Build (ngerlem@microsoft.com)
+
+## 0.0.0-canary.104
+
+Fri, 20 Aug 2021 05:05:48 GMT
+
+### Changes
+
+- Integrate 6/30 Nightly RN Build (ngerlem@microsoft.com)
+- Integrate 6/23 Nightly RN Build (ngerlem@microsoft.com)
+- Integrate 7/7 Nightly RN Build (ngerlem@microsoft.com)
+
+## 0.0.0-canary.103
+
+Wed, 18 Aug 2021 05:06:18 GMT
+
+### Changes
+
+- Enable inlineRequires for all projects (ngerlem@microsoft.com)
+
+## 0.0.0-canary.102
+
+Sat, 24 Jul 2021 05:05:52 GMT
+
+### Changes
+
+- Remove use strict from PlatformColorValueTypesWin32.d.ts (ppatboyd@outlook.com)
+
+## 0.0.0-canary.101
+
+Fri, 16 Jul 2021 05:07:06 GMT
+
+### Changes
+
+- Integrate June 9 Nightly RN Build (ngerlem@microsoft.com)
+
+## 0.0.0-canary.100
+
+Thu, 08 Jul 2021 05:05:44 GMT
+
+### Changes
+
+- Support running UIManager as a TurboModule (30809111+acoates-ms@users.noreply.github.com)
+
+## 0.0.0-canary.99
+
+Fri, 02 Jul 2021 05:06:31 GMT
+
+### Patches
+
+- Bump @rnw-scripts/jest-out-of-tree-resolver to v1.0.2 (ngerlem@microsoft.com)
+
+### Changes
+
+- Fork VirtualizedList to its own package (ngerlem@microsoft.com)
+
+## 0.0.0-canary.98
+
+Wed, 30 Jun 2021 05:07:31 GMT
+
+### Patches
+
+- Bump @rnw-scripts/jest-out-of-tree-resolver to v1.0.1 (ngerlem@microsoft.com)
+- Bump @rnw-scripts/jest-out-of-tree-snapshot-resolver to v1.0.1 (ngerlem@microsoft.com)
+
+### Changes
+
+- Adding AccessibilityControls to ViewWin32 config (safreibe@microsoft.com)
+- Bump rex-win32 to latest (ngerlem@microsoft.com)
+- Enable List UTs in react-native-win32 (ngerlem@microsoft.com)
+
+## 0.0.0-canary.97
+
+Tue, 29 Jun 2021 05:06:48 GMT
+
+### Changes
+
+- Allow native module to set JS-side QuirkSettings (ngerlem@microsoft.com)
+
+## 0.0.0-canary.96
+
+Thu, 17 Jun 2021 05:07:57 GMT
+
+### Changes
+
+- Integrate 6/2 (34109996+chiaramooney@users.noreply.github.com)
+
+## 0.0.0-canary.95
+
+Fri, 11 Jun 2021 05:08:55 GMT
+
+### Patches
+
+- Bump react-native-platform-override to v1.4.17 (ngerlem@microsoft.com)
+
+## 0.0.0-canary.94
+
+Wed, 09 Jun 2021 05:10:07 GMT
+
+### Changes
+
+- Integrate May 19th (igklemen@microsoft.com)
+
+## 0.0.0-canary.93
+
+Sat, 05 Jun 2021 05:09:53 GMT
+
+### Changes
+
+- Integrate May 12th RN nightly build. (igklemen@microsoft.com)
+- Use text instead of images for LogBox arrows (30809111+acoates-ms@users.noreply.github.com)
 
 ## 0.0.0-canary.92
 

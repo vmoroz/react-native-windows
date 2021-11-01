@@ -5,20 +5,62 @@
 #include "IReactDispatcher.h"
 #include "ReactDispatcherHelper.g.cpp"
 
+#include <glog/logging.h>
+
 using namespace winrt;
 using namespace Windows::Foundation;
 
 namespace winrt::Microsoft::ReactNative::implementation {
 
-ReactDispatcher::ReactDispatcher(Mso::DispatchQueue &&queue) noexcept
-    : m_queue(std::move(queue)), m_messageQueue(std::make_shared<Mso::React::MessageDispatchQueue>(m_queue)) {}
+// Implements IDispatchQueue2 on top of a custom IReactDispatcher provided by the application
+struct WrappedReactDispatcher : public Mso::UnknownObject<Mso::React::IDispatchQueue2> {
+  WrappedReactDispatcher(const winrt::Microsoft::ReactNative::IReactDispatcher &dispatcher) noexcept
+      : m_dispatcher(dispatcher) {}
+
+  void Post(Mso::DispatchTask &&task) const noexcept override {
+    m_dispatcher.Post(task);
+  }
+
+  void InvokeElsePost(Mso::DispatchTask &&task) const noexcept override {
+    if (m_dispatcher.HasThreadAccess()) {
+      task();
+    } else {
+      Post(std::move(task));
+    }
+  }
+
+ private:
+  winrt::Microsoft::ReactNative::IReactDispatcher m_dispatcher;
+};
+
 
 bool ReactDispatcher::HasThreadAccess() noexcept {
   return m_queue.HasThreadAccess();
 }
 
+ReactDispatcherCallback CreateLoggingCallback(ReactDispatcherCallback const &callback) {
+  return [callback]() {
+    try {
+      callback();
+    } catch (winrt::hresult_error const &error) {
+      std::stringstream errorCode;
+      errorCode << "0x" << std::hex << error.code();
+      LOG(ERROR) << "HRESULT " << errorCode.str() << ": " << winrt::to_string(error.message());
+      throw;
+    }
+  };
+}
+
 void ReactDispatcher::Post(ReactDispatcherCallback const &callback) noexcept {
-  return m_queue.Post([callback]() noexcept { callback(); });
+  return m_queue.Post([callback = CreateLoggingCallback(callback)]() noexcept { callback(); });
+}
+
+void ReactDispatcher::Post(Mso::DispatchTask &&task) const noexcept {
+  m_queue.Post(std::move(task));
+}
+
+void ReactDispatcher::InvokeElsePost(Mso::DispatchTask &&task) const noexcept {
+  m_queue.InvokeElsePost(std::move(task));
 }
 
 std::shared_ptr<facebook::react::MessageQueueThread> ReactDispatcher::GetMessageQueueThread() const noexcept {
@@ -29,8 +71,17 @@ std::shared_ptr<facebook::react::MessageQueueThread> ReactDispatcher::GetMessage
   return make<ReactDispatcher>(Mso::DispatchQueue{});
 }
 
-/*static*/ Mso::DispatchQueue ReactDispatcher::GetUIDispatchQueue(IReactPropertyBag const &properties) noexcept {
-  return GetUIDispatcher(properties).as<ReactDispatcher>()->m_queue;
+/*static*/ Mso::CntPtr<Mso::React::IDispatchQueue2> ReactDispatcher::GetUIDispatchQueue2(
+    IReactPropertyBag const &properties) noexcept {
+  auto iReactDispatcher = GetUIDispatcher(properties);
+
+  if (!iReactDispatcher)
+    return nullptr;
+
+  if (auto simpleDispatcher = iReactDispatcher.try_as<IDispatchQueue2>())
+    return simpleDispatcher.get();
+
+  return Mso::Make<WrappedReactDispatcher>(iReactDispatcher);
 }
 
 /*static*/ IReactDispatcher ReactDispatcher::UIThreadDispatcher() noexcept {

@@ -20,10 +20,11 @@ const {
   Slider,
   Switch,
 } = require('react-native');
+const {useState} = React;
 
 const TextInputSharedExamples = require('./TextInputSharedExamples');
 
-import type {RNTesterExampleModuleItem} from '../../types/RNTesterTypes';
+import type {RNTesterModuleExample} from '../../types/RNTesterTypes';
 
 class ToggleDefaultPaddingExample extends React.Component<
   $FlowFixMeProps,
@@ -156,6 +157,76 @@ class PressInOutEvents extends React.Component<
   }
 }
 
+function PropagationSample() {
+  const [eventLog, setEventLog] = useState([]);
+
+  function logEvent(eventName) {
+    const limit = 6;
+    setEventLog(current => {
+      return [eventName].concat(current.slice(0, limit - 1));
+    });
+    console.log(eventName);
+  }
+  return (
+    <>
+      <View
+        focusable
+        style={styles.row}
+        keyDownEvents={[
+          {code: 'KeyW', handledEventPhase: 3},
+          {code: 'KeyE', handledEventPhase: 1},
+        ]}
+        onKeyDown={event => logEvent('outer keyDown ' + event.nativeEvent.code)}
+        onKeyDownCapture={event =>
+          logEvent('outer keyDownCapture ' + event.nativeEvent.code)
+        }>
+        <Text>some text to focus on</Text>
+        <TextInput
+          placeholder="Click inside the box to observe events being fired."
+          style={[styles.singleLineWithHeightTextInput]}
+          onKeyDown={event =>
+            logEvent('textinput keyDown ' + event.nativeEvent.code)
+          }
+          onKeyUp={event =>
+            logEvent('textinput keyUp ' + event.nativeEvent.code)
+          }
+          keyDownEvents={[
+            {code: 'KeyW', handledEventPhase: 3},
+            {code: 'KeyE', handledEventPhase: 1},
+          ]}
+        />
+      </View>
+      <View style={styles.eventLogBox}>
+        {eventLog.map((e, ii) => (
+          <Text key={ii}>{e}</Text>
+        ))}
+      </View>
+    </>
+  );
+}
+
+function SpellCheckSample() {
+  const [spellCheckEnabled, setSpellCheckEnabled] = useState(true);
+  return (
+    <>
+      <Text>Spell Check Enabled:</Text>
+      <Switch
+        /* $FlowFixMe(>=0.78.0 site=react_native_android_fb) This issue was
+         * found when making Flow check .android.js files. */
+        value={spellCheckEnabled}
+        /* $FlowFixMe(>=0.78.0 site=react_native_android_fb) This issue was
+         * found when making Flow check .android.js files. */
+        onValueChange={setSpellCheckEnabled}
+      />
+      <TextInput
+        placeholder="Type text to test spell check functionality."
+        style={[styles.singleLineWithHeightTextInput]}
+        spellCheck={spellCheckEnabled}
+      />
+    </>
+  );
+}
+
 const styles = StyleSheet.create({
   multiline: {
     height: 60,
@@ -221,6 +292,38 @@ exports.examples = ([
             selectionColor={'red'}
             style={styles.singleLine}
           />
+        </View>
+      );
+    },
+  },
+  {
+    title: 'Font Weight',
+    render: function(): React.Node {
+      return (
+        <View>
+          <TextInput
+            defaultValue="Font Weight (default)"
+            style={[styles.singleLine]}
+          />
+          {[
+            'normal',
+            'bold',
+            '900',
+            '800',
+            '700',
+            '600',
+            '500',
+            '400',
+            '300',
+            '200',
+            '100',
+          ].map(fontWeight => (
+            <TextInput
+              defaultValue={`Font Weight (${fontWeight})`}
+              key={fontWeight}
+              style={[styles.singleLine, {fontWeight}]}
+            />
+          ))}
         </View>
       );
     },
@@ -487,5 +590,17 @@ exports.examples = ([
       );
     },
   },
+  {
+    title: 'Stop propagation sample',
+    render: function(): React.Node {
+      return <PropagationSample />;
+    },
+  },
+  {
+    title: 'Toggle spell check',
+    render: function(): React.Node {
+      return <SpellCheckSample />;
+    },
+  },
   // Windows]
-]: Array<RNTesterExampleModuleItem>);
+]: Array<RNTesterModuleExample>);

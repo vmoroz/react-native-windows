@@ -135,13 +135,13 @@ test('Sanitize message, forward slashes', () => {
       `EPERM: operation not permitted, scandir  ${process.env.UserProfile!.replace(
         /\\/g,
         '/',
-      )}/source/repos/rn2/wintest/windows/packages/boost.1.72.0.0/lib/native/include`,
+      )}/source/repos/rn2/wintest/windows/packages/boost.1.76.0.0/lib/native/include`,
     ),
   ).toEqual(
     `EPERM: operation not permitted, scandir  [UserProfile]\\???(${
       (
         process.env.UserProfile +
-        '/source/repos/rn2/wintest/windows/packages/boost.1.72.0.0/lib/native/include'
+        '/source/repos/rn2/wintest/windows/packages/boost.1.76.0.0/lib/native/include'
       ).length
     })`,
   );
@@ -230,7 +230,8 @@ function a(s: string) {
   b(s);
 }
 
-test('thrown exception a->b, hello world', done => {
+// #7903: This test assumes exact structure of stack trace, which can be flaky or implementation dependent
+test.skip('thrown exception a->b, hello world', () => {
   let pass = false;
   Telemetry.client!.addTelemetryProcessor((envelope, _) => {
     if (envelope.data.baseType === 'ExceptionData') {
@@ -257,14 +258,13 @@ test('thrown exception a->b, hello world', done => {
   try {
     a('world');
   } catch (e) {
-    Telemetry.client!.trackException({exception: e});
+    Telemetry.client!.trackException({exception: e as Error});
   }
   Telemetry.client!.flush();
 
   expect(pass).toBeTruthy();
   Telemetry.client!.clearTelemetryProcessors();
   Telemetry.client!.addTelemetryProcessor(sanitizeEnvelope);
-  done();
 });
 
 test('throw exception with error code', done => {
@@ -277,7 +277,7 @@ test('throw exception with error code', done => {
   try {
     throw new Error('hello from an error FOO2020: the error string');
   } catch (e) {
-    Telemetry.client!.trackException({exception: e});
+    Telemetry.client!.trackException({exception: e as Error});
     Telemetry.client!.flush();
   }
   Telemetry.client!.clearTelemetryProcessors();
@@ -285,7 +285,8 @@ test('throw exception with error code', done => {
   done();
 });
 
-test('thrown exception a->b, hello path', done => {
+// #7903: This test assumes exact structure of stack trace, which can be flaky or implementation dependent
+test.skip('thrown exception a->b, hello path', done => {
   let pass = false;
   Telemetry.client!.addTelemetryProcessor((envelope, _) => {
     if (envelope.data.baseType === 'ExceptionData') {
@@ -314,7 +315,7 @@ test('thrown exception a->b, hello path', done => {
   try {
     a(process.cwd());
   } catch (e) {
-    Telemetry.client!.trackException({exception: e});
+    Telemetry.client!.trackException({exception: e as Error});
   }
   Telemetry.client!.flush();
 
@@ -366,7 +367,7 @@ test('No message', done => {
     });
   } catch (e) {
     Telemetry.client!.trackException({
-      exception: e,
+      exception: e as Error,
       properties: (e as CodedError).data,
     });
     Telemetry.client!.flush();

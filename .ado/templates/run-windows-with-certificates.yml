@@ -1,0 +1,45 @@
+parameters:
+  - name: buildEnvironment
+    type: string
+    default: PullRequest
+    values:
+      - PullRequest
+      - Continuous
+  - name: certificateName
+    type: string
+  - name: buildConfiguration
+    type: string
+    values:
+      - Debug
+      - Release
+  - name: buildPlatform
+    type: string
+  - name: deployOption
+    type: string
+    default: ''
+  - name: buildLogDirectory
+    type: string
+  - name: workingDirectory
+    type: string
+
+steps:
+  - ${{ if eq(parameters.buildConfiguration, 'Debug') }}:
+    - script: yarn windows --no-packager --no-launch ${{ parameters.deployOption }} --arch ${{ parameters.buildPlatform }} --logging --buildLogDirectory ${{ parameters.buildLogDirectory }}
+      displayName: run-windows (Debug)
+      workingDirectory: ${{ parameters.workingDirectory }}
+
+  - ${{ if and(eq(parameters.buildConfiguration, 'Release'), eq(parameters.buildEnvironment, 'PullRequest')) }}:
+    - script: yarn windows --no-packager --no-launch ${{ parameters.deployOption }} --arch ${{ parameters.buildPlatform }} --logging --buildLogDirectory ${{ parameters.buildLogDirectory }} --release
+      displayName: run-windows (Release) - PR
+      workingDirectory: ${{ parameters.workingDirectory }}
+
+  - ${{ if and(eq(parameters.buildConfiguration, 'Release'), eq(parameters.buildEnvironment, 'Continuous')) }}:
+    - template: ../templates/write-certificate.yml
+      parameters:
+        certificateName: ${{ parameters.certificateName }}
+
+    - script: yarn windows --no-packager --no-launch ${{ parameters.deployOption }} --arch ${{ parameters.buildPlatform }} --logging --buildLogDirectory ${{ parameters.buildLogDirectory }} --release --msbuildprops PackageCertificateKeyFile=$(Build.SourcesDirectory)\EncodedKey.pfx
+      displayName: run-windows (Release) - CI
+      workingDirectory: ${{ parameters.workingDirectory }}
+                  
+    - template: ../templates/cleanup-certificate.yml

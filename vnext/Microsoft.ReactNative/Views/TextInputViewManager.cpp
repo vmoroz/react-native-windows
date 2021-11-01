@@ -6,6 +6,7 @@
 #include "TextInputViewManager.h"
 
 #include "Unicode.h"
+#include "Utils/XamlIslandUtils.h"
 
 #include <UI.Xaml.Controls.h>
 #include <UI.Xaml.Input.h>
@@ -206,11 +207,13 @@ void TextInputShadowNode::registerEvents() {
     m_passwordBoxPasswordChangedRevoker = {};
     m_passwordBoxPasswordChangingRevoker = {};
     auto textBox = control.as<xaml::Controls::TextBox>();
+    EnsureUniqueTextFlyoutForXamlIsland(textBox);
     m_textBoxTextChangingRevoker = textBox.TextChanging(
         winrt::auto_revoke, [=](auto &&, auto &&) { dispatchTextInputChangeEvent(textBox.Text()); });
   } else {
     m_textBoxTextChangingRevoker = {};
     auto passwordBox = control.as<xaml::Controls::PasswordBox>();
+    EnsureUniqueTextFlyoutForXamlIsland(passwordBox);
     if (control.try_as<xaml::Controls::IPasswordBox4>()) {
       m_passwordBoxPasswordChangingRevoker = passwordBox.PasswordChanging(
           winrt::auto_revoke, [=](auto &&, auto &&) { dispatchTextInputChangeEvent(passwordBox.Password()); });
@@ -400,6 +403,9 @@ void TextInputShadowNode::registerPreviewKeyDown() {
                 "text", HstringToDynamic(control.as<xaml::Controls::PasswordBox>().Password()));
           }
 
+          GetViewManager()->GetReactContext().DispatchEvent(
+              tag, "topTextInputSubmitEditing", std::move(eventDataSubmitEditing));
+
           if (m_shouldClearTextOnSubmit) {
             if (m_isTextBox) {
               control.as<xaml::Controls::TextBox>().ClearValue(xaml::Controls::TextBox::TextProperty());
@@ -407,9 +413,6 @@ void TextInputShadowNode::registerPreviewKeyDown() {
               control.as<xaml::Controls::PasswordBox>().ClearValue(xaml::Controls::PasswordBox::PasswordProperty());
             }
           }
-
-          GetViewManager()->GetReactContext().DispatchEvent(
-              tag, "topTextInputSubmitEditing", std::move(eventDataSubmitEditing));
 
           // For multi-line TextInput, we have to mark the PreviewKeyDown event as
           // handled to prevent the TextInput from adding a newline character

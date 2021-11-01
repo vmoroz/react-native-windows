@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <Natvis Include="$(ReactNativeWindowsDir)Folly\Folly.natvis" />
   </ItemGroup>
@@ -182,9 +182,6 @@
     <ClCompile Include="Views\ControlViewManager.cpp">
       <Filter>Views</Filter>
     </ClCompile>
-    <ClCompile Include="Views\DatePickerViewManager.cpp">
-      <Filter>Views</Filter>
-    </ClCompile>
     <ClCompile Include="Views\DevMenu.cpp">
       <Filter>Views</Filter>
     </ClCompile>
@@ -207,9 +204,6 @@
       <Filter>Views</Filter>
     </ClCompile>
     <ClCompile Include="Views\KeyboardEventHandler.cpp">
-      <Filter>Views</Filter>
-    </ClCompile>
-    <ClCompile Include="Views\PickerViewManager.cpp">
       <Filter>Views</Filter>
     </ClCompile>
     <ClCompile Include="Views\PopupViewManager.cpp">
@@ -293,6 +287,9 @@
     <ClCompile Include="Utils\ValueUtils.cpp">
       <Filter>Utils</Filter>
     </ClCompile>
+    <ClCompile Include="Utils\XamlIslandUtils.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
     <ClCompile Include="JsiApi.cpp" />
     <ClCompile Include="RedBoxErrorInfo.cpp" />
     <ClCompile Include="RedBoxErrorFrameInfo.cpp" />
@@ -312,6 +309,31 @@
     <ClCompile Include="ReactHost\JSCallInvokerScheduler.cpp">
       <Filter>ReactHost</Filter>
     </ClCompile>
+    <ClCompile Include="Views\Text\TextHighlighterVisitor.cpp">
+      <Filter>Views\Text</Filter>
+    </ClCompile>
+    <ClCompile Include="Views\Text\TextHitTestUtils.cpp">
+      <Filter>Views\Text</Filter>
+    </ClCompile>
+    <ClCompile Include="Views\Text\TextHitTestVisitor.cpp">
+      <Filter>Views\Text</Filter>
+    </ClCompile>
+    <ClCompile Include="Views\Text\TextParentVisitor.cpp">
+      <Filter>Views\Text</Filter>
+    </ClCompile>
+    <ClCompile Include="Views\Text\TextPropertyChangedParentVisitor.cpp">
+      <Filter>Views\Text</Filter>
+    </ClCompile>
+    <ClCompile Include="Views\Text\TextTransformParentVisitor.cpp">
+      <Filter>Views\Text</Filter>
+    </ClCompile>
+    <ClCompile Include="Views\Text\TextTransformVisitor.cpp">
+      <Filter>Views\Text</Filter>
+    </ClCompile>
+    <ClCompile Include="Views\Text\TextVisitor.cpp">
+      <Filter>Views\Text</Filter>
+    </ClCompile>
+    <ClCompile Include="ReactPointerEventArgs.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ABICxxModule.h" />
@@ -517,9 +539,6 @@
     <ClInclude Include="Views\ControlViewManager.h">
       <Filter>Views</Filter>
     </ClInclude>
-    <ClInclude Include="Views\DatePickerViewManager.h">
-      <Filter>Views</Filter>
-    </ClInclude>
     <ClInclude Include="Views\DevMenu.h">
       <Filter>Views</Filter>
     </ClInclude>
@@ -542,9 +561,6 @@
       <Filter>Views</Filter>
     </ClInclude>
     <ClInclude Include="Views\KeyboardEventHandler.h">
-      <Filter>Views</Filter>
-    </ClInclude>
-    <ClInclude Include="Views\PickerViewManager.h">
       <Filter>Views</Filter>
     </ClInclude>
     <ClInclude Include="Views\PopupViewManager.h">
@@ -637,6 +653,9 @@
     <ClInclude Include="Utils\ValueUtils.h">
       <Filter>Utils</Filter>
     </ClInclude>
+    <ClInclude Include="Utils\XamlIslandUtils.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
     <ClInclude Include="XamlLoadState.h" />
     <ClInclude Include="XamlView.h" />
     <ClInclude Include="ReactHost\IReactInstance.h">
@@ -675,6 +694,40 @@
     <ClInclude Include="Utils\TextTransform.h">
       <Filter>Utils</Filter>
     </ClInclude>
+    <ClInclude Include="Utils\ShadowNodeTypeUtils.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Views\Text\TextHighlighterVisitor.h">
+      <Filter>Views\Text</Filter>
+    </ClInclude>
+    <ClInclude Include="Views\Text\TextHitTestVisitor.h">
+      <Filter>Views\Text</Filter>
+    </ClInclude>
+    <ClInclude Include="Views\Text\TextHitTestUtils.h">
+      <Filter>Views\Text</Filter>
+    </ClInclude>
+    <ClInclude Include="Views\Text\TextParentVisitor.h">
+      <Filter>Views\Text</Filter>
+    </ClInclude>
+    <ClInclude Include="Views\Text\TextPropertyChangedParentVisitor.h">
+      <Filter>Views\Text</Filter>
+    </ClInclude>
+    <ClInclude Include="Views\Text\TextTransformParentVisitor.h">
+      <Filter>Views\Text</Filter>
+    </ClInclude>
+    <ClInclude Include="Views\Text\TextTransformVisitor.h">
+      <Filter>Views\Text</Filter>
+    </ClInclude>
+    <ClInclude Include="Views\Text\TextVisitorScope.h">
+      <Filter>Views\Text</Filter>
+    </ClInclude>
+    <ClInclude Include="Views\Text\TextVisitor.h">
+      <Filter>Views\Text</Filter>
+    </ClInclude>
+    <ClInclude Include="Views\Text\TextVisitors.h">
+      <Filter>Views\Text</Filter>
+    </ClInclude>
+    <ClInclude Include="ReactPointerEventArgs.h" />
   </ItemGroup>
   <ItemGroup>
     <Midl Include="IJSValueReader.idl" />
@@ -712,6 +765,7 @@
     <Midl Include="JsiApi.idl" />
     <Midl Include="DocString.idl" />
     <Midl Include="DesktopWindowMessage.idl" />
+    <Midl Include="ReactPointerEventArgs.idl" />
   </ItemGroup>
   <ItemGroup>
     <None Include="microsoft.reactnative.def" />
@@ -757,6 +811,9 @@
     </Filter>
     <Filter Include="JSI">
       <UniqueIdentifier>{24290499-e864-407e-89c0-473f2b8dbb6e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Views\Text">
+      <UniqueIdentifier>{8b871c42-6131-44c2-a73f-f1061780e97f}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

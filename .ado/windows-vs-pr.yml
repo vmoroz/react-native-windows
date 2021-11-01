@@ -15,10 +15,8 @@ stages:
   - stage: Setup
     jobs:
       - job: Setup
-        variables:
-          - template: variables/vs2019.yml
         pool:
-          vmImage: windows-2019
+          vmImage: ubuntu-latest
         steps:
           - task: powershell@2
             name: checkPayload
@@ -27,21 +25,23 @@ stages:
               targetType: filePath
               filePath: .ado/scripts/shouldSkipPRBuild.ps1
 
-          - template: templates/yarn-install.yml
-
           - template: templates/compute-beachball-branch-name.yml
 
-          - task: CmdLine@2
+          - script: npm install -g beachball@2.18.0
+            displayName: Install beachball
+
+          - script: npx --no-install beachball check --branch origin/$(BeachBallBranchName) --changehint "##vso[task.logissue type=error]Run `yarn change` from root of repo to generate a change file."
             displayName: Check for change files
-            inputs:
-              script: npx --no-install beachball check --branch origin/$(BeachBallBranchName) --changehint "##vso[task.logissue type=error]Run `yarn change` from root of repo to generate a change file."
+
+          - script: npx --no-install beachball bump --branch origin/$(BeachBallBranchName) --yes
+            displayName: beachball bump
 
           - template: templates/set-version-vars.yml
             parameters:
               buildEnvironment: Continuous
 
           - template: templates/publish-version-vars.yml
-          
+
   - template: stages.yml
     parameters:
       buildEnvironment: PullRequest

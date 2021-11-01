@@ -5,20 +5,36 @@
  */
 'use strict';
 
-import {NativeEventEmitter, NativeModules} from 'react-native';
+import {
+  EmitterSubscription,
+  NativeEventEmitter,
+  NativeModules,
+} from 'react-native';
 import {IHighContrastColors, IHighContrastChangedEvent} from './AppThemeTypes';
 
-const invariant = require('invariant');
-const NativeAppTheme = NativeModules.RTCAppTheme;
+// We previously gracefully handled importing AppTheme in the Jest environment.
+// Mock the NM until we have a coherent story for exporting our own Jest mocks,
+// or remove this API.
+const NativeAppTheme = NativeModules.RTCAppTheme || {
+  initialHighContrast: false,
+  initialHighContrastColors: {
+    ButtonFaceColor: '',
+    ButtonTextColor: '',
+    GrayTextColor: '',
+    HighlightColor: '',
+    HighlightTextColor: '',
+    HotlightColor: '',
+    WindowColor: '',
+    WindowTextColor: '',
+  },
+};
 
 class AppThemeModule extends NativeEventEmitter {
-  public isAvailable: boolean;
   private _isHighContrast: boolean;
   private _highContrastColors: IHighContrastColors;
 
   constructor() {
-    super(NativeAppTheme);
-    this.isAvailable = true;
+    super();
 
     this._highContrastColors = NativeAppTheme.initialHighContrastColors;
     this._isHighContrast = NativeAppTheme.initialHighContrast;
@@ -31,6 +47,13 @@ class AppThemeModule extends NativeEventEmitter {
     );
   }
 
+  addListener(
+    eventName: 'highContrastChanged',
+    listener: (nativeEvent: IHighContrastChangedEvent) => void,
+  ): EmitterSubscription {
+    return super.addListener(eventName, listener);
+  }
+
   get isHighContrast(): boolean {
     return this._isHighContrast;
   }
@@ -40,54 +63,5 @@ class AppThemeModule extends NativeEventEmitter {
   }
 }
 
-function throwMissingNativeModule() {
-  invariant(
-    false,
-    'Cannot use AppTheme module when native RTCAppTheme is not included in the build.\n' +
-      'Either include it, or check AppTheme.isAvailable before calling any methods.',
-  );
-}
-
-// This module depends on the native `RCTAppTheme` module. If you don't include it,
-// `AppTheme.isAvailable` will return `false`, and any method calls will throw.
-class MissingNativeAppThemeShim {
-  public isAvailable = false;
-  public isHighContrast = false;
-  public currentHighContrastColors = {} as IHighContrastColors;
-
-  addEventListener() {
-    throwMissingNativeModule();
-  }
-
-  removeEventListener() {
-    throwMissingNativeModule();
-  }
-
-  // EventEmitter
-  addListener(
-    _eventType: string,
-    _listener: (nativeEvent: IHighContrastChangedEvent) => void,
-  ): any {
-    throwMissingNativeModule();
-  }
-
-  removeAllListeners() {
-    throwMissingNativeModule();
-  }
-
-  removeListener(
-    _eventType: string,
-    _listener: (nativeEvent: IHighContrastChangedEvent) => void,
-  ) {
-    throwMissingNativeModule();
-  }
-
-  removeSubscription() {
-    throwMissingNativeModule();
-  }
-}
-
 export type AppTheme = AppThemeModule;
-export const AppTheme = NativeAppTheme
-  ? new AppThemeModule()
-  : new MissingNativeAppThemeShim();
+export const AppTheme = new AppThemeModule();

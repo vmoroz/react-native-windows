@@ -11,12 +11,14 @@
 #include <cxxreact/SystraceSection.h>
 #include <hermes/hermes.h>
 #include "HermesRuntimeHolder.h"
+#include "HermesShim.h"
 
 #if defined(HERMES_ENABLE_DEBUGGER)
 #include <hermes/inspector/chrome/Registration.h>
 #endif
 
 using namespace facebook;
+using namespace Microsoft::ReactNative;
 
 namespace facebook {
 namespace react {
@@ -26,7 +28,7 @@ namespace {
 std::unique_ptr<facebook::hermes::HermesRuntime> makeHermesRuntimeSystraced(
     const ::hermes::vm::RuntimeConfig &runtimeConfig) {
   SystraceSection s("HermesExecutorFactory::makeHermesRuntimeSystraced");
-  return hermes::makeHermesRuntime(runtimeConfig);
+  return HermesShim::makeHermesRuntime(runtimeConfig);
 }
 
 #ifdef HERMES_ENABLE_DEBUGGER
@@ -96,7 +98,9 @@ void HermesRuntimeHolder::initRuntime() noexcept {
 #ifdef HERMES_ENABLE_DEBUGGER
   if (m_devSettings->useDirectDebugger) {
     auto adapter = std::make_unique<HermesExecutorRuntimeAdapter>(m_runtime, hermesRuntimeRef, m_jsQueue);
-    facebook::hermes::inspector::chrome::enableDebugging(std::move(adapter), "Hermes React Native");
+    facebook::hermes::inspector::chrome::enableDebugging(
+        std::move(adapter),
+        m_devSettings->debuggerRuntimeName.empty() ? "Hermes React Native" : m_devSettings->debuggerRuntimeName);
   }
 #endif
 

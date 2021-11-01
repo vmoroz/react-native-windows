@@ -3,45 +3,52 @@ parameters:
     type: string
     default : PullRequest
     values:
-     - PullRequest
-     - Continuous
+      - PullRequest
+      - Continuous
   - name: buildMatrix
     type: object
     default:
       - BuildEnvironment: PullRequest
         Matrix:
-          - Name: X64Debug
-            BuildPlatform: x64
-            BuildConfiguration: Debug
-            DeployOptions:
-            UseHermes: false
+          # See #9015
+          # - Name: X64ReleaseHermes
+          #   BuildPlatform: x64
+          #   BuildConfiguration: Release
+          #   DeployOptions:
+          #   UseHermes: true
           - Name: X64ReleaseHermes
             BuildPlatform: x64
             BuildConfiguration: Release
-            DeployOptions: --deploy-from-layout # We avoid certs for AppX generation
+            DeployOptions:
             UseHermes: true
       - BuildEnvironment: Continuous
         Matrix:
           - Name: Arm64Debug
-            BuildPlatform: ARM64
+            BuildPlatform: arm64
             BuildConfiguration: Debug
             DeployOptions: --no-deploy # We don't have Arm agents
             UseHermes: false
-          - Name: X64Debug
-            BuildPlatform: x64
-            BuildConfiguration: Debug
-            DeployOptions:
-            UseHermes: false
+          # See #9015
+          # - Name: X64ReleaseHermes
+          #   BuildPlatform: x64
+          #   BuildConfiguration: Release
+          #   DeployOptions:
+          #   UseHermes: true
           - Name: X64ReleaseHermes
             BuildPlatform: x64
             BuildConfiguration: Release
-            DeployOptions: --deploy-from-layout # We avoid certs for AppX generation
+            DeployOptions:
             UseHermes: true
-          - Name: X86Debug
+          - Name: X86WebDebug
             BuildPlatform: x86
             BuildConfiguration: Debug
             DeployOptions:
             UseHermes: false
+          - Name: X86ReleaseHermes
+            BuildPlatform: x86
+            BuildConfiguration: Release
+            DeployOptions:
+            UseHermes: true
 
 jobs:
   - ${{ each config in parameters.buildMatrix }}:
@@ -51,10 +58,9 @@ jobs:
           displayName: Integration Test App ${{ matrix.Name }}
           variables:
             - template: ../variables/vs2019.yml
-
           pool:
-            vmImage: $(VmImage)
-
+            name: ${{ variables['AgentPool.Medium'] }}
+            demands: ${{ variables['AgentImage'] }}
           timeoutInMinutes: 60 # how long to run the job before automatically cancelling
           cancelTimeoutInMinutes: 5 # how much time to give 'run always even if cancelled tasks' before killing them
 
@@ -63,7 +69,13 @@ jobs:
               clean: true
               submodules: false
 
-            - template: ../templates/prepare-env.yml
+            - template: ../templates/prepare-js-env.yml
+
+            - template: ../templates/prepare-build-env.yml
+              parameters:
+                platform: ${{ matrix.BuildPlatform }}
+                configuration: ${{ matrix.BuildConfiguration }}
+                buildEnvironment: ${{ config.BuildEnvironment }}
 
             - powershell: |
                 Write-Host "##vso[task.setvariable variable=BuildLogDirectory]$(Build.BinariesDirectory)\${{ matrix.BuildPlatform }}\BuildLogs"
@@ -72,13 +84,17 @@ jobs:
             - script: .ado\scripts\SetupLocalDumps.cmd integrationtest
               displayName: Set LocalDumps
 
-            - ${{ if eq(matrix.UseHermes, 'true') }}:
-              - powershell: |
-                  [xml] $experimentalFeatures = Get-Content .\ExperimentalFeatures.props
-                  $experimentalFeatures.Project.PropertyGroup.UseHermes = 'true'
-                  $experimentalFeatures.Save("$pwd\ExperimentalFeatures.props")
-                displayName: Enable Hermes
-                workingDirectory: packages/integration-test-app/windows
+            - task: PowerShell@2
+              displayName: Start tracing
+              inputs:
+                targetType: filePath # filePath | inline
+                filePath: $(Build.SourcesDirectory)\vnext\Scripts\Tracing\Start-Tracing.ps1
+
+            - template: ../templates/set-experimental-feature.yml
+              parameters:
+                package: packages/integration-test-app
+                feature: UseHermes
+                value: ${{ matrix.UseHermes }}
 
             - ${{ if eq(matrix.BuildConfiguration, 'Debug') }}:
               # The build is more likely to crash after we've started other bits that
@@ -154,6 +170,21 @@ jobs:
                   targetPath: $(Build.StagingDirectory)/Screenshots
                 condition: succeededOrFailed()
 
+              - task: PowerShell@2
+                displayName: Stop tracing
+                inputs:
+                  targetType: filePath # filePath | inline
+                  filePath: $(Build.SourcesDirectory)\vnext\Scripts\Tracing\Stop-Tracing.ps1
+                  arguments: -NoAnalysis -outputFolder $(Build.StagingDirectory)/Tracing
+                condition: true
+
+              - task: PublishBuildArtifacts@1
+                displayName: Upload traces
+                inputs:
+                  pathtoPublish: '$(Build.StagingDirectory)/Tracing'
+                  artifactName: 'Traces - $(Agent.JobName)-$(System.JobAttempt)'
+                condition: true
+                
             - task: PublishPipelineArtifact@1
               displayName: Upload targets
               inputs:

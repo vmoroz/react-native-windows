@@ -7,9 +7,23 @@
 #include <dispatchQueue/dispatchQueue.h>
 #include <winrt/Microsoft.ReactNative.h>
 
+namespace Mso::React {
+
+MSO_GUID(IDispatchQueue2, "a8d9db25-3d16-4476-ae65-682fcee1260c")
+struct IDispatchQueue2 : ::IUnknown {
+  //! Post the task to the end of the queue for asynchronous invocation.
+  virtual void Post(Mso::DispatchTask &&task) const noexcept = 0;
+
+  //! Invoke the task immediately if the queue uses the current thread. Otherwise, post it.
+  //! The immediate execution ignores the suspend or shutdown states.
+  virtual void InvokeElsePost(Mso::DispatchTask &&task) const noexcept = 0;
+};
+
+} // namespace Mso::React
+
 namespace winrt::Microsoft::ReactNative::implementation {
 
-struct ReactDispatcher : implements<ReactDispatcher, default_interface<IReactDispatcher>> {
+struct ReactDispatcher : implements<ReactDispatcher, IReactDispatcher, Mso::React::IDispatchQueue2> {
   ReactDispatcher() = default;
   ReactDispatcher(Mso::DispatchQueue &&queue) noexcept;
 
@@ -20,8 +34,7 @@ struct ReactDispatcher : implements<ReactDispatcher, default_interface<IReactDis
 
   static IReactDispatcher CreateSerialDispatcher() noexcept;
 
-  static Mso::DispatchQueue GetUIDispatchQueue(IReactPropertyBag const &properties) noexcept;
-
+  static Mso::CntPtr<IDispatchQueue2> GetUIDispatchQueue2(IReactPropertyBag const &properties) noexcept;
   static IReactDispatcher UIThreadDispatcher() noexcept;
   static IReactPropertyName UIDispatcherProperty() noexcept;
   static IReactDispatcher GetUIDispatcher(IReactPropertyBag const &properties) noexcept;
@@ -30,6 +43,9 @@ struct ReactDispatcher : implements<ReactDispatcher, default_interface<IReactDis
 
   static IReactPropertyName JSDispatcherProperty() noexcept;
   static IReactPropertyName JSDispatcherShutdownNotification() noexcept;
+
+  void Post(Mso::DispatchTask &&task) const noexcept override;
+  void InvokeElsePost(Mso::DispatchTask &&task) const noexcept override;
 
  private:
   Mso::DispatchQueue m_queue;

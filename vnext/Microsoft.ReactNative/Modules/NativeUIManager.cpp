@@ -101,9 +101,19 @@ winrt::XamlRoot NativeUIManager::tryGetXamlRoot() {
     for (auto const tag : m_host->GetAllRootTags()) {
       if (auto shadowNode = static_cast<ShadowNodeBase *>(m_host->FindShadowNodeForTag(tag))) {
         if (auto uiElement10 = shadowNode->GetView().try_as<xaml::IUIElement10>()) {
-          if (auto xamlRoot = uiElement10.XamlRoot())
-            return xamlRoot;
+          return uiElement10.XamlRoot();
         }
+      }
+    }
+  }
+  return nullptr;
+}
+
+winrt::XamlRoot NativeUIManager::tryGetXamlRoot(int64_t rootTag) {
+  if (m_host) {
+    if (auto shadowNode = static_cast<ShadowNodeBase *>(m_host->FindShadowNodeForTag(rootTag))) {
+      if (auto uiElement10 = shadowNode->GetView().try_as<xaml::IUIElement10>()) {
+        return uiElement10.XamlRoot();
       }
     }
   }
@@ -163,11 +173,9 @@ struct RootShadowNode final : public ShadowNodeBase {
   }
 
   void AddView(ShadowNode &child, int64_t index) override {
-    auto panel(GetView().as<winrt::Panel>());
-    if (panel != nullptr) {
-      auto childView = static_cast<ShadowNodeBase &>(child).GetView().as<xaml::UIElement>();
-      panel.Children().InsertAt(static_cast<uint32_t>(index), childView);
-    }
+    auto panel(GetView().as<winrt::Microsoft::ReactNative::ReactRootView>());
+    winrt::get_self<winrt::Microsoft::ReactNative::implementation::ReactRootView>(panel)->AddView(
+        static_cast<uint32_t>(index), static_cast<ShadowNodeBase &>(child).GetView().as<xaml::UIElement>());
   }
 };
 
@@ -882,9 +890,11 @@ void NativeUIManager::DoLayout() {
   // Process vector of RN controls needing extra layout here.
   const auto extraLayoutNodes = m_extraLayoutNodes;
   for (const int64_t tag : extraLayoutNodes) {
-    ShadowNodeBase &node = static_cast<ShadowNodeBase &>(m_host->GetShadowNodeForTag(tag));
-    auto element = node.GetView().as<xaml::FrameworkElement>();
-    element.UpdateLayout();
+    ShadowNodeBase *node = static_cast<ShadowNodeBase *>(m_host->FindShadowNodeForTag(tag));
+    if (node) {
+      auto element = node->GetView().as<xaml::FrameworkElement>();
+      element.UpdateLayout();
+    }
   }
   // Values need to be cleared from the vector before next call to DoLayout.
   m_extraLayoutNodes.clear();
@@ -1060,7 +1070,7 @@ void NativeUIManager::findSubviewIn(
   ShadowNodeBase &node = static_cast<ShadowNodeBase &>(shadowNode);
   auto view = node.GetView();
 
-  auto rootUIView = view.as<xaml::UIElement>();
+  auto rootUIView = view.try_as<xaml::UIElement>();
   if (rootUIView == nullptr) {
     m_context.JSDispatcher().Post([callback = std::move(callback)]() { callback(0, 0, 0, 0, 0); });
     return;

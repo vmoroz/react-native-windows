@@ -25,6 +25,11 @@ using namespace xaml;
 
 namespace Microsoft::ReactNative {
 
+static const std::unordered_map<std::string, PointerEventsKind> pointerEventsMap = {
+    {"box-none", PointerEventsKind::BoxNone},
+    {"box-only", PointerEventsKind::BoxOnly},
+    {"none", PointerEventsKind::None}};
+
 float GetConstrainedResult(float constrainTo, float measuredSize, YGMeasureMode measureMode) {
   // Round up to workaround truncation inside yoga
   measuredSize = ceil(measuredSize);
@@ -80,7 +85,9 @@ YGSize DefaultYogaSelfMeasureFunc(
   return desiredSize;
 }
 
-ViewManagerBase::ViewManagerBase(const Mso::React::IReactContext &context) : m_context(&context) {}
+ViewManagerBase::ViewManagerBase(const Mso::React::IReactContext &context)
+    : m_context(&context),
+      m_batchingEventEmitter{std::make_shared<React::BatchingEventEmitter>(Mso::CntPtr(&context))} {}
 
 void ViewManagerBase::GetExportedViewConstants(const winrt::Microsoft::ReactNative::IJSValueWriter &writer) const {}
 
@@ -260,6 +267,21 @@ bool ViewManagerBase::UpdateProperty(
     nodeToUpdate->UpdateHandledKeyboardEvents(propertyName, propertyValue);
   } else if (propertyName == "keyUpEvents") {
     nodeToUpdate->UpdateHandledKeyboardEvents(propertyName, propertyValue);
+  } else if (propertyName == "pointerEvents") {
+    const auto iter = pointerEventsMap.find(propertyValue.AsString());
+    if (iter != pointerEventsMap.end()) {
+      nodeToUpdate->m_pointerEvents = iter->second;
+      if (nodeToUpdate->m_pointerEvents == PointerEventsKind::None) {
+        if (const auto uiElement = nodeToUpdate->GetView().try_as<xaml::UIElement>()) {
+          uiElement.IsHitTestVisible(false);
+        }
+      }
+    } else {
+      nodeToUpdate->m_pointerEvents = PointerEventsKind::Auto;
+      if (const auto uiElement = nodeToUpdate->GetView().try_as<xaml::UIElement>()) {
+        uiElement.ClearValue(xaml::UIElement::IsHitTestVisibleProperty());
+      }
+    }
   } else {
     return false;
   }
@@ -346,11 +368,11 @@ void ViewManagerBase::SetLayoutProps(
   // Fire Events
   if (layoutHasChanged && nodeToUpdate.m_onLayoutRegistered) {
     int64_t tag = GetTag(viewToUpdate);
-    folly::dynamic layout = folly::dynamic::object("x", left)("y", top)("height", height)("width", width);
+    React::JSValueObject layout{{"x", left}, {"y", top}, {"height", height}, {"width", width}};
 
-    folly::dynamic eventData = folly::dynamic::object("target", tag)("layout", std::move(layout));
+    React::JSValueObject eventData{{"target", tag}, {"layout", std::move(layout)}};
 
-    m_context->DispatchEvent(tag, "topLayout", std::move(eventData));
+    m_batchingEventEmitter->DispatchCoalescingEvent(tag, L"topLayout", MakeJSValueWriter(std::move(eventData)));
   }
 }
 
@@ -366,10 +388,22 @@ bool ViewManagerBase::IsNativeControlWithSelfLayout() const {
   return GetYogaCustomMeasureFunc() != nullptr;
 }
 
-void ViewManagerBase::DispatchEvent(int64_t viewTag, std::string &&eventName, folly::dynamic &&eventData)
-    const noexcept {
-  folly::dynamic params = folly::dynamic::array(viewTag, std::move(eventName), std::move(eventData));
-  m_context->CallJSFunction("RCTEventEmitter", "receiveEvent", std::move(params));
+void ViewManagerBase::OnPointerEvent(
+    ShadowNodeBase *node,
+    const winrt::Microsoft::ReactNative::ReactPointerEventArgs &args) {
+  if ((args.Target() == node->GetView() && node->m_pointerEvents == PointerEventsKind::BoxNone) ||
+      node->m_pointerEvents == PointerEventsKind::None) {
+    args.Target(nullptr);
+  } else if (node->m_pointerEvents == PointerEventsKind::BoxOnly) {
+    args.Target(node->GetView());
+  }
+}
+
+void ViewManagerBase::DispatchEvent(
+    int64_t viewTag,
+    winrt::hstring &&eventName,
+    const React::JSValueArgWriter &eventDataWriter) const noexcept {
+  m_batchingEventEmitter->DispatchEvent(viewTag, std::move(eventName), eventDataWriter);
 }
 
 } // namespace Microsoft::ReactNative

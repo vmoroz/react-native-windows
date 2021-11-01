@@ -11,22 +11,32 @@ const exclusionList = require('metro-config/src/defaults/exclusionList');
 const rnwPath = fs.realpathSync(
   path.resolve(require.resolve('react-native-windows/package.json'), '..'),
 );
+const virtualizedListPath = fs.realpathSync(
+  path.resolve(
+    require.resolve('@react-native-windows/virtualized-list/package.json'),
+    '..',
+  ),
+);
 const hoistedModules = fs.realpathSync(
   path.resolve(rnwPath, '..', 'node_modules'),
 );
 module.exports = {
-  watchFolders: [rnwPath, hoistedModules],
+  watchFolders: [rnwPath, virtualizedListPath, hoistedModules],
   resolver: {
     extraNodeModules: {
       // Redirect react-native-windows to avoid symlink (metro doesn't like symlinks)
       'react-native-windows': rnwPath,
+      // Add virtualized-list dependency, whose unsymlinked representation is not in node_modules, only in our repo
+      '@react-native-windows/virtualized-list': virtualizedListPath,
     },
     blockList: exclusionList([
       // This stops "react-native run-windows" from causing the metro server to crash if its already running
       new RegExp(
         `${path.resolve(__dirname, 'windows').replace(/[/\\]/g, '/')}.*`,
       ),
-      // This prevents "react-native run-windows" from hitting: EBUSY: resource busy or locked, open msbuild.ProjectImports.zip
+      // This prevents "react-native run-windows" from hitting: EBUSY: resource busy or locked, open msbuild.ProjectImports.zip or other files produced by msbuild
+      new RegExp(`${rnwPath}/build/.*`),
+      new RegExp(`${rnwPath}/target/.*`),
       /.*\.ProjectImports\.zip/,
     ]),
   },

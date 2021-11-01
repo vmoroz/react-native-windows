@@ -1,8 +1,32 @@
 # Change Log - @rnw-scripts/just-task
 
-This log was last generated on Thu, 03 Jun 2021 05:09:47 GMT and should not be manually modified.
+This log was last generated on Wed, 08 Sep 2021 05:08:53 GMT and should not be manually modified.
 
 <!-- Start content -->
+
+## 2.2.1
+
+Wed, 08 Sep 2021 05:08:53 GMT
+
+### Patches
+
+- Set consistent node requirements on our packages (ngerlem@microsoft.com)
+
+## 2.2.0
+
+Fri, 11 Jun 2021 05:08:55 GMT
+
+### Minor changes
+
+- Allow marking tested packages windowsOnly (ngerlem@microsoft.com)
+
+## 2.1.3
+
+Wed, 09 Jun 2021 05:10:07 GMT
+
+### Patches
+
+- Bump @rnw-scripts/jest-e2e-config to v1.1.5 (igklemen@microsoft.com)
 
 ## 2.1.2
 
