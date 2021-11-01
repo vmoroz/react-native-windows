@@ -8,20 +8,21 @@
 
 #pragma once
 
-#include "DynamicReader.h"
-#include "DynamicWriter.h"
-#include "ReactHost/React.h"
+#include "IReactModuleBuilder.h"
 #include "cxxreact/CxxModule.h"
 #include "winrt/Microsoft.ReactNative.h"
 
 namespace winrt::Microsoft::ReactNative {
 
 struct ABICxxModule : facebook::xplat::module::CxxModule {
+  using CxxMethod = facebook::xplat::module::CxxModule::Method;
+  using ConstantProvider = std::function<std::map<std::string, folly::dynamic>()>;
+
   ABICxxModule(
-      winrt::Windows::Foundation::IInspectable const &nativeModule,
-      std::string &&name,
-      std::vector<ConstantProviderDelegate> &&constantProviders,
-      std::vector<facebook::xplat::module::CxxModule::Method> &&methods) noexcept;
+      std::string const &name,
+      ReactModuleProvider const &moduleProvider,
+      IReactContext const &reactContext,
+      IReactPropertyName const &dispatcherName) noexcept;
 
  public: // CxxModule implementation
   std::string getName() noexcept override;
@@ -29,10 +30,21 @@ struct ABICxxModule : facebook::xplat::module::CxxModule {
   std::vector<facebook::xplat::module::CxxModule::Method> getMethods() noexcept override;
 
  private:
-  winrt::Windows::Foundation::IInspectable m_nativeModule; // just to keep native module alive
+  void RunInitializers(IReactContext const &reactContext) const noexcept;
+  void SetupFinalizers(IReactContext const &reactContext) const noexcept;
+  CxxMethod CreateCxxMethod(std::string const &name, implementation::ReactModuleBuilder::Method const &method)
+      const noexcept;
+  CxxMethod CreateCxxMethod(std::string const &name, implementation::ReactModuleBuilder::SyncMethod const &method)
+      const noexcept;
+  static void RunSync(IReactDispatcher const &dispatcher, ReactDispatcherCallback const &callback) noexcept;
+  static MethodResultCallback MakeMethodResultCallback(CxxModule::Callback &&callback) noexcept;
+
+ private:
   std::string m_name;
-  std::vector<ConstantProviderDelegate> m_constantProviders;
-  std::vector<facebook::xplat::module::CxxModule::Method> m_methods;
+  com_ptr<implementation::ReactModuleBuilder> m_moduleBuilder;
+  IInspectable m_nativeModule; // to keep the native module alive
+  IReactDispatcher m_jsDispatcher;
+  IReactDispatcher m_moduleDispatcher;
 };
 
 } // namespace winrt::Microsoft::ReactNative

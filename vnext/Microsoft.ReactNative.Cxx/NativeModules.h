@@ -14,66 +14,185 @@
 #include "ReactNonAbiValue.h"
 #include "ReactPromise.h"
 
+#include <condition_variable>
 #include <functional>
+#include <mutex>
 #include <type_traits>
 
-// REACT_MODULE(moduleStruct, [opt] moduleName, [opt] eventEmitterName)
-// Arguments:
+// REACT_MODULE(moduleStruct, [opt, named] moduleName, [opt, named] eventEmitterName, [opt, named] dispatcherName)
+// Annotates a C++ struct as a ReactNative module.
+//
+// ### Parameters
 // - moduleStruct (required) - the struct name the macro is attached to.
-// - moduleName (optional) - the module name visible to JavaScript. Default is the moduleStruct name.
-// - eventEmitterName (optional) - the default event emitter name used by REACT_EVENT.
-//   Default is the RCTDeviceEventEmitter.
+// - moduleName (optional, named) - the module name visible to JavaScript. Default is the moduleStruct name.
+// - eventEmitterName (optional, named) - the default event emitter name used by REACT_EVENT.
+//     Default is the RCTDeviceEventEmitter.
+// - dispatcherName (optional, named) - the name of the property to get ReactDispatcher from the
+//     ReactInstanceSettings.Properties which is the same as the RectContext.Properties.
+//     The ReactDispatcher is used to call all module methods including the constructor and destructor.
+//     Default is the JSDispatcher.
 //
-// REACT_MODULE annotates a C++ struct as a ReactNative module.
-// It can be any struct which can be instantiated using a default constructor.
-// Note that it must be a 'struct', not 'class' because macro does a forward declaration using the 'struct' keyword.
-#define REACT_MODULE(/* moduleStruct, [opt] moduleName, [opt] eventEmitterName */...) \
-  INTERNAL_REACT_MODULE(__VA_ARGS__)(__VA_ARGS__)
+// ### Remarks
+// The native module can be any struct which can be instantiated using a default constructor.
+// Note that it must be a 'struct', not 'class' because macro does a forward declaration using the `struct` keyword.
+//
+// The optional arguments can be provided either in the right position or using a named assignment in any order.
+// The only requirement is that the named arguments must be after the positional arguments.
+// For example:
+// REACT_MODULE(MyModule)
+// REACT_MODULE(MyModule, L"myModule", L"RCTDeviceEventEmitter", UIDispatcher)
+// REACT_MODULE(MyModule, eventEmitterName = L"myNoduleEmitter")
+// REACT_MODULE(MyModule, dispatcherName = UIDispatcher, moduleName = L"myModule")
+// REACT_MODULE(MyModule, L"myModule", dispatcherName = UIDispatcher)
+#define REACT_MODULE(                                                                                           \
+    moduleStruct, /* [opt, named] moduleName, [opt, named] eventEmitterName, [opt, named] dispatcherName */...) \
+  INTERNAL_REACT_MODULE(moduleStruct, __VA_ARGS__)
 
-// REACT_INIT(method)
-// Arguments:
-// - method (required) - the method name the macro is attached to.
+// REACT_INITIALIZER(method, [opt, named] useJSDispatcher)
+// Annotates a method that is called when a native module is initialized.
 //
-// REACT_INIT annotates a method that is called when a native module is initialized.
-// It must have 'ReactContext const &' parameter.
-// It must be an instance method.
-#define REACT_INIT(method) INTERNAL_REACT_MEMBER_2_ARGS(InitMethod, method)
+// ### Parameters
+// - method (required) - the method name the macro is attached to.
+// - useJSDispatcher (optional, named) - Boolean value indicating to use JSDispatcher to call the method. Otherwise,
+//     it is called in the dispatcher associated with the module.
+//
+// ### Remarks
+// REACT_INITIALIZER annotates a method that is called when a native module is initialized.
+// It must have 'ReactContext const &' parameter. It must be an instance method. There can be zero or more
+// initializer methods.
+// The method is called in the dispatcher associated with the module before any other method. It is a good place to
+// initialize thread-specific resources. It provides the ReactContext to the module which can be used to interact with
+// other parts of React Native application.
+// The useJSDispatcher parameter can be used to call the method in JSDispatcher instead of the module dispatcher.
+// It is possible to have two or more initializers that are called in module dispatcher and/or JSDispatcher.
+//
+// The optional arguments can be provided either in the right position or using a named assignment in any order.
+// The only requirement is that the named arguments must be after the positional arguments.
+// For example:
+// REACT_INITIALIZER(Initializer)
+// REACT_INITIALIZER(Initializer, useJSDispatcher = true)
+// REACT_INITIALIZER(Initializer, true)
+#define REACT_INITIALIZER(method, /* [opt, named] useJSDispatcher */...) \
+  INTERNAL_REACT_MEMBER(InitializerMethod, method, unused1, unused2, useJSDispatcher, invalid, invalid, 0, __VA_ARGS__)
 
-// REACT_METHOD(method, [opt] methodName)
-// Arguments:
+// An alias for REACT_INITIALIZER for backward compatibility.
+#define REACT_INIT(method, ...) REACT_INITIALIZER(method, __VA_ARGS__)
+
+// REACT_FINALIZER(method, [opt, named] useJSDispatcher)
+// ### Parameters
 // - method (required) - the method name the macro is attached to.
-// - methodName (optional) - the method name visible to JavaScript. Default is the method name.
+// - useJSDispatcher (optional, named) - Boolean value indicating to use JSDispatcher to call the method. Otherwise,
+//     it is called in the dispatcher associated with the module.
 //
-// REACT_METHOD annotates a method to export to JavaScript.
-// It declares an asynchronous method. To return a value:
-// - Return void and have a Callback as a last parameter. The Callback type can be any std::function like type. E.g.
+// ### Remarks
+// REACT_FINALIZER annotates a method that is called when the native module is destroyed.
+// It must be an instance method. There can be zero or more finalizer methods.
+// This method is called when the React Native instance destroys native module.
+// It is called in the dispatcher associated with the module and it is a good place to release thread-specific
+// resources. It is different from the destructor because it is possible that the module instance is kept alive by some
+// other code. E.g. when a module inherits from std::enable_shared_from_this and some other code keeps a std::shared_ptr
+// to the module.
+// The useJSDispatcher parameter can be used to call the method in JSDispatcher instead of the module dispatcher.
+// It is possible to have two or more finalizers that are called in module dispatcher and/or JSDispatcher.
+//
+// The optional arguments can be provided either in the right position or using a named assignment in any order.
+// The only requirement is that the named arguments must be after the positional arguments.
+// For example:
+// REACT_FINALIZER(Finalizer)
+// REACT_FINALIZER(Finalizer, useJSDispatcher = true)
+// REACT_FINALIZER(Finalizer, true)
+#define REACT_FINALIZER(method, /* [opt, named] useJSDispatcher */...) \
+  INTERNAL_REACT_MEMBER(FinalizerMethod, method, unused1, unused2, useJSDispatcher, invalid, invalid, 0, __VA_ARGS__)
+
+// REACT_METHOD(method, [opt, named] methodName, [opt, named] useJSDispatcher)
+// ### Parameters
+// - method (required) - the method name the macro is attached to.
+// - methodName (optional, named) - the method name visible to JavaScript. Default is the method name.
+// - useJSDispatcher (optional, named) - Boolean value indicating to use JSDispatcher to call the method. Otherwise,
+//     it is called in the dispatcher associated with the module.
+//
+// ### Remarks
+// REACT_METHOD annotates an asynchronous method exported to JavaScript.
+// It can be an instance or static method.
+// The method is called in the dispatcher associated with the module. The call
+// is always asynchronous even// if it is done in JSDispatcher.
+// The useJSDispatcher parameter can be used to call the method in JSDispatcher instead of the module dispatcher.
+//
+// To return a value:
+// - Return void and have a Callback as a last parameter. The Callback type can be any std::function-like type. E.g.
 //   Func<void(Args...)>.
-// - Return void and have two callbacks as last parameters. One is used to return value and another an error.
+// - Return void and have two callbacks as last parameters. One is used to return value and another an error. The order
+//   of the callbacks could be different and must match the JavaScript code conventions.
 // - Return void and have a ReactPromise as a last parameter. In JavaScript the method returns Promise.
+// - Instead of void we can return winrt::fire_and_forget to enable co-routines.
 // - Return non-void value. In JavaScript it is treated as a method with one Callback. Return std::pair<Error, Value> to
 //   be able to communicate error condition.
-// It can be an instance or static method.
-#define REACT_METHOD(/* method, [opt] methodName */...) INTERNAL_REACT_MEMBER(__VA_ARGS__)(AsyncMethod, __VA_ARGS__)
-
-// REACT_SYNC_METHOD(method, [opt] methodName)
-// Arguments:
-// - method (required) - the method name the macro is attached to.
-// - methodName (optional) - the method name visible to JavaScript. Default is the method name.
 //
-// REACT_SYNC_METHOD annotates a method that is called synchronously.
+// The optional arguments can be provided either in the right position or using a named assignment in any order.
+// The only requirement is that the named arguments must be after the positional arguments.
+// For example:
+// REACT_METHOD(MyMethod)
+// REACT_METHOD(MyMethod, L"myMethod")
+// REACT_METHOD(MyMethod, L"myMethod", true)
+// REACT_METHOD(MyMethod, L"myMethod", useJSDispatcher = true)
+// REACT_METHOD(MyMethod, useJSDispatcher = true)
+// REACT_METHOD(MyMethod, methodName = L"myMethod", useJSDispatcher = true)
+#define REACT_METHOD(method, /* [opt, named] methodName, [opt, named] useJSDispatcher */...) \
+  INTERNAL_REACT_MEMBER(AsyncMethod, method, methodName, unused, useJSDispatcher, 0, invalid, 1, __VA_ARGS__)
+
+// REACT_SYNC_METHOD(method, [opt, named] methodName, [opt, named] useJSDispatcher)
+// Annotates a method that is called synchronously.
+//
+// ### Parameters
+// - method (required) - the method name the macro is attached to.
+// - methodName (optional, named) - the method name visible to JavaScript. Default is the method name.
+// - useJSDispatcher (optional, named) - Boolean value indicating to use JSDispatcher to call the method. Otherwise,
+//     it is called in the dispatcher associated with the module.
+//
+// ### Remarks
+// The method must return non-void value type. It can be an instance or static method.
 // It must be used rarely because it may cause out-of-order execution when used along with asynchronous methods.
-// The method must return non-void value type.
-// It can be an instance or static method.
-#define REACT_SYNC_METHOD(/* method, [opt] methodName */...) INTERNAL_REACT_MEMBER(__VA_ARGS__)(SyncMethod, __VA_ARGS__)
-
-// REACT_CONSTANT_PROVIDER(method)
-// Arguments:
-// - method (required) - the method name the macro is attached to.
+// The method is called in the dispatcher associated with the module. It means that for non-JSDispatcher we block the JS
+// thread until the method is completed in the module's dispatcher.
+// The useJSDispatcher parameter can be used to call the method in JSDispatcher instead of the module dispatcher.
 //
-// REACT_CONSTANT_PROVIDER annotates a method that defines constants.
-// It must have 'ReactConstantProvider &' parameter.
-// It can be an instance or static method.
-#define REACT_CONSTANT_PROVIDER(method) INTERNAL_REACT_MEMBER_2_ARGS(ConstantMethod, method)
+// The optional arguments can be provided either in the right position or using a named assignment in any order.
+// The only requirement is that the named arguments must be after the positional arguments.
+// For example:
+// REACT_SYNC_METHOD(MyMethod)
+// REACT_SYNC_METHOD(MyMethod, L"myMethod")
+// REACT_SYNC_METHOD(MyMethod, L"myMethod", true)
+// REACT_SYNC_METHOD(MyMethod, L"myMethod", useJSDispatcher = true)
+// REACT_SYNC_METHOD(MyMethod, useJSDispatcher = true)
+// REACT_SYNC_METHOD(MyMethod, methodName = L"myMethod", useJSDispatcher = true)
+#define REACT_SYNC_METHOD(method, /* [opt, named] methodName, [opt, named] useJSDispatcher */...) \
+  INTERNAL_REACT_MEMBER(SyncMethod, method, methodName, unused, useJSDispatcher, 0, invalid, 1, __VA_ARGS__)
+
+// REACT_CONSTANT_PROVIDER(method, [opt, named] useJSDispatcher)
+// Annotates a method that provides constants.
+//
+// ### Parameters
+// - method (required) - the method name the macro is attached to.
+// - useJSDispatcher (optional, named) - Boolean value indicating to use JSDispatcher to call the method. Otherwise,
+//     it is called in the dispatcher associated with the module.
+//
+// ### Remarks
+// It must have 'ReactConstantProvider &' parameter. It can be an instance or static method. There can be zero or more
+// constant provider methods.
+// The constant providers are always called after the initializer methods.
+// The method is called in the dispatcher associated with the module. It means that for non-JSDispatcher we block
+// the JS thread until the method is completed in the module's dispatcher.
+// The useJSDispatcher parameter can be used to call the method in JSDispatcher instead of the module dispatcher.
+// It is possible to have two or more constant providers that are called in module dispatcher and/or JSDispatcher.
+//
+// The optional arguments can be provided either in the right position or using a named assignment in any order.
+// The only requirement is that the named arguments must be after the positional arguments.
+// For example:
+// REACT_CONSTANT_PROVIDER(GetConstants)
+// REACT_CONSTANT_PROVIDER(GetConstants, useJSDispatcher = true)
+// REACT_CONSTANT_PROVIDER(GetConstants, true)
+#define REACT_CONSTANT_PROVIDER(method, /* [opt, named] useJSDispatcher */...) \
+  INTERNAL_REACT_MEMBER(ConstantMethod, method, unused1, unused2, useJSDispatcher, invalid, invalid, 0, __VA_ARGS__)
 
 // REACT_GET_CONSTANTS(method)
 // Arguments:
@@ -85,41 +204,77 @@
 // It can be an instance or static method.
 #define REACT_GET_CONSTANTS(method) INTERNAL_REACT_MEMBER_2_ARGS(ConstantStrongTypedMethod, method)
 
-// REACT_CONSTANT(field, [opt] constantName)
-// Arguments:
-// - field (required) - the field name the macro is attached to.
-// - constantName (optional) - the constant name visible to JavaScript. Default is the field name.
+// REACT_CONSTANT(field, [opt, named] constantName, [opt, named] useJSDispatcher)
+// Annotates a field that defines a constant.
 //
-// REACT_CONSTANT annotates a field that defines a constant.
+// ### Parameters
+// - field (required) - the field name the macro is attached to.
+// - constantName (optional, named) - the constant name visible to JavaScript. Default is the field name.
+// - useJSDispatcher (optional, named) - Boolean value indicating to use JSDispatcher to call the method that reads
+//     the constant. Otherwise, it is called in the dispatcher associated with the module.
+//
+// ### Remarks
 // It can be an instance or static field.
-#define REACT_CONSTANT(/* field, [opt] constantName */...) \
-  INTERNAL_REACT_MEMBER(__VA_ARGS__)(ConstantField, __VA_ARGS__)
-
-// REACT_EVENT(field, [opt] eventName, [opt] eventEmitterName)
-// Arguments:
-// - field (required) - the field name the macro is attached to.
-// - eventName (optional) - the JavaScript event name. Default is the field name.
-// - eventEmitterName (optional) - the JavaScript module event emitter name. Default is module's eventEmitterName which
-//   is by default 'RCTDeviceEventEmitter'.
+// This annotation creates an internal constant provider method which is called in the dispatcher associated with the
+// module. It means that for non-JSDispatcher we block the JS thread until the method is completed in the module's
+// dispatcher.
+// The useJSDispatcher parameter can be used to call the method in JSDispatcher instead of the module dispatcher.
+// It is possible to have two or more constant providers that are called in module dispatcher and/or JSDispatcher.
 //
-// REACT_EVENT annotates a field that helps raise a JavaScript event.
-// The field type can be any std::function like type. E.g. Func<void(Args...)>.
-// It must be an instance field.
-#define REACT_EVENT(/* field, [opt] eventName, [opt] eventEmitterName */...) \
-  INTERNAL_REACT_MEMBER(__VA_ARGS__)(EventField, __VA_ARGS__)
+// The optional arguments can be provided either in the right position or using a named assignment in any order.
+// The only requirement is that the named arguments must be after the positional arguments.
+// For example:
+// REACT_CONSTANT(MyConst)
+// REACT_CONSTANT(MyConst, L"myConst")
+// REACT_CONSTANT(MyConst, L"myConst", true)
+// REACT_CONSTANT(MyConst, L"myConst", useJSDispatcher = true)
+// REACT_CONSTANT(MyConst, useJSDispatcher = true)
+// REACT_CONSTANT(MyConst, constantName = L"myConst", useJSDispatcher = true)
+#define REACT_CONSTANT(field, /* [opt, named] constantName, [opt, named] useJSDispatcher */...) \
+  INTERNAL_REACT_MEMBER(ConstantField, field, constantName, unused, useJSDispatcher, 0, invalid, 1, __VA_ARGS__)
 
-// REACT_FUNCTION(field, [opt] functionName, [opt] moduleName)
-// Arguments:
+// REACT_EVENT(field, [opt, named] eventName, [opt, named] eventEmitterName, [opt, named] useJSDispatcher)
+// Annotates a field that helps raising a JavaScript event.
+//
+// ### Parameters
+// - field (required) - the field name the macro is attached to.
+// - eventName (optional, named) - the JavaScript event name. Default is the field name.
+// - eventEmitterName (optional, named) - the JavaScript module event emitter name. Default is module's eventEmitterName
+//   which is by default 'RCTDeviceEventEmitter'.
+// - useJSDispatcher (optional, named) - Boolean value indicating to use JSDispatcher to call the method that reads
+//     the constant. Otherwise, it is called in the dispatcher associated with the module.
+//
+// ### Remarks
+// The field type can be any std::function like type. E.g. Func<void(Args...)>.
+// It can have zero or more event arguments. It must be an instance field.
+// This annotation creates an internal initializer method which is called in the dispatcher associated with the
+// module. The JS thread is not blocked. All initializers are coalesced into a single call. The event initializers are
+// called before initializers annotated with the REACT_INITIALIZER macro.
+// In JavaScript we use `NativeEventEmitter` to handle events.
+#define REACT_EVENT(                                                                                     \
+    field, /* [opt, named] eventName, [opt, named] eventEmitterName, [opt, named] useJSDispatcher */...) \
+  INTERNAL_REACT_MEMBER(EventField, field, eventName, eventEmitterName, useJSDispatcher, 0, 1, 2, __VA_ARGS__)
+
+// REACT_FUNCTION(field, [opt, named] functionName, [opt, named] moduleName, [opt, named] useJSDispatcher)
+// Annotates a field that helps calling a JavaScript function.
+//
+// ### Parameters
 // - field (required) - the field name the macro is attached to.
 // - functionName (optional) - the JavaScript function name. Default is the field name.
 // - moduleName (optional) - the JavaScript module name. Default is module's moduleName which is by default the class
 //   name.
 //
-// REACT_FUNCTION annotates a field that helps calling a JavaScript function.
+// ### Remarks
 // The field type can be any std::function like type. E.g. Func<void(Args...)>.
+// It can have zero or more event arguments.
 // It must be an instance field.
-#define REACT_FUNCTION(/* field, [opt] functionName, [opt] moduleName */...) \
-  INTERNAL_REACT_MEMBER(__VA_ARGS__)(FunctionField, __VA_ARGS__)
+// This annotation creates an internal initializer method which is called in the dispatcher associated with the
+// module. The JS thread is not blocked. All initializers are coalesced into a single call. The function initializers
+// are called before initializers annotated with the REACT_INITIALIZER macro.
+// In JavaScript we use `global.__fbBatchedBridge.registerLazyCallableModule` to register a callable function.
+#define REACT_FUNCTION(                                                                               \
+    field, /* [opt, named] functionName, [opt, named] moduleName, [opt, named] useJSDispatcher */...) \
+  INTERNAL_REACT_MEMBER(FunctionField, field, functionName, moduleName, useJSDispatcher, 0, 1, 2, __VA_ARGS__)
 
 #define REACT_SHOW_CONSTANT_SIGNATURES(signatures)  \
   " (see details below in output).\n"               \
@@ -170,6 +325,12 @@
 //
 
 namespace winrt::Microsoft::ReactNative {
+
+using IInspectable = winrt::Windows::Foundation::IInspectable;
+
+// Forward declarations
+template <class TModule>
+TModule *UnwrapReactModule(void *moduleWrapper) noexcept;
 
 // Often used to create a tuple with arguments or to create a method signature.
 template <class T>
@@ -413,18 +574,23 @@ struct MethodSignature {
 // Module registration helpers
 //==============================================================================
 
-template <class TMethod>
-struct ModuleInitMethodInfo;
+template <class TModule>
+struct ModuleInitializerMethodInfo {
+  using MethodType = void (TModule::*)(ReactContext const &) noexcept;
+  static InitializerDelegate
+  GetInitializer(TModule *module, IInspectable const &moduleWrapper, MethodType method) noexcept {
+    return [module, moduleWrapper, method](IReactContext const &reactContext) noexcept {
+      (module->*method)(ReactContext{reactContext});
+    };
+  }
+};
 
 template <class TModule>
-struct ModuleInitMethodInfo<void (TModule::*)(ReactContext const &) noexcept> {
-  using ModuleType = TModule;
-  using MethodType = void (TModule::*)(ReactContext const &) noexcept;
-
-  static InitializerDelegate GetInitializer(void *module, MethodType method) noexcept {
-    return [module = static_cast<ModuleType *>(module), method](ReactContext const &reactContext) noexcept {
-      (module->*method)(reactContext);
-    };
+struct ModuleFinalizerMethodInfo {
+  using MethodType = void (TModule::*)() noexcept;
+  static FinalizerDelegate
+  GetFinalizer(TModule *module, IInspectable const &moduleWrapper, MethodType method) noexcept {
+    return [module, moduleWrapper, method]() noexcept { (module->*method)(); };
   }
 };
 
@@ -511,17 +677,17 @@ struct ModuleMethodInfo;
 template <class TModule, class TResult, class... TArgs>
 struct ModuleMethodInfo<TResult (TModule::*)(TArgs...) noexcept> : ModuleMethodInfoBase<TResult(TArgs...) noexcept> {
   using Super = ModuleMethodInfoBase<TResult(TArgs...) noexcept>;
-  using ModuleType = TModule;
   using MethodType = TResult (TModule::*)(TArgs...) noexcept;
 
   template <size_t... ArgIndex, size_t... CallbackIndex, size_t... PromiseIndex>
   static MethodDelegate GetMethodDelegate(
-      ModuleType *module,
+      TModule *module,
+      IInspectable const &moduleWrapper,
       MethodType method,
       std::index_sequence<ArgIndex...>,
       std::index_sequence<CallbackIndex...>,
       std::index_sequence<PromiseIndex...>) noexcept {
-    return [module, method](
+    return [module, moduleWrapper, method](
                IJSValueReader const &argReader,
                [[maybe_unused]] IJSValueWriter const &argWriter,
                [[maybe_unused]] MethodResultCallback const &resolve,
@@ -548,11 +714,16 @@ struct ModuleMethodInfo<TResult (TModule::*)(TArgs...) noexcept> : ModuleMethodI
     };
   }
 
-  static MethodDelegate GetMethodDelegate(void *module, MethodType method, MethodReturnType &returnType) noexcept {
+  static MethodDelegate GetMethodDelegate(
+      TModule *module,
+      IInspectable const moduleWrapper,
+      MethodType method,
+      MethodReturnType &returnType) noexcept {
     (ValidateCoroutineArg<TResult, TArgs>(), ...);
     returnType = Super::GetMethodReturnType();
     return GetMethodDelegate(
-        static_cast<ModuleType *>(module),
+        module,
+        moduleWrapper,
         method,
         std::make_index_sequence<Super::InputArgCount>{},
         std::make_index_sequence<Super::CallbackCount>{},
@@ -604,7 +775,11 @@ struct ModuleMethodInfo<TResult (*)(TArgs...) noexcept> : ModuleMethodInfoBase<T
     };
   }
 
-  static MethodDelegate GetMethodDelegate(void * /*module*/, MethodType method, MethodReturnType &returnType) noexcept {
+  static MethodDelegate GetMethodDelegate(
+      void * /*module*/,
+      IInspectable const & /*moduleWrapper*/,
+      MethodType method,
+      MethodReturnType &returnType) noexcept {
     (ValidateCoroutineArg<TResult, TArgs>(), ...);
     returnType = Super::GetMethodReturnType();
     return GetMethodDelegate(
@@ -638,12 +813,13 @@ template <class TModule, class TResult, class... TArgs>
 struct ModuleSyncMethodInfo<TResult (TModule::*)(TArgs...) noexcept>
     : ModuleSyncMethodInfoBase<TResult(TArgs...) noexcept> {
   using Super = ModuleSyncMethodInfoBase<TResult(TArgs...) noexcept>;
-  using ModuleType = TModule;
   using MethodType = TResult (TModule::*)(TArgs...) noexcept;
 
   template <size_t... I>
-  static SyncMethodDelegate GetFunc(ModuleType *module, MethodType method, std::index_sequence<I...>) noexcept {
-    return [module, method](IJSValueReader const &argReader, IJSValueWriter const &argWriter) mutable noexcept {
+  static SyncMethodDelegate
+  GetFunc(TModule *module, IInspectable const &moduleWrapper, MethodType method, std::index_sequence<I...>) noexcept {
+    return [module, moduleWrapper, method](
+               IJSValueReader const &argReader, IJSValueWriter const &argWriter) mutable noexcept {
       using ArgTuple = std::tuple<std::remove_reference_t<TArgs>...>;
       ArgTuple typedArgs{};
       ReadArgs(argReader, std::get<I>(typedArgs)...);
@@ -652,8 +828,9 @@ struct ModuleSyncMethodInfo<TResult (TModule::*)(TArgs...) noexcept>
     };
   }
 
-  static SyncMethodDelegate GetMethodDelegate(void *module, MethodType method) noexcept {
-    return GetFunc(static_cast<ModuleType *>(module), method, std::make_index_sequence<sizeof...(TArgs)>{});
+  static SyncMethodDelegate
+  GetMethodDelegate(TModule *module, IInspectable const &moduleWrapper, MethodType method) noexcept {
+    return GetFunc(module, moduleWrapper, method, std::make_index_sequence<sizeof...(TArgs)>{});
   }
 
   template <class TMethodSpec>
@@ -680,7 +857,8 @@ struct ModuleSyncMethodInfo<TResult (*)(TArgs...) noexcept> : ModuleSyncMethodIn
     };
   }
 
-  static SyncMethodDelegate GetMethodDelegate(void * /*module*/, MethodType method) noexcept {
+  static SyncMethodDelegate
+  GetMethodDelegate(void * /*module*/, IInspectable const & /*moduleWrapper*/, MethodType method) noexcept {
     return GetFunc(method, std::make_index_sequence<sizeof...(TArgs)>{});
   }
 
@@ -692,26 +870,32 @@ struct ModuleSyncMethodInfo<TResult (*)(TArgs...) noexcept> : ModuleSyncMethodIn
 };
 
 template <class TField>
-struct ModuleConstFieldInfo;
+struct ModuleConstantFieldInfo;
 
 template <class TModule, class TValue>
-struct ModuleConstFieldInfo<TValue TModule::*> {
-  using ModuleType = TModule;
+struct ModuleConstantFieldInfo<TValue TModule::*> {
   using FieldType = TValue TModule::*;
 
-  static ConstantProviderDelegate GetConstantProvider(void *module, std::wstring_view name, FieldType field) noexcept {
-    return [module = static_cast<ModuleType *>(module), name, field](IJSValueWriter const &argWriter) mutable noexcept {
+  static ConstantProviderDelegate GetConstantProvider(
+      TModule *module,
+      IInspectable const &moduleWrapper,
+      std::wstring_view name,
+      FieldType field) noexcept {
+    return [module, moduleWrapper, name, field](IJSValueWriter const &argWriter) mutable noexcept {
       WriteProperty(argWriter, name, module->*field);
     };
   }
 };
 
 template <class TValue>
-struct ModuleConstFieldInfo<TValue *> {
+struct ModuleConstantFieldInfo<TValue *> {
   using FieldType = TValue *;
 
-  static ConstantProviderDelegate
-  GetConstantProvider(void * /*module*/, std::wstring_view name, FieldType field) noexcept {
+  static ConstantProviderDelegate GetConstantProvider(
+      void * /*moduleWrapper*/,
+      IInspectable const & /*moduleWrapper*/,
+      std::wstring_view name,
+      FieldType field) noexcept {
     return [name, field](IJSValueWriter const &argWriter) mutable noexcept { WriteProperty(argWriter, name, *field); };
   }
 };
@@ -733,15 +917,15 @@ struct ReactConstantProvider {
 };
 
 template <class TMethod>
-struct ModuleConstantInfo;
+struct ModuleConstantProviderInfo;
 
 template <class TModule>
-struct ModuleConstantInfo<void (TModule::*)(ReactConstantProvider &) noexcept> {
-  using ModuleType = TModule;
+struct ModuleConstantProviderInfo<void (TModule::*)(ReactConstantProvider &) noexcept> {
   using MethodType = void (TModule::*)(ReactConstantProvider &) noexcept;
 
-  static ConstantProviderDelegate GetConstantProvider(void *module, MethodType method) noexcept {
-    return [module = static_cast<ModuleType *>(module), method](IJSValueWriter const &argWriter) mutable noexcept {
+  static ConstantProviderDelegate
+  GetConstantProvider(TModule *module, IInspectable const &moduleWrapper, MethodType method) noexcept {
+    return [module, moduleWrapper, method](IJSValueWriter const &argWriter) mutable noexcept {
       ReactConstantProvider constantProvider{argWriter};
       (module->*method)(constantProvider);
     };
@@ -749,10 +933,11 @@ struct ModuleConstantInfo<void (TModule::*)(ReactConstantProvider &) noexcept> {
 };
 
 template <>
-struct ModuleConstantInfo<void (*)(ReactConstantProvider &) noexcept> {
+struct ModuleConstantProviderInfo<void (*)(ReactConstantProvider &) noexcept> {
   using MethodType = void (*)(ReactConstantProvider &) noexcept;
 
-  static ConstantProviderDelegate GetConstantProvider(void * /*module*/, MethodType method) noexcept {
+  static ConstantProviderDelegate
+  GetConstantProvider(void * /*module*/, IInspectable const & /*moduleWrapper*/, MethodType method) noexcept {
     return [method](IJSValueWriter const &argWriter) mutable noexcept {
       ReactConstantProvider constantProvider{argWriter};
       (*method)(constantProvider);
@@ -790,17 +975,20 @@ struct ModuleEventFieldInfo;
 
 template <class TModule, template <class> class TFunc, class... TArgs>
 struct ModuleEventFieldInfo<TFunc<void(TArgs...)> TModule::*> {
-  using ModuleType = TModule;
   using EventType = TFunc<void(TArgs...)>;
   using FieldType = EventType TModule::*;
 
   static InitializerDelegate GetEventHandlerInitializer(
-      void *module,
+      TModule *module,
+      IInspectable const &moduleWrapper,
       FieldType field,
       std::wstring_view eventName,
       std::wstring_view eventEmitterName) noexcept {
-    return [module = static_cast<ModuleType *>(module), field, eventName, eventEmitterName](
-               IReactContext const &reactContext) noexcept {
+    return [module,
+            moduleWrapper,
+            field,
+            eventName = std::wstring(eventName),
+            eventEmitterName = std::wstring(eventEmitterName)](IReactContext const &reactContext) noexcept {
       module->*field = [reactContext, eventEmitterName, eventName](TArgs... args) noexcept {
         reactContext.EmitJSEvent(
             eventEmitterName, eventName, [&args...]([[maybe_unused]] IJSValueWriter const &argWriter) noexcept {
@@ -817,17 +1005,20 @@ struct ModuleFunctionFieldInfo;
 
 template <class TModule, template <class> class TFunc, class... TArgs>
 struct ModuleFunctionFieldInfo<TFunc<void(TArgs...)> TModule::*> {
-  using ModuleType = TModule;
   using FunctionType = TFunc<void(TArgs...)>;
   using FieldType = FunctionType TModule::*;
 
   static InitializerDelegate GetFunctionInitializer(
-      void *module,
+      TModule *module,
+      IInspectable const &moduleWrapper,
       FieldType field,
       std::wstring_view functionName,
       std::wstring_view moduleName) noexcept {
-    return [module = static_cast<ModuleType *>(module), field, functionName, moduleName](
-               IReactContext const &reactContext) noexcept {
+    return [module,
+            moduleWrapper,
+            field,
+            functionName = std::wstring(functionName),
+            moduleName = std::wstring(moduleName)](IReactContext const &reactContext) noexcept {
       module->*field = [reactContext, functionName, moduleName](TArgs... args) noexcept {
         reactContext.CallJSFunction(moduleName, functionName, [&args...](IJSValueWriter const &argWriter) noexcept {
           WriteArgs(argWriter, args...);
@@ -871,7 +1062,8 @@ struct ReactMemberInfoIterator {
 };
 
 enum class ReactMemberKind {
-  InitMethod,
+  InitializerMethod,
+  FinalizerMethod,
   AsyncMethod,
   SyncMethod,
   ConstantMethod,
@@ -883,14 +1075,19 @@ enum class ReactMemberKind {
 
 template <ReactMemberKind MemberKind>
 struct ReactMemberAttribute : std::integral_constant<ReactMemberKind, MemberKind> {
-  constexpr ReactMemberAttribute(std::wstring_view jsMemberName, std::wstring_view jsModuleName) noexcept
-      : JSMemberName{jsMemberName}, JSModuleName{jsModuleName} {}
+  constexpr ReactMemberAttribute(
+      std::wstring_view jsMemberName,
+      std::wstring_view jsModuleName,
+      bool useJSDispatcher) noexcept
+      : JSMemberName{jsMemberName}, JSModuleName{jsModuleName}, UseJSDispatcher{useJSDispatcher} {}
 
   std::wstring_view JSMemberName;
   std::wstring_view JSModuleName;
+  bool UseJSDispatcher;
 };
 
-using ReactInitMethodAttribute = ReactMemberAttribute<ReactMemberKind::InitMethod>;
+using ReactInitializerMethodAttribute = ReactMemberAttribute<ReactMemberKind::InitializerMethod>;
+using ReactFinalizerMethodAttribute = ReactMemberAttribute<ReactMemberKind::FinalizerMethod>;
 using ReactAsyncMethodAttribute = ReactMemberAttribute<ReactMemberKind::AsyncMethod>;
 using ReactSyncMethodAttribute = ReactMemberAttribute<ReactMemberKind::SyncMethod>;
 using ReactConstantMethodAttribute = ReactMemberAttribute<ReactMemberKind::ConstantMethod>;
@@ -905,27 +1102,17 @@ template <ReactMemberKind MemberKind>
 struct IsReactMemberAttribute<ReactMemberAttribute<MemberKind>> : std::true_type {};
 
 template <class TModule>
-struct ReactModuleBuilder {
-  ReactModuleBuilder(TModule *module, IReactModuleBuilder const &moduleBuilder) noexcept
-      : m_module{module}, m_moduleBuilder{moduleBuilder} {}
+struct ReactModuleMemberRegistrar {
+  ReactModuleMemberRegistrar(
+      TModule *module,
+      winrt::Windows::Foundation::IInspectable const &moduleWrapper,
+      ReactModuleBuilder const &moduleBuilder,
+      ReactModuleInfo const &moduleInfo) noexcept
+      : m_module{module}, m_moduleWrapper{moduleWrapper}, m_moduleBuilder{moduleBuilder}, m_moduleInfo{moduleInfo} {}
 
   template <int I>
-  void RegisterModule(std::wstring_view moduleName, std::wstring_view eventEmitterName, ReactAttributeId<I>) noexcept {
-    RegisterModuleName(moduleName, eventEmitterName);
+  void VisitModuleMembers(ReactAttributeId<I>) noexcept {
     ReactMemberInfoIterator<TModule>{}.template ForEachMember<I + 1>(*this);
-  }
-
-  void RegisterModuleName(std::wstring_view moduleName, std::wstring_view eventEmitterName = L"") noexcept {
-    m_moduleName = moduleName;
-    m_eventEmitterName = !eventEmitterName.empty() ? eventEmitterName : L"RCTDeviceEventEmitter";
-  }
-
-  void CompleteRegistration() noexcept {
-    // Add REACT_INIT initializers after REACT_EVENT and REACT_FUNCTION initializers.
-    // This way REACT_INIT method is invoked after event and function fields are initialized.
-    for (auto &initializer : m_initializers) {
-      m_moduleBuilder.AddInitializer(initializer);
-    }
   }
 
   template <class TMember, class TAttribute, int I>
@@ -933,48 +1120,58 @@ struct ReactModuleBuilder {
       [[maybe_unused]] TMember member,
       ReactAttributeId<I> /*attributeId*/,
       [[maybe_unused]] TAttribute attributeInfo) noexcept {
-    if constexpr (std::is_same_v<TAttribute, ReactInitMethodAttribute>) {
-      RegisterInitMethod(member);
+    if constexpr (std::is_same_v<TAttribute, ReactInitializerMethodAttribute>) {
+      RegisterInitializerMethod(member, attributeInfo.UseJSDispatcher);
+    } else if constexpr (std::is_same_v<TAttribute, ReactFinalizerMethodAttribute>) {
+      RegisterFinalizerMethod(member, attributeInfo.UseJSDispatcher);
     } else if constexpr (std::is_same_v<TAttribute, ReactAsyncMethodAttribute>) {
-      RegisterMethod(member, attributeInfo.JSMemberName);
+      RegisterMethod(member, attributeInfo.JSMemberName, attributeInfo.UseJSDispatcher);
     } else if constexpr (std::is_same_v<TAttribute, ReactSyncMethodAttribute>) {
-      RegisterSyncMethod(member, attributeInfo.JSMemberName);
+      RegisterSyncMethod(member, attributeInfo.JSMemberName, attributeInfo.UseJSDispatcher);
     } else if constexpr (std::is_same_v<TAttribute, ReactConstantMethodAttribute>) {
-      RegisterConstantMethod(member);
+      RegisterConstantMethod(member, attributeInfo.UseJSDispatcher);
     } else if constexpr (std::is_same_v<TAttribute, ReactConstantStrongTypedMethodAttribute>) {
       RegisterConstantStrongTypedMethod(member);
     } else if constexpr (std::is_same_v<TAttribute, ReactConstantFieldAttribute>) {
-      RegisterConstantField(member, attributeInfo.JSMemberName);
+      RegisterConstantField(member, attributeInfo.JSMemberName, attributeInfo.UseJSDispatcher);
     } else if constexpr (std::is_same_v<TAttribute, ReactEventFieldAttribute>) {
-      RegisterEventField(member, attributeInfo.JSMemberName, attributeInfo.JSModuleName);
+      RegisterEventField(member, attributeInfo.JSMemberName, attributeInfo.JSModuleName, attributeInfo.UseJSDispatcher);
     } else if constexpr (std::is_same_v<TAttribute, ReactFunctionFieldAttribute>) {
-      RegisterFunctionField(member, attributeInfo.JSMemberName, attributeInfo.JSModuleName);
+      RegisterFunctionField(
+          member, attributeInfo.JSMemberName, attributeInfo.JSModuleName, attributeInfo.UseJSDispatcher);
     }
   }
 
   template <class TMethod>
-  void RegisterInitMethod(TMethod method) noexcept {
-    auto initializer = ModuleInitMethodInfo<TMethod>::GetInitializer(m_module, method);
-    m_initializers.push_back(std::move(initializer));
+  void RegisterInitializerMethod(TMethod method, bool useJSDispatcher = false) noexcept {
+    auto initializer = ModuleInitializerMethodInfo<TModule>::GetInitializer(m_module, m_moduleWrapper, method);
+    m_moduleBuilder.AddDispatchedInitializer(initializer, ReactInitializerType::Method, useJSDispatcher);
   }
 
   template <class TMethod>
-  void RegisterMethod(TMethod method, std::wstring_view name) noexcept {
+  void RegisterFinalizerMethod(TMethod method, bool useJSDispatcher = false) noexcept {
+    auto finalizer = ModuleFinalizerMethodInfo<TModule>::GetFinalizer(m_module, m_moduleWrapper, method);
+    m_moduleBuilder.AddDispatchedFinalizer(finalizer, useJSDispatcher);
+  }
+
+  template <class TMethod>
+  void RegisterMethod(TMethod method, std::wstring_view name, bool useJSDispatcher = false) noexcept {
     MethodReturnType returnType;
-    auto methodDelegate = ModuleMethodInfo<TMethod>::GetMethodDelegate(m_module, method, /*out*/ returnType);
-    m_moduleBuilder.AddMethod(name, returnType, methodDelegate);
+    auto methodDelegate =
+        ModuleMethodInfo<TMethod>::GetMethodDelegate(m_module, m_moduleWrapper, method, /*out*/ returnType);
+    m_moduleBuilder.AddDispatchedMethod(name, returnType, methodDelegate, useJSDispatcher);
   }
 
   template <class TMethod>
-  void RegisterSyncMethod(TMethod method, std::wstring_view name) noexcept {
-    auto syncMethodDelegate = ModuleSyncMethodInfo<TMethod>::GetMethodDelegate(m_module, method);
-    m_moduleBuilder.AddSyncMethod(name, syncMethodDelegate);
+  void RegisterSyncMethod(TMethod method, std::wstring_view name, bool useJSDispatcher = false) noexcept {
+    auto syncMethodDelegate = ModuleSyncMethodInfo<TMethod>::GetMethodDelegate(m_module, m_moduleWrapper, method);
+    m_moduleBuilder.AddDispatchedSyncMethod(name, syncMethodDelegate, useJSDispatcher);
   }
 
   template <class TMethod>
-  void RegisterConstantMethod(TMethod method) noexcept {
-    auto constantProvider = ModuleConstantInfo<TMethod>::GetConstantProvider(m_module, method);
-    m_moduleBuilder.AddConstantProvider(constantProvider);
+  void RegisterConstantMethod(TMethod method, bool useJSDispatcher = false) noexcept {
+    auto constantProvider = ModuleConstantProviderInfo<TMethod>::GetConstantProvider(m_module, m_moduleWrapper, method);
+    m_moduleBuilder.AddDispatchedConstantProvider(constantProvider, useJSDispatcher);
   }
 
   template <class TMethod>
@@ -984,32 +1181,43 @@ struct ReactModuleBuilder {
   }
 
   template <class TField>
-  void RegisterConstantField(TField field, std::wstring_view name) noexcept {
-    auto constantProvider = ModuleConstFieldInfo<TField>::GetConstantProvider(m_module, name, field);
-    m_moduleBuilder.AddConstantProvider(constantProvider);
+  void RegisterConstantField(TField field, std::wstring_view name, bool useJSDispatcher = false) noexcept {
+    auto constantProvider =
+        ModuleConstantFieldInfo<TField>::GetConstantProvider(m_module, m_moduleWrapper, name, field);
+    m_moduleBuilder.AddDispatchedConstantProvider(constantProvider, useJSDispatcher);
   }
 
   template <class TField>
-  void
-  RegisterEventField(TField field, std::wstring_view eventName, std::wstring_view eventEmitterName = L"") noexcept {
-    auto eventHandlerInitializer = ModuleEventFieldInfo<TField>::GetEventHandlerInitializer(
-        m_module, field, eventName, !eventEmitterName.empty() ? eventEmitterName : m_eventEmitterName);
-    m_moduleBuilder.AddInitializer(eventHandlerInitializer);
+  void RegisterEventField(
+      TField field,
+      std::wstring_view eventName,
+      std::wstring_view eventEmitterName = L"",
+      bool useJSDispatcher = false) noexcept {
+    auto eventInitializer = ModuleEventFieldInfo<TField>::GetEventHandlerInitializer(
+        m_module,
+        m_moduleWrapper,
+        field,
+        eventName,
+        !eventEmitterName.empty() ? eventEmitterName : m_moduleInfo.EventEmitterName);
+    m_moduleBuilder.AddDispatchedInitializer(eventInitializer, ReactInitializerType::Field, useJSDispatcher);
   }
 
   template <class TField>
-  void RegisterFunctionField(TField field, std::wstring_view name, std::wstring_view moduleName = L"") noexcept {
+  void RegisterFunctionField(
+      TField field,
+      std::wstring_view functionName,
+      std::wstring_view moduleName = L"",
+      bool useJSDispatcher = false) noexcept {
     auto functionInitializer = ModuleFunctionFieldInfo<TField>::GetFunctionInitializer(
-        m_module, field, name, !moduleName.empty() ? moduleName : m_moduleName);
-    m_moduleBuilder.AddInitializer(functionInitializer);
+        m_module, m_moduleWrapper, field, functionName, !moduleName.empty() ? moduleName : m_moduleInfo.ModuleName);
+    m_moduleBuilder.AddDispatchedInitializer(functionInitializer, ReactInitializerType::Field, useJSDispatcher);
   }
 
  private:
-  void *m_module;
-  IReactModuleBuilder m_moduleBuilder;
-  std::wstring_view m_moduleName{L""};
-  std::wstring_view m_eventEmitterName{L""};
-  std::vector<InitializerDelegate> m_initializers;
+  TModule *m_module{};
+  IInspectable m_moduleWrapper;
+  ReactModuleBuilder m_moduleBuilder;
+  ReactModuleInfo m_moduleInfo;
 };
 
 struct VerificationResult {
@@ -1022,7 +1230,7 @@ template <class TModule>
 struct ReactModuleVerifier {
   static constexpr VerificationResult VerifyMember(std::wstring_view name, ReactMemberKind memberKind) noexcept {
     ReactModuleVerifier verifier{name, memberKind};
-    GetReactModuleInfo(static_cast<TModule *>(nullptr), verifier);
+    VisitReactModuleMembers(static_cast<TModule *>(nullptr), verifier);
     return verifier.m_result;
   }
 
@@ -1030,7 +1238,7 @@ struct ReactModuleVerifier {
       : m_memberName{memberName}, m_memberKind{memberKind} {}
 
   template <int I>
-  constexpr void RegisterModule(std::wstring_view /*_*/, std::wstring_view /*_*/, ReactAttributeId<I>) noexcept {
+  constexpr void VisitModuleMembers(ReactAttributeId<I>) noexcept {
     ReactMemberInfoIterator<TModule>{}.template ForEachMember<I + 1>(*this);
   }
 
@@ -1287,9 +1495,9 @@ template <class TModule>
 inline ReactModuleProvider MakeModuleProvider() noexcept {
   return [](IReactModuleBuilder const &moduleBuilder) noexcept {
     auto [moduleWrapper, module] = ReactModuleTraits<TModule>::Factory();
-    ReactModuleBuilder builder{module, moduleBuilder};
-    GetReactModuleInfo(module, builder);
-    builder.CompleteRegistration();
+    ReactModuleMemberRegistrar registrar{
+        module, moduleWrapper, moduleBuilder.as<ReactModuleBuilder>(), GetReactModuleInfo(module)};
+    VisitReactModuleMembers(module, registrar);
     return moduleWrapper;
   };
 }
@@ -1300,6 +1508,22 @@ inline ReactModuleProvider MakeTurboModuleProvider() noexcept {
   TModuleSpec::template ValidateModule<TModule>();
   return MakeModuleProvider<TModule>();
 }
+
+template <class TModule>
+inline ReactModuleInfo const &GetReactModuleInfo() noexcept {
+  return GetReactModuleInfo(static_cast<TModule *>(nullptr));
+}
+
+template <class TDerived>
+struct ReactPackageProvider : implements<TDerived, IReactPackageProvider> {
+  template <class TModule>
+  void AddModule(IReactPackageBuilder const &packageBuilder) noexcept {
+    packageBuilder.as<ReactPackageBuilder>().AddDispatchedModule(
+        GetReactModuleInfo<TModule>().ModuleName,
+        MakeModuleProvider<TModule>(),
+        GetReactModuleInfo<TModule>().DispatcherName);
+  }
+};
 
 } // namespace winrt::Microsoft::ReactNative
 

@@ -28,7 +28,7 @@ struct SimpleNativeModuleConstants2 {
 
 REACT_MODULE(SimpleNativeModule)
 struct SimpleNativeModule {
-  REACT_INIT(Initialize)
+  REACT_INITIALIZER(Initialize)
   void Initialize(React::ReactContext const &context) noexcept {
     IsInitialized = true;
     TestCheck(context);

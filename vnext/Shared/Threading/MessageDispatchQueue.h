@@ -11,11 +11,16 @@
 
 namespace Mso::React {
 
+struct MessageDispatchQueueCallbacks {
+  Mso::Functor<void(const Mso::ErrorCode &)> OnError;
+  Mso::Functor<void()> OnShutdownStarting;
+  Mso::Functor<void()> OnShutdownCompleted;
+};
+
 struct MessageDispatchQueue : facebook::react::MessageQueueThread, std::enable_shared_from_this<MessageDispatchQueue> {
   MessageDispatchQueue(
       Mso::DispatchQueue const &dispatchQueue,
-      Mso::Functor<void(const Mso::ErrorCode &)> &&errorHandler,
-      Mso::Promise<void> &&whenQuit = nullptr) noexcept;
+      MessageDispatchQueueCallbacks &&callbacks = {}) noexcept;
 
   ~MessageDispatchQueue() noexcept override;
 
@@ -40,8 +45,7 @@ struct MessageDispatchQueue : facebook::react::MessageQueueThread, std::enable_s
  private:
   std::atomic<bool> m_stopped;
   Mso::DispatchQueue m_dispatchQueue;
-  Mso::Functor<void(const Mso::ErrorCode &)> m_errorHandler;
-  const Mso::Promise<void> m_whenQuit;
+  MessageDispatchQueueCallbacks m_callbacks;
 };
 
 struct MessageDispatchQueue2 : facebook::react::MessageQueueThread,

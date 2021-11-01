@@ -17,19 +17,15 @@ template <
     typename TTurboModule,
     std::enable_if_t<std::is_base_of_v<::facebook::react::TurboModule, TTurboModule>, int> = 0>
 void AddTurboModuleProvider(IReactPackageBuilder const &packageBuilder, std::wstring_view moduleName) {
-  auto experimental = packageBuilder.as<IReactPackageBuilderExperimental>();
-  experimental.AddTurboModule(
-      moduleName, [](IReactModuleBuilder const &moduleBuilder) noexcept -> winrt::Windows::Foundation::IInspectable {
-        IJsiHostObject abiTurboModule{nullptr};
-        // We expect the initializer to be called immediately for TurboModules
-        moduleBuilder.AddInitializer([&abiTurboModule](IReactContext const &context) mutable {
-          GetOrCreateContextRuntime(ReactContext{context}); // Ensure the JSI runtime is created.
-          auto callInvoker = MakeAbiCallInvoker(context.JSDispatcher());
-          auto turboModule = std::make_shared<TTurboModule>(callInvoker);
-          abiTurboModule = winrt::make<JsiHostObjectWrapper>(std::move(turboModule));
-        });
-        return abiTurboModule.as<winrt::Windows::Foundation::IInspectable>();
-      });
+  auto packageBuilderObj = packageBuilder.as<ReactPackageBuilder>();
+  packageBuilderObj.AddTurboModule(moduleName, [](IReactModuleBuilder const &moduleBuilder) noexcept {
+    auto moduleBuilderObj = moduleBuilder.as<ReactModuleBuilder>();
+    GetOrCreateContextRuntime(ReactContext{moduleBuilderObj.Context()}); // Ensure the JSI runtime is created.
+    auto callInvoker = MakeAbiCallInvoker(moduleBuilderObj.Context().JSDispatcher());
+    auto turboModule = std::make_shared<TTurboModule>(callInvoker);
+    auto abiTurboModule = winrt::make<JsiHostObjectWrapper>(std::move(turboModule));
+    return abiTurboModule.as<winrt::Windows::Foundation::IInspectable>();
+  });
 }
 
 } // namespace winrt::Microsoft::ReactNative

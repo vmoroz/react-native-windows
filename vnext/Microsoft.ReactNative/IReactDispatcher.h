@@ -3,6 +3,7 @@
 
 #pragma once
 #include "ReactDispatcherHelper.g.h"
+#include <Threading/MessageDispatchQueue.h>
 #include <dispatchQueue/dispatchQueue.h>
 #include <winrt/Microsoft.ReactNative.h>
 
@@ -29,6 +30,8 @@ struct ReactDispatcher : implements<ReactDispatcher, IReactDispatcher, Mso::Reac
   bool HasThreadAccess() noexcept;
   void Post(ReactDispatcherCallback const &callback) noexcept;
 
+  std::shared_ptr<facebook::react::MessageQueueThread> GetMessageQueueThread() const noexcept;
+
   static IReactDispatcher CreateSerialDispatcher() noexcept;
 
   static Mso::CntPtr<IDispatchQueue2> GetUIDispatchQueue2(IReactPropertyBag const &properties) noexcept;
@@ -36,14 +39,17 @@ struct ReactDispatcher : implements<ReactDispatcher, IReactDispatcher, Mso::Reac
   static IReactPropertyName UIDispatcherProperty() noexcept;
   static IReactDispatcher GetUIDispatcher(IReactPropertyBag const &properties) noexcept;
   static void SetUIThreadDispatcher(IReactPropertyBag const &properties) noexcept;
+  static IReactPropertyName UIDispatcherShutdownNotification() noexcept;
 
   static IReactPropertyName JSDispatcherProperty() noexcept;
+  static IReactPropertyName JSDispatcherShutdownNotification() noexcept;
 
   void Post(Mso::DispatchTask &&task) const noexcept override;
   void InvokeElsePost(Mso::DispatchTask &&task) const noexcept override;
 
  private:
   Mso::DispatchQueue m_queue;
+  std::shared_ptr<Mso::React::MessageDispatchQueue> m_messageQueue;
 };
 
 struct ReactDispatcherHelper {
@@ -61,8 +67,16 @@ struct ReactDispatcherHelper {
     return ReactDispatcher::UIDispatcherProperty();
   }
 
+  static IReactPropertyName UIDispatcherShutdownNotification() noexcept {
+    return ReactDispatcher::UIDispatcherShutdownNotification();
+  }
+
   static IReactPropertyName JSDispatcherProperty() noexcept {
     return ReactDispatcher::JSDispatcherProperty();
+  }
+
+  static IReactPropertyName JSDispatcherShutdownNotification() noexcept {
+    return ReactDispatcher::JSDispatcherShutdownNotification();
   }
 };
 

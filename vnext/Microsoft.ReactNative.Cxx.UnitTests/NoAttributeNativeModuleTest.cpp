@@ -551,99 +551,106 @@ struct SimpleNativeModule2 {
 
 /*static*/ std::string SimpleNativeModule2::StaticMessage;
 
-void GetReactModuleInfo(SimpleNativeModule2 *, React::ReactModuleBuilder<SimpleNativeModule2> &moduleBuilder) noexcept {
-  moduleBuilder.RegisterModuleName(L"SimpleNativeModule2");
-  moduleBuilder.RegisterInitMethod(&SimpleNativeModule2::Initialize);
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::Add, L"Add");
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::Negate, L"Negate");
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::SayHello, L"SayHello");
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::StaticAdd, L"StaticAdd");
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::StaticNegate, L"StaticNegate");
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::StaticSayHello, L"StaticSayHello");
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::SayHello0, L"SayHello0");
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::PrintPoint, L"PrintPoint");
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::PrintLine, L"PrintLine");
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::StaticSayHello1, L"StaticSayHello1");
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::StaticPrintPoint, L"StaticPrintPoint");
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::StaticPrintLine, L"StaticPrintLine");
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::AddCallback, L"AddCallback");
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::NegateCallback, L"NegateCallback");
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::NegateAsyncCallback, L"NegateAsyncCallback");
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::NegateDispatchQueueCallback, L"NegateDispatchQueueCallback");
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::NegateFutureCallback, L"NegateFutureCallback");
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::SayHelloCallback, L"SayHelloCallback");
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::StaticAddCallback, L"StaticAddCallback");
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::StaticNegateCallback, L"StaticNegateCallback");
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::StaticNegateAsyncCallback, L"StaticNegateAsyncCallback");
-  moduleBuilder.RegisterMethod(
+React::ReactModuleInfo const &GetReactModuleInfo(SimpleNativeModule2 *) {
+  static React::ReactModuleInfo moduleInfo(L"SimpleNativeModule2");
+  return moduleInfo;
+}
+
+void VisitReactModuleMembers(
+    SimpleNativeModule2 *,
+    React::ReactModuleMemberRegistrar<SimpleNativeModule2> &memberRegistrar) noexcept {
+  memberRegistrar.RegisterInitializerMethod(&SimpleNativeModule2::Initialize);
+  memberRegistrar.RegisterMethod(&SimpleNativeModule2::Add, L"Add");
+  memberRegistrar.RegisterMethod(&SimpleNativeModule2::Negate, L"Negate");
+  memberRegistrar.RegisterMethod(&SimpleNativeModule2::SayHello, L"SayHello");
+  memberRegistrar.RegisterMethod(&SimpleNativeModule2::StaticAdd, L"StaticAdd");
+  memberRegistrar.RegisterMethod(&SimpleNativeModule2::StaticNegate, L"StaticNegate");
+  memberRegistrar.RegisterMethod(&SimpleNativeModule2::StaticSayHello, L"StaticSayHello");
+  memberRegistrar.RegisterMethod(&SimpleNativeModule2::SayHello0, L"SayHello0");
+  memberRegistrar.RegisterMethod(&SimpleNativeModule2::PrintPoint, L"PrintPoint");
+  memberRegistrar.RegisterMethod(&SimpleNativeModule2::PrintLine, L"PrintLine");
+  memberRegistrar.RegisterMethod(&SimpleNativeModule2::StaticSayHello1, L"StaticSayHello1");
+  memberRegistrar.RegisterMethod(&SimpleNativeModule2::StaticPrintPoint, L"StaticPrintPoint");
+  memberRegistrar.RegisterMethod(&SimpleNativeModule2::StaticPrintLine, L"StaticPrintLine");
+  memberRegistrar.RegisterMethod(&SimpleNativeModule2::AddCallback, L"AddCallback");
+  memberRegistrar.RegisterMethod(&SimpleNativeModule2::NegateCallback, L"NegateCallback");
+  memberRegistrar.RegisterMethod(&SimpleNativeModule2::NegateAsyncCallback, L"NegateAsyncCallback");
+  memberRegistrar.RegisterMethod(&SimpleNativeModule2::NegateDispatchQueueCallback, L"NegateDispatchQueueCallback");
+  memberRegistrar.RegisterMethod(&SimpleNativeModule2::NegateFutureCallback, L"NegateFutureCallback");
+  memberRegistrar.RegisterMethod(&SimpleNativeModule2::SayHelloCallback, L"SayHelloCallback");
+  memberRegistrar.RegisterMethod(&SimpleNativeModule2::StaticAddCallback, L"StaticAddCallback");
+  memberRegistrar.RegisterMethod(&SimpleNativeModule2::StaticNegateCallback, L"StaticNegateCallback");
+  memberRegistrar.RegisterMethod(&SimpleNativeModule2::StaticNegateAsyncCallback, L"StaticNegateAsyncCallback");
+  memberRegistrar.RegisterMethod(
       &SimpleNativeModule2::StaticNegateDispatchQueueCallback, L"StaticNegateDispatchQueueCallback");
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::StaticNegateFutureCallback, L"StaticNegateFutureCallback");
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::StaticSayHelloCallback, L"StaticSayHelloCallback");
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::CallbackZeroArgs, L"CallbackZeroArgs");
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::CallbackTwoArgs, L"CallbackTwoArgs");
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::CallbackThreeArgs, L"CallbackThreeArgs");
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::DivideCallbacks, L"DivideCallbacks");
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::NegateCallbacks, L"NegateCallbacks");
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::NegateAsyncCallbacks, L"NegateAsyncCallbacks");
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::NegateDispatchQueueCallbacks, L"NegateDispatchQueueCallbacks");
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::NegateFutureCallbacks, L"NegateFutureCallbacks");
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::ResolveSayHelloCallbacks, L"ResolveSayHelloCallbacks");
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::RejectSayHelloCallbacks, L"RejectSayHelloCallbacks");
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::StaticDivideCallbacks, L"StaticDivideCallbacks");
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::StaticNegateCallbacks, L"StaticNegateCallbacks");
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::StaticNegateAsyncCallbacks, L"StaticNegateAsyncCallbacks");
-  moduleBuilder.RegisterMethod(
+  memberRegistrar.RegisterMethod(&SimpleNativeModule2::StaticNegateFutureCallback, L"StaticNegateFutureCallback");
+  memberRegistrar.RegisterMethod(&SimpleNativeModule2::StaticSayHelloCallback, L"StaticSayHelloCallback");
+  memberRegistrar.RegisterMethod(&SimpleNativeModule2::CallbackZeroArgs, L"CallbackZeroArgs");
+  memberRegistrar.RegisterMethod(&SimpleNativeModule2::CallbackTwoArgs, L"CallbackTwoArgs");
+  memberRegistrar.RegisterMethod(&SimpleNativeModule2::CallbackThreeArgs, L"CallbackThreeArgs");
+  memberRegistrar.RegisterMethod(&SimpleNativeModule2::DivideCallbacks, L"DivideCallbacks");
+  memberRegistrar.RegisterMethod(&SimpleNativeModule2::NegateCallbacks, L"NegateCallbacks");
+  memberRegistrar.RegisterMethod(&SimpleNativeModule2::NegateAsyncCallbacks, L"NegateAsyncCallbacks");
+  memberRegistrar.RegisterMethod(&SimpleNativeModule2::NegateDispatchQueueCallbacks, L"NegateDispatchQueueCallbacks");
+  memberRegistrar.RegisterMethod(&SimpleNativeModule2::NegateFutureCallbacks, L"NegateFutureCallbacks");
+  memberRegistrar.RegisterMethod(&SimpleNativeModule2::ResolveSayHelloCallbacks, L"ResolveSayHelloCallbacks");
+  memberRegistrar.RegisterMethod(&SimpleNativeModule2::RejectSayHelloCallbacks, L"RejectSayHelloCallbacks");
+  memberRegistrar.RegisterMethod(&SimpleNativeModule2::StaticDivideCallbacks, L"StaticDivideCallbacks");
+  memberRegistrar.RegisterMethod(&SimpleNativeModule2::StaticNegateCallbacks, L"StaticNegateCallbacks");
+  memberRegistrar.RegisterMethod(&SimpleNativeModule2::StaticNegateAsyncCallbacks, L"StaticNegateAsyncCallbacks");
+  memberRegistrar.RegisterMethod(
       &SimpleNativeModule2::StaticNegateDispatchQueueCallbacks, L"StaticNegateDispatchQueueCallbacks");
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::StaticNegateFutureCallbacks, L"StaticNegateFutureCallbacks");
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::StaticResolveSayHelloCallbacks, L"StaticResolveSayHelloCallbacks");
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::StaticRejectSayHelloCallbacks, L"StaticRejectSayHelloCallbacks");
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::TwoCallbacksZeroArgs1, L"TwoCallbacksZeroArgs1");
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::TwoCallbacksZeroArgs2, L"TwoCallbacksZeroArgs2");
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::TwoCallbacksTwoArgs1, L"TwoCallbacksTwoArgs1");
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::TwoCallbacksTwoArgs2, L"TwoCallbacksTwoArgs2");
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::TwoCallbacksThreeArgs1, L"TwoCallbacksThreeArgs1");
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::TwoCallbacksThreeArgs2, L"TwoCallbacksThreeArgs2");
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::DividePromise, L"DividePromise");
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::NegatePromise, L"NegatePromise");
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::NegateAsyncPromise, L"NegateAsyncPromise");
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::NegateDispatchQueuePromise, L"NegateDispatchQueuePromise");
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::NegateFuturePromise, L"NegateFuturePromise");
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::VoidPromise, L"voidPromise");
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::ResolveSayHelloPromise, L"ResolveSayHelloPromise");
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::RejectSayHelloPromise, L"RejectSayHelloPromise");
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::StaticDividePromise, L"StaticDividePromise");
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::StaticNegatePromise, L"StaticNegatePromise");
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::StaticNegateAsyncPromise, L"StaticNegateAsyncPromise");
-  moduleBuilder.RegisterMethod(
+  memberRegistrar.RegisterMethod(&SimpleNativeModule2::StaticNegateFutureCallbacks, L"StaticNegateFutureCallbacks");
+  memberRegistrar.RegisterMethod(
+      &SimpleNativeModule2::StaticResolveSayHelloCallbacks, L"StaticResolveSayHelloCallbacks");
+  memberRegistrar.RegisterMethod(&SimpleNativeModule2::StaticRejectSayHelloCallbacks, L"StaticRejectSayHelloCallbacks");
+  memberRegistrar.RegisterMethod(&SimpleNativeModule2::TwoCallbacksZeroArgs1, L"TwoCallbacksZeroArgs1");
+  memberRegistrar.RegisterMethod(&SimpleNativeModule2::TwoCallbacksZeroArgs2, L"TwoCallbacksZeroArgs2");
+  memberRegistrar.RegisterMethod(&SimpleNativeModule2::TwoCallbacksTwoArgs1, L"TwoCallbacksTwoArgs1");
+  memberRegistrar.RegisterMethod(&SimpleNativeModule2::TwoCallbacksTwoArgs2, L"TwoCallbacksTwoArgs2");
+  memberRegistrar.RegisterMethod(&SimpleNativeModule2::TwoCallbacksThreeArgs1, L"TwoCallbacksThreeArgs1");
+  memberRegistrar.RegisterMethod(&SimpleNativeModule2::TwoCallbacksThreeArgs2, L"TwoCallbacksThreeArgs2");
+  memberRegistrar.RegisterMethod(&SimpleNativeModule2::DividePromise, L"DividePromise");
+  memberRegistrar.RegisterMethod(&SimpleNativeModule2::NegatePromise, L"NegatePromise");
+  memberRegistrar.RegisterMethod(&SimpleNativeModule2::NegateAsyncPromise, L"NegateAsyncPromise");
+  memberRegistrar.RegisterMethod(&SimpleNativeModule2::NegateDispatchQueuePromise, L"NegateDispatchQueuePromise");
+  memberRegistrar.RegisterMethod(&SimpleNativeModule2::NegateFuturePromise, L"NegateFuturePromise");
+  memberRegistrar.RegisterMethod(&SimpleNativeModule2::VoidPromise, L"voidPromise");
+  memberRegistrar.RegisterMethod(&SimpleNativeModule2::ResolveSayHelloPromise, L"ResolveSayHelloPromise");
+  memberRegistrar.RegisterMethod(&SimpleNativeModule2::RejectSayHelloPromise, L"RejectSayHelloPromise");
+  memberRegistrar.RegisterMethod(&SimpleNativeModule2::StaticDividePromise, L"StaticDividePromise");
+  memberRegistrar.RegisterMethod(&SimpleNativeModule2::StaticNegatePromise, L"StaticNegatePromise");
+  memberRegistrar.RegisterMethod(&SimpleNativeModule2::StaticNegateAsyncPromise, L"StaticNegateAsyncPromise");
+  memberRegistrar.RegisterMethod(
       &SimpleNativeModule2::StaticNegateDispatchQueuePromise, L"StaticNegateDispatchQueuePromise");
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::StaticNegateFuturePromise, L"StaticNegateFuturePromise");
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::StaticVoidPromise, L"staticVoidPromise");
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::StaticResolveSayHelloPromise, L"StaticResolveSayHelloPromise");
-  moduleBuilder.RegisterMethod(&SimpleNativeModule2::StaticRejectSayHelloPromise, L"StaticRejectSayHelloPromise");
-  moduleBuilder.RegisterSyncMethod(&SimpleNativeModule2::AddSync, L"AddSync");
-  moduleBuilder.RegisterSyncMethod(&SimpleNativeModule2::NegateSync, L"NegateSync");
-  moduleBuilder.RegisterSyncMethod(&SimpleNativeModule2::SayHelloSync, L"SayHelloSync");
-  moduleBuilder.RegisterSyncMethod(&SimpleNativeModule2::StaticAddSync, L"StaticAddSync");
-  moduleBuilder.RegisterSyncMethod(&SimpleNativeModule2::StaticNegateSync, L"StaticNegateSync");
-  moduleBuilder.RegisterSyncMethod(&SimpleNativeModule2::StaticSayHelloSync, L"StaticSayHelloSync");
-  moduleBuilder.RegisterConstantField(&SimpleNativeModule2::Constant1, L"Constant1");
-  moduleBuilder.RegisterConstantField(&SimpleNativeModule2::Constant2, L"const2");
-  moduleBuilder.RegisterConstantField(&SimpleNativeModule2::Constant3, L"const3");
-  moduleBuilder.RegisterConstantField(&SimpleNativeModule2::Constant4, L"Constant4");
-  moduleBuilder.RegisterConstantMethod(&SimpleNativeModule2::Constant5);
-  moduleBuilder.RegisterConstantMethod(&SimpleNativeModule2::Constant6);
-  moduleBuilder.RegisterEventField(&SimpleNativeModule2::OnIntEvent, L"OnIntEvent");
-  moduleBuilder.RegisterEventField(&SimpleNativeModule2::OnNoArgEvent, L"OnNoArgEvent");
-  moduleBuilder.RegisterEventField(&SimpleNativeModule2::OnTwoArgsEvent, L"OnTwoArgsEvent");
-  moduleBuilder.RegisterEventField(&SimpleNativeModule2::OnPointEvent, L"onPointEvent");
-  moduleBuilder.RegisterEventField(&SimpleNativeModule2::OnStringEvent, L"onStringEvent", L"MyEventEmitter");
-  moduleBuilder.RegisterEventField(&SimpleNativeModule2::OnJSValueEvent, L"OnJSValueEvent");
-  moduleBuilder.RegisterFunctionField(&SimpleNativeModule2::JSIntFunction, L"JSIntFunction");
-  moduleBuilder.RegisterFunctionField(&SimpleNativeModule2::JSPointFunction, L"pointFunc");
-  moduleBuilder.RegisterFunctionField(&SimpleNativeModule2::JSLineFunction, L"lineFunc");
-  moduleBuilder.RegisterFunctionField(&SimpleNativeModule2::JSNoArgFunction, L"JSNoArgFunction");
-  moduleBuilder.RegisterFunctionField(&SimpleNativeModule2::JSStringFunction, L"stringFunc", L"MyModule");
-  moduleBuilder.RegisterFunctionField(&SimpleNativeModule2::JSValueFunction, L"JSValueFunction");
+  memberRegistrar.RegisterMethod(&SimpleNativeModule2::StaticNegateFuturePromise, L"StaticNegateFuturePromise");
+  memberRegistrar.RegisterMethod(&SimpleNativeModule2::StaticVoidPromise, L"staticVoidPromise");
+  memberRegistrar.RegisterMethod(&SimpleNativeModule2::StaticResolveSayHelloPromise, L"StaticResolveSayHelloPromise");
+  memberRegistrar.RegisterMethod(&SimpleNativeModule2::StaticRejectSayHelloPromise, L"StaticRejectSayHelloPromise");
+  memberRegistrar.RegisterSyncMethod(&SimpleNativeModule2::AddSync, L"AddSync");
+  memberRegistrar.RegisterSyncMethod(&SimpleNativeModule2::NegateSync, L"NegateSync");
+  memberRegistrar.RegisterSyncMethod(&SimpleNativeModule2::SayHelloSync, L"SayHelloSync");
+  memberRegistrar.RegisterSyncMethod(&SimpleNativeModule2::StaticAddSync, L"StaticAddSync");
+  memberRegistrar.RegisterSyncMethod(&SimpleNativeModule2::StaticNegateSync, L"StaticNegateSync");
+  memberRegistrar.RegisterSyncMethod(&SimpleNativeModule2::StaticSayHelloSync, L"StaticSayHelloSync");
+  memberRegistrar.RegisterConstantField(&SimpleNativeModule2::Constant1, L"Constant1");
+  memberRegistrar.RegisterConstantField(&SimpleNativeModule2::Constant2, L"const2");
+  memberRegistrar.RegisterConstantField(&SimpleNativeModule2::Constant3, L"const3");
+  memberRegistrar.RegisterConstantField(&SimpleNativeModule2::Constant4, L"Constant4");
+  memberRegistrar.RegisterConstantMethod(&SimpleNativeModule2::Constant5);
+  memberRegistrar.RegisterConstantMethod(&SimpleNativeModule2::Constant6);
+  memberRegistrar.RegisterEventField(&SimpleNativeModule2::OnIntEvent, L"OnIntEvent");
+  memberRegistrar.RegisterEventField(&SimpleNativeModule2::OnNoArgEvent, L"OnNoArgEvent");
+  memberRegistrar.RegisterEventField(&SimpleNativeModule2::OnTwoArgsEvent, L"OnTwoArgsEvent");
+  memberRegistrar.RegisterEventField(&SimpleNativeModule2::OnPointEvent, L"onPointEvent");
+  memberRegistrar.RegisterEventField(&SimpleNativeModule2::OnStringEvent, L"onStringEvent", L"MyEventEmitter");
+  memberRegistrar.RegisterEventField(&SimpleNativeModule2::OnJSValueEvent, L"OnJSValueEvent");
+  memberRegistrar.RegisterFunctionField(&SimpleNativeModule2::JSIntFunction, L"JSIntFunction");
+  memberRegistrar.RegisterFunctionField(&SimpleNativeModule2::JSPointFunction, L"pointFunc");
+  memberRegistrar.RegisterFunctionField(&SimpleNativeModule2::JSLineFunction, L"lineFunc");
+  memberRegistrar.RegisterFunctionField(&SimpleNativeModule2::JSNoArgFunction, L"JSNoArgFunction");
+  memberRegistrar.RegisterFunctionField(&SimpleNativeModule2::JSStringFunction, L"stringFunc", L"MyModule");
+  memberRegistrar.RegisterFunctionField(&SimpleNativeModule2::JSValueFunction, L"JSValueFunction");
 }
 
 TEST_CLASS (NoAttributeNativeModuleTest) {

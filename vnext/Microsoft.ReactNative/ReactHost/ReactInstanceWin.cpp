@@ -262,13 +262,13 @@ void ReactInstanceWin::LoadModules(
     const std::shared_ptr<winrt::Microsoft::ReactNative::TurboModulesProvider> &turboModulesProvider) noexcept {
   auto registerNativeModule = [&nativeModulesProvider](
                                   const wchar_t *name, const ReactModuleProvider &provider) noexcept {
-    nativeModulesProvider->AddModuleProvider(name, provider);
+    nativeModulesProvider->AddModuleProvider(name, provider, nullptr);
   };
 
   auto registerTurboModule = [this, &nativeModulesProvider, &turboModulesProvider](
                                  const wchar_t *name, const ReactModuleProvider &provider) noexcept {
     if (m_options.UseWebDebugger()) {
-      nativeModulesProvider->AddModuleProvider(name, provider);
+      nativeModulesProvider->AddModuleProvider(name, provider, nullptr);
     } else {
       turboModulesProvider->AddModuleProvider(name, provider);
     }
@@ -285,7 +285,7 @@ void ReactInstanceWin::LoadModules(
 #ifndef CORE_ABI
   registerTurboModule(
       L"UIManager",
-      // Spec incorrectly reports commandID as a number, but its actually a number | string.. so dont use the spec for
+      // Spec incorrectly reports commandID as a number, but its actually a number | string. So don't use the spec for
       // now
       // winrt::Microsoft::ReactNative::MakeTurboModuleProvider < ::Microsoft::ReactNative::UIManager,
       //::Microsoft::ReactNativeSpecs::UIManagerSpec>());
@@ -636,10 +636,14 @@ ReactInstanceState ReactInstanceWin::State() const noexcept {
 void ReactInstanceWin::InitJSMessageThread() noexcept {
   m_instance.Exchange(std::make_shared<facebook::react::Instance>());
 
-  auto scheduler = Mso::MakeJSCallInvokerScheduler(
-      m_instance.Load()->getJSCallInvoker(),
-      Mso::MakeWeakMemberFunctor(this, &ReactInstanceWin::OnError),
-      Mso::Copy(m_whenDestroyed));
+  MessageDispatchQueueCallbacks callbacks{};
+  callbacks.OnError = Mso::MakeWeakMemberFunctor(this, &ReactInstanceWin::OnError);
+  callbacks.OnShutdownStarting = [reactContext = m_reactContext]() noexcept {
+    reactContext->Notifications().SendNotification(
+        ReactDispatcherHelper::JSDispatcherShutdownNotification(), nullptr, nullptr);
+  };
+  callbacks.OnShutdownCompleted = [whenDestroyed = m_whenDestroyed]() noexcept { whenDestroyed.TrySetValue(); };
+  auto scheduler = MakeJSCallInvokerScheduler(m_instance.Load()->getJSCallInvoker(), std::move(callbacks));
   auto jsDispatchQueue = Mso::DispatchQueue::MakeCustomQueue(Mso::CntPtr(scheduler));
 
   // This work item will be processed as a first item in JS queue when the react instance is created.
@@ -653,14 +657,14 @@ void ReactInstanceWin::InitJSMessageThread() noexcept {
       winrt::make<winrt::Microsoft::ReactNative::implementation::ReactDispatcher>(Mso::Copy(jsDispatchQueue));
   m_options.Properties.Set(ReactDispatcherHelper::JSDispatcherProperty(), jsDispatcher);
 
-  m_jsMessageThread.Exchange(qi_cast<Mso::IJSCallInvokerQueueScheduler>(scheduler.Get())->GetMessageQueue());
+  m_jsMessageThread.Exchange(qi_cast<IJSCallInvokerQueueScheduler>(scheduler.Get())->GetMessageQueue());
   m_jsDispatchQueue.Exchange(std::move(jsDispatchQueue));
 }
 
 void ReactInstanceWin::InitNativeMessageThread() noexcept {
   // Native queue was already given us in constructor.
-  m_nativeMessageThread.Exchange(
-      std::make_shared<MessageDispatchQueue>(Queue(), Mso::MakeWeakMemberFunctor(this, &ReactInstanceWin::OnError)));
+  m_nativeMessageThread.Exchange(std::make_shared<MessageDispatchQueue>(
+      Queue(), MessageDispatchQueueCallbacks{Mso::MakeWeakMemberFunctor(this, &ReactInstanceWin::OnError)}));
 }
 
 void ReactInstanceWin::InitUIMessageThread() noexcept {
@@ -670,6 +674,11 @@ void ReactInstanceWin::InitUIMessageThread() noexcept {
   VerifyElseCrashSz(m_uiQueue, "No UI Dispatcher provided");
   m_uiMessageThread.Exchange(std::make_shared<MessageDispatchQueue2>(
       *m_uiQueue, Mso::MakeWeakMemberFunctor(this, &ReactInstanceWin::OnError)));
+  callbacks.OnShutdownStarting = [reactContext = m_reactContext]() noexcept {
+    reactContext->Notifications().SendNotification(
+        ReactDispatcherHelper::UIDispatcherShutdownNotification(), nullptr, nullptr);
+  };
+  m_uiMessageThread.Exchange(std::make_shared<MessageDispatchQueue>(m_uiQueue, std::move(callbacks)));
 
   auto batchingUIThread = Microsoft::ReactNative::MakeBatchingQueueThread(m_uiMessageThread.Load());
   m_batchingUIThread = batchingUIThread;

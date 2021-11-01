@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include <dispatchQueue/dispatchQueue.h>
+#include <Threading/MessageDispatchQueue.h>
 #include "future/future.h"
 
 namespace facebook::react {
@@ -11,7 +11,7 @@ class CallInvoker;
 class MessageQueueThread;
 } // namespace facebook::react
 
-namespace Mso {
+namespace Mso::React {
 
 MSO_GUID(IJSCallInvokerQueueScheduler, "f4ea9a4a-aa44-4c85-8f6e-f2ebc3bdf27f")
 struct IJSCallInvokerQueueScheduler : IUnknown {
@@ -20,6 +20,5 @@ struct IJSCallInvokerQueueScheduler : IUnknown {
 
 Mso::CntPtr<IDispatchQueueScheduler> MakeJSCallInvokerScheduler(
     std::shared_ptr<facebook::react::CallInvoker> &&callInvoker,
-    Mso::Functor<void(const Mso::ErrorCode &)> &&errorHandler,
-    Mso::Promise<void> &&whenQuit = nullptr) noexcept;
-} // namespace Mso
+    MessageDispatchQueueCallbacks &&callbacks) noexcept;
+} // namespace Mso::React

@@ -3,155 +3,103 @@
 
 #include "pch.h"
 #include "IReactModuleBuilder.h"
-#include <strsafe.h>
-#include "DynamicWriter.h"
-#include "ReactHost/MsoUtils.h"
+#include "ReactModuleBuilder.g.cpp"
 
-using namespace facebook::xplat::module;
-
-namespace winrt::Microsoft::ReactNative {
-
-#ifdef DEBUG
-// Starting with RNW 0.64, native modules are called on the JS thread.
-// Modules will usually call Windows APIs, and those APIs might expect to be called in the UI thread.
-// Developers can dispatch work to the UI thread via reactContext.UIDispatcher().Post(). When they fail to do so,
-// cppwinrt will grab the failure HRESULT (RPC_E_WRONG_THREAD), convert it to a C++ exception, and throw it.
-// However, native module methods are noexcept, meaning the CRT will call std::terminate and not propagate exceptions up
-// the stack. Developers are then left with a crashing app and no good way to debug it. To improve developers'
-// experience, we can replace the terminate handler temporarily while we call out to the native method. In the terminate
-// handler, we can inspect the exception that was thrown and give an error message before going down.
-struct TerminateExceptionGuard final {
-  TerminateExceptionGuard() {
-    m_oldHandler = std::get_terminate();
-    std::set_terminate([]() {
-      auto ex = std::current_exception();
-      if (ex) {
-        try {
-          std::rethrow_exception(ex);
-        } catch (const winrt::hresult_error &hr) {
-          wchar_t buf[1024] = {};
-          StringCchPrintf(
-              buf,
-              std::size(buf),
-              L"An unhandled exception (0x%x) occurred in a native module. "
-              L"The exception message was:\n\n%s",
-              hr.code(),
-              hr.message().c_str());
-          auto messageBox = reinterpret_cast<decltype(&MessageBoxW)>(
-              GetProcAddress(GetModuleHandle(L"ext-ms-win-ntuser-dialogbox-l1-1-0.dll"), "MessageBoxW"));
-          if (hr.code() == RPC_E_WRONG_THREAD) {
-            StringCchCat(
-                buf,
-                std::size(buf),
-                L"\n\nIt's likely that the native module called a Windows API that needs to be called from the UI thread. "
-                L"For more information, see https://aka.ms/RNW-UIAPI");
-          }
-          messageBox(nullptr, buf, L"Unhandled exception in native module", MB_ICONERROR | MB_OK);
-        } catch (...) {
-        }
-      }
-    });
-  }
-  ~TerminateExceptionGuard() {
-    std::set_terminate(m_oldHandler);
-  }
-
- private:
-  std::terminate_handler m_oldHandler;
-};
-#define REACT_TERMINATE_GUARD(x) TerminateExceptionGuard x
-#else
-#define REACT_TERMINATE_GUARD(x)
-#endif
+namespace winrt::Microsoft::ReactNative::implementation {
 
 //===========================================================================
 // ReactModuleBuilder implementation
 //===========================================================================
 
-ReactModuleBuilder::ReactModuleBuilder(IReactContext const &reactContext) noexcept : m_reactContext{reactContext} {}
+ReactModuleBuilder::ReactModuleBuilder(IReactContext const reactContext) noexcept : m_reactContext{reactContext} {}
+
+std::vector<ReactModuleBuilder::Initializer> const &ReactModuleBuilder::GetInitializers() const noexcept {
+  return m_initializers;
+}
+
+std::vector<ReactModuleBuilder::Finalizer> const &ReactModuleBuilder::GetFinalizers() const noexcept {
+  return m_finalizers;
+}
+
+std::vector<ReactModuleBuilder::ConstantProvider> const &ReactModuleBuilder::GetConstantProviders() const noexcept {
+  return m_constantProviders;
+}
+
+std::unordered_map<std::string, ReactModuleBuilder::Method> const &ReactModuleBuilder::GetMethods() const noexcept {
+  return m_methods;
+}
+
+std::unordered_map<std::string, ReactModuleBuilder::SyncMethod> const &ReactModuleBuilder::GetSyncMethods()
+    const noexcept {
+  return m_syncMethods;
+}
 
 void ReactModuleBuilder::AddInitializer(InitializerDelegate const &initializer) noexcept {
-  m_initializers.push_back(initializer);
+  AddDispatchedInitializer(initializer, ReactInitializerType::Method, true);
 }
 
 void ReactModuleBuilder::AddConstantProvider(ConstantProviderDelegate const &constantProvider) noexcept {
-  m_constantProviders.push_back(constantProvider);
+  AddDispatchedConstantProvider(constantProvider, true);
 }
 
 void ReactModuleBuilder::AddMethod(
     hstring const &name,
-    MethodReturnType returnType,
+    MethodReturnType const &returnType,
     MethodDelegate const &method) noexcept {
-  CxxModule::Method cxxMethod(
-      to_string(name), [method](folly::dynamic args, CxxModule::Callback resolve, CxxModule::Callback reject) noexcept {
-        auto argReader = make<DynamicReader>(args);
-        auto resultWriter = make<DynamicWriter>();
-        auto resolveCallback = MakeMethodResultCallback(std::move(resolve));
-        auto rejectCallback = MakeMethodResultCallback(std::move(reject));
-
-        REACT_TERMINATE_GUARD(term);
-
-        method(argReader, resultWriter, resolveCallback, rejectCallback);
-      });
-
-  switch (returnType) {
-    case MethodReturnType::Callback:
-      cxxMethod.callbacks = 1;
-      cxxMethod.isPromise = false;
-      break;
-    case MethodReturnType::TwoCallbacks:
-      cxxMethod.callbacks = 2;
-      cxxMethod.isPromise = false;
-      break;
-    case MethodReturnType::Promise:
-      cxxMethod.callbacks = 2;
-      cxxMethod.isPromise = true;
-      break;
-    default:
-      cxxMethod.callbacks = 0;
-      cxxMethod.isPromise = false;
-  }
-
-  m_methods.push_back(std::move(cxxMethod));
+  AddDispatchedMethod(name, returnType, method, false);
 }
 
 void ReactModuleBuilder::AddSyncMethod(hstring const &name, SyncMethodDelegate const &method) noexcept {
-  CxxModule::Method cxxMethod(
-      to_string(name),
-      [method](folly::dynamic args) noexcept {
-        auto argReader = make<DynamicReader>(args);
-        auto resultWriter = make<DynamicWriter>();
-        method(argReader, resultWriter);
-        return get_self<DynamicWriter>(resultWriter)->TakeValue();
-      },
-      CxxModule::SyncTag);
-
-  m_methods.push_back(std::move(cxxMethod));
+  AddDispatchedSyncMethod(name, method, true);
 }
 
-/*static*/ MethodResultCallback ReactModuleBuilder::MakeMethodResultCallback(CxxModule::Callback &&callback) noexcept {
-  if (callback) {
-    return [callback = std::move(callback)](const IJSValueWriter &outputWriter) noexcept {
-      if (outputWriter) {
-        folly::dynamic argArray = outputWriter.as<DynamicWriter>()->TakeValue();
-        callback(std::vector<folly::dynamic>(argArray.begin(), argArray.end()));
-      } else {
-        callback(std::vector<folly::dynamic>{});
-      }
-    };
+IReactContext ReactModuleBuilder::Context() noexcept {
+  return m_reactContext;
+}
+
+void ReactModuleBuilder::AddDispatchedInitializer(
+    InitializerDelegate const &initializer,
+    ReactInitializerType const &initializerType,
+    bool useJSDispatcher) noexcept {
+  m_initializers.push_back(Initializer{initializer, initializerType, useJSDispatcher});
+}
+
+void ReactModuleBuilder::AddDispatchedFinalizer(FinalizerDelegate const &finalizer, bool useJSDispatcher) noexcept {
+  m_finalizers.push_back(Finalizer{finalizer, useJSDispatcher});
+}
+
+void ReactModuleBuilder::AddDispatchedConstantProvider(
+    ConstantProviderDelegate const &constantProvider,
+    bool useJSDispatcher) noexcept {
+  EnsureMemberNotSet("getConstants", false);
+  m_constantProviders.push_back(ConstantProvider{constantProvider, useJSDispatcher});
+}
+
+void ReactModuleBuilder::AddDispatchedMethod(
+    hstring const &name,
+    MethodReturnType const &returnType,
+    MethodDelegate const &method,
+    bool useJSDispatcher) noexcept {
+  auto methodName = to_string(name);
+  EnsureMemberNotSet(methodName, true);
+  m_methods.try_emplace(std::move(methodName), Method{returnType, method, useJSDispatcher});
+}
+
+void ReactModuleBuilder::AddDispatchedSyncMethod(
+    hstring const &name,
+    SyncMethodDelegate const &method,
+    bool useJSDispatcher) noexcept {
+  auto methodName = to_string(name);
+  EnsureMemberNotSet(methodName, true);
+  m_syncMethods.try_emplace(std::move(methodName), SyncMethod{method, useJSDispatcher});
+}
+
+void ReactModuleBuilder::EnsureMemberNotSet(const std::string &key, bool checkingMethod) noexcept {
+  VerifyElseCrash(m_methods.find(key) == m_methods.end());
+  VerifyElseCrash(m_syncMethods.find(key) == m_syncMethods.end());
+  if (checkingMethod && key == "getConstants") {
+    VerifyElseCrash(m_constantProviders.size() == 0);
   }
-
-  return {};
 }
 
-std::unique_ptr<CxxModule> ReactModuleBuilder::MakeCxxModule(
-    std::string const &name,
-    IInspectable const &nativeModule) noexcept {
-  for (auto &initializer : m_initializers) {
-    initializer(m_reactContext);
-  }
-  return std::make_unique<ABICxxModule>(
-      nativeModule, Mso::Copy(name), Mso::Copy(m_constantProviders), Mso::Copy(m_methods));
-}
-
-} // namespace winrt::Microsoft::ReactNative
+} // namespace winrt::Microsoft::ReactNative::implementation

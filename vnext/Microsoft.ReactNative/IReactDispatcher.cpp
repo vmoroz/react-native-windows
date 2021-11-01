@@ -33,7 +33,6 @@ struct WrappedReactDispatcher : public Mso::UnknownObject<Mso::React::IDispatchQ
   winrt::Microsoft::ReactNative::IReactDispatcher m_dispatcher;
 };
 
-ReactDispatcher::ReactDispatcher(Mso::DispatchQueue &&queue) noexcept : m_queue{std::move(queue)} {}
 
 bool ReactDispatcher::HasThreadAccess() noexcept {
   return m_queue.HasThreadAccess();
@@ -64,6 +63,10 @@ void ReactDispatcher::InvokeElsePost(Mso::DispatchTask &&task) const noexcept {
   m_queue.InvokeElsePost(std::move(task));
 }
 
+std::shared_ptr<facebook::react::MessageQueueThread> ReactDispatcher::GetMessageQueueThread() const noexcept {
+  return std::static_pointer_cast<facebook::react::MessageQueueThread>(m_messageQueue);
+}
+
 /*static*/ IReactDispatcher ReactDispatcher::CreateSerialDispatcher() noexcept {
   return make<ReactDispatcher>(Mso::DispatchQueue{});
 }
@@ -87,7 +90,7 @@ void ReactDispatcher::InvokeElsePost(Mso::DispatchTask &&task) const noexcept {
   auto queue = Mso::DispatchQueue::GetCurrentUIThreadQueue();
   if (queue && queue.HasThreadAccess()) {
     queue.InvokeElsePost([&queue, &dispatcher]() noexcept {
-      // This code runs synchronously, but we want it to be run the queue context to
+      // This code runs synchronously, but we want it to be run in the queue context to
       // access the queue local value where we store the weak_ref to the dispatcher.
       // The queue local values are destroyed along with the queue.
       // To access queue local value we temporary swap it with the thread local value.
@@ -118,10 +121,22 @@ void ReactDispatcher::InvokeElsePost(Mso::DispatchTask &&task) const noexcept {
   properties.Set(UIDispatcherProperty(), UIThreadDispatcher());
 }
 
+/*static*/ IReactPropertyName ReactDispatcher::UIDispatcherShutdownNotification() noexcept {
+  static IReactPropertyName uiDispatcherShutdownNotification{ReactPropertyBagHelper::GetName(
+      ReactPropertyBagHelper::GetNamespace(L"ReactNative.Dispatcher"), L"UIDispatcherShutdown")};
+  return uiDispatcherShutdownNotification;
+}
+
 /*static*/ IReactPropertyName ReactDispatcher::JSDispatcherProperty() noexcept {
   static IReactPropertyName jsThreadDispatcherProperty{ReactPropertyBagHelper::GetName(
       ReactPropertyBagHelper::GetNamespace(L"ReactNative.Dispatcher"), L"JSDispatcher")};
   return jsThreadDispatcherProperty;
+}
+
+/*static*/ IReactPropertyName ReactDispatcher::JSDispatcherShutdownNotification() noexcept {
+  static IReactPropertyName jsDispatcherShutdownNotification{ReactPropertyBagHelper::GetName(
+      ReactPropertyBagHelper::GetNamespace(L"ReactNative.Dispatcher"), L"JSDispatcherShutdown")};
+  return jsDispatcherShutdownNotification;
 }
 
 } // namespace winrt::Microsoft::ReactNative::implementation
