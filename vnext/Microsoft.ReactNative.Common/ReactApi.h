@@ -107,20 +107,31 @@ typedef struct {
   float height;
 } react_rect_t;
 
+typedef react_property_value(REACT_STDCALL *react_create_property_value_callback)(void *data);
+
+react_status REACT_STDCALL react_object_add_ref(react_object obj);
+react_status REACT_STDCALL react_object_release(react_object obj);
+
 react_status REACT_STDCALL
 react_property_namespace_get(const char *name, size_t length, react_property_namespace *result);
 react_status REACT_STDCALL react_property_namespace_global(react_property_namespace *result);
 react_status REACT_STDCALL react_property_namespace_get_string(react_property_namespace ns, char **str, size_t *length);
-react_status REACT_STDCALL react_property_namespace_retain(react_property_namespace ns);
+
+react_status REACT_STDCALL react_property_namespace_add_ref(react_property_namespace ns);
 react_status REACT_STDCALL react_property_namespace_release(react_property_namespace ns);
+react_status REACT_STDCALL react_property_namespace_from_object(react_object obj, react_property_namespace *result);
+react_status REACT_STDCALL react_property_namespace_to_object(react_property_namespace ns, react_object *result);
 
 react_status REACT_STDCALL
 react_property_name_get(react_property_namespace ns, const char *name, size_t length, react_property_name *result);
 react_status REACT_STDCALL
 react_property_name_get_namespace(react_property_name name, react_property_namespace *result);
-react_status REACT_STDCALL react_property_name_get_local_str(react_property_name name, char **str, size_t *length);
-react_status REACT_STDCALL react_property_name_retain(react_property_name name);
+react_status REACT_STDCALL react_property_name_get_local_string(react_property_name name, char **str, size_t *length);
+
+react_status REACT_STDCALL react_property_name_add_ref(react_property_name name);
 react_status REACT_STDCALL react_property_name_release(react_property_name name);
+react_status REACT_STDCALL react_property_name_from_object(react_object obj, react_property_name *result);
+react_status REACT_STDCALL react_property_name_to_object(react_property_name name, react_object *result);
 
 react_status REACT_STDCALL react_property_value_create_empty(react_property_value *result);
 react_status REACT_STDCALL react_property_value_create_uint8(uint8_t value, react_property_value *result);
@@ -143,55 +154,122 @@ react_status REACT_STDCALL react_property_value_create_point(react_point_t value
 react_status REACT_STDCALL react_property_value_create_size(react_size_t value, react_property_value *result);
 react_status REACT_STDCALL react_property_value_create_rect(react_rect_t value, react_property_value *result);
 react_status REACT_STDCALL
-react_property_value_create_uint8_array(uint8_t *value, size_t value_size, react_property_value *result);
+react_property_value_create_uint8_array(uint8_t *arr, size_t arr_length, react_property_value *result);
 react_status REACT_STDCALL
-react_property_value_create_int16_array(int16_t *value, size_t value_size, react_property_value *result);
+react_property_value_create_int16_array(int16_t *arr, size_t arr_length, react_property_value *result);
 react_status REACT_STDCALL
-react_property_value_create_uint16_array(uint16_t *value, size_t value_size, react_property_value *result);
+react_property_value_create_uint16_array(uint16_t *arr, size_t arr_length, react_property_value *result);
 react_status REACT_STDCALL
-react_property_value_create_int32_array(int32_t *value, size_t value_size, react_property_value *result);
+react_property_value_create_int32_array(int32_t *arr, size_t arr_length, react_property_value *result);
 react_status REACT_STDCALL
-react_property_value_create_uint32_array(uint32_t *value, size_t value_size, react_property_value *result);
+react_property_value_create_uint32_array(uint32_t *arr, size_t arr_length, react_property_value *result);
 react_status REACT_STDCALL
-react_property_value_create_int64_array(int64_t *value, size_t value_size, react_property_value *result);
+react_property_value_create_int64_array(int64_t *arr, size_t arr_length, react_property_value *result);
 react_status REACT_STDCALL
-react_property_value_create_uint64_array(uint64_t *value, size_t value_size, react_property_value *result);
+react_property_value_create_uint64_array(uint64_t *arr, size_t arr_length, react_property_value *result);
 react_status REACT_STDCALL
-react_property_value_create_single_array(float *value, size_t value_size, react_property_value *result);
+react_property_value_create_single_array(float *arr, size_t arr_length, react_property_value *result);
 react_status REACT_STDCALL
-react_property_value_create_double_array(double *value, size_t value_size, react_property_value *result);
+react_property_value_create_double_array(double *arr, size_t arr_length, react_property_value *result);
 react_status REACT_STDCALL
-react_property_value_create_char16_array(char16_t *value, size_t value_size, react_property_value *result);
+react_property_value_create_char16_array(char16_t *arr, size_t arr_length, react_property_value *result);
 react_status REACT_STDCALL
-react_property_value_create_boolean_array(bool *value, size_t value_size, react_property_value *result);
+react_property_value_create_boolean_array(bool *arr, size_t arr_length, react_property_value *result);
 react_status REACT_STDCALL
-react_property_value_create_string_array(react_string *value, size_t value_size, react_property_value *result);
+react_property_value_create_string_array(react_string *arr, size_t arr_length, react_property_value *result);
 react_status REACT_STDCALL
-react_property_value_create_object_array(react_object *value, size_t value_size, react_property_value *result);
+react_property_value_create_object_array(react_object *arr, size_t arr_length, react_property_value *result);
 react_status REACT_STDCALL
-react_property_value_create_datetime_array(react_datetime_t *value, size_t value_size, react_property_value *result);
+react_property_value_create_datetime_array(react_datetime_t *arr, size_t arr_length, react_property_value *result);
 react_status REACT_STDCALL
-react_property_value_create_timespan_array(react_timespan_t *value, size_t value_size, react_property_value *result);
+react_property_value_create_timespan_array(react_timespan_t *arr, size_t arr_length, react_property_value *result);
 react_status REACT_STDCALL
-react_property_value_create_guid_array(react_guid_t *value, size_t value_size, react_property_value *result);
+react_property_value_create_guid_array(react_guid_t *arr, size_t arr_length, react_property_value *result);
 react_status REACT_STDCALL
-react_property_value_create_point_array(react_point_t *value, size_t value_size, react_property_value *result);
+react_property_value_create_point_array(react_point_t *arr, size_t arr_length, react_property_value *result);
 react_status REACT_STDCALL
-react_property_value_create_size_array(react_size_t *value, size_t value_size, react_property_value *result);
+react_property_value_create_size_array(react_size_t *arr, size_t arr_length, react_property_value *result);
 react_status REACT_STDCALL
-react_property_value_create_rect_array(react_rect_t *value, size_t value_size, react_property_value *result);
-react_status REACT_STDCALL react_property_value_retain(react_property_value value);
+react_property_value_create_rect_array(react_rect_t *arr, size_t arr_length, react_property_value *result);
+
+react_status REACT_STDCALL react_property_value_get_type(react_property_value value, react_property_type *result);
+
+react_status REACT_STDCALL react_property_get_uint8(react_property_value value, uint8_t *result);
+react_status REACT_STDCALL react_property_get_int16(react_property_value value, int16_t *result);
+react_status REACT_STDCALL react_property_get_uint16(react_property_value value, uint16_t *result);
+react_status REACT_STDCALL react_property_get_int32(react_property_value value, int32_t *result);
+react_status REACT_STDCALL react_property_get_uint32(react_property_value value, uint32_t *result);
+react_status REACT_STDCALL react_property_get_int64(react_property_value value, int64_t *result);
+react_status REACT_STDCALL react_property_get_uint64(react_property_value value, uint64_t *result);
+react_status REACT_STDCALL react_property_get_single(react_property_value value, float *result);
+react_status REACT_STDCALL react_property_get_double(react_property_value value, double *result);
+react_status REACT_STDCALL react_property_get_char16(react_property_value value, char16_t *result);
+react_status REACT_STDCALL react_property_get_boolean(react_property_value value, bool *result);
+react_status REACT_STDCALL react_property_get_string(react_property_value value, react_string *result);
+react_status REACT_STDCALL react_property_get_object(react_property_value value, react_object *result);
+react_status REACT_STDCALL react_property_get_datetime(react_property_value value, react_datetime_t *result);
+react_status REACT_STDCALL react_property_get_timespan(react_property_value value, react_timespan_t *result);
+react_status REACT_STDCALL react_property_get_guid(react_property_value value, react_guid_t *result);
+react_status REACT_STDCALL react_property_get_point(react_property_value value, react_point_t *result);
+react_status REACT_STDCALL react_property_get_size(react_property_value value, react_size_t *result);
+react_status REACT_STDCALL react_property_get_rect(react_property_value value, react_rect_t *result);
+react_status REACT_STDCALL react_property_get_uint8_array(react_property_value value, uint8_t *arr, size_t *arr_length);
+react_status REACT_STDCALL react_property_get_int16_array(react_property_value value, int16_t *arr, size_t *arr_length);
+react_status REACT_STDCALL
+react_property_get_uint16_array(react_property_value value, uint16_t *arr, size_t *arr_length);
+react_status REACT_STDCALL react_property_get_int32_array(react_property_value value, int32_t *arr, size_t *arr_length);
+react_status REACT_STDCALL
+react_property_get_uint32_array(react_property_value value, uint32_t *arr, size_t *arr_length);
+react_status REACT_STDCALL react_property_get_int64_array(react_property_value value, int64_t *arr, size_t *arr_length);
+react_status REACT_STDCALL
+react_property_get_uint64_array(react_property_value value, uint64_t *arr, size_t *arr_length);
+react_status REACT_STDCALL react_property_get_single_array(react_property_value value, float *arr, size_t *arr_length);
+react_status REACT_STDCALL react_property_get_double_array(react_property_value value, double *arr, size_t *arr_length);
+react_status REACT_STDCALL
+react_property_get_char16_array(react_property_value value, char16_t *arr, size_t *arr_length);
+react_status REACT_STDCALL react_property_get_boolean_array(react_property_value value, bool *arr, size_t *arr_length);
+react_status REACT_STDCALL
+react_property_get_string_array(react_property_value value, react_string *arr, size_t *arr_length);
+react_status REACT_STDCALL
+react_property_get_object_array(react_property_value value, react_object *arr, size_t *arr_length);
+react_status REACT_STDCALL
+react_property_get_datetime_array(react_property_value value, react_datetime_t *arr, size_t *arr_length);
+react_status REACT_STDCALL
+react_property_get_timespan_array(react_property_value value, react_timespan_t *arr, size_t *arr_length);
+react_status REACT_STDCALL
+react_property_get_guid_array(react_property_value value, react_guid_t *arr, size_t *arr_length);
+react_status REACT_STDCALL
+react_property_get_point_array(react_property_value value, react_point_t *arr, size_t *arr_length);
+react_status REACT_STDCALL
+react_property_get_size_array(react_property_value value, react_size_t *arr, size_t *arr_length);
+react_status REACT_STDCALL
+react_property_get_rect_array(react_property_value value, react_rect_t *arr, size_t *arr_length);
+
+react_status REACT_STDCALL react_property_value_add_ref(react_property_value value);
 react_status REACT_STDCALL react_property_value_release(react_property_value value);
+react_status REACT_STDCALL react_property_value_from_object(react_object obj, react_property_value *result);
+react_status REACT_STDCALL react_property_value_to_object(react_property_value value, react_object *result);
 
 react_status REACT_STDCALL react_property_bag_create(react_property_bag *result);
 react_status REACT_STDCALL react_property_bag_create_copy(react_property_bag bag, react_property_bag *result);
-react_status REACT_STDCALL react_property_bag_retain(react_property_bag bag);
-react_status REACT_STDCALL react_property_bag_release(react_property_bag bag);
+react_status REACT_STDCALL
+react_property_bag_get_value(react_property_bag bag, react_property_name name, react_property_value *result);
+react_status REACT_STDCALL react_property_bag_get_or_create_value(
+    react_property_bag bag,
+    react_property_name name,
+    react_create_property_value_callback create_callback,
+    void *callback_data,
+    react_property_value *result);
+react_status REACT_STDCALL react_property_bag_set_value(
+    react_property_bag bag,
+    react_property_name name,
+    react_property_value value,
+    react_property_value *previous_value);
 
-// react_status REACT_STDCALL react_property_bag_set(react_property_bag bag, react_property_name name, );
-//    Object Get(IReactPropertyName name);
-//    Object GetOrCreate(IReactPropertyName name, ReactCreatePropertyValue createValue);
-//    Object Set(IReactPropertyName name, Object value);
+react_status REACT_STDCALL react_property_bag_add_ref(react_property_bag bag);
+react_status REACT_STDCALL react_property_bag_release(react_property_bag bag);
+react_status REACT_STDCALL react_property_bag_from_object(react_object obj, react_property_bag *result);
+react_status REACT_STDCALL react_property_bag_to_object(react_property_bag bag, react_object *result);
 
 REACT_EXTERN_C_END
 
