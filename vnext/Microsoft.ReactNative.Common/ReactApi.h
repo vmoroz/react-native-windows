@@ -19,6 +19,7 @@ REACT_EXTERN_C_START
 #include <stdint.h>
 
 typedef enum { react_status_ok, react_status_error } react_status;
+typedef enum { react_bool_false, react_bool_true } react_bool;
 
 typedef enum {
   react_property_type_empty = 0,
@@ -62,12 +63,15 @@ typedef enum {
   react_property_type_rect_array = react_property_type_rect + 1024
 } react_property_type;
 
+typedef struct react_object_t *react_object;
 typedef struct react_property_namespace_t *react_property_namespace;
 typedef struct react_property_name_t *react_property_name;
 typedef struct react_property_value_t *react_property_value;
 typedef struct react_property_bag_t *react_property_bag;
 typedef struct react_string_t *react_string;
-typedef struct react_object_t *react_object;
+typedef struct react_dispatcher_t *react_dispatcher;
+typedef struct react_notification_service_t *react_notification_service;
+typedef struct react_notification_subscription_t *react_notification_subscription;
 
 typedef struct {
   int64_t value;
@@ -108,6 +112,13 @@ typedef struct {
 } react_rect_t;
 
 typedef react_property_value(REACT_STDCALL *react_create_property_value_callback)(void *data);
+typedef void(REACT_STDCALL *react_destroy_callback)(void *data, void *hint);
+typedef void(REACT_STDCALL *react_dispatcher_callback)(react_dispatcher dispatcher, void *data);
+typedef void(REACT_STDCALL *react_notification_handler_callback)(
+    react_notification_service service,
+    react_notification_subscription subscription,
+    react_object sender,
+    react_object data);
 
 react_status REACT_STDCALL react_object_add_ref(react_object obj);
 react_status REACT_STDCALL react_object_release(react_object obj);
@@ -268,8 +279,74 @@ react_status REACT_STDCALL react_property_bag_set_value(
 
 react_status REACT_STDCALL react_property_bag_add_ref(react_property_bag bag);
 react_status REACT_STDCALL react_property_bag_release(react_property_bag bag);
-react_status REACT_STDCALL react_property_bag_from_object(react_object obj, react_property_bag *result);
 react_status REACT_STDCALL react_property_bag_to_object(react_property_bag bag, react_object *result);
+react_status REACT_STDCALL react_property_bag_from_object(react_object obj, react_property_bag *result);
+
+react_status REACT_STDCALL react_dispatcher_create(react_dispatcher *result);
+react_status REACT_STDCALL react_dispatcher_post(
+    react_dispatcher dispatcher,
+    react_dispatcher_callback invoke,
+    void *data,
+    react_destroy_callback destroy,
+    void *destroy_hint);
+react_status REACT_STDCALL react_dispatcher_invoke_else_post(
+    react_dispatcher dispatcher,
+    react_dispatcher_callback invoke,
+    void *data,
+    react_destroy_callback destroy,
+    void *destroy_hint);
+
+react_status REACT_STDCALL react_dispatcher_for_ui(react_dispatcher *result);
+
+react_status REACT_STDCALL react_dispatcher_add_ref(react_dispatcher dispatcher);
+react_status REACT_STDCALL react_dispatcher_release(react_dispatcher dispatcher);
+react_status REACT_STDCALL react_dispatcher_to_object(react_dispatcher dispatcher, react_object *result);
+react_status REACT_STDCALL react_dispatcher_from_object(react_object obj, react_dispatcher *dispatcher);
+
+react_status REACT_STDCALL react_property_name_ui_dispatcher(react_property_name *result);
+react_status REACT_STDCALL react_property_name_js_dispatcher(react_property_name *result);
+react_status REACT_STDCALL react_notification_name_js_dispatcher_task_starting(react_property_name *result);
+react_status REACT_STDCALL react_notification_name_js_dispatcher_idle_wait_starting(react_property_name *result);
+react_status REACT_STDCALL react_notification_name_js_dispatcher_idle_wait_completed(react_property_name *result);
+
+react_status REACT_STDCALL react_notification_subscription_get_service(
+    react_notification_subscription subscription,
+    react_notification_service *result);
+react_status REACT_STDCALL
+react_notification_subscription_get_name(react_notification_subscription subscription, react_property_name *result);
+react_status REACT_STDCALL
+react_notification_subscription_get_dispatcher(react_notification_subscription subscription, react_dispatcher *result);
+react_status REACT_STDCALL
+react_notification_subscription_is_subscribed(react_notification_subscription subscription, react_bool *result);
+react_status REACT_STDCALL react_notification_subscription_unsubscribe(react_notification_subscription subscription);
+
+react_status REACT_STDCALL react_notification_subscription_add_ref(react_notification_subscription subscription);
+react_status REACT_STDCALL react_notification_subscription_release(react_notification_subscription subscription);
+react_status REACT_STDCALL
+react_notification_subscription_to_object(react_notification_subscription subscription, react_object *result);
+react_status REACT_STDCALL
+react_notification_subscription_from_object(react_object obj, react_notification_subscription *result);
+
+react_status REACT_STDCALL react_notification_service_create(react_notification_service *result);
+react_status REACT_STDCALL react_notification_service_subscribe(
+    react_notification_service service,
+    react_property_name notification_name,
+    react_dispatcher dispatcher,
+    react_notification_handler_callback handler_callback,
+    void *handler_data,
+    react_destroy_callback handler_destroy_callback,
+    void *handler_destroy_hint);
+react_status REACT_STDCALL react_notification_service_notify(
+    react_notification_service service,
+    react_property_name notification_name,
+    react_object sender,
+    react_object data);
+
+react_status REACT_STDCALL react_notification_service_add_ref(react_notification_service service);
+react_status REACT_STDCALL react_notification_service_release(react_notification_service service);
+react_status REACT_STDCALL
+react_notification_service_to_object(react_notification_service service, react_object *result);
+react_status REACT_STDCALL react_notification_service_from_object(react_object obj, react_notification_service *result);
 
 REACT_EXTERN_C_END
 
