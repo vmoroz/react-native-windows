@@ -53,6 +53,11 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)JSI\JsiAbiApi.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)JSI\JsiApiContext.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)JSI\JsiValueHelpers.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)NAPI\js_native_api.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)NAPI\js_native_api_ext.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)NAPI\js_native_api_types.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)NAPI\NapiApi.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)NAPI\NapiJsiRuntime.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)ReactHandleHelper.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)JSValue.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)JSValueReader.h" />
@@ -99,6 +104,8 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)JSValueTreeReader.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)JSValueTreeWriter.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)ModuleRegistration.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)NAPI\NapiApi.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)NAPI\NapiJsiRuntime.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)ReactPromise.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)TurboModuleProvider.cpp" />
   </ItemGroup>

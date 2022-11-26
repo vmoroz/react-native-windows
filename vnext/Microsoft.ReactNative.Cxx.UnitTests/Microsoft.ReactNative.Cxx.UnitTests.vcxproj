@@ -125,6 +125,7 @@
     <ClCompile Include="JSValueReaderTest.cpp" />
     <ClCompile Include="JSValueTest.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="NapiStub.cpp" />
     <ClCompile Include="NativeModuleTest.cpp" />
     <ClCompile Include="NoAttributeNativeModuleTest.cpp" />
     <ClCompile Include="pch.cpp">

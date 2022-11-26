@@ -57,6 +57,7 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)Modules\SourceCodeModule.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)Modules\StatusBarManagerModule.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)Modules\WebSocketModule.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)NAPI\ChakraNapi.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)Networking\OriginPolicyHttpFilter.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)Networking\RedirectHttpFilter.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)Networking\WinRTHttpResource.cpp" />
@@ -105,6 +106,7 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)Modules\IWebSocketModuleProxy.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Modules\HttpModule.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Modules\NetworkingModule.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)NAPI\ChakraNapi.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Networking\IHttpResource.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Networking\IRedirectEventSource.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Networking\IWebSocketResource.h" />
