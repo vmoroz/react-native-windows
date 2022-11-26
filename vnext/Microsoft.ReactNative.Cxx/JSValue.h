@@ -25,153 +25,379 @@ IJSValueReader MakeJSValueTreeReader(JSValue &&root) noexcept;
 IJSValueWriter MakeJSValueTreeWriter() noexcept;
 JSValue TakeJSValue(IJSValueWriter const &writer) noexcept;
 
-//==============================================================================
-// JSValueObject declaration.
-//==============================================================================
-
-//! JSValueObject is based on std::map and has a custom constructor with std::intializer_list.
-//! It is possible to write: JSValueObject{{"X", 4}, {"Y", 5}} and assign it to JSValue.
-//! It uses the std::less<> comparison algorithm that allows an efficient
-//! key lookup using std::string_view that does not allocate memory for the std::string key.
+//! @brief JSValueObject builds JSValue object.
+//!        It is also used as a read-only JSValue object value.
+//!
+//! JSValue is an immutable class. It needs builder classes to create object
+//! and array values. The JSValueObject is a builder class for JSValue objects,
+//! and the JSValueArray is a builder class for JSValue arrays.
+//!
+//! The JSValueObject has no copy constructor or assignment operator.
+//! It is done to avoid accidental expensive copies.
+//! Use the Copy() method to do the explicit copy.
+//!
+//! JSValueObject is inherited from std::map<std::string, JSValue, std::less<>>.
+//! Use std::map methods to work with JSValueObject.
+//! In addition to std::map methods, the JSValueObject has the following methods:
+//! - Constructor to move-initialize from an std::intializer_list<JSValueObjectKeyValue>.
+//!   It initializes JSValueObject from any key-value pairs where the first value
+//!   can be passed to std::string_view constructor and the second value
+//!   to the JSValue constructor.
+//!   E.g. we can write `JSValueObject{{"X", 5}, {"Y", true}}` to create
+//!   a JSValue object with two properties.
+//! - Equals() method and standalone [operator==](#equal-operator) and
+//!   [operator!=](#not-equal-operator) to do a strict deep comparison.
+//! - JSEquals() method to do comparison after converting to the same type.
+//!   It is similar to the JavaScript operator `==`.
+//! - [`operator []`](#subscript-operator) to access property values using std::string_view.
+//! - ReadFrom() method to construct JSValueObject from IJSValueReader.
+//! - WriteTo() method to serialize JSValueObject to IJSValueWriter.
+//!
+//! Note that JSValueObject uses std::less<> to compare keys.
+//! It allows use of std::string_view to lookup keys.
+//! The lookup keys are not converted to std::string before comparison.
+//! It avoids extra memory allocation.
+//! 
+//! ### Examples
+//!
+//! Construct JSValueObject from an initializer list:
+//! 
+//! ```cpp
+//! auto obj = JSValueObject{{"p1", "X"}, {"p2", 42}, {"p3", nullptr}, {"p4", true}};
+//! ```
+//! 
+//! Use JSValueObject and JSValueArray in the initializer list :
+//! 
+//! ```cpp
+//! auto obj = JSValueObject{
+//!   {"p1", "X"},
+//!   {"p2", 42},
+//!   {"p3", nullptr},
+//!   {"p4", true},
+//!   {"p5", JSValueObject{1, "2", 3}},
+//!   {"p6", JSValueObject{{"Foo", 5}, {"Bar", 10}}}};
+//! ```
+//! 
+//! Use any std::map method because JSValueObject is inherited from
+//! std::map<std::string, JSValue, std::less<>>.
+//! Add `JSValueObject` properties using std::map::try_emplace method:
+//! 
+//! ```cpp
+//! auto obj = JSValueObject();
+//! obj.try_emplace("p1", "X");
+//! obj.try_emplace("p2", 42);
+//! obj.try_emplace("p3", nullptr);
+//! obj.try_emplace("p4", true);
+//! obj.try_emplace("p5", JSValueObject{1, "2", 3});
+//! obj.try_emplace("p6", JSValueObject{{"Foo", 5}, {"Bar", 10}});
+//! ```
+//! 
+//! Get object property count.
+//! 
+//! ```cpp
+//! JSValueObject obj = ...;
+//! auto propertyCount = obj.size();
+//! ```
+//!
+//! Use std::map::operator[] to access object property value by name.
+//! Use `auto&` reference variable type to avoid copy. Accidental use of `auto`
+//! will cause a compilation error because JSValue has no copy constructor.
+//! 
+//! ```cpp
+//! JSValueObject obj = ...;
+//! auto& propValue = obj["myProp"];
+//! ```
+//!
+//! Use JSValue::Copy() method to get a copy of a property value.
+//! Note that JSValue::Copy() method does a deep copy and it can be expensive.
+//! 
+//! ```cpp
+//! JSValueObject obj = ...;
+//! auto propValueCopy = arr["myProp"].Copy(); // when we must to get a property value copy.
+//! ```
 struct JSValueObject : std::map<std::string, JSValue, std::less<>> {
-  //! Default constructor.
+  //! Default constructor. Constructs an empty JSValueObject.
   JSValueObject() = default;
 
-  //! Construct JSValueObject from the move iterator.
+  //! Construct JSValueObject from the `first` and `last` move iterator range.
   template <class TMoveInputIterator>
   JSValueObject(TMoveInputIterator first, TMoveInputIterator last) noexcept;
 
-  //! Move-construct JSValueObject from the initializer list.
+  //! @brief Move-constructs JSValueObject from the `initObject` initializer list.
+  //!
+  //! The JSValueObjectKeyValue is an internal helper struct that initializes its
+  //! JSValueObjectKeyValue::Key and JSValueObjectKeyValue::Value fields with
+  //! any pair of values that can be passed to std::string_view and
+  //! JSValue constructors. Do not use the JSValueObjectKeyValue class directly.
+  //! Instead, provide a value pair which can initialize the JSValueObjectKeyValue.
   JSValueObject(std::initializer_list<JSValueObjectKeyValue> initObject) noexcept;
 
-  //! Move-construct JSValueObject from the string-JSValue map.
+  //! Move-constructs JSValueObject from the std::map<std::string, JSValue, std::less<>>.
   JSValueObject(std::map<std::string, JSValue, std::less<>> &&other) noexcept;
-
-  //! Delete copy constructor to avoid unexpected copies. Use the Copy method instead.
-  JSValueObject(JSValueObject const &) = delete;
 
   // Default move constructor.
   JSValueObject(JSValueObject &&) = default;
 
-  //! Delete copy assignment to avoid unexpected copies. Use the Copy method instead.
-  JSValueObject &operator=(JSValueObject const &) = delete;
+  //! Deletes copy constructor to avoid unexpected copies. Use the Copy() method instead.
+  JSValueObject(JSValueObject const &) = delete;
 
   // Default move assignment.
   JSValueObject &operator=(JSValueObject &&) = default;
 
-  //! Do a deep copy of JSValueObject.
+  //! Deletes copy assignment to avoid unexpected copies. Use the Copy() method instead.
+  JSValueObject &operator=(JSValueObject const &) = delete;
+
+  //! @brief Does a deep copy of the JSValueObject.
+  //!
+  //! Doing a deep copy could be an expensive operation.
+  //! For that reason the JSValueObject has no copy constructor or assignment operator.
+  //! Use the Copy() method to do the explicit deep copy of JSValueObject.
   JSValueObject Copy() const noexcept;
 
-  //! Get a reference to object property value if the property is found,
-  //! or a reference to a new property created with JSValue::Null value otherwise.
+  //! @brief Gets a reference to object property value.
+  //! @param propertyName is the name of property to get.
+  //! @returns a reference to the property value if it is found.
+  //!   Otherwise, it returns a reference to a new property created with
+  //!   `propertyName` and a copy of JSValue::Null value.
   JSValue &operator[](std::string_view propertyName) noexcept;
 
-  //! Get a reference to object property value if the property is found,
-  //! or a reference to JSValue::Null otherwise.
+  //! @brief Gets a read-only reference to object property value.
+  //! @param propertyName is the name of property to get.
+  //! @returns a reference to the property value if it is found.
+  //!   Otherwise, it returns a reference to the read-only JSValue::Null value.
   JSValue const &operator[](std::string_view propertyName) const noexcept;
 
-  //! Return true if this JSValueObject is strictly equal to other JSValueObject.
-  //! Both objects must have the same set of equal properties.
-  //! Property values must be equal.
+  //! @brief Checks strict equality with the `other` JSValueObject.
+  //!
+  //! The `other` JSValueObject must have the same size as this JSValueObject.
+  //! Then, the keys must be equal and the JSValue::Equals() must be `true`
+  //! for each pair of corresponding values.
+  //!
+  //! @param other is a reference to another JSValueObject to compare with.
+  //! @returns `true` if this JSValueObject has the same size as the `other` JSValueObject,
+  //!   they both have an equal set of keys, and the JSValue::Equals() method
+  //!   returns `true` for each pair of corresponding values.
+  //!   Otherwise, it returns `false`.
   bool Equals(JSValueObject const &other) const noexcept;
 
-  //! Return true if this JSValueObject is strictly equal to other JSValueObject
-  //! after their property values are converted to the same type.
-  //! See JSValue::JSEquals for details about the conversion.
+  //! @brief Checks equality with the `other` JSValueObject after converting values to the same type.
+  //!
+  //! The `other` JSValueObject must have the same size as this JSValueObject.
+  //! Then, the keys must be equal and the JSValue::JSEquals() must be `true`
+  //! for each pair of corresponding values.
+  //!
+  //! @param other is a reference to another JSValueObject to compare with.
+  //! @returns `true` if this JSValueObject has the same size as the `other` JSValueObject,
+  //!   they both have an equal set of keys, and the JSValue::JSEquals() method
+  //!   returns `true` for each pair of corresponding values.
+  //!   Otherwise, it returns `false`.
   bool JSEquals(JSValueObject const &other) const noexcept;
 
-  //! Create JSValueObject from IJSValueReader.
+  //! @brief Creates new JSValueObject from the IJSValueReader.
+  //! @param reader is a IJSValueReader to read JSValueObject value from.
+  //! @returns new JSValueObject initialized from the IJSValueReader.
+  //!   If the `reader` is not in the object reading state, then it returns
+  //!   an JSValue::EmptyObject and the state of `reader` is not changed.
   static JSValueObject ReadFrom(IJSValueReader const &reader) noexcept;
 
-  //! Write this JSValueObject to IJSValueWriter.
+  //! @brief Writes this JSValueObject to the IJSValueWriter.
+  //! @param writer is a IJSValueWriter to write JSValueObject values to.
   void WriteTo(IJSValueWriter const &writer) const noexcept;
 
-#pragma region Deprecated methods
+  //! @name Deprecated members
+  //! @{
 
+  //! @deprecated Use JSEquals() method instead. To be removed in version 0.65.
   [[deprecated("Use JSEquals")]] bool EqualsAfterConversion(JSValueObject const &other) const noexcept;
 
-#pragma endregion
+  //! @}
 };
 
-//! True if left.Equals(right)
+//! @related JSValueObject
+//! Gets result of JSValueObject::Equals() method call for `left.Equals(right)`.
 bool operator==(JSValueObject const &left, JSValueObject const &right) noexcept;
 
-//! True if !left.Equals(right)
+//! @related JSValueObject
+//! Gets negated result of JSValueObject::Equals() method call for `left.Equals(right)`.
 bool operator!=(JSValueObject const &left, JSValueObject const &right) noexcept;
 
-//==============================================================================
-// JSValueArray declaration.
-//==============================================================================
-
-//! JSValueArray is based on std::vector<JSValue> and has a custom constructor with std::intializer_list.
-//! It is possible to write: JSValueArray{"X", 42, nullptr, true} and assign it to JSValue.
+//! @brief JSValueArray builds JSValue array.
+//!        It is also used as a read-only JSValue array value.
+//!
+//! JSValue is an immutable class. It needs builder classes to create object
+//! and array values. The JSValueArray is a builder class for JSValue arrays,
+//! and the JSValueObject is a builder class for JSValue objects.
+//!
+//! The JSValueArray has no copy constructor or assignment operator.
+//! It is done to avoid accidental expensive copies.
+//! Use the Copy() method to do the explicit copy.
+//!
+//! JSValueArray is based on std::vector<JSValue>.
+//! Use std::vector methods to work with JSValueArray.
+//! In addition to std::vector methods, the JSValueArray has the following methods:
+//! - Constructor to move-initialize from an std::intializer_list<JSValueArrayItem>.
+//!   It initializes JSValueArray from any values that can be passed to JSValue constructors.
+//!   E.g. we can write `JSValueArray{"X", 42, nullptr, true}` to create
+//!   a JSValue array with string, number, null, and boolean values.
+//! - Equals() method and standalone [operator==](#equal-operator) and
+//!   [operator!=](#not-equal-operator) to do a strict deep comparison.
+//! - JSEquals() method to do comparison after converting to the same type.
+//!   It is similar to the JavaScript operator `==`.
+//! - ReadFrom() method to construct JSValueArray from IJSValueReader.
+//! - WriteTo() method to serialize JSValueArray to IJSValueWriter.
+//!
+//!
+//! ### Examples
+//!
+//! Construct JSValueArray from an initializer list:
+//!
+//! ```cpp
+//! auto arr = JSValueArray{"X", 42, nullptr, true};
+//! ```
+//!
+//! Use JSValueArray and JSValueObject in the initializer list:
+//!
+//! ```cpp
+//! auto arr = JSValueArray{
+//!   "X",
+//!   42,
+//!   nullptr,
+//!   true, 
+//!   JSValueArray{1, "2", 3},
+//!   JSValueObject{{"Foo", 5}, {"Bar", 10}}
+//! };
+//! ```
+//!
+//! Use any std::vector methods because JSValueArray is inherited from std::vector<JSValue>.  
+//! Add JSValueArray items using std::vector::emplace_back() method:
+//!
+//! ```cpp
+//! auto arr = JSValueArray();
+//! arr.emplace_back("X");
+//! arr.emplace_back(42);
+//! arr.emplace_back(nullptr);
+//! arr.emplace_back(true);
+//! arr.emplace_back(JSValueArray{1, "2", 3});
+//! arr.emplace_back(JSValueObject{{"Foo", 5}, {"Bar", 10}});
+//! ```
+//!
+//! Get size of the JSValueArray:
+//!
+//! ```cpp
+//! JSValueArray arr = ...;
+//! auto itemCount = arr.size();
+//! ```
+//!
+//! Use std::vector::operator[] to access array items by index.
+//! Use `auto&` reference variable type to avoid copy.
+//! Accidental use of `auto` will cause a compilation error because JSValue has no copy constructor.
+//!
+//! ```cpp
+//! JSValueArray arr = ...;
+//! auto& item = arr[2];
+//! ```
+//!
+//! Use JSValue::Copy() method to get a copy of an item.
+//! Note that JSValue::Copy() method does a deep copy and it can be expensive.
+//!
+//! ```cpp
+//! JSValueArray arr = ...;
+//! auto item = arr[2].Copy(); // when we must to get an item copy.
+//! ```
 struct JSValueArray : std::vector<JSValue> {
-  //! Default constructor.
+  //! Default constructor. Constructs an empty JSValueArray.
   JSValueArray() = default;
 
-  //! Constructs JSValueArray with 'size' count of JSValue::Null elements.
+  //! Constructs JSValueArray with `size` JSValue::Null elements.
   explicit JSValueArray(size_type size) noexcept;
 
-  //! Constructs JSValueArray with 'size' count elements.
-  //! Each element is a copy of defaultValue.
+  //! Constructs JSValueArray with `size` elements.
+  //! Each element is a copy of `defaultValue`.
   JSValueArray(size_type size, JSValue const &defaultValue) noexcept;
 
-  //! Construct JSValueArray from the move iterator.
+  //! Construct JSValueArray from the `first` and `last` move iterator range.
   template <class TMoveInputIterator, std::enable_if_t<!std::is_integral_v<TMoveInputIterator>, int> = 1>
   JSValueArray(TMoveInputIterator first, TMoveInputIterator last) noexcept;
 
-  //! Move-construct JSValueArray from the initializer list.
-  JSValueArray(std::initializer_list<JSValueArrayItem> initObject) noexcept;
+  //! @brief Move-constructs JSValueArray from the `initArray` initializer list.
+  //!
+  //! The JSValueArrayItem is an internal helper struct that initializes its
+  //! JSValueArrayItem::Item field with any value that can be passed to
+  //! JSValue constructors. Do not use the JSValueArrayItem class directly.
+  //! Instead, provide a value which can initialize the JSValueArrayItem.
+  JSValueArray(std::initializer_list<JSValueArrayItem> initArray) noexcept;
 
-  //! Move-construct JSValueArray from the JSValue vector.
+  //! Move-constructs JSValueArray from the std::vector<JSValue>.
   JSValueArray(std::vector<JSValue> &&other) noexcept;
 
-  //! Delete copy constructor to avoid unexpected copies. Use the Copy method instead.
-  JSValueArray(JSValueArray const &) = delete;
-
-  // Default move constructor.
+  //! Default move constructor.
   JSValueArray(JSValueArray &&) = default;
 
-  //! Delete copy assignment to avoid unexpected copies. Use the Copy method instead.
-  JSValueArray &operator=(JSValueArray const &) = delete;
+  //! Deletes copy constructor to avoid unexpected copies. Use the Copy() method instead.
+  JSValueArray(JSValueArray const &) = delete;
 
-  // Default move assignment.
+  //! Default move assignment.
   JSValueArray &operator=(JSValueArray &&) = default;
 
-  //! Do a deep copy of JSValueArray.
+  //! Deletes copy assignment to avoid unexpected copies. Use the Copy() method instead.
+  JSValueArray &operator=(JSValueArray const &) = delete;
+
+  //! @brief Does a deep copy of the JSValueArray.
+  //!
+  //! Doing a deep copy could be an expensive operation.
+  //! For that reason the JSValueArray has no copy constructor or assignment operator.
+  //! Use the Copy() method to do the explicit deep copy of JSValueArray.
   JSValueArray Copy() const noexcept;
 
-  //! Return true if this JSValueArray is strictly equal to other JSValueArray.
-  //! Both arrays must have the same set of items. Items must have the same type and value.
+  //! @brief Checks strict equality with the `other` JSValueArray.
+  //!
+  //! The `other` JSValueArray must have the same size as this JSValueArray.
+  //! Then, the JSValue::Equals() must be `true` for each pair of corresponding items.
+  //!
+  //! @param other is a reference to another JSValueArray to compare with.
+  //! @returns `true` if this JSValueArray has the same size as the `other` JSValueArray
+  //!   and the JSValue::Equals() method returns `true` for each pair of corresponding items.
+  //!   Otherwise, it returns `false`.
   bool Equals(JSValueArray const &other) const noexcept;
 
-  //! Return true if this JSValueArray is strictly equal to other JSValueArray
-  //! after their items are converted to the same type.
-  //! See JSValue::JSEquals for details about the conversion.
+  //! @brief Checks equality with the `other` JSValueArray after converting items to the same type.
+  //!
+  //! The `other` JSValueArray must have the same size as this JSValueArray.
+  //! Then, the JSValue::JSEquals() must be `true` for each pair of corresponding items.
+  //!
+  //! @param other is a reference to another JSValueArray to compare with.
+  //! @returns `true` if this JSValueArray has the same size as the `other` JSValueArray
+  //!   and the JSValue::JSEquals() method returns `true` for each pair of corresponding items.
+  //!   Otherwise, it returns `false`.
   bool JSEquals(JSValueArray const &other) const noexcept;
 
-  //! Create JSValueArray from IJSValueReader.
+  //! @brief Creates new JSValueArray from the IJSValueReader.
+  //! @param reader is a IJSValueReader to read JSValueArray value from.
+  //! @returns new JSValueArray initialized from the IJSValueReader.
+  //!   If the `reader` is not in the array reading state, then it returns
+  //!   an JSValue::EmptyArray and the state of `reader` is not changed.
   static JSValueArray ReadFrom(IJSValueReader const &reader) noexcept;
 
-  //! Write this JSValueArray to IJSValueWriter.
+  //! @brief Writes this JSValueArray to the IJSValueWriter.
+  //! @param writer is a IJSValueWriter to write JSValueArray values to.
   void WriteTo(IJSValueWriter const &writer) const noexcept;
 
-#pragma region Deprecated methods
+  //! @name Deprecated members
+  //! @{
 
+  //! @deprecated Use JSEquals() method instead. To be removed in version 0.65.
   [[deprecated("Use JSEquals")]] bool EqualsAfterConversion(JSValueArray const &other) const noexcept;
 
-#pragma endregion
+  //! @}
 };
 
-//! True if left.Equals(right)
+//! @related JSValueArray
+//! Gets result of JSValueArray::Equals() method call for `left.Equals(right)`.
 bool operator==(JSValueArray const &left, JSValueArray const &right) noexcept;
 
-//! True if !left.Equals(right)
+//! @related JSValueArray
+//! Gets negated result of JSValueArray::Equals() method call for `left.Equals(right)`.
 bool operator!=(JSValueArray const &left, JSValueArray const &right) noexcept;
-
-//==============================================================================
-// JSValue declaration.
-//==============================================================================
 
 //! JSValue represents an immutable JavaScript value that can be passed as a parameter.
 //! It is created to simplify working with IJSValueReader in some complex cases.
@@ -181,6 +407,9 @@ bool operator!=(JSValueArray const &left, JSValueArray const &right) noexcept;
 //! For copy operations the explicit Copy() method must be used.
 //! Note that the move operations are not thread safe.
 struct JSValue {
+  //! @name Static fields
+  //! @{
+
   //! JSValue with JSValueType::Null.
   static JSValue const Null;
 
@@ -192,6 +421,8 @@ struct JSValue {
 
   //! JSValue with empty string.
   static JSValue const EmptyString;
+
+  //! @}
 
   //! Create a Null JSValue.
   JSValue() noexcept;
@@ -280,6 +511,9 @@ struct JSValue {
 
   //! Return pointer to double value if JSValue type is Double, or nullptr otherwise.
   double const *TryGetDouble() const noexcept;
+
+  //! @name Conversion functions
+  //! @{
 
   //! Return Object representation of JSValue. It is JSValue::EmptyObject if type is not Object.
   JSValueObject const &AsObject() const noexcept;
@@ -404,6 +638,8 @@ struct JSValue {
   template <class T>
   static JSValue From(T const &value) noexcept;
 
+  //!@} Conversion functions
+
   //! Return property count if JSValue is Object, or 0 otherwise.
   size_t PropertyCount() const noexcept;
 
@@ -467,11 +703,16 @@ struct JSValue {
   //! Write this JSValue to IJSValueWriter.
   void WriteTo(IJSValueWriter const &writer) const noexcept;
 
-#pragma region Deprecated methods
+  //! @name Deprecated members
+  //! @{
 
-  // The methods below are deprecated in favor of other methods with clearer semantic
+  //! @deprecated Use TryGetObject() or AsObject(). To be removed in 0.65
   [[deprecated("Use TryGetObject or AsObject")]] JSValueObject const &Object() const noexcept;
-  [[deprecated("Use TryGetArray or As Array")]] JSValueArray const &Array() const noexcept;
+
+  //! @deprecated Use TryGetArray() or AsArray(). To be removed in 0.65
+  [[deprecated("Use TryGetArray or AsArray")]] JSValueArray const &Array() const noexcept;
+
+  //! @deprecated Use TryGetString(), AsString(), or AsJSString(). To be removed in 0.65
   [[deprecated("Use TryGetString, AsString, or AsJSString")]] std::string const &String() const noexcept;
   [[deprecated("Use TryGetBoolean, AsBoolean, or AsJSBoolean")]] bool Boolean() const noexcept;
   [[deprecated("Use TryGetInt64, AsInt64, or AsJSNumber")]] int64_t Int64() const noexcept;
@@ -495,11 +736,12 @@ struct JSValue {
   [[deprecated("Use JSEquals")]] bool EqualsAfterConversion(JSValue const &other) const noexcept;
   [[deprecated("Use AsSingle")]] float AsFloat() const noexcept;
 
-#pragma endregion
+  //!@} Deprecated members
 
  private: // Instance fields
   JSValueType m_type;
   union {
+    //! @privatesection - to avoid reporting these fields as public by Doxygen.
     JSValueObject m_object;
     JSValueArray m_array;
     std::string m_string;
