@@ -4,7 +4,7 @@
  * @format
  */
 
-import * as React from 'react';
+import React from 'react';
 import {Button, Text, TextInput, View} from 'react-native';
 import {Popup} from 'react-native-windows';
 
@@ -17,7 +17,7 @@ class AnchoredPopupExample extends React.Component<
   {},
   IAnchoredPopupExampleState
 > {
-  private readonly _textInput: React.RefObject<TextInput>;
+  private readonly _textInput: React.RefObject<any>;
 
   public state: IAnchoredPopupExampleState = {
     showPopup: false,
@@ -31,7 +31,7 @@ class AnchoredPopupExample extends React.Component<
 
   public render() {
     return (
-      <View>
+      <View testID="anchor-popup">
         <Text style={{width: 250}}>The following tests popup Anchor</Text>
         <View style={{flexDirection: 'row'}}>
           <Text style={{padding: 10, width: 300, height: 32}}>
@@ -96,7 +96,7 @@ class PopupPlacementExample extends React.Component<
 
   public render() {
     return (
-      <View style={{width: 500, height: 500}}>
+      <View style={{width: 500, height: 500}} testID="popup-placement">
         <Button onPress={this._togglePopup} title={'Toggle popup'} />
         {this.state.showPopup && (
           <Popup
@@ -104,6 +104,56 @@ class PopupPlacementExample extends React.Component<
             isOpen={this.state.showPopup}
             onDismiss={this._onPopupDismissed}
             isLightDismissEnabled={false}>
+            <View style={{backgroundColor: 'lightgray', flex: 1}}>
+              <Text>This is a popup</Text>
+              <Button onPress={this._togglePopup} title="Toggle popup" />
+              <Button onPress={this._noop} title="This is a button" />
+            </View>
+          </Popup>
+        )}
+      </View>
+    );
+  }
+
+  _togglePopup = () => {
+    this.setState(state => ({
+      showPopup: !state.showPopup,
+    }));
+  };
+
+  _onPopupDismissed = () => {
+    this.setState({showPopup: false});
+  };
+
+  _noop = () => {
+    return;
+  };
+}
+
+class PopupAccessibilityExample extends React.Component<
+  {},
+  IPopupPlacementExampleState
+> {
+  constructor(props: any) {
+    super(props);
+    this.state = {
+      showPopup: false,
+    };
+  }
+
+  public render() {
+    return (
+      <View style={{width: 500, height: 500}} testID="popup-accessibility">
+        <Button onPress={this._togglePopup} title={'Toggle popup'} />
+        {this.state.showPopup && (
+          <Popup
+            style={{position: 'absolute', left: 0, right: 0, top: 0, bottom: 0}}
+            isOpen={this.state.showPopup}
+            onDismiss={this._onPopupDismissed}
+            isLightDismissEnabled={false}
+            accessibilityHint="Popup"
+            accessibilityLabel="This is a Popup"
+            nativeID="popup-accessibility">
             <View style={{backgroundColor: 'lightgray', flex: 1}}>
               <Text>This is a popup</Text>
               <Button onPress={this._togglePopup} title="Toggle popup" />
@@ -138,14 +188,20 @@ export const description =
 export const examples = [
   {
     title: 'Popup Anchor to text input w/ light dismiss',
-    render: function(): JSX.Element {
+    render: function (): JSX.Element {
       return <AnchoredPopupExample />;
     },
   },
   {
     title: 'Popup centered on screen',
-    render: function(): JSX.Element {
+    render: function (): JSX.Element {
       return <PopupPlacementExample />;
+    },
+  },
+  {
+    title: 'Popup with Accessibility Customization',
+    render: function (): JSX.Element {
+      return <PopupAccessibilityExample />;
     },
   },
 ];

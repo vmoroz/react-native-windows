@@ -4,15 +4,20 @@
  * @format
  */
 
-import * as React from 'react';
+import React from 'react';
 import {Button, Switch, Text, TextInput, View} from 'react-native';
-import {Flyout, Picker, Popup, Placement} from 'react-native-windows';
+import {Flyout, Popup, Placement} from 'react-native-windows';
+import {Picker} from '@react-native-picker/picker';
 
 interface IFlyoutExampleState {
   isFlyoutVisible: boolean;
+  isFlyoutNoTargetVisible: boolean;
   isFlyoutTwoVisible: boolean;
+  isFlyoutOffsetVisible: boolean;
   isPopupVisible: boolean;
   buttonTitle: string;
+  buttonNoTargetTitle: string;
+  buttonOffsetTitle: string;
   isLightDismissEnabled: boolean;
   isOverlayEnabled: boolean;
   popupSwitchState: boolean;
@@ -37,13 +42,18 @@ const placementValues: string[] = [
 
 class FlyoutExample extends React.Component<{}, IFlyoutExampleState> {
   private _anchor: any;
+
   private _anchorTwo: any;
 
   public state: IFlyoutExampleState = {
     isFlyoutVisible: false,
+    isFlyoutNoTargetVisible: false,
     isFlyoutTwoVisible: false,
+    isFlyoutOffsetVisible: false,
     isPopupVisible: false,
     buttonTitle: 'Open Flyout',
+    buttonNoTargetTitle: 'Open Flyout without Target',
+    buttonOffsetTitle: 'Open Flyout with Offset',
     isLightDismissEnabled: true,
     isOverlayEnabled: false,
     popupSwitchState: true,
@@ -61,7 +71,7 @@ class FlyoutExample extends React.Component<{}, IFlyoutExampleState> {
       'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed dapibus felis eget augue condimentum suscipit. Suspendisse hendrerit, libero aliquet malesuada tempor, urna nibh consectetur tellus, vitae efficitur quam erat non mi. Maecenas vitae eros sit amet quam vestibulum porta sed sit amet tellus. Fusce quis lectus congue, fringilla arcu id, luctus urna. Cras sagittis ornare mauris sit amet dictum. Vestibulum feugiat laoreet fringilla. Vivamus ac diam vehicula felis venenatis sagittis vitae ultrices elit. Curabitur libero augue, laoreet quis orci vitae, congue euismod massa. Aenean nec odio sed urna vehicula fermentum non a magna. Quisque ut commodo neque, eget eleifend odio. Sed sit amet lacinia sem. Suspendisse in metus in purus scelerisque vestibulum. Nam metus dui, efficitur nec metus non, tincidunt pharetra sapien. Praesent id convallis metus, ut malesuada arcu. Quisque quam libero, pharetra eu tellus ac, aliquam fringilla erat. Quisque tempus in lorem ac suscipit.';
 
     return (
-      <View>
+      <View testID="flyout">
         <View style={{flexDirection: 'row', paddingTop: 20}}>
           <Text style={{padding: 10}}>Placement Options: </Text>
           <Picker
@@ -76,6 +86,18 @@ class FlyoutExample extends React.Component<{}, IFlyoutExampleState> {
         <View style={{justifyContent: 'center', padding: 20, width: 200}}>
           <Button onPress={this._onPress} title={this.state.buttonTitle} />
         </View>
+        <View style={{justifyContent: 'center', padding: 20, width: 200}}>
+          <Button
+            onPress={this._onPressButtonNoTarget}
+            title={this.state.buttonNoTargetTitle}
+          />
+        </View>
+        <View style={{justifyContent: 'center', padding: 20, width: 200}}>
+          <Button
+            onPress={this._onPressButtonOffset}
+            title={this.state.buttonOffsetTitle}
+          />
+        </View>
         <View style={{flexDirection: 'row', paddingTop: 200}}>
           <Text style={{padding: 10, width: 300, height: 32}}>
             Text Input to Anchor flyout to:{' '}
@@ -89,7 +111,10 @@ class FlyoutExample extends React.Component<{}, IFlyoutExampleState> {
             isOverlayEnabled={this.state.isOverlayEnabled}
             onDismiss={this._onFlyoutDismissed}
             target={this._anchor}
-            placement={this.state.placementOptions}>
+            placement={this.state.placementOptions}
+            accessibilityHint="Flyout"
+            accessibilityLabel="This is a Flyout"
+            nativeID="flyout-accessibility">
             <View
               style={{backgroundColor: 'lightgray', width: 300, height: 400}}>
               <Text
@@ -186,7 +211,40 @@ class FlyoutExample extends React.Component<{}, IFlyoutExampleState> {
             isLightDismissEnabled={true}
             onDismiss={this._onFlyoutTwoDismissed}
             target={this._anchorTwo}
-            placement={this.state.placementOptions}>
+            placement={this.state.placementOptions}
+            accessibilityHint="Flyout"
+            accessibilityLabel="This is a Flyout"
+            nativeID="flyout-accessibility-2">
+            <View
+              style={{backgroundColor: 'lightblue', width: 200, height: 300}}>
+              <Text>{lorumIpsum}</Text>
+            </View>
+          </Flyout>
+        )}
+        {this.state.isFlyoutNoTargetVisible && (
+          <Flyout
+            isOpen={this.state.isFlyoutNoTargetVisible}
+            isLightDismissEnabled={true}
+            onDismiss={this._onFlyoutNoTargetDismissed}
+            accessibilityHint="Flyout"
+            accessibilityLabel="This is a Flyout"
+            nativeID="flyout-accessibility-3">
+            <View
+              style={{backgroundColor: 'lightblue', width: 200, height: 300}}>
+              <Text>{lorumIpsum}</Text>
+            </View>
+          </Flyout>
+        )}
+        {this.state.isFlyoutOffsetVisible && (
+          <Flyout
+            isOpen={this.state.isFlyoutOffsetVisible}
+            isLightDismissEnabled={true}
+            onDismiss={this._onFlyoutOffsetDismissed}
+            accessibilityHint="Flyout"
+            accessibilityLabel="This is a Flyout"
+            nativeID="flyout-accessibility-4"
+            horizontalOffset={500}
+            verticalOffset={500}>
             <View
               style={{backgroundColor: 'lightblue', width: 200, height: 300}}>
               <Text>{lorumIpsum}</Text>
@@ -225,6 +283,20 @@ class FlyoutExample extends React.Component<{}, IFlyoutExampleState> {
     this.setState({buttonTitle: 'Close Flyout', isFlyoutVisible: true});
   };
 
+  _onPressButtonNoTarget = () => {
+    this.setState({
+      buttonNoTargetTitle: 'Close Flyout without Target',
+      isFlyoutNoTargetVisible: true,
+    });
+  };
+
+  _onPressButtonOffset = () => {
+    this.setState({
+      buttonOffsetTitle: 'Close Flyout with Offset',
+      isFlyoutOffsetVisible: true,
+    });
+  };
+
   _onFlyoutButtonPressed = () => {
     this.setState({buttonTitle: 'Open Flyout', isFlyoutVisible: false});
   };
@@ -247,6 +319,20 @@ class FlyoutExample extends React.Component<{}, IFlyoutExampleState> {
   _onFlyoutTwoDismissed = (_isOpen: boolean) => {
     this.setState({isFlyoutTwoVisible: false});
   };
+
+  _onFlyoutNoTargetDismissed = (_isOpen: boolean) => {
+    this.setState({
+      buttonNoTargetTitle: 'Open Flyout without Target',
+      isFlyoutNoTargetVisible: false,
+    });
+  };
+
+  _onFlyoutOffsetDismissed = (_isOpen: boolean) => {
+    this.setState({
+      buttonOffsetTitle: 'Open Flyout with Offset',
+      isFlyoutOffsetVisible: false,
+    });
+  };
 }
 
 export const displayName = (_undefined?: string) => {};
@@ -257,7 +343,7 @@ export const description =
 export const examples = [
   {
     title: 'Flyout Anchor to text input',
-    render: function(): JSX.Element {
+    render: function (): JSX.Element {
       return <FlyoutExample />;
     },
   },

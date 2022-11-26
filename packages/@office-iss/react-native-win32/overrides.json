@@ -1,0 +1,438 @@
+{
+  "includePatterns": [
+    ".flowconfig",
+    "src/**"
+  ],
+  "excludePatterns": [
+    "**/__snapshots__/**",
+    "src/rntypes/**"
+  ],
+  "baseVersion": "0.0.0-20221010-2132-1fc27c4cb",
+  "overrides": [
+    {
+      "type": "derived",
+      "file": ".flowconfig",
+      "baseFile": ".flowconfig",
+      "baseHash": "fc3513b4ba5da4026a2b1ad6eb05231223f578a6"
+    },
+    {
+      "type": "derived",
+      "file": "src/index.win32.js",
+      "baseFile": "index.js",
+      "baseHash": "1a5de21d114835d1ae2af5ecb9bad6bf7dc78330"
+    },
+    {
+      "type": "platform",
+      "file": "src/Libraries/__tests__/ButtonWin32-test.js"
+    },
+    {
+      "type": "patch",
+      "file": "src/Libraries/Alert/Alert.win32.js",
+      "baseFile": "Libraries/Alert/Alert.js",
+      "baseHash": "51fc12aa32c2ea6e5613bfcf45a845e73d519be3"
+    },
+    {
+      "type": "patch",
+      "file": "src/Libraries/Components/AccessibilityInfo/AccessibilityInfo.win32.js",
+      "baseFile": "Libraries/Components/AccessibilityInfo/AccessibilityInfo.js",
+      "baseHash": "8ed7c87f3165558abe517218143dc6f73d91cc46",
+      "issue": 4578
+    },
+    {
+      "type": "copy",
+      "file": "src/Libraries/Components/AccessibilityInfo/legacySendAccessibilityEvent.win32.js",
+      "baseFile": "Libraries/Components/AccessibilityInfo/legacySendAccessibilityEvent.android.js",
+      "baseHash": "d37b2f72125246ababf3260e99ef790ce76fe3bb",
+      "issue": 4578
+    },
+    {
+      "type": "platform",
+      "file": "src/Libraries/Components/Button/ButtonWin32.Props.ts"
+    },
+    {
+      "type": "platform",
+      "file": "src/Libraries/Components/Button/ButtonWin32.tsx"
+    },
+    {
+      "type": "copy",
+      "file": "src/Libraries/Components/DatePicker/DatePickerIOS.win32.js",
+      "baseFile": "Libraries/Components/DatePicker/DatePickerIOS.android.js",
+      "baseHash": "cd7c18ed335735df871f69424d498b82b920a298",
+      "issue": 4378
+    },
+    {
+      "type": "copy",
+      "file": "src/Libraries/Components/DrawerAndroid/DrawerLayoutAndroid.js",
+      "baseFile": "Libraries/Components/DrawerAndroid/DrawerLayoutAndroid.ios.js",
+      "baseHash": "09f143fc3f2ee80463764e1c2b3f23107d501a4c",
+      "issue": 4378
+    },
+    {
+      "type": "platform",
+      "file": "src/Libraries/Components/EnterString.win32.tsx"
+    },
+    {
+      "type": "patch",
+      "file": "src/Libraries/Components/Pressable/Pressable.win32.js",
+      "baseFile": "Libraries/Components/Pressable/Pressable.js",
+      "baseHash": "0d824097eb3cdc5e83f18277271d546b9fd3da92",
+      "issue": 6240
+    },
+    {
+      "type": "copy",
+      "file": "src/Libraries/Components/ProgressBarAndroid/ProgressBarAndroid.js",
+      "baseFile": "Libraries/Components/ProgressBarAndroid/ProgressBarAndroid.ios.js",
+      "baseHash": "09f143fc3f2ee80463764e1c2b3f23107d501a4c",
+      "issue": 4378
+    },
+    {
+      "type": "copy",
+      "file": "src/Libraries/Components/ProgressViewIOS/ProgressViewIOS.win32.js",
+      "baseFile": "Libraries/Components/ProgressViewIOS/ProgressViewIOS.android.js",
+      "baseHash": "b7d8fc4fe48e96f682477a4e4dfbe7de4f134cfb"
+    },
+    {
+      "type": "patch",
+      "file": "src/Libraries/Components/SafeAreaView/SafeAreaView.win32.js",
+      "baseFile": "Libraries/Components/SafeAreaView/SafeAreaView.js",
+      "baseHash": "bde271c753be96e28b5f1b539d0d9a0cbeee77ab"
+    },
+    {
+      "type": "platform",
+      "file": "src/Libraries/Components/Text/Tests/TextWin32Test.tsx"
+    },
+    {
+      "type": "platform",
+      "file": "src/Libraries/Components/Text/TextWin32.Props.ts"
+    },
+    {
+      "type": "platform",
+      "file": "src/Libraries/Components/Text/TextWin32.tsx"
+    },
+    {
+      "type": "platform",
+      "file": "src/Libraries/Components/TextInput/Tests/TextInputTest.tsx"
+    },
+    {
+      "type": "platform",
+      "file": "src/Libraries/Components/TextInput/TextInput.Types.win32.ts"
+    },
+    {
+      "type": "derived",
+      "file": "src/Libraries/Components/TextInput/TextInput.win32.tsx",
+      "baseFile": "Libraries/Components/TextInput/TextInput.js",
+      "baseHash": "d8721a3aed1ce52910325762a2cc36b7578ffd2c"
+    },
+    {
+      "type": "patch",
+      "file": "src/Libraries/Components/TextInput/TextInputState.win32.js",
+      "baseFile": "Libraries/Components/TextInput/TextInputState.js",
+      "baseHash": "46a3793b466d2e30539c08c6a77dc2f5cffe1993"
+    },
+    {
+      "type": "copy",
+      "file": "src/Libraries/Components/ToastAndroid/ToastAndroid.win32.js",
+      "baseFile": "Libraries/Components/ToastAndroid/ToastAndroid.ios.js",
+      "baseHash": "081bef4803b72c50eb6e8379451201afbde9806e",
+      "issue": 4378
+    },
+    {
+      "type": "platform",
+      "file": "src/Libraries/Components/Touchable/Tests/TouchableWin32Test.tsx"
+    },
+    {
+      "type": "patch",
+      "file": "src/Libraries/Components/Touchable/Touchable.win32.js",
+      "baseFile": "Libraries/Components/Touchable/Touchable.js",
+      "baseHash": "f2ee27f78b9601205f0483ed11e16036644ab4ce",
+      "issue": 0
+    },
+    {
+      "type": "platform",
+      "file": "src/Libraries/Components/Touchable/TouchableNativeFeedback.Props.ts"
+    },
+    {
+      "type": "platform",
+      "file": "src/Libraries/Components/Touchable/TouchableNativeFeedback.win32.tsx"
+    },
+    {
+      "type": "platform",
+      "file": "src/Libraries/Components/Touchable/TouchableWin32.Props.tsx"
+    },
+    {
+      "type": "platform",
+      "file": "src/Libraries/Components/Touchable/TouchableWin32.tsx"
+    },
+    {
+      "type": "platform",
+      "file": "src/Libraries/Components/Touchable/TouchableWin32.Types.tsx"
+    },
+    {
+      "type": "patch",
+      "file": "src/Libraries/Components/View/ReactNativeViewAttributes.win32.js",
+      "baseFile": "Libraries/Components/View/ReactNativeViewAttributes.js",
+      "baseHash": "1e2900121c17ba9f58a7f6d0b3604456a13642bf"
+    },
+    {
+      "type": "platform",
+      "file": "src/Libraries/Components/View/Tests/ViewWin32Test.tsx"
+    },
+    {
+      "type": "patch",
+      "file": "src/Libraries/Components/View/View.win32.js",
+      "baseFile": "Libraries/Components/View/View.js",
+      "baseHash": "282dda409a26a480105d6a6b933150fa88eae507"
+    },
+    {
+      "type": "patch",
+      "file": "src/Libraries/Components/View/ViewPropTypes.win32.js",
+      "baseFile": "Libraries/Components/View/ViewPropTypes.js",
+      "baseHash": "cca219756c4bdf554cf6a0290a6036d49d6c08dc",
+      "issue": 6240
+    },
+    {
+      "type": "platform",
+      "file": "src/Libraries/Components/View/ViewWin32.Props.ts"
+    },
+    {
+      "type": "platform",
+      "file": "src/Libraries/Components/View/ViewWin32.tsx"
+    },
+    {
+      "type": "patch",
+      "file": "src/Libraries/Core/ReactNativeVersionCheck.win32.js",
+      "baseFile": "Libraries/Core/ReactNativeVersionCheck.js",
+      "baseHash": "37908d71eb9a61c619f700795ff2d692410c5a57",
+      "issue": 5170
+    },
+    {
+      "type": "derived",
+      "file": "src/Libraries/Image/Image.win32.js",
+      "baseFile": "Libraries/Image/Image.ios.js",
+      "baseHash": "6fa595d7ebcb2a7be7324185615b3df2f1eb47d4",
+      "issue": 4320
+    },
+    {
+      "type": "platform",
+      "file": "src/Libraries/Image/ImageTypes.ts"
+    },
+    {
+      "type": "derived",
+      "file": "src/Libraries/Image/NativeImageLoaderWin32.js",
+      "baseFile": "Libraries/Image/NativeImageLoaderIOS.js",
+      "baseHash": "d4720d31916ce29c66a1c06906343e31fcd45036",
+      "issue": 4320
+    },
+    {
+      "type": "platform",
+      "file": "src/Libraries/Image/resolveAssetSource.win32.js"
+    },
+    {
+      "type": "platform",
+      "file": "src/Libraries/Image/Tests/ImageWin32Test.tsx"
+    },
+    {
+      "type": "platform",
+      "file": "src/Libraries/Image/Tests/img/dpitest.png"
+    },
+    {
+      "type": "platform",
+      "file": "src/Libraries/Image/Tests/img/dpitest@1.5x.png"
+    },
+    {
+      "type": "platform",
+      "file": "src/Libraries/Image/Tests/img/dpitest@2x.png"
+    },
+    {
+      "type": "platform",
+      "file": "src/Libraries/Image/Tests/img/dpitest@3x.png"
+    },
+    {
+      "type": "platform",
+      "file": "src/Libraries/Image/Tests/img/en-us/dpitest.png"
+    },
+    {
+      "type": "platform",
+      "file": "src/Libraries/Image/Tests/img/en-us/dpitest@1.5x.png"
+    },
+    {
+      "type": "platform",
+      "file": "src/Libraries/Image/Tests/img/en-us/dpitest@3x.png"
+    },
+    {
+      "type": "patch",
+      "file": "src/Libraries/Inspector/Inspector.win32.js",
+      "baseFile": "Libraries/Inspector/Inspector.js",
+      "baseHash": "0be6eb41e6972e290e4779836c663ae11d328600"
+    },
+    {
+      "type": "patch",
+      "file": "src/Libraries/Inspector/InspectorOverlay.win32.js",
+      "baseFile": "Libraries/Inspector/InspectorOverlay.js",
+      "baseHash": "8e651cd19c7df62ddac099802abacf73f5f430dd"
+    },
+    {
+      "type": "patch",
+      "file": "src/Libraries/LogBox/UI/LogBoxInspectorHeader.win32.js",
+      "baseFile": "Libraries/LogBox/UI/LogBoxInspectorHeader.js",
+      "baseHash": "e7ceb23d0449269b419414000fb5938898418a67",
+      "issue": 7952
+    },
+    {
+      "type": "derived",
+      "file": "src/Libraries/LogBox/UI/LogBoxInspectorStackFrame.win32.js",
+      "baseFile": "Libraries/LogBox/UI/LogBoxInspectorStackFrame.js",
+      "baseHash": "d304a9b9195798f76b02b2ccbb9d3309c1818a55",
+      "issue": 5885
+    },
+    {
+      "type": "derived",
+      "file": "src/Libraries/LogBox/UI/LogBoxStyle.win32.js",
+      "baseFile": "Libraries/LogBox/UI/LogBoxStyle.js",
+      "baseHash": "63954df6e04ba9bc97148e04668729f4a8ca9847",
+      "issue": 5886
+    },
+    {
+      "type": "derived",
+      "file": "src/Libraries/NativeComponent/BaseViewConfig.win32.js",
+      "baseFile": "Libraries/NativeComponent/BaseViewConfig.ios.js",
+      "baseHash": "7323edadec25bf7ad601b717654faca3660fe0be"
+    },
+    {
+      "type": "derived",
+      "file": "src/Libraries/Network/RCTNetworking.win32.js",
+      "baseFile": "Libraries/Network/RCTNetworking.android.js",
+      "baseHash": "391a7efd0d2529eb536c1c7cf852f5ee538ff0b6",
+      "issue": 4318
+    },
+    {
+      "type": "platform",
+      "file": "src/Libraries/PersonaCoin/PersonaCoin.tsx"
+    },
+    {
+      "type": "platform",
+      "file": "src/Libraries/PersonaCoin/PersonaCoinPropTypes.ts"
+    },
+    {
+      "type": "platform",
+      "file": "src/Libraries/PersonaCoin/PersonaCoinTypes.ts"
+    },
+    {
+      "type": "patch",
+      "file": "src/Libraries/Pressability/HoverState.win32.js",
+      "baseFile": "Libraries/Pressability/HoverState.js",
+      "baseHash": "50800642b413cb469ced8d1d6b32ee0e249f4d1e",
+      "issue": 6240
+    },
+    {
+      "type": "patch",
+      "file": "src/Libraries/Pressability/Pressability.win32.js",
+      "baseFile": "Libraries/Pressability/Pressability.js",
+      "baseHash": "bf6fd4d0e38e5d8b6fd8395503cf452fa08a5fc5",
+      "issue": 6240
+    },
+    {
+      "type": "platform",
+      "file": "src/Libraries/QuirkSettings/CachingNativeQuirkSettings.js"
+    },
+    {
+      "type": "platform",
+      "file": "src/Libraries/QuirkSettings/NativeQuirkSettings.js"
+    },
+    {
+      "type": "platform",
+      "file": "src/Libraries/QuirkSettings/Quirks.js"
+    },
+    {
+      "type": "platform",
+      "file": "src/Libraries/QuirkSettings/QuirkSettings.js"
+    },
+    {
+      "type": "patch",
+      "file": "src/Libraries/ReactNative/PaperUIManager.win32.js",
+      "baseFile": "Libraries/ReactNative/PaperUIManager.js",
+      "baseHash": "803e057c45ff750efe3dfdaf0a0c100e4b05215b"
+    },
+    {
+      "type": "derived",
+      "file": "src/Libraries/Settings/Settings.win32.js",
+      "baseFile": "Libraries/Settings/Settings.android.js",
+      "baseHash": "b76a462d5b5213cbf24aa4432b26f0080ed1b4ae"
+    },
+    {
+      "type": "platform",
+      "file": "src/Libraries/StyleSheet/PlatformColorValueTypes.win32.js"
+    },
+    {
+      "type": "platform",
+      "file": "src/Libraries/StyleSheet/PlatformColorValueTypesWin32.d.ts"
+    },
+    {
+      "type": "platform",
+      "file": "src/Libraries/StyleSheet/PlatformColorValueTypesWin32.js"
+    },
+    {
+      "type": "patch",
+      "file": "src/Libraries/StyleSheet/StyleSheet.win32.js",
+      "baseFile": "Libraries/StyleSheet/StyleSheet.js",
+      "baseHash": "b3075a13a629f20b347a9d9bca13df99c556fc93"
+    },
+    {
+      "type": "derived",
+      "file": "src/Libraries/Text/TextNativeComponent.win32.js",
+      "baseFile": "Libraries/Text/TextNativeComponent.js",
+      "baseHash": "dd29ab4f5f2af9c2fdb069191ca087cbe4519456",
+      "issue": 7074
+    },
+    {
+      "type": "patch",
+      "file": "src/Libraries/Types/CoreEventTypes.win32.js",
+      "baseFile": "Libraries/Types/CoreEventTypes.js",
+      "baseHash": "7fe2b87cf49f4674d731d07f0883bab2f5cfc356",
+      "issue": 6240
+    },
+    {
+      "type": "copy",
+      "file": "src/Libraries/Utilities/BackHandler.win32.js",
+      "baseFile": "Libraries/Utilities/BackHandler.android.js",
+      "baseHash": "796868f6764037baf433afd88053bb51f3194ddc",
+      "issue": 4629
+    },
+    {
+      "type": "derived",
+      "file": "src/Libraries/Utilities/DeviceInfo.win32.js",
+      "baseFile": "Libraries/Utilities/DeviceInfo.js",
+      "baseHash": "9d473fcf9fd449b7c021116c3187d4ffcbdbe83d"
+    },
+    {
+      "type": "derived",
+      "file": "src/Libraries/Utilities/Dimensions.win32.js",
+      "baseFile": "Libraries/Utilities/Dimensions.js",
+      "baseHash": "229c098c2540cd0cb003976a22c1028ca76f0f98"
+    },
+    {
+      "type": "platform",
+      "file": "src/Libraries/Utilities/FocusManager.win32.d.ts"
+    },
+    {
+      "type": "platform",
+      "file": "src/Libraries/Utilities/FocusManager.win32.js"
+    },
+    {
+      "type": "derived",
+      "file": "src/Libraries/Utilities/NativePlatformConstantsWin.js",
+      "baseFile": "Libraries/Utilities/NativePlatformConstantsIOS.js",
+      "baseHash": "05b7359f0b5476a745789ca857c64cf2661d1e7b"
+    },
+    {
+      "type": "derived",
+      "file": "src/Libraries/Utilities/Platform.win32.js",
+      "baseFile": "Libraries/Utilities/Platform.android.js",
+      "baseHash": "cbc7b53f6376082902e412b1da4592cbe7fb043f"
+    },
+    {
+      "type": "platform",
+      "file": "src/Libraries/platform-types.d.ts"
+    }
+  ]
+}

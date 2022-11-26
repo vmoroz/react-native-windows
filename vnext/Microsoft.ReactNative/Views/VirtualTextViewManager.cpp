@@ -5,10 +5,12 @@
 
 #include "VirtualTextViewManager.h"
 
-#include <UI.Xaml.Controls.h>
 #include <UI.Xaml.Documents.h>
 #include <Utils/PropertyUtils.h>
+#include <Utils/ShadowNodeTypeUtils.h>
+#include <Utils/TransformableText.h>
 #include <Utils/ValueUtils.h>
+#include <Views/Text/TextVisitors.h>
 
 namespace winrt {
 using namespace Windows::UI;
@@ -20,28 +22,28 @@ using namespace xaml::Documents;
 namespace Microsoft::ReactNative {
 
 void VirtualTextShadowNode::AddView(ShadowNode &child, int64_t index) {
-  auto view = static_cast<ShadowNodeBase &>(child).GetView();
-
-  if (auto run = view.try_as<xaml::Documents::Run>()) {
-    transformableText.originalText = run.Text().c_str();
-    run.Text(transformableText.TransformText());
-  } else if (auto span = view.try_as<xaml::Documents::Span>()) {
-    auto &childVTSN = static_cast<VirtualTextShadowNode &>(child);
-    auto transform = childVTSN.transformableText.textTransform;
-
-    for (const auto &i : span.Inlines()) {
-      if (auto run = i.try_as<xaml::Documents::Run>()) {
-        if (transform == TransformableText::TextTransform::Undefined) {
-          // project the parent transform onto the child
-          childVTSN.transformableText.textTransform = transformableText.textTransform;
-          run.Text(childVTSN.transformableText.TransformText());
-        }
-      }
-    }
-
-    m_highlightData.data.emplace_back(childVTSN.m_highlightData);
+  auto &childNode = static_cast<ShadowNodeBase &>(child);
+  ApplyTextTransformToChild(&child);
+  auto propertyChangeType = PropertyChangeType::Text;
+  if (IsVirtualTextShadowNode(&childNode)) {
+    const auto &childTextNode = static_cast<VirtualTextShadowNode &>(childNode);
+    propertyChangeType |=
+        childTextNode.hasDescendantTextHighlighter ? PropertyChangeType::AddHighlight : PropertyChangeType::None;
+    propertyChangeType |=
+        childTextNode.hasDescendantPressable ? PropertyChangeType::AddPressable : PropertyChangeType::None;
   }
   Super::AddView(child, index);
+  NotifyAncestorsTextPropertyChanged(this, propertyChangeType);
+}
+
+void VirtualTextShadowNode::RemoveChildAt(int64_t indexToRemove) {
+  Super::RemoveChildAt(indexToRemove);
+  NotifyAncestorsTextPropertyChanged(this, PropertyChangeType::Text);
+}
+
+void VirtualTextShadowNode::removeAllChildren() {
+  Super::removeAllChildren();
+  NotifyAncestorsTextPropertyChanged(this, PropertyChangeType::Text);
 }
 
 VirtualTextViewManager::VirtualTextViewManager(const Mso::React::IReactContext &context) : Super(context) {}
@@ -50,8 +52,19 @@ const wchar_t *VirtualTextViewManager::GetName() const {
   return L"RCTVirtualText";
 }
 
-XamlView VirtualTextViewManager::CreateViewCore(int64_t /*tag*/) {
+XamlView VirtualTextViewManager::CreateViewCore(int64_t /*tag*/, const winrt::Microsoft::ReactNative::JSValueObject &) {
   return winrt::Span();
+}
+
+void VirtualTextViewManager::UpdateProperties(
+    ShadowNodeBase *nodeToUpdate,
+    winrt::Microsoft::ReactNative::JSValueObject &props) {
+  // This could be optimized further, but rather than paying a penalty to mark
+  // the node dirty for each relevant property in UpdateProperty (which should
+  // be reasonably cheap given it just does an O(1) lookup of the Yoga node
+  // for the tag, for now this just marks the node dirty for any prop update.
+  MarkDirty(nodeToUpdate->m_tag);
+  Super::UpdateProperties(nodeToUpdate, props);
 }
 
 bool VirtualTextViewManager::UpdateProperty(
@@ -65,19 +78,45 @@ bool VirtualTextViewManager::UpdateProperty(
   // FUTURE: In the future cppwinrt will generate code where static methods on
   // base types can be called.  For now we specify the base type explicitly
   if (TryUpdateForeground<winrt::TextElement>(span, propertyName, propertyValue)) {
+    auto node = static_cast<VirtualTextShadowNode *>(nodeToUpdate);
+    if (IsValidOptionalColorValue(propertyValue)) {
+      node->foregroundColor = OptionalColorFrom(propertyValue);
+      const auto propertyChangeType =
+          node->foregroundColor ? PropertyChangeType::AddHighlight : PropertyChangeType::RemoveHighlight;
+      NotifyAncestorsTextPropertyChanged(node, propertyChangeType);
+    }
   } else if (TryUpdateFontProperties<winrt::TextElement>(span, propertyName, propertyValue)) {
   } else if (TryUpdateCharacterSpacing<winrt::TextElement>(span, propertyName, propertyValue)) {
   } else if (TryUpdateTextDecorationLine<winrt::TextElement>(span, propertyName, propertyValue)) {
   } else if (propertyName == "textTransform") {
     auto node = static_cast<VirtualTextShadowNode *>(nodeToUpdate);
-    node->transformableText.textTransform = TransformableText::GetTextTransform(propertyValue);
+    node->textTransform = TransformableText::GetTextTransform(propertyValue);
+    UpdateTextTransformForChildren(nodeToUpdate);
   } else if (propertyName == "backgroundColor") {
-    if (react::uwp::IsValidColorValue(propertyValue)) {
-      static_cast<VirtualTextShadowNode *>(nodeToUpdate)->m_highlightData.color = react::uwp::ColorFrom(propertyValue);
+    auto node = static_cast<VirtualTextShadowNode *>(nodeToUpdate);
+    if (IsValidOptionalColorValue(propertyValue)) {
+      node->backgroundColor = OptionalColorFrom(propertyValue);
+      const auto propertyChangeType =
+          node->backgroundColor ? PropertyChangeType::AddHighlight : PropertyChangeType::RemoveHighlight;
+      NotifyAncestorsTextPropertyChanged(node, propertyChangeType);
+    }
+  } else if (propertyName == "isPressable") {
+    auto node = static_cast<VirtualTextShadowNode *>(nodeToUpdate);
+    node->isPressable = propertyValue.AsBoolean();
+    if (node->isPressable) {
+      NotifyAncestorsTextPropertyChanged(node, PropertyChangeType::AddPressable);
     }
   } else {
+    const auto isRegisteringMouseEvent =
+        (propertyName == "onMouseEnter" || propertyName == "onMouseLeave") && propertyValue.AsBoolean();
+    if (isRegisteringMouseEvent) {
+      auto node = static_cast<VirtualTextShadowNode *>(nodeToUpdate);
+      NotifyAncestorsTextPropertyChanged(node, PropertyChangeType::AddPressable);
+    }
+
     return Super::UpdateProperty(nodeToUpdate, propertyName, propertyValue);
   }
+
   return true;
 }
 

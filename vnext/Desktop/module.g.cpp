@@ -6,12 +6,18 @@
 #include "pch.h"
 #include "winrt/base.h"
 void* winrt_make_Microsoft_Internal_TestController();
+#ifdef USE_FABRIC
+void* winrt_make_Microsoft_ReactNative_CompRootView();
+#endif
+void* winrt_make_Microsoft_ReactNative_JsiRuntime();
+void* winrt_make_Microsoft_ReactNative_ReactCoreInjection();
 void* winrt_make_Microsoft_ReactNative_ReactDispatcherHelper();
 void* winrt_make_Microsoft_ReactNative_ReactInstanceSettings();
 void* winrt_make_Microsoft_ReactNative_ReactNativeHost();
 void* winrt_make_Microsoft_ReactNative_ReactNotificationServiceHelper();
 void* winrt_make_Microsoft_ReactNative_ReactPropertyBagHelper();
-void* winrt_make_facebook_react_MemoryTracker();
+void* winrt_make_Microsoft_ReactNative_ReactViewOptions();
+void* winrt_make_Microsoft_ReactNative_RedBoxHelper();
 void* winrt_make_facebook_react_NativeLogEventSource();
 void* winrt_make_facebook_react_NativeTraceEventSource();
 
@@ -36,6 +42,22 @@ void* __stdcall winrt_get_activation_factory([[maybe_unused]] std::wstring_view 
     if (requal(name, L"Microsoft.Internal.TestController"))
     {
         return winrt_make_Microsoft_Internal_TestController();
+    }
+
+#ifdef USE_FABRIC
+    if (requal(name, L"Microsoft.ReactNative.CompRootView")) {
+      return winrt_make_Microsoft_ReactNative_CompRootView();
+    }
+#endif
+
+    if (requal(name, L"Microsoft.ReactNative.JsiRuntime"))
+    {
+        return winrt_make_Microsoft_ReactNative_JsiRuntime();
+    }
+
+    if (requal(name, L"Microsoft.ReactNative.ReactCoreInjection"))
+    {
+        return winrt_make_Microsoft_ReactNative_ReactCoreInjection();
     }
 
     if (requal(name, L"Microsoft.ReactNative.ReactDispatcherHelper"))
@@ -63,9 +85,14 @@ void* __stdcall winrt_get_activation_factory([[maybe_unused]] std::wstring_view 
         return winrt_make_Microsoft_ReactNative_ReactPropertyBagHelper();
     }
 
-    if (requal(name, L"facebook.react.MemoryTracker"))
+    if (requal(name, L"Microsoft.ReactNative.ReactViewOptions"))
     {
-        return winrt_make_facebook_react_MemoryTracker();
+        return winrt_make_Microsoft_ReactNative_ReactViewOptions();
+    }
+
+    if (requal(name, L"Microsoft.ReactNative.RedBoxHelper"))
+    {
+        return winrt_make_Microsoft_ReactNative_RedBoxHelper();
     }
 
     if (requal(name, L"facebook.react.NativeLogEventSource"))

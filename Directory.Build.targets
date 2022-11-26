@@ -1,61 +1,196 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project>
 
-  <!-- This target is used to compute the inputs and outputs for incrementally running the Yarn up to date check.-->
+  <!-- This target is used to compute the inputs and outputs for running the `yarn install`. -->
   <Target
-    Name="EnsureJavaScriptCodeUpToDateInputAndOutputs"
+    Name="ReactNativeYarnInstallInputAndOutputs"
     >
     <ItemGroup>
-      <_EnsureJavaScriptCodeUpToDateInputFiles Include="$(MSBuildThisFileDirectory)yarn.lock" />
-      <_EnsureJavaScriptCodeUpToDateInputFiles Include="$(MSBuildThisFileDirectory)\**\package.json" Exclude="$(MSBuildThisFileDirectory)\node_modules\**" />
-      <_EnsureJavaScriptCodeUpToDateOutputFiles Include="@(_EnsureJavaScriptCodeUpToDateInputFiles->'$(RootIntDir)\JsUpToDateCheck\%(RecursiveDir)%(Filename)%(Extension).dummy')" />
+      <_ReactNativeYarnInstallInputFiles Include="$(MSBuildThisFileDirectory)yarn.lock" />
+      <_ReactNativeYarnInstallInputFiles Include="$(MSBuildThisFileDirectory)**\package.json" Exclude="$(MSBuildThisFileDirectory)node_modules\**" />
+      <_ReactNativeYarnInstallOutputFiles Include="@(_ReactNativeYarnInstallInputFiles->'$(ReactNativeYarnIntDir)%(RecursiveDir)%(Filename)%(Extension).dummy')" />
     </ItemGroup>
   </Target>
 
-  <!-- 
-    This target checks if Yarn install needs to run or not. 
-    This is a common cause of failed builds for developers not used to running it after syncing...
-    This check does not run during design time build and in our CI validation runs (detected via PublishToolDuringBuild because we know yarn install runs there.
+  <!--
+    This target runs `yarn install` and then `yarn build` as a post install step in `package.json`.
+    This is to address build failures by not running `yarn install` after syncing.
+    We do not run `yarn install` during design time build and in our CI validation runs (detected via AGENT_NAME).
   -->
   <Target
-    Name="EnsureJavaScriptCodeUpToDate"
+    Name="ReactNativeYarnInstall"
     BeforeTargets="BeforeBuild"
-    DependsOnTargets="EnsureJavaScriptCodeUpToDateInputAndOutputs"
-    Inputs="@(_EnsureJavaScriptCodeUpToDateInputFiles)"
-    Outputs="@(_EnsureJavaScriptCodeUpToDateOutputFiles)"
-    Condition="'$(DesignTimeBuild)'=='' AND '$(PublishToolDuringBuild)' == ''"
+    DependsOnTargets="ReactNativeYarnInstallInputAndOutputs"
+    Inputs="@(_ReactNativeYarnInstallInputFiles)"
+    Outputs="@(_ReactNativeYarnInstallOutputFiles)"
+    Condition="'$(DesignTimeBuild)'=='' AND '$(AGENT_NAME)' == ''"
     >
 
-    <Message Text="Checking if yarn is 'up to date' by running a 'dry-run' version of `yarn install` and checking the exit code" />
-    <Exec 
+    <Message Text="Running yarn install to fetch latest packages." Importance="High" />
+    <Message Text="yarn install --frozen-lockfile --mutex file:.yarn-mutex" Importance="High" />
+    <Exec
       ContinueOnError="True"
-      Command="npx yarn install --offline --cache-folder $(RootIntDir)\JsUpToDateCheck\Cache"
+      Command="yarn install --frozen-lockfile --mutex file:.yarn-mutex"
       WorkingDirectory="$(MSBuildThisFileDirectory)"
       >
-      <Output TaskParameter="ExitCode" ItemName="_YarnExitCode"/>
+      <Output TaskParameter="ExitCode" ItemName="_ReactNativeYarnExitCode"/>
     </Exec>
+    
+    <Message Text="yarn install: Succeeded" Condition="'%(_ReactNativeYarnExitCode.Identity)' == '0'" Importance="High" />
+    <Message Text="yarn install: Failed" Condition="'%(_ReactNativeYarnExitCode.Identity)' != '0'" Importance="High" />
 
-    <!-- Fail the build if yarn needs to install packages. -->
-    <Error 
-      Condition="'%(_YarnExitCode.Identity)' != '0'"
-      Text="Yarn packages are out of date. Please run `yarn install &amp;&amp; yarn build` in the root of the repo to ensure the generated files are up to date" 
+    <!-- Fail the build if yarn needs to update yarn.lock file. -->
+    <Error
+      Condition="'%(_ReactNativeYarnExitCode.Identity)' != '0'"
+      Text="Yarn packages are out of date. Please run `yarn install` in the root of the repo to ensure the generated files are up to date"
     />
 
-    <!-- 
-      Copy the yarn.lock file to prevent this task from running over and over again, and only rerun the check with yarn.lock or any package.json changes. 
+    <!--
+      Copy the yarn.lock file to prevent this task from running over and over again, and only rerun the check with yarn.lock or any package.json changes.
       This will likely miss a few corner cases with local changes to package.json but should catch the most important case after syncing
     -->
+    <MakeDir Directories="$(ReactNativeYarnIntDir)" />
     <Copy
-      Condition="'%(_YarnExitCode.Identity)' == '0'"
-      SourceFiles="@(_EnsureJavaScriptCodeUpToDateInputFiles)"
-      DestinationFiles="@(_EnsureJavaScriptCodeUpToDateOutputFiles)"
+      Condition="'%(_ReactNativeYarnExitCode.Identity)' == '0'"
+      SourceFiles="@(_ReactNativeYarnInstallInputFiles)"
+      DestinationFiles="@(_ReactNativeYarnInstallOutputFiles)"
       SkipUnchangedFiles="true"
       Retries="5"
       RetryDelayMilliseconds="100" />
     <!-- We have to touch the outputs to ensure up to date incrementaility works-->
-    <Touch Files="@(_EnsureJavaScriptCodeUpToDateOutputFiles)" />
+    <Touch Files="@(_ReactNativeYarnInstallOutputFiles)" />
 
   </Target>
 
+  <!-- For build debugging purposes. -->
+  <Target Name="Vars">
+
+    <ItemGroup>
+      <_VarsGeneral Include="
+        ApplicationType;
+        Configuration;
+        Platform;
+        PlatformTarget;
+        PlatformName;
+        DefaultPlatformToolset;
+        PlatformToolset;
+        SolutionPath;
+        SolutionDir;
+        IntDir;
+        OutDir;
+        TargetDir;
+        TargetPath;
+        TLogLocation;
+        LastBuildUnsuccessful;
+        LastBuildState;
+        GeneratedFilesDir;
+        TargetFrameworkMoniker;
+        MSBuildExtensionsPath;
+        MSBuildExtensionsPath32;
+        MSBuildExtensionsPath64;
+        VCTargetsPath;
+        UserRootDir;
+        ProjectHome;
+        IntermediateOutputPath;
+        OutputPath;
+      " />
+      <_VarsCustom Include="
+        RootDir;
+        RootIntDir;
+        RootOutDir;
+        BaseIntDir;
+        BaseOutDir;
+        ReactNativeDir;
+        ReactNativeWindowsDir;
+        FollyDir;
+        YogaDir;
+        WinVer;
+      " />
+      <_VarsWinRT Include="
+        UnmergedWinmdDirectory;
+        MergedWinmdDirectory;
+      " />
+      <_VarsJSEngine Include="
+        PkgReactNative_Hermes_Windows;
+        EnableHermesInspectorInReleaseFlavor;
+        UseHermes;
+        HermesVersion;
+        HermesPackage;
+        HermesArch;
+        UseFabric;
+        UseV8;
+        V8Package;
+        V8Version;
+        V8AppPlatform;
+      " />
+      <_VarsNuGet Include="
+        AssetTargetFallback;
+        IncludeFrameworkReferencesFromNuGet;
+        NuGetPackageRoot;
+        NuGetPackagesDirectory;
+        NuGetRuntimeIdentifier;
+        ProjectLockFile;
+        NuGetTargetMoniker;
+        TargetFramework;
+        TargetFrameworks;
+        TargetFrameworkIdentifier;
+        BaseNuGetRuntimeIdentifier;
+        TargetPlatformIdentifier;
+        MSBuildProjectExtensionsPath;
+        RestoreProjectStyle;
+        RestoreUseStaticGraphEvaluation;
+      " />
+      <_VarsWinUI Include="
+        UseWinUI3;
+        WinUI3Version;
+        WinUI2xVersion;
+        WinUIPackageName;
+        WinUIPackageVersion;
+        IsWinUIAlpha;
+      " />
+    </ItemGroup>
+
+    <Message Text="General" />
+    <Message Text="=> @(_VarsGeneral->PadRight(24)) [$(%(_VarsGeneral.Identity))]" />
+
+    <Message Text="%0A" />
+    <Message Text="Custom" />
+    <Message Text="=> @(_VarsCustom->PadRight(24)) [$(%(_VarsCustom.Identity))]" />
+
+    <Message Text="%0A" />
+    <Message Text="Microsoft.CppBuild.targets/MakeDirsForCl" />
+    <Message Text="=> PrecompiledHeaderOutputFile  [@(CLCompile->Metadata('PrecompiledHeaderOutputFile')->DirectoryName()->Distinct())]" />
+    <Message Text="=> AssemblerListingLocation     [@(CLCompile->Metadata('AssemblerListingLocation')->DirectoryName()->Distinct())]" />
+    <Message Text="=> ObjectFileName               [@(CLCompile->Metadata('ObjectFileName')->DirectoryName()->Distinct())]" />
+    <Message Text="=> ProgramDataBaseFileName      [@(CLCompile->Metadata('ProgramDataBaseFileName')->DirectoryName()->Distinct())]" />
+    <Message Text="=> XMLDocumentationFileName     [@(CLCompile->Metadata('XMLDocumentationFileName')->DirectoryName()->Distinct())]" />
+    <Message Text="=> BrowseInformationFile        [@(CLCompile->Metadata('BrowseInformationFile')->DirectoryName()->Distinct())]" />
+    <Message Text="=> PreprocessOutputPath         [@(CLCompile->Metadata('PreprocessOutputPath')->DirectoryName()->Distinct())]" />
+    <Message Text="=> PreprocessorDefinitions      [@(CLCompile->Metadata('PreprocessorDefinitions')->Distinct())]" />
+    <Message Text="=> ClDirsToMake                 [@(ClDirsToMake)]" />
+
+    <Message Text="%0A" />
+    <Message Text="WinRT" />
+    <Message Text="=> @(_VarsWinRT->PadRight(24)) [$(%(_VarsWinRT.Identity))]" />
+
+    <Message Text="%0A" />
+    <Message Text="JS Engine" />
+    <Message Text="=> @(_VarsJSEngine->PadRight(40)) [$(%(_VarsJSEngine.Identity))]" />
+
+    <Message Text="%0A" />
+    <Message Text="NuGet" />
+    <Message Text="=> @(_VarsNuGet->PadRight(40)) [$(%(_VarsNuGet.Identity))]" />
+    <Message Text="=> PackageReference->Count                  [@(PackageReference->Count())]" />
+
+    <Message Text="%0A" />
+    <Message Text="WinUI" />
+    <Message Text="=> @(_VarsWinUI->PadRight(40)) [$(%(_VarsWinUI.Identity))]" />
+
+    <Message Text="%0A" />
+    <Message Text="Items" />
+    <Message Text="=> ProjectCapability" />
+    <Message Text="                                            %(ProjectCapability.Identity)" />
+
+  </Target>
 
 </Project>

@@ -3,14 +3,14 @@
 
 #pragma once
 
+#include "IReactDispatcher.h"
 #include "IReactInstanceInternal.h"
-#include "ReactContext.h"
+#include "MsoReactContext.h"
 #include "ReactNativeHeaders.h"
 #include "React_win.h"
 #include "activeObject/activeObject.h"
 
 #ifndef CORE_ABI
-#include <Modules/AppThemeModuleUwp.h>
 #include <Modules/AppearanceModule.h>
 #include <Modules/I18nManagerModule.h>
 #include <Views/ExpressionAnimationStore.h>
@@ -52,9 +52,11 @@ class ReactInstanceWin final : public Mso::ActiveObject<IReactInstanceInternal> 
   const ReactOptions &Options() const noexcept override;
   ReactInstanceState State() const noexcept override;
   Mso::React::IReactContext &GetReactContext() const noexcept override;
-  void AttachMeasuredRootView(facebook::react::IReactRootView *rootView, folly::dynamic &&initialProps) noexcept
-      override;
-  void DetachRootView(facebook::react::IReactRootView *rootView) noexcept override;
+  void AttachMeasuredRootView(
+      facebook::react::IReactRootView *rootView,
+      const winrt::Microsoft::ReactNative::JSValueArgWriter &initialProps,
+      bool useFabric) noexcept override;
+  void DetachRootView(facebook::react::IReactRootView *rootView, bool useFabric) noexcept override;
 
  public: // IReactInstanceInternal
   Mso::Future<void> Destroy() noexcept override;
@@ -65,7 +67,6 @@ class ReactInstanceWin final : public Mso::ActiveObject<IReactInstanceInternal> 
   winrt::Microsoft::ReactNative::JsiRuntime JsiRuntime() noexcept;
   std::shared_ptr<facebook::react::Instance> GetInnerInstance() noexcept;
   bool IsLoaded() const noexcept;
-#ifndef CORE_ABI
 
   bool UseWebDebugger() const noexcept;
   bool UseFastRefresh() const noexcept;
@@ -76,10 +77,13 @@ class ReactInstanceWin final : public Mso::ActiveObject<IReactInstanceInternal> 
   std::string BundleRootPath() const noexcept;
   std::string SourceBundleHost() const noexcept;
   uint16_t SourceBundlePort() const noexcept;
+  bool RequestInlineSourceMap() const noexcept;
   std::string JavaScriptBundleFile() const noexcept;
   bool UseDeveloperSupport() const noexcept;
   bool BackgroundMode() const noexcept;
-#endif
+  JSIEngine JsiEngine() const noexcept;
+
+  static void CrashHandler(int fileDescriptor) noexcept;
 
  private:
   friend MakePolicy;
@@ -100,7 +104,9 @@ class ReactInstanceWin final : public Mso::ActiveObject<IReactInstanceInternal> 
   void InitJSMessageThread() noexcept;
   void InitNativeMessageThread() noexcept;
   void InitUIMessageThread() noexcept;
+#ifndef CORE_ABI
   void InitUIManager() noexcept;
+#endif
   std::string GetBytecodeFileName() noexcept;
   std::function<void()> GetLiveReloadCallback() noexcept;
   std::function<void(std::string)> GetErrorCallback() noexcept;
@@ -121,6 +127,8 @@ class ReactInstanceWin final : public Mso::ActiveObject<IReactInstanceInternal> 
   void DrainJSCallQueue() noexcept;
   void AbandonJSCallQueue() noexcept;
 
+  void InstanceCrashHandler(int fileDescriptor) noexcept;
+
   struct JSCallEntry {
     std::string ModuleName;
     std::string MethodName;
@@ -128,7 +136,7 @@ class ReactInstanceWin final : public Mso::ActiveObject<IReactInstanceInternal> 
   };
 
 #if defined(USE_V8)
-  static std::string getApplicationLocalFolder();
+  static std::string getApplicationTempFolder();
 #endif
 
  private: // immutable fields
@@ -137,6 +145,7 @@ class ReactInstanceWin final : public Mso::ActiveObject<IReactInstanceInternal> 
   const Mso::Promise<void> m_whenCreated;
   const Mso::Promise<void> m_whenLoaded;
   const Mso::Promise<void> m_whenDestroyed;
+  Mso::Future<void> m_whenDestroyedResult; // To be returned from the Destroy() method.
 
   const Mso::VoidFunctor m_updateUI;
   const bool m_debuggerBreakOnNextLine : 1;
@@ -146,7 +155,7 @@ class ReactInstanceWin final : public Mso::ActiveObject<IReactInstanceInternal> 
   const bool m_useWebDebugger : 1;
   const bool m_backgroundMode{false};
 
-  const Mso::CntPtr<ReactContext> m_reactContext;
+  const Mso::CntPtr<::Mso::React::ReactContext> m_reactContext;
 
   std::atomic<bool> m_isLoaded{false};
   std::atomic<bool> m_isDestroyed{false};
@@ -174,15 +183,14 @@ class ReactInstanceWin final : public Mso::ActiveObject<IReactInstanceInternal> 
   std::shared_ptr<facebook::react::MessageQueueThread> m_batchingUIThread;
 
   std::shared_ptr<IRedBoxHandler> m_redboxHandler;
-#ifndef CORE_ABI
-  std::shared_ptr<react::uwp::AppTheme> m_appTheme;
-  Mso::CntPtr<react::uwp::AppearanceChangeListener> m_appearanceListener;
-#endif
-  Mso::DispatchQueue m_uiQueue;
+  Mso::CntPtr<Mso::React::IDispatchQueue2> m_uiQueue;
   std::deque<JSCallEntry> m_jsCallQueue;
 
-  std::shared_ptr<facebook::jsi::RuntimeHolderLazyInit> m_jsiRuntimeHolder;
+  std::shared_ptr<Microsoft::JSI::RuntimeHolderLazyInit> m_jsiRuntimeHolder;
   winrt::Microsoft::ReactNative::JsiRuntime m_jsiRuntime{nullptr};
+
+  static std::mutex s_registryMutex; // protects access to s_instanceRegistry
+  static std::vector<ReactInstanceWin *> s_instanceRegistry;
 };
 
 } // namespace Mso::React

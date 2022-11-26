@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 #include "pch.h"
 #include "RedBox.h"
+#include <ReactPropertyBag.h>
 #include <boost/algorithm/string.hpp>
 #include <functional/functor.h>
 #include <regex>
@@ -14,11 +15,18 @@
 #include <winrt/Windows.Foundation.h>
 
 #ifndef CORE_ABI
+
+#ifdef USE_FABRIC
+#include <Shobjidl.h>
+#include <Utils/Helpers.h>
+#include <winrt/Windows.UI.Popups.h>
+#endif // USE_FABRIC
 #include <UI.Xaml.Controls.Primitives.h>
 #include <UI.Xaml.Controls.h>
 #include <UI.Xaml.Documents.h>
 #include <UI.Xaml.Input.h>
 #include <UI.Xaml.Markup.h>
+#include <UI.Xaml.Media.h>
 #include <winrt/Windows.ApplicationModel.Core.h>
 #include <winrt/Windows.Data.Json.h>
 #include <winrt/Windows.System.h>
@@ -26,26 +34,33 @@
 #include <winrt/Windows.Web.Http.h>
 #include "CppWinRTIncludes.h"
 #include "Utils/Helpers.h"
-#endif
+#endif // CORE_ABI
+#include "XamlUtils.h"
 
 using namespace winrt::Windows::Foundation;
 
 namespace Mso::React {
 
+using IInspectable = winrt::Windows::Foundation::IInspectable;
+
 #ifndef CORE_ABI
 struct RedBox : public std::enable_shared_from_this<RedBox> {
   RedBox(
+      winrt::Microsoft::ReactNative::ReactPropertyBag &propBag,
       const Mso::WeakPtr<IReactHost> &weakReactHost,
       Mso::Functor<void(uint32_t)> &&onClosedCallback,
       ErrorInfo &&errorInfo) noexcept
       : m_weakReactHost(weakReactHost),
+        m_propBag(propBag),
         m_onClosedCallback(std::move(onClosedCallback)),
         m_errorInfo(std::move(errorInfo)) {}
 
   void Dismiss() noexcept {
+#ifdef USE_FABRIC
     if (m_popup) {
       m_popup.IsOpen(false);
     }
+#endif // USE_FABRIC
   }
 
   void Reload() noexcept {
@@ -63,8 +78,36 @@ struct RedBox : public std::enable_shared_from_this<RedBox> {
     }
   }
 
-  void ShowNewJSError() noexcept {
-    m_showing = true;
+#ifdef USE_FABRIC
+  void ShowNewJsErrorUsingMessageDialog() noexcept {
+    // Using MessageDialog is "easy", but it does mean we cannot update the message when symbols are resolved.
+    // Ideally we'd have a dialog we could push UI updates to. -- Maybe we could load XAML and host the XAML dialog?
+
+    std::stringstream ss;
+    ss << m_errorInfo.Message;
+    ss << std::endl << std::endl;
+    for (auto frame : m_errorInfo.Callstack) {
+      ss << frame.Method << "\n" << frame.File << ":" << frame.Line << ":" << frame.Column << std::endl;
+    }
+
+    auto msg = winrt::Windows::UI::Popups::MessageDialog(winrt::to_hstring(ss.str()), L"React Native Error");
+    auto hwnd = reinterpret_cast<HWND>(
+        *m_propBag.Get(winrt::Microsoft::ReactNative::ReactPropertyId<uint64_t>(L"RootHwndForDevUI")));
+    auto initializeWithWindow{msg.as<::IInitializeWithWindow>()};
+    initializeWithWindow->Initialize(hwnd);
+    msg.Commands().Append(
+        winrt::Windows::UI::Popups::UICommand(L"Dismiss", [](winrt::Windows::UI::Popups::IUICommand const &command){}));
+    msg.Commands().Append(winrt::Windows::UI::Popups::UICommand(
+        L"Reload", [wkHost = m_weakReactHost](winrt::Windows::UI::Popups::IUICommand const &command) {
+          if (auto reactHost = wkHost.GetStrongPtr()) {
+            reactHost->ReloadInstance();
+          }
+        }));
+    msg.ShowAsync();
+  }
+#endif USE_FABRIC
+
+  void ShowNewJSErrorUsingXaml() noexcept {
     m_popup = xaml::Controls::Primitives::Popup{};
 
     const winrt::hstring xamlString =
@@ -116,7 +159,7 @@ struct RedBox : public std::enable_shared_from_this<RedBox> {
 
     xaml::FrameworkElement root{nullptr};
 
-    if (react::uwp::Is19H1OrHigher()) {
+    if (Microsoft::ReactNative::Is19H1OrHigher()) {
       // XamlRoot added in 19H1
       if (auto reactHost = m_weakReactHost.GetStrongPtr()) {
         if (auto xamlRoot =
@@ -128,25 +171,28 @@ struct RedBox : public std::enable_shared_from_this<RedBox> {
     }
 
     if (!root) {
-      auto window = xaml::Window::Current();
-      root = window.Content().as<xaml::FrameworkElement>();
+      if (auto window = xaml::Window::Current()) {
+        root = window.Content().as<xaml::FrameworkElement>();
+      }
     }
 
-    m_redboxContent.MaxHeight(root.ActualHeight());
-    m_redboxContent.Height(root.ActualHeight());
-    m_redboxContent.MaxWidth(root.ActualWidth());
-    m_redboxContent.Width(root.ActualWidth());
+    if (root) {
+      m_redboxContent.MaxHeight(root.ActualHeight());
+      m_redboxContent.Height(root.ActualHeight());
+      m_redboxContent.MaxWidth(root.ActualWidth());
+      m_redboxContent.Width(root.ActualWidth());
 
-    m_sizeChangedRevoker = root.SizeChanged(
-        winrt::auto_revoke,
-        [wkThis = weak_from_this()](auto const & /*sender*/, xaml::SizeChangedEventArgs const &args) {
-          if (auto strongThis = wkThis.lock()) {
-            strongThis->m_redboxContent.MaxHeight(args.NewSize().Height);
-            strongThis->m_redboxContent.Height(args.NewSize().Height);
-            strongThis->m_redboxContent.MaxWidth(args.NewSize().Width);
-            strongThis->m_redboxContent.Width(args.NewSize().Width);
-          }
-        });
+      m_sizeChangedRevoker = root.SizeChanged(
+          winrt::auto_revoke,
+          [wkThis = weak_from_this()](auto const & /*sender*/, xaml::SizeChangedEventArgs const &args) {
+            if (auto strongThis = wkThis.lock()) {
+              strongThis->m_redboxContent.MaxHeight(args.NewSize().Height);
+              strongThis->m_redboxContent.Height(args.NewSize().Height);
+              strongThis->m_redboxContent.MaxWidth(args.NewSize().Width);
+              strongThis->m_redboxContent.Width(args.NewSize().Width);
+            }
+          });
+    }
 
     m_tokenClosed = m_popup.Closed([wkThis = std::weak_ptr(shared_from_this())](
                                        auto const & /*sender*/, winrt::IInspectable const & /*args*/) noexcept {
@@ -157,6 +203,19 @@ struct RedBox : public std::enable_shared_from_this<RedBox> {
 
     m_popup.Child(m_redboxContent);
     m_popup.IsOpen(true);
+  }
+
+  void ShowNewJSError() noexcept {
+    m_showing = true;
+
+#ifdef USE_FABRIC
+    if (Microsoft::ReactNative::IsFabricEnabled(m_propBag.Handle())) {
+      ShowNewJsErrorUsingMessageDialog();
+    } else
+#endif // USE_FABRIC
+    {
+      ShowNewJSErrorUsingXaml();
+    }
   }
 
   void UpdateError(const ErrorInfo &&info) noexcept {
@@ -204,7 +263,7 @@ struct RedBox : public std::enable_shared_from_this<RedBox> {
     webView.HorizontalAlignment(xaml::HorizontalAlignment::Stretch);
     webView.VerticalAlignment(xaml::VerticalAlignment::Stretch);
     webView.MinWidth(400);
-    auto dispatcher = winrt::system::DispatcherQueue::GetForCurrentThread();
+    auto dispatcher = winrt::dispatching::DispatcherQueue::GetForCurrentThread();
     // XAML doesn't currently provide a way to measure a WebView control,
     // So we're going to tell the WebView to measure itself by running some javascript,
     // and then we'll post a task back to XAML to set the XAML WebView minimum height.
@@ -242,8 +301,12 @@ struct RedBox : public std::enable_shared_from_this<RedBox> {
 
     m_stackPanel.Children().Clear();
     m_stackPanel.Children().Append(webView);
-
+#ifdef USE_WINUI3
+    webView.EnsureCoreWebView2Async().Completed(
+        [content, webView](auto &&sender, auto &&args) { webView.NavigateToString(content); });
+#else
     webView.NavigateToString(content);
+#endif
   }
 
   void UpdateErrorMessageUI() noexcept {
@@ -264,7 +327,7 @@ struct RedBox : public std::enable_shared_from_this<RedBox> {
             xaml::Documents::Run linkRun;
 
             linkRun.Text(Microsoft::Common::Unicode::Utf8ToUtf16(METRO_TROUBLESHOOTING_URL));
-            link.Foreground(xaml::Media::SolidColorBrush(winrt::ColorHelper::FromArgb(0xff, 0xff, 0xff, 0xff)));
+            link.Foreground(xaml::Media::SolidColorBrush(xaml::FromArgb(0xff, 0xff, 0xff, 0xff)));
             link.Inlines().Append(linkRun);
             xaml::Documents::Run normalRun;
             normalRun.Text(Microsoft::Common::Unicode::Utf8ToUtf16(json["type"].asString() + (" ─ See ")));
@@ -317,6 +380,9 @@ struct RedBox : public std::enable_shared_from_this<RedBox> {
   }
 
   void PopulateFrameStackUI() noexcept {
+    if (!m_stackPanel)
+      return;
+
     m_stackPanel.Children().Clear();
     for (const auto &frame : m_errorInfo.Callstack) {
       const winrt::hstring xamlFrameString =
@@ -386,12 +452,14 @@ struct RedBox : public std::enable_shared_from_this<RedBox> {
   xaml::Controls::TextBlock m_errorMessageText{nullptr};
   xaml::Controls::TextBlock m_errorStackText{nullptr};
 
-  bool m_showing = false;
-  Mso::Functor<void(uint32_t)> m_onClosedCallback;
   xaml::FrameworkElement::SizeChanged_revoker m_sizeChangedRevoker;
   winrt::event_token m_tokenClosed;
   winrt::event_token m_tokenDismiss;
   winrt::event_token m_tokenReload;
+
+  winrt::Microsoft::ReactNative::ReactPropertyBag m_propBag;
+  bool m_showing = false;
+  Mso::Functor<void(uint32_t)> m_onClosedCallback;
   ErrorInfo m_errorInfo;
   Mso::WeakPtr<IReactHost> m_weakReactHost;
 };
@@ -400,8 +468,11 @@ struct RedBox : public std::enable_shared_from_this<RedBox> {
  * This class is implemented such that the methods on IRedBoxHandler are thread safe.
  */
 struct DefaultRedBoxHandler final : public std::enable_shared_from_this<DefaultRedBoxHandler>, IRedBoxHandler {
-  DefaultRedBoxHandler(Mso::WeakPtr<Mso::React::IReactHost> &&weakReactHost, Mso::DispatchQueue &&uiQueue) noexcept
-      : m_weakReactHost{std::move(weakReactHost)}, m_uiQueue{std::move(uiQueue)} {}
+  DefaultRedBoxHandler(
+      const winrt::Microsoft::ReactNative::ReactPropertyBag &propBag,
+      Mso::WeakPtr<Mso::React::IReactHost> &&weakReactHost,
+      const Mso::React::IDispatchQueue2 &uiQueue) noexcept
+      : m_weakReactHost{std::move(weakReactHost)}, m_uiQueue{&uiQueue}, m_propBag(propBag) {}
 
   ~DefaultRedBoxHandler() {
     // Hide any currently showing redBoxes
@@ -410,7 +481,7 @@ struct DefaultRedBoxHandler final : public std::enable_shared_from_this<DefaultR
       std::scoped_lock lock{m_lockRedBox};
       std::swap(m_redBoxes, redBoxes);
     }
-    m_uiQueue.Post([redBoxes = std::move(redBoxes)]() {
+    m_uiQueue->Post([redBoxes = std::move(redBoxes)]() {
       for (const auto &redBox : redBoxes) {
         redBox->Dismiss();
       }
@@ -429,6 +500,7 @@ struct DefaultRedBoxHandler final : public std::enable_shared_from_this<DefaultR
     }
 
     std::shared_ptr<RedBox> redbox(std::make_shared<RedBox>(
+        m_propBag,
         m_weakReactHost,
         [wkthis = std::weak_ptr(shared_from_this())](uint32_t id) {
           if (auto pthis = wkthis.lock()) {
@@ -464,14 +536,14 @@ struct DefaultRedBoxHandler final : public std::enable_shared_from_this<DefaultR
     }
 
     if (redbox) {
-      m_uiQueue.Post([redboxCaptured = std::move(redbox), errorInfo = std::move(info)]() {
+      m_uiQueue->Post([redboxCaptured = std::move(redbox), errorInfo = std::move(info)]() {
         redboxCaptured->UpdateError(std::move(errorInfo));
       });
     }
   }
 
   virtual void dismissRedbox() override {
-    m_uiQueue.Post([wkthis = std::weak_ptr(shared_from_this())]() {
+    m_uiQueue->Post([wkthis = std::weak_ptr(shared_from_this())]() {
       if (auto pthis = wkthis.lock()) {
         std::scoped_lock lock{pthis->m_lockRedBox};
         if (!pthis->m_redBoxes.empty())
@@ -515,17 +587,18 @@ struct DefaultRedBoxHandler final : public std::enable_shared_from_this<DefaultR
       return;
     m_showingRedBox = true;
 
-    m_uiQueue.Post([redboxCaptured = std::move(redbox)]() { redboxCaptured->ShowNewJSError(); });
+    m_uiQueue->Post([redboxCaptured = std::move(redbox)]() { redboxCaptured->ShowNewJSError(); });
   }
 
  private:
-  const Mso::DispatchQueue m_uiQueue;
+  Mso::CntPtr<const Mso::React::IDispatchQueue2> m_uiQueue;
+  winrt::Microsoft::ReactNative::ReactPropertyBag m_propBag;
   bool m_showingRedBox{false}; // Access from UI Thread only
   std::mutex m_lockRedBox;
   std::vector<std::shared_ptr<RedBox>> m_redBoxes; // Protected by m_lockRedBox
   const Mso::WeakPtr<IReactHost> m_weakReactHost;
 };
-#endif
+#endif // CORE_ABI
 
 struct RedBoxHandler final : public Mso::React::IRedBoxHandler {
   RedBoxHandler(winrt::Microsoft::ReactNative::IRedBoxHandler const &redBoxHandler) : m_redBoxHandler(redBoxHandler) {}
@@ -565,12 +638,15 @@ std::shared_ptr<IRedBoxHandler> CreateRedBoxHandler(
   return std::make_shared<RedBoxHandler>(redBoxHandler);
 }
 
-#ifndef CORE_ABI
 std::shared_ptr<IRedBoxHandler> CreateDefaultRedBoxHandler(
+    const winrt::Microsoft::ReactNative::ReactPropertyBag &propBag,
     Mso::WeakPtr<IReactHost> &&weakReactHost,
-    Mso::DispatchQueue &&uiQueue) noexcept {
-  return std::make_shared<DefaultRedBoxHandler>(std::move(weakReactHost), std::move(uiQueue));
-}
+    const Mso::React::IDispatchQueue2 &uiQueue) noexcept {
+#ifndef CORE_ABI
+  return std::make_shared<DefaultRedBoxHandler>(propBag, std::move(weakReactHost), uiQueue);
+#else
+  return nullptr;
 #endif
+}
 
 } // namespace Mso::React

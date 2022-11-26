@@ -6,12 +6,12 @@
 #include "AnimatedNode.h"
 #include "ValueAnimatedNode.h"
 
-namespace react::uwp {
+namespace Microsoft::ReactNative {
 class ValueAnimatedNode;
 class EventAnimationDriver {
  public:
   EventAnimationDriver(
-      const folly::dynamic &eventPath,
+      const std::vector<std::string> &eventPath,
       int64_t animatedValueTag,
       const std::shared_ptr<NativeAnimatedNodeManager> &manager);
   ValueAnimatedNode *AnimatedValue();
@@ -21,4 +21,4 @@ class EventAnimationDriver {
   int64_t m_animatedValueTag{};
   std::weak_ptr<NativeAnimatedNodeManager> m_manager{};
 };
-} // namespace react::uwp
+} // namespace Microsoft::ReactNative

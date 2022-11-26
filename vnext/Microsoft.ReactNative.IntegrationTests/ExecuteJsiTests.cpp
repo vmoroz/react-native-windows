@@ -44,7 +44,7 @@ struct TestExecuteJsiModule {
           PropNameID::forAscii(rt, "hostGreeter"),
           1,
           [](Runtime &rt, const Value & /*thisVal*/, const Value *args, size_t count) {
-            TestCheckEqual(1, count);
+            TestCheckEqual(1u, count);
             return Value{rt, String::createFromUtf8(rt, "Hello " + args[0].getString(rt).utf8(rt))};
           });
       TestCheckEqual("Hello World", hostGreeter.call(rt, "World").getString(rt).utf8(rt));
@@ -98,6 +98,22 @@ struct TestExecuteJsiModule {
     });
   }
 
+  REACT_METHOD(TestExecuteJsiPromise, L"testExecuteJsiPromise")
+  void TestExecuteJsiPromise() noexcept {
+    // Make sure that the promise is succeeded when we call ExecuteJsi.
+    TestEventService::LogEvent("testExecuteJsiPromise started", nullptr);
+
+    ReactPromise<void> callResult(
+        []() noexcept { TestEventService::LogEvent("testExecuteJsiPromise promise succeeded", nullptr); },
+        [](ReactError const &error) noexcept {
+          TestEventService::LogEvent("testExecuteJsiPromise promise failed", error.Message.c_str());
+        });
+    ExecuteJsi(
+        m_reactContext,
+        [](Runtime &) { TestEventService::LogEvent("testExecuteJsiPromise completed", nullptr); },
+        &callResult);
+  }
+
  private:
   ReactContext m_reactContext;
 };
@@ -112,23 +128,54 @@ struct TestPackageProvider : winrt::implements<TestPackageProvider, IReactPackag
 
 TEST_CLASS (ExecuteJsiTests) {
   TEST_METHOD(Run_JSDrivenTests) {
-    TestEventService::Initialize();
+    {
+      TestEventService::Initialize();
 
-    auto reactNativeHost = TestReactNativeHostHolder(L"ExecuteJsiTests", [](ReactNativeHost const &host) noexcept {
-      host.PackageProviders().Append(winrt::make<TestPackageProvider>());
-    });
+      winrt::event_token onDestroyed{};
+      auto reactNativeHost =
+          TestReactNativeHostHolder(L"ExecuteJsiTests", [&onDestroyed](ReactNativeHost const &host) noexcept {
+            host.PackageProviders().Append(winrt::make<TestPackageProvider>());
+            onDestroyed = host.InstanceSettings().InstanceDestroyed(
+                [](winrt::Windows::Foundation::IInspectable const &, InstanceDestroyedEventArgs const &args) {
+                  OnInstanceDestroyed(args.Context());
+                });
+          });
+
+      TestEventService::ObserveEvents({
+          TestEvent{"initialize", nullptr},
+          TestEvent{"testSimpleExecuteJsi started", nullptr},
+          TestEvent{"testSimpleExecuteJsi completed", nullptr},
+          TestEvent{"testHostFunction started", nullptr},
+          TestEvent{"testHostFunction completed", nullptr},
+          TestEvent{"testHostObject started", nullptr},
+          TestEvent{"testHostObject completed", nullptr},
+          TestEvent{"testSameJsiRuntime started", nullptr},
+          TestEvent{"testSameJsiRuntime completed", nullptr},
+          TestEvent{"testExecuteJsiPromise started", nullptr},
+          TestEvent{"testExecuteJsiPromise completed", nullptr},
+          TestEvent{"testExecuteJsiPromise promise succeeded", nullptr},
+      });
+    }
 
     TestEventService::ObserveEvents({
-        TestEvent{"initialize", nullptr},
-        TestEvent{"testSimpleExecuteJsi started", nullptr},
-        TestEvent{"testSimpleExecuteJsi completed", nullptr},
-        TestEvent{"testHostFunction started", nullptr},
-        TestEvent{"testHostFunction completed", nullptr},
-        TestEvent{"testHostObject started", nullptr},
-        TestEvent{"testHostObject completed", nullptr},
-        TestEvent{"testSameJsiRuntime started", nullptr},
-        TestEvent{"testSameJsiRuntime completed", nullptr},
+        TestEvent{"OnInstanceDestroyed started", nullptr},
+        TestEvent{"OnInstanceDestroyed promise failed", "No JSI runtime"},
     });
+  }
+
+  static void OnInstanceDestroyed(ReactContext const &reactContext) {
+    // See that ExecuteJsi failed to execute
+    TestEventService::LogEvent("OnInstanceDestroyed started", nullptr);
+
+    ReactPromise<void> callResult(
+        []() noexcept { TestEventService::LogEvent("OnInstanceDestroyed promise succeeded", nullptr); },
+        [](ReactError const &error) noexcept {
+          TestEventService::LogEvent("OnInstanceDestroyed promise failed", error.Message.c_str());
+        });
+    ExecuteJsi(
+        reactContext,
+        [](Runtime &) { TestEventService::LogEvent("OnInstanceDestroyed completed", nullptr); },
+        &callResult);
   }
 };
 

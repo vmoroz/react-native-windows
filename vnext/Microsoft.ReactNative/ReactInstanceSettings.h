@@ -60,9 +60,6 @@ struct ReactInstanceSettings : ReactInstanceSettingsT<ReactInstanceSettings> {
   bool UseDeveloperSupport() noexcept;
   void UseDeveloperSupport(bool value) noexcept;
 
-  hstring JavaScriptMainModuleName() noexcept;
-  void JavaScriptMainModuleName(hstring const &value) noexcept;
-
   hstring JavaScriptBundleFile() noexcept;
   void JavaScriptBundleFile(hstring const &value) noexcept;
 
@@ -93,14 +90,14 @@ struct ReactInstanceSettings : ReactInstanceSettingsT<ReactInstanceSettings> {
   bool DebuggerBreakOnNextLine() noexcept;
   void DebuggerBreakOnNextLine(bool value) noexcept;
 
-  bool UseJsi() noexcept;
-  void UseJsi(bool value) noexcept;
-
   bool EnableJITCompilation() noexcept;
   void EnableJITCompilation(bool value) noexcept;
 
   bool EnableByteCodeCaching() noexcept;
   void EnableByteCodeCaching(bool value) noexcept;
+
+  bool EnableDefaultCrashHandler() noexcept;
+  void EnableDefaultCrashHandler(bool value) noexcept;
 
   //! Same as UseDeveloperSupport
   bool EnableDeveloperMenu() noexcept;
@@ -108,9 +105,6 @@ struct ReactInstanceSettings : ReactInstanceSettingsT<ReactInstanceSettings> {
 
   hstring ByteCodeFileUri() noexcept;
   void ByteCodeFileUri(hstring const &value) noexcept;
-
-  hstring DebugHost() noexcept;
-  void DebugHost(hstring const &value) noexcept;
 
   hstring DebugBundlePath() noexcept;
   void DebugBundlePath(hstring const &value) noexcept;
@@ -121,8 +115,14 @@ struct ReactInstanceSettings : ReactInstanceSettingsT<ReactInstanceSettings> {
   uint16_t DebuggerPort() noexcept;
   void DebuggerPort(uint16_t value) noexcept;
 
+  hstring DebuggerRuntimeName() noexcept;
+  void DebuggerRuntimeName(hstring const &value) noexcept;
+
   IRedBoxHandler RedBoxHandler() noexcept;
   void RedBoxHandler(IRedBoxHandler const &value) noexcept;
+
+  LogHandler NativeLogger() noexcept;
+  void NativeLogger(LogHandler const &value) noexcept;
 
   IReactDispatcher UIDispatcher() noexcept;
   void UIDispatcher(IReactDispatcher const &value) noexcept;
@@ -132,6 +132,9 @@ struct ReactInstanceSettings : ReactInstanceSettingsT<ReactInstanceSettings> {
 
   uint16_t SourceBundlePort() noexcept;
   void SourceBundlePort(uint16_t value) noexcept;
+
+  bool RequestInlineSourceMap() noexcept;
+  void RequestInlineSourceMap(bool value) noexcept;
 
   JSIEngine JSIEngineOverride() noexcept;
   void JSIEngineOverride(JSIEngine value) noexcept;
@@ -169,9 +172,7 @@ struct ReactInstanceSettings : ReactInstanceSettingsT<ReactInstanceSettings> {
   IReactNotificationService m_notifications{ReactNotificationServiceHelper::CreateNotificationService()};
   Windows::Foundation::Collections::IVector<IReactPackageProvider> m_packageProviders{
       single_threaded_vector<IReactPackageProvider>()};
-  hstring m_javaScriptMainModuleName{};
   hstring m_javaScriptBundleFile{};
-  bool m_useJsi{true};
   bool m_enableJITCompilation{true};
   bool m_enableByteCodeCaching{false};
   hstring m_byteCodeFileUri{};
@@ -180,7 +181,10 @@ struct ReactInstanceSettings : ReactInstanceSettingsT<ReactInstanceSettings> {
   uint16_t m_debuggerPort{9229};
   IRedBoxHandler m_redBoxHandler{nullptr};
   hstring m_sourceBundleHost{};
+  hstring m_debuggerRuntimeName{};
   uint16_t m_sourceBundlePort{0};
+  bool m_requestInlineSourceMap{true};
+  LogHandler m_nativeLogger{nullptr};
 
 #if USE_HERMES
   JSIEngine m_jSIEngineOverride{JSIEngine::Hermes};
@@ -218,28 +222,12 @@ ReactInstanceSettings::PackageProviders() noexcept {
   return m_packageProviders;
 }
 
-inline hstring ReactInstanceSettings::JavaScriptMainModuleName() noexcept {
-  return m_javaScriptMainModuleName;
-}
-
-inline void ReactInstanceSettings::JavaScriptMainModuleName(hstring const &value) noexcept {
-  m_javaScriptMainModuleName = value;
-}
-
 inline hstring ReactInstanceSettings::JavaScriptBundleFile() noexcept {
   return m_javaScriptBundleFile;
 }
 
 inline void ReactInstanceSettings::JavaScriptBundleFile(hstring const &value) noexcept {
   m_javaScriptBundleFile = value;
-}
-
-inline bool ReactInstanceSettings::UseJsi() noexcept {
-  return m_useJsi;
-}
-
-inline void ReactInstanceSettings::UseJsi(bool value) noexcept {
-  m_useJsi = value;
 }
 
 inline bool ReactInstanceSettings::EnableJITCompilation() noexcept {
@@ -290,12 +278,28 @@ inline void ReactInstanceSettings::DebuggerPort(uint16_t value) noexcept {
   m_debuggerPort = value;
 }
 
+inline hstring ReactInstanceSettings::DebuggerRuntimeName() noexcept {
+  return m_debuggerRuntimeName;
+}
+
+inline void ReactInstanceSettings::DebuggerRuntimeName(hstring const &value) noexcept {
+  m_debuggerRuntimeName = value;
+}
+
 inline IRedBoxHandler ReactInstanceSettings::RedBoxHandler() noexcept {
   return m_redBoxHandler;
 }
 
 inline void ReactInstanceSettings::RedBoxHandler(IRedBoxHandler const &value) noexcept {
   m_redBoxHandler = value;
+}
+
+inline LogHandler ReactInstanceSettings::NativeLogger() noexcept {
+  return m_nativeLogger;
+}
+
+inline void ReactInstanceSettings::NativeLogger(LogHandler const &value) noexcept {
+  m_nativeLogger = value;
 }
 
 inline hstring ReactInstanceSettings::SourceBundleHost() noexcept {
@@ -312,6 +316,14 @@ inline uint16_t ReactInstanceSettings::SourceBundlePort() noexcept {
 
 inline void ReactInstanceSettings::SourceBundlePort(uint16_t value) noexcept {
   m_sourceBundlePort = value;
+}
+
+inline bool ReactInstanceSettings::RequestInlineSourceMap() noexcept {
+  return m_requestInlineSourceMap;
+}
+
+inline void ReactInstanceSettings::RequestInlineSourceMap(bool value) noexcept {
+  m_requestInlineSourceMap = value;
 }
 
 inline JSIEngine ReactInstanceSettings::JSIEngineOverride() noexcept {

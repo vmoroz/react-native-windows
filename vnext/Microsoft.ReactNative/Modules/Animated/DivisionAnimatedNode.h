@@ -2,16 +2,17 @@
 // Licensed under the MIT License.
 
 #pragma once
-#include <folly/dynamic.h>
 #include "ValueAnimatedNode.h"
 
-namespace react::uwp {
+namespace Microsoft::ReactNative {
 class DivisionAnimatedNode final : public ValueAnimatedNode {
  public:
   DivisionAnimatedNode(
       int64_t tag,
-      const folly::dynamic &config,
+      const winrt::Microsoft::ReactNative::JSValueObject &config,
       const std::shared_ptr<NativeAnimatedNodeManager> &manager);
+
+  virtual void Update() override;
 
  private:
   int64_t m_firstInput{s_firstInputUnset};
@@ -21,4 +22,4 @@ class DivisionAnimatedNode final : public ValueAnimatedNode {
 
   static constexpr std::wstring_view s_baseName{L"base"};
 };
-} // namespace react::uwp
+} // namespace Microsoft::ReactNative

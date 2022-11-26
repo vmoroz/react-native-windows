@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Copyright (c) Microsoft Corporation. Licensed under the MIT License. See LICENSE in the project root for license information. -->
-<Project DefaultTargets="Build" ToolsVersion="16.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Build" ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup Label="Globals">
     <CppWinRTOptimized>true</CppWinRTOptimized>
     <CppWinRTRootNamespaceAutoMerge>true</CppWinRTRootNamespaceAutoMerge>
@@ -9,33 +9,23 @@
     <ProjectName>Microsoft.ReactNative</ProjectName>
     <RootNamespace>Microsoft.ReactNative</RootNamespace>
     <DefaultLanguage>en-US</DefaultLanguage>
-    <MinimumVisualStudioVersion>16.0</MinimumVisualStudioVersion>
+    <MinimumVisualStudioVersion>17.0</MinimumVisualStudioVersion>
     <AppContainerApplication>true</AppContainerApplication>
     <ApplicationType>Windows Store</ApplicationType>
     <ApplicationTypeRevision>10.0</ApplicationTypeRevision>
-    <WindowsTargetPlatformVersion Condition=" '$(WindowsTargetPlatformVersion)' == '' ">10.0.18362.0</WindowsTargetPlatformVersion>
+    <!-- Overriding for WinUI3 compatibility. See property UseWinUI3. -->
     <WindowsTargetPlatformMinVersion>10.0.17134.0</WindowsTargetPlatformMinVersion>
     <CppWinRTNamespaceMergeDepth>
     </CppWinRTNamespaceMergeDepth>
     <CppWinRTLibs>true</CppWinRTLibs>
     <BuildMSRNCxxReactCommon>false</BuildMSRNCxxReactCommon>
+    <DesktopCompatible Condition="'$(UseWinUI3)'=='true'">true</DesktopCompatible>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
-  <Import Project="$(SolutionDir)\BuildFlags.props" Condition="Exists('$(SolutionDir)\BuildFlags.props')" />
-  <Import Project="$(SolutionDir)\packages\Microsoft.Windows.CppWinRT.2.0.200615.7\build\native\Microsoft.Windows.CppWinRT.props" Condition="Exists('$(SolutionDir)\packages\Microsoft.Windows.CppWinRT.2.0.200615.7\build\native\Microsoft.Windows.CppWinRT.props')" />
-  <Import Project="$(SolutionDir)\packages\Microsoft.SourceLink.GitHub.1.0.0\build\Microsoft.SourceLink.GitHub.props" Condition="Exists('$(SolutionDir)\packages\Microsoft.SourceLink.GitHub.1.0.0\build\Microsoft.SourceLink.GitHub.props')" />
-  <Import Project="$(SolutionDir)\packages\Microsoft.SourceLink.Common.1.0.0\build\Microsoft.SourceLink.Common.props" Condition="Exists('$(SolutionDir)\packages\Microsoft.SourceLink.Common.1.0.0\build\Microsoft.SourceLink.Common.props')" />
-  <Import Project="$(SolutionDir)\packages\Microsoft.Build.Tasks.Git.1.0.0\build\Microsoft.Build.Tasks.Git.props" Condition="Exists('$(SolutionDir)\packages\Microsoft.Build.Tasks.Git.1.0.0\build\Microsoft.Build.Tasks.Git.props')" />
   <Import Project="$(ReactNativeWindowsDir)PropertySheets\React.Cpp.props" />
+  <Import Project="$(ReactNativeWindowsDir)PropertySheets\Generated\PackageVersion.g.props" />
+  <Import Project="$(ReactNativeWindowsDir)PropertySheets\PackageVersionDefinitions.props" />
   <ItemGroup Label="ProjectConfigurations">
-    <ProjectConfiguration Include="Debug|ARM">
-      <Configuration>Debug</Configuration>
-      <Platform>ARM</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Release|ARM">
-      <Configuration>Release</Configuration>
-      <Platform>ARM</Platform>
-    </ProjectConfiguration>
     <ProjectConfiguration Include="Debug|ARM64">
       <Configuration>Debug</Configuration>
       <Platform>ARM64</Platform>
@@ -90,27 +80,46 @@
     <Import Project="PropertySheet.props" />
     <Import Project="..\PropertySheets\WinUI.props" />
   </ImportGroup>
-  <Import Project="$(SolutionDir)packages\$(WinUIPackageProps)" Condition="'$(WinUIPackageProps)'!='' And Exists('$(SolutionDir)packages\$(WinUIPackageProps)')" />
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <IncludePath>$(GeneratedFilesDir);$(IncludePath)</IncludePath>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(EnableSourceLink)' == 'true'">
+    <!-- Workaround. SourceLink target overrides modify %(Link)->AdditionalOptions before ComputeXamlGeneratedCLOutputs is called. -->
+    <BeforeLinkTargets>ComputeXamlGeneratedCLOutputs;$(BeforeLinkTargets)</BeforeLinkTargets>
+  </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
       <PrecompiledHeader>Use</PrecompiledHeader>
+      <RuntimeTypeInfo Condition="'$(UseFabric)' == 'true' AND '$(Configuration)'=='Debug'">true</RuntimeTypeInfo>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <PrecompiledHeaderOutputFile>$(IntDir)pch.pch</PrecompiledHeaderOutputFile>
       <ForcedIncludeFiles>pch.h</ForcedIncludeFiles>
       <WarningLevel>Level4</WarningLevel>
-      <AdditionalOptions>/await %(AdditionalOptions) /bigobj</AdditionalOptions>
-      <AdditionalIncludeDirectories>E:\GitHub\vmoroz\react-native-windows\vnext\build\x64\Debug\Microsoft.ReactNative\Generated Files;$(ReactNativeWindowsDir)Microsoft.ReactNative;$(ReactNativeWindowsDir)Microsoft.ReactNative\Pch;$(ReactNativeWindowsDir)Microsoft.ReactNative\ReactHost;$(ReactNativeWindowsDir)Microsoft.ReactNative\Views;$(ReactNativeWindowsDir);$(ReactNativeWindowsDir)Common;$(ReactNativeWindowsDir)include;$(ReactNativeWindowsDir)Shared;$(ReactNativeWindowsDir)Shared\tracing;$(ReactNativeWindowsDir)include\Shared;$(YogaDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>FOLLY_NO_CONFIG;NOMINMAX;_HAS_AUTO_PTR_ETC;RN_EXPORT=;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalOptions>/await %(AdditionalOptions) /bigobj /ZH:SHA_256</AdditionalOptions>
+      <AdditionalIncludeDirectories>
+        $(FmtDir)\include;
+        $(ReactNativeWindowsDir)Microsoft.ReactNative;
+        $(ReactNativeWindowsDir)Microsoft.ReactNative\Fabric\platform;
+        $(ReactNativeWindowsDir)Microsoft.ReactNative\Pch;
+        $(ReactNativeWindowsDir)Microsoft.ReactNative\ReactHost;
+        $(ReactNativeWindowsDir)Microsoft.ReactNative\Views;
+        $(ReactNativeWindowsDir);
+        $(ReactNativeWindowsDir)codegen;
+        $(ReactNativeWindowsDir)Common;
+        $(ReactNativeWindowsDir)include;
+        $(ReactNativeWindowsDir)Shared;
+        $(ReactNativeWindowsDir)Shared\tracing;
+        $(ReactNativeWindowsDir)include\Shared;
+        $(YogaDir);
+        $(GeneratedFilesDir);
+        %(AdditionalIncludeDirectories)
+      </AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>DISABLE_XAML_GENERATED_MAIN;FOLLY_NO_CONFIG;NOMINMAX;_HAS_AUTO_PTR_ETC;_USE_MATH_DEFINES;RN_EXPORT=;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <!--
         REACTWINDOWS_BUILD - building with REACTWINDOWS_API as dll exports
         OLD_CPPWINRT is a workaround to make target version to 19H1
       -->
-      <PreprocessorDefinitions Condition="'$(CHAKRACOREUWP)'=='true'">CHAKRACORE;CHAKRACORE_UWP;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <PreprocessorDefinitions Condition="'$(CHAKRACOREUWP)'!='true'">USE_EDGEMODE_JSRT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PreprocessorDefinitions>
         REACTWINDOWS_BUILD;
         RN_PLATFORM=windows;
@@ -121,7 +130,6 @@
         WIN32=0;
         WINRT=1;
         _HAS_AUTO_PTR_ETC;
-        PROJECT_ROOT_NAMESPACE=Microsoft::ReactNative;
         %(PreprocessorDefinitions)
       </PreprocessorDefinitions>
       <AdditionalUsingDirectories>$(WindowsSDK_WindowsMetadata);$(AdditionalUsingDirectories)</AdditionalUsingDirectories>
@@ -130,13 +138,25 @@
     </ClCompile>
     <Link>
       <AdditionalDependencies>winsqlite3.lib;ChakraRT.lib;dxguid.lib;dloadhelper.lib;OneCoreUap_apiset.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <DelayLoadDLLs>winsqlite3.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
+      <DelayLoadDLLs>
+        api-ms-win-core-file-l1-2-0.dll;
+        api-ms-win-core-windowserrorreporting-l1-1-0.dll;
+        ext-ms-win-uiacore-l1-1-1.dll;
+        chakra.dll;
+        winsqlite3.dll;
+        %(DelayLoadDLLs)
+      </DelayLoadDLLs>
       <SubSystem>Console</SubSystem>
       <GenerateWindowsMetadata>true</GenerateWindowsMetadata>
       <ModuleDefinitionFile>Microsoft.ReactNative.def</ModuleDefinitionFile>
     </Link>
+    <Link Condition="'$(UseFabric)' == 'true'">
+      <AdditionalDependencies>User32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
     <Midl>
       <AdditionalIncludeDirectories>$(ReactNativeWindowsDir)Microsoft.ReactNative\Views\cppwinrt;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <!-- #8430: This is needed to allow modules targeting older SDKs to consume the generated WinMD -->
+      <AdditionalOptions>%(AdditionalOptions) /noattributename</AdditionalOptions>
     </Midl>
   </ItemDefinitionGroup>
   <Import Project="$(ReactNativeWindowsDir)\PropertySheets\ReactCommunity.cpp.props" />
@@ -145,7 +165,7 @@
       <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Midl>
-      <PreprocessorDefinitions>USE_DOCSTRING;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions Condition="'$(UseDocString)'!='false'">USE_DOCSTRING;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </Midl>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)'=='Release'">
@@ -155,8 +175,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup>
     <Midl>
-      <!-- Custom XAML types must be in the project namespace to be usable by XAML -->
-      <PreprocessorDefinitions>PROJECT_ROOT_NAMESPACE=$(RootNamespace);%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </Midl>
     <ClCompile>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
@@ -168,6 +187,13 @@
     <ClInclude Include="Base\CoreNativeModules.h" />
     <ClInclude Include="Base\CxxReactIncludes.h" />
     <ClInclude Include="Base\FollyIncludes.h" />
+    <ClInclude Include="CoreAppPage.h">
+      <DependentUpon>CoreAppPage.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </ClInclude>
+    <ClInclude Include="ReactHost\JSCallInvokerScheduler.h" />
+    <ClInclude Include="Utils\ShadowNodeTypeUtils.h" />
+    <ClInclude Include="Utils\BatchingEventEmitter.h" />
     <ClInclude Include="DevMenuControl.h">
       <DependentUpon>DevMenuControl.xaml</DependentUpon>
       <SubType>Code</SubType>
@@ -177,6 +203,9 @@
       <DependentUpon>IJSValueReader.idl</DependentUpon>
     </ClInclude>
     <ClInclude Include="DynamicWriter.h">
+      <DependentUpon>IJSValueWriter.idl</DependentUpon>
+    </ClInclude>
+    <ClInclude Include="JSDispatcherWriter.h">
       <DependentUpon>IJSValueWriter.idl</DependentUpon>
     </ClInclude>
     <ClInclude Include="GlyphViewManager.h" />
@@ -204,9 +233,11 @@
     <ClInclude Include="Modules\AlertModule.h" />
     <ClInclude Include="Modules\Animated\AdditionAnimatedNode.h" />
     <ClInclude Include="Modules\Animated\AnimatedNode.h" />
+    <ClInclude Include="Modules\Animated\AnimatedPlatformConfig.h" />
     <ClInclude Include="Modules\Animated\AnimatedNodeType.h" />
     <ClInclude Include="Modules\Animated\AnimationDriver.h" />
     <ClInclude Include="Modules\Animated\AnimationType.h" />
+    <ClInclude Include="Modules\Animated\AnimationUtils.h" />
     <ClInclude Include="Modules\Animated\CalculatedAnimationDriver.h" />
     <ClInclude Include="Modules\Animated\DecayAnimationDriver.h" />
     <ClInclude Include="Modules\Animated\DiffClampAnimatedNode.h" />
@@ -241,7 +272,6 @@
     <ClInclude Include="Modules\ReactRootViewTagGenerator.h" />
     <ClInclude Include="Modules\TimingModule.h" />
     <ClInclude Include="Modules\PaperUIManagerModule.h" />
-    <ClInclude Include="Modules\WebSocketModuleUwp.h" />
     <ClInclude Include="NativeModulesProvider.h" />
     <ClInclude Include="ReactHost\IReactInstance.h" />
     <ClInclude Include="ReactHost\ViewManagerProvider.h" />
@@ -263,12 +293,17 @@
     <ClInclude Include="ReactHost\MoveOnCopy.h" />
     <ClInclude Include="ReactHost\MsoUtils.h" />
     <ClInclude Include="ReactHost\React.h" />
-    <ClInclude Include="ReactHost\ReactContext.h" />
+    <ClInclude Include="ReactHost\MsoReactContext.h" />
     <ClInclude Include="ReactHost\ReactErrorProvider.h" />
     <ClInclude Include="ReactHost\ReactHost.h" />
     <ClInclude Include="ReactHost\ReactInstanceWin.h" />
+    <ClInclude Include="ReactHost\CrashManager.h" />
     <ClInclude Include="ReactHost\ReactNativeHeaders.h" />
     <ClInclude Include="ReactHost\React_Win.h" />
+    <ClInclude Include="ReactCoreInjection.h">
+      <DependentUpon>ReactCoreInjection.idl</DependentUpon>
+      <SubType>Code</SubType>
+    </ClInclude>
     <ClInclude Include="ReactInstanceSettings.h">
       <DependentUpon>ReactInstanceSettings.idl</DependentUpon>
       <SubType>Code</SubType>
@@ -288,19 +323,21 @@
     <ClInclude Include="Utils\PropertyUtils.h" />
     <ClInclude Include="Utils\ResourceBrushUtils.h" />
     <ClInclude Include="Utils\StandardControlResourceKeyNames.h" />
+    <ClInclude Include="Utils\TextTransform.h" />
     <ClInclude Include="Utils\TransformableText.h" />
     <ClInclude Include="Utils\UwpPreparedScriptStore.h" />
     <ClInclude Include="Utils\UwpScriptStore.h" />
     <ClInclude Include="Utils\ValueUtils.h" />
+    <ClInclude Include="Utils\XamlIslandUtils.h" />
     <ClInclude Include="Views\ActivityIndicatorViewManager.h" />
     <ClInclude Include="Views\ControlViewManager.h" />
-    <ClInclude Include="Views\DatePickerViewManager.h" />
     <ClInclude Include="Views\DevMenu.h" />
     <ClInclude Include="Views\DynamicAutomationPeer.h" />
     <ClInclude Include="Views\DynamicAutomationProperties.h" />
     <ClInclude Include="Views\DynamicValueProvider.h" />
     <ClInclude Include="Views\ExpressionAnimationStore.h" />
     <ClInclude Include="Views\FlyoutViewManager.h" />
+    <ClInclude Include="Views\FrameworkElementTransferProperties.h" />
     <ClInclude Include="Views\FrameworkElementViewManager.h" />
     <ClInclude Include="Views\Image\Effects.h" />
     <ClInclude Include="Views\Image\ImageViewManager.h" />
@@ -312,10 +349,9 @@
     <ClInclude Include="Views\IXamlRootView.h" />
     <ClInclude Include="Views\KeyboardEventHandler.h" />
     <ClInclude Include="Views\PaperShadowNode.h" />
-    <ClInclude Include="Views\PickerViewManager.h" />
     <ClInclude Include="Views\PopupViewManager.h" />
     <ClInclude Include="Views\RawTextViewManager.h" />
-    <ClInclude Include="Views\ReactRootControl.h" />
+    <ClInclude Include="Views\ReactViewInstance.h" />
     <ClInclude Include="Views\RefreshControlManager.h" />
     <ClInclude Include="Views\RootViewManager.h" />
     <ClInclude Include="Views\ScrollContentViewManager.h" />
@@ -327,14 +363,29 @@
     <ClInclude Include="Views\SwitchViewManager.h" />
     <ClInclude Include="Views\TextInputViewManager.h" />
     <ClInclude Include="Views\TextViewManager.h" />
+    <ClInclude Include="Views\Text\TextHighlighterVisitor.h" />
+    <ClInclude Include="Views\Text\TextHitTestUtils.h" />
+    <ClInclude Include="Views\Text\TextHitTestVisitor.h" />
+    <ClInclude Include="Views\Text\TextParentVisitor.h" />
+    <ClInclude Include="Views\Text\TextPropertyChangedParentVisitor.h" />
+    <ClInclude Include="Views\Text\TextTransformParentVisitor.h" />
+    <ClInclude Include="Views\Text\TextTransformVisitor.h" />
+    <ClInclude Include="Views\Text\TextVisitorScope.h" />
+    <ClInclude Include="Views\Text\TextVisitor.h" />
+    <ClInclude Include="Views\Text\TextVisitors.h" />
     <ClInclude Include="Views\TouchEventHandler.h" />
     <ClInclude Include="Views\ViewControl.h" />
+    <ClInclude Include="Views\ViewManager.h" />
     <ClInclude Include="Views\ViewManagerBase.h" />
     <ClInclude Include="Views\ViewPanel.h" />
     <ClInclude Include="Views\ViewViewManager.h" />
     <ClInclude Include="Views\VirtualTextViewManager.h" />
     <ClInclude Include="Views\XamlFeatures.h" />
     <ClInclude Include="XamlLoadState.h" />
+    <ClInclude Include="LayoutService.h">
+      <DependentUpon>LayoutService.idl</DependentUpon>
+      <SubType>Code</SubType>
+    </ClInclude>
     <ClInclude Include="XamlUIService.h">
       <DependentUpon>XamlUIService.idl</DependentUpon>
       <SubType>Code</SubType>
@@ -363,12 +414,22 @@
       <SubType>Code</SubType>
     </ClInclude>
     <ClInclude Include="XamlView.h" />
+    <ClInclude Include="ReactPointerEventArgs.h">
+      <DependentUpon>ReactPointerEventArgs.idl</DependentUpon>
+      <SubType>Code</SubType>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ABICxxModule.cpp" />
     <ClCompile Include="ABIViewManager.cpp" />
     <ClCompile Include="Base\CoreNativeModules.cpp" />
     <ClCompile Include="Base\CoreUIManagers.cpp" />
+    <ClCompile Include="CoreAppPage.cpp">
+      <DependentUpon>CoreAppPage.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </ClCompile>
+    <ClCompile Include="CoreApp.cpp" />
+    <ClCompile Include="Utils\BatchingEventEmitter.cpp" />
     <ClCompile Include="CxxReactUWP\JSBigString.cpp" />
     <ClCompile Include="DevMenuControl.cpp">
       <DependentUpon>DevMenuControl.xaml</DependentUpon>
@@ -378,6 +439,9 @@
       <DependentUpon>IJSValueReader.idl</DependentUpon>
     </ClCompile>
     <ClCompile Include="DynamicWriter.cpp">
+      <DependentUpon>IJSValueWriter.idl</DependentUpon>
+    </ClCompile>
+    <ClCompile Include="JSDispatcherWriter.cpp">
       <DependentUpon>IJSValueWriter.idl</DependentUpon>
     </ClCompile>
     <ClCompile Include="GlyphViewManager.cpp" />
@@ -400,11 +464,11 @@
     <ClCompile Include="JsiWriter.cpp">
       <DependentUpon>IJSValueWriter.idl</DependentUpon>
     </ClCompile>
-    <ClCompile Include="JSI\ChakraJsiRuntime_edgemode.cpp" />
     <ClCompile Include="Modules\AccessibilityInfoModule.cpp" />
     <ClCompile Include="Modules\AlertModule.cpp" />
     <ClCompile Include="Modules\Animated\AdditionAnimatedNode.cpp" />
     <ClCompile Include="Modules\Animated\AnimatedNode.cpp" />
+    <ClCompile Include="Modules\Animated\AnimatedPlatformConfig.cpp" />
     <ClCompile Include="Modules\Animated\AnimationDriver.cpp" />
     <ClCompile Include="Modules\Animated\CalculatedAnimationDriver.cpp" />
     <ClCompile Include="Modules\Animated\DecayAnimationDriver.cpp" />
@@ -436,11 +500,13 @@
     <ClCompile Include="Modules\LinkingManagerModule.cpp" />
     <ClCompile Include="Modules\LogBoxModule.cpp" />
     <ClCompile Include="Modules\NativeUIManager.cpp" />
-    <ClCompile Include="Modules\ReactRootViewTagGenerator.cpp" />
     <ClCompile Include="Modules\TimingModule.cpp" />
     <ClCompile Include="Modules\PaperUIManagerModule.cpp" />
-    <ClCompile Include="Modules\WebSocketModuleUwp.cpp" />
     <ClCompile Include="NativeModulesProvider.cpp" />
+    <ClCompile Include="ReactPointerEventArgs.cpp">
+      <DependentUpon>ReactPointerEventArgs.idl</DependentUpon>
+      <SubType>Code</SubType>
+    </ClCompile>
     <ClCompile Include="RedBoxErrorInfo.cpp" />
     <ClCompile Include="RedBoxErrorFrameInfo.cpp" />
     <ClCompile Include="TurboModulesProvider.cpp" />
@@ -460,10 +526,15 @@
     <ClCompile Include="ReactHost\JSBundle_Win32.cpp" />
     <ClCompile Include="ReactHost\JSCallInvokerScheduler.cpp" />
     <ClCompile Include="ReactHost\MsoUtils.cpp" />
-    <ClCompile Include="ReactHost\ReactContext.cpp" />
+    <ClCompile Include="ReactHost\MsoReactContext.cpp" />
     <ClCompile Include="ReactHost\ReactErrorProvider.cpp" />
     <ClCompile Include="ReactHost\ReactHost.cpp" />
     <ClCompile Include="ReactHost\ReactInstanceWin.cpp" />
+    <ClCompile Include="ReactHost\CrashManager.cpp" />
+    <ClCompile Include="ReactCoreInjection.cpp">
+      <DependentUpon>ReactCoreInjection.idl</DependentUpon>
+      <SubType>Code</SubType>
+    </ClCompile>
     <ClCompile Include="ReactInstanceSettings.cpp">
       <DependentUpon>ReactInstanceSettings.idl</DependentUpon>
       <SubType>Code</SubType>
@@ -478,21 +549,23 @@
     </ClCompile>
     <ClCompile Include="Utils\AccessibilityUtils.cpp" />
     <ClCompile Include="Utils\Helpers.cpp" />
+    <ClCompile Include="Utils\ImageUtils.cpp" />
     <ClCompile Include="Utils\LocalBundleReader.cpp" />
     <ClCompile Include="Utils\ResourceBrushUtils.cpp" />
     <ClCompile Include="Utils\UwpPreparedScriptStore.cpp" />
     <ClCompile Include="Utils\UwpScriptStore.cpp" />
     <ClCompile Include="Utils\ValueUtils.cpp" />
+    <ClCompile Include="Utils\XamlIslandUtils.cpp" />
     <ClCompile Include="Views\ActivityIndicatorViewManager.cpp" />
     <ClCompile Include="Views\ConfigureBundlerDlg.cpp" />
     <ClCompile Include="Views\ControlViewManager.cpp" />
-    <ClCompile Include="Views\DatePickerViewManager.cpp" />
     <ClCompile Include="Views\DevMenu.cpp" />
     <ClCompile Include="Views\DynamicAutomationPeer.cpp" />
     <ClCompile Include="Views\DynamicAutomationProperties.cpp" />
     <ClCompile Include="Views\DynamicValueProvider.cpp" />
     <ClCompile Include="Views\ExpressionAnimationStore.cpp" />
     <ClCompile Include="Views\FlyoutViewManager.cpp" />
+    <ClCompile Include="Views\FrameworkElementTransferProperties.cpp" />
     <ClCompile Include="Views\FrameworkElementViewManager.cpp" />
     <ClCompile Include="Views\Image\ImageViewManager.cpp" />
     <ClCompile Include="Views\Image\ReactImage.cpp" />
@@ -501,10 +574,9 @@
     <ClCompile Include="Views\Impl\SnapPointManagingContentControl.cpp" />
     <ClCompile Include="Views\KeyboardEventHandler.cpp" />
     <ClCompile Include="Views\PaperShadowNode.cpp" />
-    <ClCompile Include="Views\PickerViewManager.cpp" />
     <ClCompile Include="Views\PopupViewManager.cpp" />
     <ClCompile Include="Views\RawTextViewManager.cpp" />
-    <ClCompile Include="Views\ReactRootControl.cpp" />
+    <ClCompile Include="Views\ReactViewInstance.cpp" />
     <ClCompile Include="Views\RefreshControlManager.cpp" />
     <ClCompile Include="Views\RootViewManager.cpp" />
     <ClCompile Include="Views\ScrollContentViewManager.cpp" />
@@ -516,6 +588,14 @@
     <ClCompile Include="Views\SwitchViewManager.cpp" />
     <ClCompile Include="Views\TextInputViewManager.cpp" />
     <ClCompile Include="Views\TextViewManager.cpp" />
+    <ClCompile Include="Views\Text\TextHighlighterVisitor.cpp" />
+    <ClCompile Include="Views\Text\TextHitTestUtils.cpp" />
+    <ClCompile Include="Views\Text\TextHitTestVisitor.cpp" />
+    <ClCompile Include="Views\Text\TextParentVisitor.cpp" />
+    <ClCompile Include="Views\Text\TextPropertyChangedParentVisitor.cpp" />
+    <ClCompile Include="Views\Text\TextTransformParentVisitor.cpp" />
+    <ClCompile Include="Views\Text\TextTransformVisitor.cpp" />
+    <ClCompile Include="Views\Text\TextVisitor.cpp" />
     <ClCompile Include="Views\TouchEventHandler.cpp" />
     <ClCompile Include="Views\ViewControl.cpp" />
     <ClCompile Include="Views\ViewManagerBase.cpp" />
@@ -525,6 +605,10 @@
     <ClCompile Include="Views\XamlFeatures.cpp" />
     <ClCompile Include="XamlLoadState.cpp" />
     <ClCompile Include="XamlView.cpp" />
+    <ClCompile Include="LayoutService.cpp">
+      <DependentUpon>LayoutService.idl</DependentUpon>
+      <SubType>Code</SubType>
+    </ClCompile>
     <ClCompile Include="XamlUIService.cpp">
       <DependentUpon>XamlUIService.idl</DependentUpon>
       <SubType>Code</SubType>
@@ -554,6 +638,16 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <Midl Condition="'$(UseFabric)' == 'true'" Include="CompositionHwndHost.idl" />
+    <Midl Condition="'$(UseFabric)' == 'true'" Include="CompositionContext.idl" />
+    <Midl Condition="'$(UseFabric)' == 'true'" Include="CompositionSwitcher.idl" />
+    <Midl Condition="'$(UseFabric)' == 'true'" Include="CompositionUIService.idl" />
+    <Midl Condition="'$(UseFabric)' == 'true'" Include="CompositionRootView.idl" />
+    <Midl Include="CoreAppPage.idl">
+      <DependentUpon>CoreAppPage.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Midl>
+    <Midl Include="DesktopWindowMessage.idl" />
     <Midl Include="DevMenuControl.idl">
       <DependentUpon>DevMenuControl.xaml</DependentUpon>
       <SubType>Code</SubType>
@@ -575,6 +669,9 @@
     <Midl Include="IReactContext.idl">
       <SubType>Designer</SubType>
     </Midl>
+    <Midl Include="ReactCoreInjection.idl">
+      <SubType>Designer</SubType>
+    </Midl>
     <Midl Include="ReactInstanceSettings.idl">
       <SubType>Designer</SubType>
     </Midl>
@@ -588,6 +685,9 @@
     <Midl Include="Views\cppwinrt\Effects.idl" />
     <Midl Include="Views\cppwinrt\DynamicAutomationPeer.idl" />
     <Midl Include="Views\cppwinrt\ViewPanel.idl" />
+    <Midl Include="LayoutService.idl">
+      <SubType>Designer</SubType>
+    </Midl>
     <Midl Include="XamlUIService.idl">
       <SubType>Designer</SubType>
     </Midl>
@@ -598,9 +698,9 @@
       <SubType>Designer</SubType>
     </Midl>
     <Midl Include="XamlHelper.idl" />
+    <Midl Include="ReactPointerEventArgs.idl" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="packages.config" />
     <None Include="microsoft.reactnative.def" />
   </ItemGroup>
   <ItemGroup>
@@ -611,11 +711,11 @@
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Version.rc">
-      <PreprocessorDefinitions Condition="'$(RNW_PKG_VERSION_STR)'!=''">
-        RNW_PKG_VERSION_STR=$(RNW_PKG_VERSION_STR);
-        RNW_PKG_VERSION_MAJOR=$(RNW_PKG_VERSION_MAJOR);
-        RNW_PKG_VERSION_MINOR=$(RNW_PKG_VERSION_MINOR);
-        RNW_PKG_VERSION_PATCH=$(RNW_PKG_VERSION_PATCH);
+      <PreprocessorDefinitions>
+        RNW_VERSION=$(ReactNativeWindowsVersion);
+        RNW_MAJOR=$(ReactNativeWindowsMajor);
+        RNW_MINOR=$(ReactNativeWindowsMinor);
+        RNW_PATCH=$(ReactNativeWindowsPatch);
         _UNICODE;
         UNICODE;
         %(PreprocessorDefinitions)
@@ -637,38 +737,39 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <Page Include="CoreAppPage.xaml">
+      <SubType>Designer</SubType>
+    </Page>
     <Page Include="DevMenuControl.xaml">
       <SubType>Designer</SubType>
     </Page>
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="boost" Version="1.76.0.0" />
+    <PackageReference Include="Microsoft.Windows.CppWinRT" Version="$(CppWinRTVersion)" PrivateAssets="all" />
+    <PackageReference Include="ReactNative.Hermes.Windows" Version="$(HermesVersion)" />
+    <PackageReference Include="$(WinUIPackageName)" Version="$(WinUIPackageVersion)" Condition="'$(OverrideWinUIPackage)'!='true'" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.22000.194" />
+  </ItemGroup>
+  <Choose>
+    <When Condition="'$(EnableSourceLink)' == 'true'">
+      <ItemGroup>
+        <PackageReference Include="Microsoft.Build.Tasks.Git" Version="1.0.0" />
+        <PackageReference Include="Microsoft.SourceLink.Common" Version="1.0.0" />
+        <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0" />
+      </ItemGroup>
+    </When>
+  </Choose>
+  <Choose>
+    <When Condition="'$(UseV8)' == 'true'">
+      <ItemGroup>
+        <PackageReference Include="ReactNative.V8Jsi.Windows.UWP" Version="$(V8Version)" />
+      </ItemGroup>
+    </When>
+  </Choose>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
-  <ImportGroup Label="ExtensionTargets">
-    <Import Project="$(SolutionDir)packages\boost.1.72.0.0\build\boost.targets" Condition="Exists('$(SolutionDir)\packages\boost.1.72.0.0\build\boost.targets')" />
-    <Import Project="$(SolutionDir)packages\Microsoft.Windows.CppWinRT.2.0.200615.7\build\native\Microsoft.Windows.CppWinRT.targets" Condition="Exists('$(SolutionDir)\packages\Microsoft.Windows.CppWinRT.2.0.200615.7\build\native\Microsoft.Windows.CppWinRT.targets')" />
-    <Import Project="$(SolutionDir)packages\$(WinUIPackageName).$(WinUIPackageVersion)\build\native\$(WinUIPackageName).targets" Condition="Exists('$(SolutionDir)packages\$(WinUIPackageName).$(WinUIPackageVersion)\build\native\$(WinUIPackageName).targets')" />
-    <Import Project="$(V8Package)\build\native\ReactNative.V8JSI.Windows.UWP.targets" Condition="Exists('$(V8Package)\build\native\ReactNative.V8JSI.Windows.UWP.targets') AND '$(UseV8)' == 'true'" />
-    <Import Project="$(HermesPackage)\build\native\ReactNative.Hermes.Windows.targets" Condition="Exists('$(HermesPackage)\build\native\ReactNative.Hermes.Windows.targets') AND '$(UseHermes)' == 'true'" />
-    <Import Project="$(SolutionDir)\packages\Microsoft.Build.Tasks.Git.1.0.0\build\Microsoft.Build.Tasks.Git.targets" Condition="Exists('$(SolutionDir)\packages\Microsoft.Build.Tasks.Git.1.0.0\build\Microsoft.Build.Tasks.Git.targets')" />
-    <Import Project="$(SolutionDir)\packages\Microsoft.SourceLink.Common.1.0.0\build\Microsoft.SourceLink.Common.targets" Condition="Exists('$(SolutionDir)\packages\Microsoft.SourceLink.Common.1.0.0\build\Microsoft.SourceLink.Common.targets')" />
-    <Import Project="$(SolutionDir)\packages\Microsoft.SourceLink.GitHub.1.0.0\build\Microsoft.SourceLink.GitHub.targets" Condition="Exists('$(SolutionDir)\packages\Microsoft.SourceLink.GitHub.1.0.0\build\Microsoft.SourceLink.GitHub.targets')" />
-  </ImportGroup>
-  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
-    <PropertyGroup>
-      <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
-    </PropertyGroup>
-    <Error Condition="!Exists('$(SolutionDir)packages\boost.1.72.0.0\build\boost.targets')" Text="$([System.String]::Format('$(ErrorText)', '$(SolutionDir)\packages\boost.1.72.0.0\build\boost.targets'))" />
-    <Error Condition="!Exists('$(SolutionDir)packages\Microsoft.Windows.CppWinRT.2.0.200615.7\build\native\Microsoft.Windows.CppWinRT.props')" Text="$([System.String]::Format('$(ErrorText)', '$(SolutionDir)packages\Microsoft.Windows.CppWinRT.2.0.200615.7\build\native\Microsoft.Windows.CppWinRT.props'))" />
-    <Error Condition="!Exists('$(SolutionDir)packages\Microsoft.Windows.CppWinRT.2.0.200615.7\build\native\Microsoft.Windows.CppWinRT.targets')" Text="$([System.String]::Format('$(ErrorText)', '$(SolutionDir)packages\Microsoft.Windows.CppWinRT.2.0.200615.7\build\native\Microsoft.Windows.CppWinRT.targets'))" />
-    <Error Condition="!Exists('$(SolutionDir)packages\$(WinUIPackageName).$(WinUIPackageVersion)\build\native\$(WinUIPackageName).targets')" Text="$([System.String]::Format('$(ErrorText)', '$(SolutionDir)packages\$(WinUIPackageName).$(WinUIPackageVersion)\build\native\$(WinUIPackageName).targets'))" />
-    <Error Condition="!Exists('$(V8Package)\build\native\ReactNative.V8JSI.Windows.UWP.targets') AND '$(UseV8)' == 'true'" Text="$([System.String]::Format('$(ErrorText)', '$(V8Package)\build\native\ReactNative.V8JSI.Windows.UWP.targets'))" />
-    <Error Condition="!Exists('$(HermesPackage)\build\native\ReactNative.Hermes.Windows.targets') AND '$(UseHermes)' == 'true'" Text="$([System.String]::Format('$(ErrorText)', '$(HermesPackage)\build\native\ReactNative.Hermes.Windows.targets'))" />
-    <Error Condition="'$(EnableSourceLink)' == 'true' and !Exists('$(SolutionDir)\packages\Microsoft.Build.Tasks.Git.1.0.0\build\Microsoft.Build.Tasks.Git.props')" Text="$([System.String]::Format('$(ErrorText)', '$(SolutionDir)\packages\Microsoft.Build.Tasks.Git.1.0.0\build\Microsoft.Build.Tasks.Git.props'))" />
-    <Error Condition="'$(EnableSourceLink)' == 'true' and !Exists('$(SolutionDir)\packages\Microsoft.Build.Tasks.Git.1.0.0\build\Microsoft.Build.Tasks.Git.targets')" Text="$([System.String]::Format('$(ErrorText)', '$(SolutionDir)\packages\Microsoft.Build.Tasks.Git.1.0.0\build\Microsoft.Build.Tasks.Git.targets'))" />
-    <Error Condition="'$(EnableSourceLink)' == 'true' and !Exists('$(SolutionDir)\packages\Microsoft.SourceLink.Common.1.0.0\build\Microsoft.SourceLink.Common.props')" Text="$([System.String]::Format('$(ErrorText)', '$(SolutionDir)\packages\Microsoft.SourceLink.Common.1.0.0\build\Microsoft.SourceLink.Common.props'))" />
-    <Error Condition="'$(EnableSourceLink)' == 'true' and !Exists('$(SolutionDir)\packages\Microsoft.SourceLink.Common.1.0.0\build\Microsoft.SourceLink.Common.targets')" Text="$([System.String]::Format('$(ErrorText)', '$(SolutionDir)\packages\Microsoft.SourceLink.Common.1.0.0\build\Microsoft.SourceLink.Common.targets'))" />
-    <Error Condition="'$(EnableSourceLink)' == 'true' and !Exists('$(SolutionDir)\packages\Microsoft.SourceLink.GitHub.1.0.0\build\Microsoft.SourceLink.GitHub.props')" Text="$([System.String]::Format('$(ErrorText)', '$(SolutionDir)\packages\Microsoft.SourceLink.GitHub.1.0.0\build\Microsoft.SourceLink.GitHub.props'))" />
-    <Error Condition="'$(EnableSourceLink)' == 'true' and !Exists('$(SolutionDir)\packages\Microsoft.SourceLink.GitHub.1.0.0\build\Microsoft.SourceLink.GitHub.targets')" Text="$([System.String]::Format('$(ErrorText)', '$(SolutionDir)\packages\Microsoft.SourceLink.GitHub.1.0.0\build\Microsoft.SourceLink.GitHub.targets'))" />
-  </Target>
+  <Import Project="$(ReactNativeWindowsDir)PropertySheets\FastBuild.targets" />
+  <Import Project="$(ReactNativeWindowsDir)PropertySheets\FixupRoslynCscWarnings.targets" />
   <Target Name="AfterCppClean">
     <RemoveDir Directories="$(IdlHeaderDirectory)" ContinueOnError="true" />
     <RemoveDir Directories="$(UnmergedWinmdDirectory)" ContinueOnError="true" />

@@ -4,17 +4,12 @@
 #include "pch.h"
 
 #include "RawTextViewManager.h"
-#include "TextViewManager.h"
 
 #include <Views/ShadowNodeBase.h>
+#include <Views/Text/TextVisitors.h>
 
-#include <INativeUIManager.h>
-#include <Utils/ValueUtils.h>
-
-#include <Modules/NativeUIManager.h>
-#include <Modules/PaperUIManagerModule.h>
-#include <UI.Xaml.Controls.h>
 #include <UI.Xaml.Documents.h>
+#include <Utils/ValueUtils.h>
 #include <winrt/Windows.Foundation.h>
 
 namespace winrt {
@@ -34,7 +29,7 @@ const wchar_t *RawTextViewManager::GetName() const {
   return L"RCTRawText";
 }
 
-XamlView RawTextViewManager::CreateViewCore(int64_t /*tag*/) {
+XamlView RawTextViewManager::CreateViewCore(int64_t /*tag*/, const winrt::Microsoft::ReactNative::JSValueObject &) {
   winrt::Run run;
   return run;
 }
@@ -48,41 +43,15 @@ bool RawTextViewManager::UpdateProperty(
     return true;
 
   if (propertyName == "text") {
-    run.Text(react::uwp::asHstring(propertyValue));
-
-    if (nodeToUpdate->GetParent() != -1) {
-      if (auto uiManager = GetNativeUIManager(*m_context).lock()) {
-        const ShadowNodeBase *parent =
-            static_cast<ShadowNodeBase *>(uiManager->getHost()->FindShadowNodeForTag(nodeToUpdate->GetParent()));
-        if (parent && parent->m_children.size() == 1) {
-          auto view = parent->GetView();
-          auto textBlock = view.try_as<winrt::TextBlock>();
-          if (textBlock != nullptr) {
-            textBlock.Text(run.Text());
-          }
-        }
-
-        NotifyAncestorsTextChanged(nodeToUpdate);
-      }
-    }
+    MarkDirty(nodeToUpdate->m_tag);
+    run.Text(asHstring(propertyValue));
+    static_cast<RawTextShadowNode *>(nodeToUpdate)->originalText = winrt::hstring{};
+    ApplyTextTransformToChild(nodeToUpdate);
+    NotifyAncestorsTextPropertyChanged(nodeToUpdate, PropertyChangeType::Text);
   } else {
     return Super::UpdateProperty(nodeToUpdate, propertyName, propertyValue);
   }
   return true;
-}
-
-void RawTextViewManager::NotifyAncestorsTextChanged(ShadowNodeBase *nodeToUpdate) {
-  if (auto uiManager = GetNativeUIManager(GetReactContext()).lock()) {
-    auto host = uiManager->getHost();
-    ShadowNodeBase *parent = static_cast<ShadowNodeBase *>(host->FindShadowNodeForTag(nodeToUpdate->GetParent()));
-    while (parent) {
-      auto viewManager = parent->GetViewManager();
-      if (!std::wcscmp(viewManager->GetName(), L"RCTText")) {
-        (static_cast<TextViewManager *>(viewManager))->OnDescendantTextPropertyChanged(parent);
-      }
-      parent = static_cast<ShadowNodeBase *>(host->FindShadowNodeForTag(parent->GetParent()));
-    }
-  }
 }
 
 void RawTextViewManager::SetLayoutProps(

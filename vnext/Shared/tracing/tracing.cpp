@@ -5,6 +5,7 @@
 
 #include <TraceLoggingProvider.h>
 #include <jsi/jsi.h>
+#include <winmeta.h>
 #include "tracing/fbsystrace.h"
 
 #include <array>
@@ -173,11 +174,11 @@ void counterJSHook(uint64_t tag, const std::string &profile_name, int value) {
       TraceLoggingInt64(value, "value"));
 }
 
-void initializeJSHooks(jsi::Runtime &runtime) {
+void initializeJSHooks(jsi::Runtime &runtime, bool isProfiling) {
   // TODO:: Assess the performance impact of hooking up the JS trace events. Especially when the tracing is not enabled.
   // If significant, this should be put under flag based on devsettings
 
-  runtime.global().setProperty(runtime, "__RCTProfileIsProfiling", true);
+  runtime.global().setProperty(runtime, "__RCTProfileIsProfiling", isProfiling);
 
   runtime.global().setProperty(
       runtime,
@@ -376,7 +377,21 @@ void initializeJSHooks(jsi::Runtime &runtime) {
 
 void initializeETW() {
   // Register the provider
-  TraceLoggingRegister(g_hTraceLoggingProvider);
+  static bool etwInitialized = false;
+  if (!etwInitialized) {
+    TraceLoggingRegister(g_hTraceLoggingProvider);
+    etwInitialized = true;
+  }
+}
+
+void log(const char *msg) {
+  TraceLoggingWrite(
+      g_hTraceLoggingProvider, "Trace", TraceLoggingLevel(WINEVENT_LEVEL_INFO), TraceLoggingString(msg, "message"));
+}
+
+void error(const char *msg) {
+  TraceLoggingWrite(
+      g_hTraceLoggingProvider, "Trace", TraceLoggingLevel(WINEVENT_LEVEL_ERROR), TraceLoggingString(msg, "message"));
 }
 
 } // namespace tracing

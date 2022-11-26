@@ -6,56 +6,76 @@
 #include <shlobj.h>
 #include <shobjidl.h>
 #include <windows.h>
+#include <windowsx.h>
 
 #include <filesystem>
 #include <memory>
 #include <thread>
 
+#include <winrt/Microsoft.Toolkit.Win32.UI.XamlHost.h>
+#include <winrt/Microsoft.UI.Xaml.Controls.h>
+#include <winrt/Microsoft.UI.Xaml.XamlTypeInfo.h>
+
 #pragma push_macro("GetCurrentTime")
 #undef GetCurrentTime
 
-#include <winrt/Microsoft.ReactNative.h>
+#include <DesktopWindowBridge.h>
 
+#include "AutolinkedNativeModules.g.h"
+
+#include <CppWinRTIncludes.h>
+#include <UI.Xaml.Automation.h>
 #include <UI.Xaml.Controls.h>
 #include <UI.Xaml.Hosting.h>
+#include <UI.Xaml.Markup.h>
+#include <UI.Xaml.Media.h>
 #include <winrt/Windows.Foundation.Collections.h>
-
 #pragma pop_macro("GetCurrentTime")
 
 #ifndef USE_WINUI3
-namespace xaml = winrt::Windows::UI::Xaml;
 #else
-namespace xaml = winrt::Microsoft::UI::Xaml;
+#include <winrt/Microsoft.UI.h>
 #endif
 
 namespace controls = xaml::Controls;
 namespace hosting = xaml::Hosting;
 
+constexpr auto WindowDataProperty = L"WindowData";
+
 int RunPlayground(int showCmd, bool useWebDebugger);
+
+HWND GetXamlIslandHwnd(const hosting::DesktopWindowXamlSource &dwxs) {
+  auto interop = dwxs.as<IDesktopWindowXamlSourceNative>();
+  // Get the new child window's hwnd
+  HWND hWndXamlIsland = nullptr;
+  winrt::check_hresult(interop->get_WindowHandle(&hWndXamlIsland));
+  return hWndXamlIsland;
+}
 
 struct WindowData {
   static HINSTANCE s_instance;
   static constexpr uint16_t defaultDebuggerPort = 9229;
 
   std::wstring m_bundleFile;
-  hosting::DesktopWindowXamlSource m_desktopWindowXamlSource;
+  hosting::DesktopWindowXamlSource m_desktopWindowXamlSource{nullptr};
 
-  winrt::Microsoft::ReactNative::ReactRootView m_reactRootView;
-  winrt::Microsoft::ReactNative::ReactNativeHost m_host;
-  winrt::Microsoft::ReactNative::ReactInstanceSettings m_instanceSettings;
+  winrt::Microsoft::ReactNative::ReactRootView m_reactRootView{nullptr};
+  winrt::Microsoft::ReactNative::ReactNativeHost m_host{nullptr};
+  winrt::Microsoft::ReactNative::ReactInstanceSettings m_instanceSettings{nullptr};
 
-  bool m_useWebDebugger{true};
-  bool m_liveReloadEnabled{true};
-  bool m_reuseInstance{true};
-  bool m_useDirectDebugger{false};
+  bool m_useWebDebugger{false};
+  bool m_fastRefreshEnabled{true};
+  bool m_useDirectDebugger{true};
   bool m_breakOnNextLine{false};
   uint16_t m_debuggerPort{defaultDebuggerPort};
+  xaml::ElementTheme m_theme{xaml::ElementTheme::Default};
 
   WindowData(const hosting::DesktopWindowXamlSource &desktopWindowXamlSource)
       : m_desktopWindowXamlSource(desktopWindowXamlSource) {}
 
   static WindowData *GetFromWindow(HWND hwnd) {
-    return reinterpret_cast<WindowData *>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
+    auto data = reinterpret_cast<WindowData *>(GetProp(hwnd, WindowDataProperty));
+    return data;
   }
 
   winrt::Microsoft::ReactNative::ReactNativeHost Host() noexcept {
@@ -86,6 +106,8 @@ struct WindowData {
           GetCurrentDirectory(MAX_PATH, workingDir);
 
           auto host = Host();
+          RegisterAutolinkedNativeModulePackages(host.PackageProviders()); // Includes any autolinked modules
+
           host.InstanceSettings().JavaScriptBundleFile(m_bundleFile);
 
           host.InstanceSettings().UseWebDebugger(m_useWebDebugger);
@@ -93,13 +115,24 @@ struct WindowData {
           host.InstanceSettings().BundleRootPath(
               std::wstring(L"file:").append(workingDir).append(L"\\Bundle\\").c_str());
           host.InstanceSettings().DebuggerBreakOnNextLine(m_breakOnNextLine);
-          host.InstanceSettings().UseFastRefresh(m_liveReloadEnabled);
+          host.InstanceSettings().UseFastRefresh(m_fastRefreshEnabled);
           host.InstanceSettings().DebuggerPort(m_debuggerPort);
           host.InstanceSettings().UseDeveloperSupport(true);
 
           auto rootElement = m_desktopWindowXamlSource.Content().as<controls::Panel>();
           winrt::Microsoft::ReactNative::XamlUIService::SetXamlRoot(
               host.InstanceSettings().Properties(), rootElement.XamlRoot());
+          winrt::Microsoft::ReactNative::XamlUIService::SetAccessibleRoot(
+              host.InstanceSettings().Properties(), rootElement);
+          rootElement.SetValue(
+              winrt::Windows::UI::Xaml::Automation::AutomationProperties::LandmarkTypeProperty(),
+              winrt::box_value(80002));
+
+#ifdef USE_WINUI3
+          const auto islandWindow = (uint64_t)GetXamlIslandHwnd(m_desktopWindowXamlSource);
+          winrt::Microsoft::ReactNative::XamlUIService::SetIslandWindowHandle(
+              host.InstanceSettings().Properties(), islandWindow);
+#endif
 
           // Nudge the ReactNativeHost to create the instance and wrapping context
           host.ReloadInstance();
@@ -107,8 +140,6 @@ struct WindowData {
           m_reactRootView = winrt::Microsoft::ReactNative::ReactRootView();
           m_reactRootView.ComponentName(appName);
           m_reactRootView.ReactNativeHost(host);
-
-          // Retrieve ABI pointer from C++/CX pointer
           rootElement.Children().Clear();
           rootElement.Children().Append(m_reactRootView);
         }
@@ -131,9 +162,11 @@ struct WindowData {
         PostQuitMessage(0);
         break;
       case IDM_REFRESH:
+        Host().ReloadInstance();
         break;
       case IDM_SETTINGS:
         DialogBoxParam(s_instance, MAKEINTRESOURCE(IDD_SETTINGSBOX), hwnd, &Settings, reinterpret_cast<INT_PTR>(this));
+        break;
     }
 
     return 0;
@@ -144,10 +177,7 @@ struct WindowData {
     // Parent the DesktopWindowXamlSource object to current window
     winrt::check_hresult(interop->AttachToWindow(hwnd));
 
-    // Get the new child window's hwnd
-    HWND hWndXamlIsland = nullptr;
-    winrt::check_hresult(interop->get_WindowHandle(&hWndXamlIsland));
-
+    auto hWndXamlIsland = GetXamlIslandHwnd(m_desktopWindowXamlSource);
     SetWindowPos(hWndXamlIsland, nullptr, 0, 0, createStruct->cx, createStruct->cy, SWP_SHOWWINDOW);
 
     return 0;
@@ -188,18 +218,17 @@ struct WindowData {
     return FALSE;
   }
 
-  static constexpr std::wstring_view g_bundleFiles[] = {
-      LR"(Samples\rntester)",     LR"(Samples\accessible)",
-      LR"(Samples\callbackTest)", LR"(Samples\calculator)",
-      LR"(Samples\click)",        LR"(Samples\customViewManager)",
-      LR"(Samples\control)",      LR"(Samples\flexbox)",
-      LR"(Samples\focusTest)",    LR"(Samples\geosample)",
-      LR"(Samples\image)",        LR"(Samples\index)",
-      LR"(Samples\mouse)",        LR"(Samples\scrollViewSnapSample)",
-      LR"(Samples\simple)",       LR"(Samples\text)",
-      LR"(Samples\textinput)",    LR"(Samples\ticTacToe)",
-      LR"(Samples\view)",
-  };
+  static constexpr std::wstring_view g_bundleFiles[] = {LR"(Samples\rntester)",     LR"(Samples\accessible)",
+                                                        LR"(Samples\callbackTest)", LR"(Samples\calculator)",
+                                                        LR"(Samples\click)",        LR"(Samples\customViewManager)",
+                                                        LR"(Samples\control)",      LR"(Samples\flexbox)",
+                                                        LR"(Samples\focusTest)",    LR"(Samples\geosample)",
+                                                        LR"(Samples\image)",        LR"(Samples\index)",
+                                                        LR"(Samples\mouse)",        LR"(Samples\scrollViewSnapSample)",
+                                                        LR"(Samples\simple)",       LR"(Samples\text)",
+                                                        LR"(Samples\textinput)",    LR"(Samples\ticTacToe)",
+                                                        LR"(Samples\view)",         LR"(Samples\debugTest01)",
+                                                        LR"(Samples\nativeLayout)"};
 
   static INT_PTR CALLBACK Bundle(HWND hwnd, UINT message, WPARAM wparam, LPARAM /*lparam*/) noexcept {
     switch (message) {
@@ -237,8 +266,7 @@ struct WindowData {
         auto boolToCheck = [](bool b) { return b ? BST_CHECKED : BST_UNCHECKED; };
         auto self = reinterpret_cast<WindowData *>(lparam);
         CheckDlgButton(hwnd, IDC_WEBDEBUGGER, boolToCheck(self->m_useWebDebugger));
-        CheckDlgButton(hwnd, IDC_LIVERELOAD, boolToCheck(self->m_liveReloadEnabled));
-        CheckDlgButton(hwnd, IDC_REUSEINSTANCE, boolToCheck(self->m_reuseInstance));
+        CheckDlgButton(hwnd, IDC_FASTREFRESH, boolToCheck(self->m_fastRefreshEnabled));
         CheckDlgButton(hwnd, IDC_DIRECTDEBUGGER, boolToCheck(self->m_useDirectDebugger));
         CheckDlgButton(hwnd, IDC_BREAKONNEXTLINE, boolToCheck(self->m_breakOnNextLine));
 
@@ -252,6 +280,12 @@ struct WindowData {
         SendMessageW(cmbEngines, (UINT)CB_ADDSTRING, (WPARAM)0, (LPARAM)TEXT("V8"));
         // SendMessageW(cmbEngines, CB_SETCURSEL, (WPARAM) static_cast<int32_t>(self->m_jsEngine), (LPARAM)0);
 
+        auto cmbTheme = GetDlgItem(hwnd, IDC_THEME);
+        SendMessageW(cmbTheme, CB_ADDSTRING, 0, (LPARAM)L"Default");
+        SendMessageW(cmbTheme, CB_ADDSTRING, 0, (LPARAM)L"Light");
+        SendMessageW(cmbTheme, CB_ADDSTRING, 0, (LPARAM)L"Dark");
+        ComboBox_SetCurSel(cmbTheme, static_cast<int>(self->m_theme));
+
         return TRUE;
       }
       case WM_COMMAND: {
@@ -259,10 +293,14 @@ struct WindowData {
           case IDOK: {
             auto self = GetFromWindow(GetParent(hwnd));
             self->m_useWebDebugger = IsDlgButtonChecked(hwnd, IDC_WEBDEBUGGER) == BST_CHECKED;
-            self->m_liveReloadEnabled = IsDlgButtonChecked(hwnd, IDC_LIVERELOAD) == BST_CHECKED;
-            self->m_reuseInstance = IsDlgButtonChecked(hwnd, IDC_REUSEINSTANCE) == BST_CHECKED;
+            self->m_fastRefreshEnabled = IsDlgButtonChecked(hwnd, IDC_FASTREFRESH) == BST_CHECKED;
             self->m_useDirectDebugger = IsDlgButtonChecked(hwnd, IDC_DIRECTDEBUGGER) == BST_CHECKED;
             self->m_breakOnNextLine = IsDlgButtonChecked(hwnd, IDC_BREAKONNEXTLINE) == BST_CHECKED;
+
+            auto themeComboBox = GetDlgItem(hwnd, IDC_THEME);
+            self->m_theme = static_cast<xaml::ElementTheme>(ComboBox_GetCurSel(themeComboBox));
+            auto panel = self->m_desktopWindowXamlSource.Content().as<controls::Panel>();
+            panel.RequestedTheme(self->m_theme);
 
             WCHAR buffer[6] = {};
             auto portEditControl = GetDlgItem(hwnd, IDC_DEBUGGERPORT);
@@ -282,7 +320,7 @@ struct WindowData {
 
             // auto cmbEngines = GetDlgItem(hwnd, IDC_JSENGINE);
             // int itemIndex = (int)SendMessageW(cmbEngines, (UINT)CB_GETCURSEL, (WPARAM)0, (LPARAM)0);
-            // self->m_jsEngine = static_cast<react::uwp::JSIEngine>(itemIndex);
+            // self->m_jsEngine = static_cast<Microsoft::ReactNative::JSIEngine>(itemIndex);
           }
             [[fallthrough]];
           case IDCANCEL:
@@ -301,6 +339,13 @@ extern "C" IMAGE_DOS_HEADER __ImageBase;
 HINSTANCE WindowData::s_instance = reinterpret_cast<HINSTANCE>(&__ImageBase);
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) noexcept {
+#ifdef USE_WINUI3
+  if (auto windowData = WindowData::GetFromWindow(hwnd)) {
+    winrt::Microsoft::ReactNative::ReactNotificationService rns(windowData->InstanceSettings().Notifications());
+    winrt::Microsoft::ReactNative::ForwardWindowMessage(rns, hwnd, message, wparam, lparam);
+  }
+#endif
+
   switch (message) {
     case WM_CREATE: {
       return WindowData::GetFromWindow(hwnd)->OnCreate(hwnd, reinterpret_cast<LPCREATESTRUCT>(lparam));
@@ -311,7 +356,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) 
     }
     case WM_DESTROY: {
       delete WindowData::GetFromWindow(hwnd);
-      SetWindowLongPtr(hwnd, GWLP_USERDATA, 0);
+      SetProp(hwnd, WindowDataProperty, 0);
       PostQuitMessage(0);
       return 0;
     }
@@ -319,7 +364,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) 
       auto cs = reinterpret_cast<CREATESTRUCT *>(lparam);
       auto windowData = static_cast<WindowData *>(cs->lpCreateParams);
       WINRT_ASSERT(windowData);
-      SetWindowLongPtr(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(windowData));
+      SetProp(hwnd, WindowDataProperty, reinterpret_cast<HANDLE>(windowData));
       break;
     }
     case WM_WINDOWPOSCHANGED: {
@@ -341,11 +386,27 @@ int RunPlayground(int showCmd, bool useWebDebugger) {
 
   winrt::init_apartment(winrt::apartment_type::single_threaded);
 
+  auto winuiIXMP = winrt::Microsoft::UI::Xaml::XamlTypeInfo::XamlControlsXamlMetaDataProvider();
+
+  auto xapp = winrt::Microsoft::Toolkit::Win32::UI::XamlHost::XamlApplication({winuiIXMP});
+
+  winrt::Windows::UI::Xaml::Hosting::WindowsXamlManager::InitializeForCurrentThread();
+
+  xapp.Resources().MergedDictionaries().Append(winrt::Microsoft::UI::Xaml::Controls::XamlControlsResources());
+
   hosting::DesktopWindowXamlSource desktopXamlSource;
   auto windowData = std::make_unique<WindowData>(desktopXamlSource);
   windowData->m_useWebDebugger = useWebDebugger;
 
-  auto xamlContent = controls::Grid();
+  // We have to use a XAML string here to access the ThemeResource.
+  // XAML Islands requires us to set the background color to handle theme changes.
+  const winrt::hstring xamlString =
+      LR"(
+  <Grid
+    xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation'
+    xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml'
+    Background='{ThemeResource ApplicationPageBackgroundThemeBrush}' />)";
+  auto xamlContent = winrt::unbox_value<controls::Grid>(xaml::Markup::XamlReader::Load(xamlString));
   desktopXamlSource.Content(xamlContent);
 
   HWND hwnd = CreateWindow(
@@ -380,7 +441,6 @@ int RunPlayground(int showCmd, bool useWebDebugger) {
     if (xamlSourceProcessedMessage) {
       continue;
     }
-
     if (!TranslateAccelerator(hwnd, hAccelTable, &msg)) {
       TranslateMessage(&msg);
       DispatchMessage(&msg);
@@ -398,7 +458,7 @@ _Use_decl_annotations_ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE, PSTR 
   wcex.style = CS_HREDRAW | CS_VREDRAW;
   wcex.lpfnWndProc = &WndProc;
   wcex.cbClsExtra = DLGWINDOWEXTRA;
-  wcex.cbWndExtra = 0;
+  wcex.cbWndExtra = sizeof(WindowData *);
   wcex.hInstance = WindowData::s_instance;
   wcex.hCursor = LoadCursor(nullptr, IDC_ARROW);
   wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
@@ -409,5 +469,5 @@ _Use_decl_annotations_ int CALLBACK WinMain(HINSTANCE instance, HINSTANCE, PSTR 
   WINRT_VERIFY(classId);
   winrt::check_win32(!classId);
 
-  return RunPlayground(showCmd, true);
+  return RunPlayground(showCmd, false);
 }

@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="16.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project ToolsVersion="Current" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
-  <Import Project="$(SolutionDir)\BuildFlags.props" Condition="Exists('$(SolutionDir)\BuildFlags.props')" />
+  <Import Project="$(SolutionDir)\ExperimentalFeatures.props" Condition="Exists('$(SolutionDir)\ExperimentalFeatures.props')" />
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
@@ -11,15 +11,17 @@
     <RootNamespace>Microsoft.ReactNative.Managed</RootNamespace>
     <AssemblyName>Microsoft.ReactNative.Managed</AssemblyName>
     <DefaultLanguage>en-US</DefaultLanguage>
+    <GenerateProjectSpecificOutputFolder>false</GenerateProjectSpecificOutputFolder>
     <TargetPlatformIdentifier>UAP</TargetPlatformIdentifier>
-    <TargetPlatformVersion Condition=" '$(TargetPlatformVersion)' == '' ">10.0.18362.0</TargetPlatformVersion>
+    <TargetPlatformVersion Condition=" '$(TargetPlatformVersion)' == '' ">10.0.19041.0</TargetPlatformVersion>
     <TargetPlatformMinVersion>10.0.16299.0</TargetPlatformMinVersion>
-    <MinimumVisualStudioVersion>16</MinimumVisualStudioVersion>
+    <MinimumVisualStudioVersion>17.0</MinimumVisualStudioVersion>
     <FileAlignment>512</FileAlignment>
     <ProjectTypeGuids>{A5A43C5B-DE2A-4C0C-9213-0A381AF9435A};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
     <DocumentationFile>bin\$(Platform)\$(Configuration)\Microsoft.ReactNative.Managed.XML</DocumentationFile>
     <Deterministic>true</Deterministic>
     <ProduceReferenceAssembly>true</ProduceReferenceAssembly>
+    <ProduceReferenceAssemblyInOutDir>true</ProduceReferenceAssemblyInOutDir>
     <NoWarn>;2008</NoWarn>
     <NoWarn>$(NoWarn);1591</NoWarn>
     <!-- Missing XML comment for publicly visible type or member -->
@@ -27,7 +29,6 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x86'">
     <PlatformTarget>x86</PlatformTarget>
     <DebugSymbols>true</DebugSymbols>
-    <OutputPath>bin\x86\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE;NETFX_CORE;WINDOWS_UWP</DefineConstants>
     <DebugType>full</DebugType>
     <UseVSHostingProcess>false</UseVSHostingProcess>
@@ -35,25 +36,6 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x86'">
     <PlatformTarget>x86</PlatformTarget>
-    <OutputPath>bin\x86\Release\</OutputPath>
-    <DefineConstants>TRACE;NETFX_CORE;WINDOWS_UWP</DefineConstants>
-    <Optimize>true</Optimize>
-    <DebugType>pdbonly</DebugType>
-    <UseVSHostingProcess>false</UseVSHostingProcess>
-    <ErrorReport>prompt</ErrorReport>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|ARM'">
-    <PlatformTarget>ARM</PlatformTarget>
-    <DebugSymbols>true</DebugSymbols>
-    <OutputPath>bin\ARM\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE;NETFX_CORE;WINDOWS_UWP</DefineConstants>
-    <DebugType>full</DebugType>
-    <UseVSHostingProcess>false</UseVSHostingProcess>
-    <ErrorReport>prompt</ErrorReport>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|ARM'">
-    <PlatformTarget>ARM</PlatformTarget>
-    <OutputPath>bin\ARM\Release\</OutputPath>
     <DefineConstants>TRACE;NETFX_CORE;WINDOWS_UWP</DefineConstants>
     <Optimize>true</Optimize>
     <DebugType>pdbonly</DebugType>
@@ -63,7 +45,6 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|ARM64'">
     <PlatformTarget>ARM64</PlatformTarget>
     <DebugSymbols>true</DebugSymbols>
-    <OutputPath>bin\ARM64\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE;NETFX_CORE;WINDOWS_UWP</DefineConstants>
     <DebugType>full</DebugType>
     <UseVSHostingProcess>false</UseVSHostingProcess>
@@ -71,7 +52,6 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|ARM64'">
     <PlatformTarget>ARM64</PlatformTarget>
-    <OutputPath>bin\ARM64\Release\</OutputPath>
     <DefineConstants>TRACE;NETFX_CORE;WINDOWS_UWP</DefineConstants>
     <Optimize>true</Optimize>
     <DebugType>pdbonly</DebugType>
@@ -81,7 +61,6 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
     <PlatformTarget>x64</PlatformTarget>
     <DebugSymbols>true</DebugSymbols>
-    <OutputPath>bin\x64\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE;NETFX_CORE;WINDOWS_UWP</DefineConstants>
     <DebugType>full</DebugType>
     <UseVSHostingProcess>false</UseVSHostingProcess>
@@ -89,7 +68,6 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
     <PlatformTarget>x64</PlatformTarget>
-    <OutputPath>bin\x64\Release\</OutputPath>
     <DefineConstants>TRACE;NETFX_CORE;WINDOWS_UWP</DefineConstants>
     <Optimize>true</Optimize>
     <DebugType>pdbonly</DebugType>
@@ -98,8 +76,11 @@
   </PropertyGroup>
   <PropertyGroup>
     <RestoreProjectStyle>PackageReference</RestoreProjectStyle>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
   </PropertyGroup>
-  <Import Project="..\PropertySheets\WinUI.props" />
+  <Import Project="$(ReactNativeWindowsDir)\PropertySheets\NuGet.CSharp.props" />
+  <Import Project="$(ReactNativeWindowsDir)\PropertySheets\WinUI.props" />
+  <Import Project="$(ReactNativeWindowsDir)\PropertySheets\External\Microsoft.ReactNative.CSharp.Dependencies.props" />
   <ItemGroup>
     <Compile Include="AttributedViewManager.cs" />
     <Compile Include="IJSValueTreeReader.cs" />
@@ -120,6 +101,19 @@
     <Compile Include="ReactConstantProviderInfo.cs" />
     <Compile Include="ReactContext.cs" />
     <Compile Include="ReactContextGenerator.cs" />
+    <Compile Include="ReactError.cs" />
+    <Compile Include="ReactNotificationArgsOf.cs" />
+    <Compile Include="ReactNotificationHandlerOf.cs" />
+    <Compile Include="ReactNotificationService.cs" />
+    <Compile Include="ReactNotificationSubscriptionRevoker.cs" />
+    <Compile Include="ReactPropertyBag.cs" />
+    <Compile Include="ReactNotificationIdOf.cs" />
+    <Compile Include="ReactPropertyIdOf.cs" />
+    <Compile Include="ReactDispatcher.cs" />
+    <Compile Include="ReactNotificationSubscription.cs" />
+    <Compile Include="ReactSettingsSnapshot.cs" />
+    <Compile Include="ReactPropertyName.cs" />
+    <Compile Include="ReactPropertyNamespace.cs" />
     <Compile Include="ReactTaskExtensions.cs" />
     <Compile Include="ReactEnumerableExtensions.cs" />
     <Compile Include="ReactEventInfo.cs" />
@@ -144,13 +138,26 @@
       <Name>Microsoft.ReactNative</Name>
     </ProjectReference>
     <PackageReference Include="Microsoft.NETCore.UniversalWindowsPlatform">
-      <Version>6.2.9</Version>
+      <Version>$(NETCoreUWPVersion)</Version>
     </PackageReference>
-    <PackageReference Include="$(WinUIPackageName)" Version="$(WinUIPackageVersion)" Condition="'$(UseWinUI3)'=='true'" />
-    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0" PrivateAssets="All"/>
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0" PrivateAssets="All" />
   </ItemGroup>
-  <PropertyGroup Condition=" '$(VisualStudioVersion)' == '' or '$(VisualStudioVersion)' &lt; '16.0' ">
-    <VisualStudioVersion>16.0</VisualStudioVersion>
+  <!--
+    Visual Studio (but not MSBuild) will ignore Conditions applied directly to
+    the PackageReference or ItemGroup containing a PackageReference. Both
+    respect <Choose> for conditional restoration.
+    -->
+  <Choose>
+    <When Condition="'$(UseWinUI3)'=='true'">
+      <ItemGroup>
+        <PackageReference Include="Microsoft.WinUI">
+          <Version>$(WinUI3Version)</Version>
+        </PackageReference>
+      </ItemGroup>
+    </When>
+  </Choose>
+  <PropertyGroup Condition=" '$(VisualStudioVersion)' == '' or '$(VisualStudioVersion)' &lt; '17.0' ">
+    <VisualStudioVersion>17.0</VisualStudioVersion>
   </PropertyGroup>
   <Import Project="$(MSBuildExtensionsPath)\Microsoft\WindowsXaml\v$(VisualStudioVersion)\Microsoft.Windows.UI.Xaml.CSharp.targets" />
   <Target Name="Deploy" />

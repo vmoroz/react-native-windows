@@ -5,8 +5,8 @@
  * @format
  */
 
-import * as async from 'async';
-import * as path from 'path';
+import async from 'async';
+import path from 'path';
 
 import {
   SpawnSyncOptions,
@@ -35,7 +35,7 @@ function main() {
     // Pass all arguments to clang-format, including e.g. -version etc.
     spawnClangFormat(args, verify ? queryNoOpenFiles : process.exit, 'inherit');
   } catch (e) {
-    process.stdout.write(e.message);
+    process.stdout.write((e as Error).message);
     process.exit(1);
   }
 }
@@ -126,7 +126,7 @@ function spawnClangFormat(
   // launch a new process for each chunk
   async.series<number, Error>(
     chunks.map(chunk => {
-      return function(callback) {
+      return function (callback) {
         const clangFormatProcess = spawn(nativeBinary, args.concat(chunk), {
           stdio: stdio,
         });

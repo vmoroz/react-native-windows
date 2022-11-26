@@ -5,8 +5,8 @@
  * @format
  */
 
-import * as net from 'net';
-import * as path from 'path';
+import net from 'net';
+import path from 'path';
 import {platform, tmpdir} from 'os';
 
 /**
@@ -85,7 +85,7 @@ export default class CrossProcessLock {
       } catch (ex) {
         // Old versions of Node will throw an extra TypeError when address is
         // in use that we need to ignore https://github.com/nodejs/node/issues/23917
-        if (ex.name !== 'TypeError') {
+        if ((ex as Error).name !== 'TypeError') {
           throw ex;
         }
       }

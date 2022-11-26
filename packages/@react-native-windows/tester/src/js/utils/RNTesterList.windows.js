@@ -7,9 +7,19 @@
 
 'use strict';
 
-import type {RNTesterExample} from '../types/RNTesterTypes';
+import type {RNTesterModuleInfo} from '../types/RNTesterTypes';
 
-const ComponentExamples: Array<RNTesterExample> = [
+import ReactNativeFeatureFlags from 'react-native/Libraries/ReactNative/ReactNativeFeatureFlags';
+
+const Components: Array<RNTesterModuleInfo> = [
+  {
+    key: 'HTTPExample',
+    module: require('../examples/HTTP/HTTPExample'),
+  },
+  {
+    key: 'XHRExample',
+    module: require('../examples/XHR/XHRExample'),
+  },
   {
     key: 'ActivityIndicatorExample',
     category: 'UI',
@@ -18,17 +28,23 @@ const ComponentExamples: Array<RNTesterExample> = [
   {
     key: 'ButtonExample',
     category: 'UI',
-    module: require('../examples/Button/ButtonExample'),
+    module: require('../examples-win/Button/ButtonExample'),
   },
   {
-    key: 'FlatListExample',
+    key: 'FlatListExampleIndex',
+    module: require('../examples/FlatList/FlatListExampleIndex').default,
     category: 'ListView',
-    module: require('../examples/FlatList/FlatListExample'),
+    supportsTVOS: true,
   },
   {
-    key: 'DatePickerExample',
+    key: 'ImageExample',
+    category: 'Basic',
+    module: require('../examples/Image/ImageExample'),
+  },
+  {
+    key: 'Display:NoneExample',
     category: 'UI',
-    module: require('../examples-win/DatePicker/DatePickerExample'),
+    module: require('../examples-win/DisplayNone/DisplayNoneExample'),
   },
   {
     key: 'FastTextExample',
@@ -45,29 +61,14 @@ const ComponentExamples: Array<RNTesterExample> = [
     category: 'UI',
     module: require('../examples-win/Glyph/GlyphExample'),
   },
-  {
-    key: 'ImageExample',
-    category: 'Basic',
-    module: require('../examples/Image/ImageExample'),
-  },
   // {
   //   key: 'ModalExample',
   //   category: 'UI',
   //   module: require('../examples/Modal/ModalExample'),
   // },
   {
-    key: 'MultiColumnExample',
-    category: 'ListView',
-    module: require('../examples/MultiColumn/MultiColumnExample'),
-  },
-  {
     key: 'NewAppScreenExample',
     module: require('../examples/NewAppScreen/NewAppScreenExample'),
-  },
-  {
-    key: 'PickerWindowsExample',
-    category: 'UI',
-    module: require('../examples-win/Picker/PickerWindowsExample'),
   },
   {
     key: 'PressableExample',
@@ -95,14 +96,24 @@ const ComponentExamples: Array<RNTesterExample> = [
     module: require('../examples/ScrollView/ScrollViewSimpleExample'),
   },
   {
+    key: 'ScrollViewAnimatedExample',
+    category: 'Basic',
+    module: require('../examples/ScrollView/ScrollViewAnimatedExample'),
+  },
+  {
     key: 'SectionListExample',
     category: 'ListView',
-    module: require('../examples/SectionList/SectionListExample'),
+    module: require('../examples/SectionList/SectionListIndex'),
+  },
+  {
+    key: 'SwipeableCardExample',
+    category: 'UI',
+    module: require('../examples/SwipeableCardExample/SwipeableCardExample'),
   },
   {
     key: 'SwitchExample',
     category: 'UI',
-    module: require('../examples/Switch/SwitchExample'),
+    module: require('../examples-win/Switch/SwitchExample'),
   },
   {
     key: 'TextExample',
@@ -113,6 +124,10 @@ const ComponentExamples: Array<RNTesterExample> = [
     key: 'TextInputExample',
     category: 'Basic',
     module: require('../examples/TextInput/TextInputExample'),
+  },
+  {
+    key: 'TextInputs with key prop',
+    module: require('../examples/TextInput/TextInputKeyProp'),
   },
   {
     key: 'TouchableExample',
@@ -133,6 +148,16 @@ const ComponentExamples: Array<RNTesterExample> = [
     category: 'Basic',
     module: require('../examples/View/ViewExample'),
   },
+  //{
+  //  key: 'NewArchitectureExample',
+  //  category: 'UI',
+  //  module: require('../examples/NewArchitecture/NewArchitectureExample'),
+  //},
+  {
+    key: 'XAML',
+    category: 'UI',
+    module: require('../examples-win/XAML/XAMLExample'),
+  },
   {
     key: 'LegacyControlStyleTest',
     module: require('../examples-win/LegacyTests/ControlStyleTestPage'),
@@ -150,12 +175,21 @@ const ComponentExamples: Array<RNTesterExample> = [
     module: require('../examples-win/LegacyTests/ImageTestPage'),
   },
   {
-    key: 'LegacyTextBackgroundColorTest',
-    module: require('../examples-win/LegacyTests/TextBackgroundColorTestPage'),
+    key: 'LegacySelectableTextTest',
+    module: require('../examples-win/LegacyTests/SelectableTextTestPage'),
   },
+  {
+    key: 'LegacyTextHitTestTest',
+    module: require('../examples-win/LegacyTests/TextHitTestPage'),
+  },
+  /*{
+    key: 'ComponentWithState',
+    category: 'UI',
+    module: require('../examples-win/NewArchitecture/ComponentWithState'),
+  },*/
 ];
 
-const APIExamples: Array<RNTesterExample> = [
+const APIs: Array<RNTesterModuleInfo> = [
   {
     key: 'KeyboardFocusExample',
     category: 'Basic',
@@ -184,17 +218,17 @@ const APIExamples: Array<RNTesterExample> = [
   {
     key: 'AlertExample',
     category: 'UI',
-    module: require('../examples/Alert/AlertExample'),
+    module: require('../examples/Alert/AlertExample').default,
   },
   {
-    key: 'AnimatedExample',
+    key: 'AnimatedIndex',
     category: 'UI',
-    module: require('../examples/Animated/AnimatedExample'),
+    module: require('../examples/Animated/AnimatedIndex').default,
   },
   {
     key: 'Animation - GratuitousAnimation',
     category: 'UI',
-    module: require('../examples/Animated/AnimatedGratuitousApp/AnExApp'),
+    module: require('../examples/AnimatedGratuitousApp/AnExApp'),
   },
   {
     key: 'AppearanceExample',
@@ -227,6 +261,11 @@ const APIExamples: Array<RNTesterExample> = [
     module: require('../examples/Dimensions/DimensionsExample'),
   },
   {
+    key: 'Keyboard',
+    category: 'Basic',
+    module: require('../examples/Keyboard/KeyboardExample').default,
+  },
+  {
     key: 'KeyboardExample',
     module: require('../examples-win/Keyboard/KeyboardExample'),
   },
@@ -256,9 +295,19 @@ const APIExamples: Array<RNTesterExample> = [
     module: require('../examples-win/Mouse/MouseExample'),
   },
   {
+    key: 'MouseClickExample',
+    category: 'Basic',
+    module: require('../examples-win/Mouse/MouseClickExample'),
+  },
+  {
     key: 'NativeAnimationsExample',
     category: 'UI',
     module: require('../examples/NativeAnimation/NativeAnimationsExample'),
+  },
+  {
+    key: 'CompositionBugsExample',
+    category: 'UI',
+    module: require('../examples-win/NativeAnimation/CompositionBugsExample'),
   },
   {
     key: 'PanResponderExample',
@@ -305,26 +354,31 @@ const APIExamples: Array<RNTesterExample> = [
     key: 'XHRExample',
     category: 'Basic',
     module: require('../examples/XHR/XHRExample'),
-  },*/
-];
-
-if (global.__turboModuleProxy) {
-  APIExamples.push({
+  }, */
+  {
     key: 'TurboModuleExample',
     category: 'Basic',
     module: require('../examples/TurboModule/TurboModuleExample'),
+  },
+];
+
+if (ReactNativeFeatureFlags.shouldEmitW3CPointerEvents()) {
+  APIs.push({
+    key: 'W3C PointerEvents',
+    category: 'Experimental',
+    module: require('../examples/Experimental/W3CPointerEventsExample').default,
   });
 }
 
 const Modules: any = {};
 
-APIExamples.concat(ComponentExamples).forEach(Example => {
+APIs.concat(Components).forEach(Example => {
   Modules[Example.key] = Example.module;
 });
 
 const RNTesterList = {
-  APIExamples,
-  ComponentExamples,
+  APIs,
+  Components,
   Modules,
 };
 

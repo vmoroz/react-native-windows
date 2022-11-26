@@ -3,26 +3,27 @@
 // Licensed under the MIT License.
 
 #pragma once
-#include <folly/dynamic.h>
 #include "AnimatedNode.h"
 #include "CalculatedAnimationDriver.h"
 
-namespace react::uwp {
+namespace Microsoft::ReactNative {
 class SpringAnimationDriver : public CalculatedAnimationDriver {
  public:
   SpringAnimationDriver(
       int64_t id,
       int64_t animatedValueTag,
       const Callback &endCallback,
-      const folly::dynamic &config,
+      const winrt::Microsoft::ReactNative::JSValueObject &config,
       const std::shared_ptr<NativeAnimatedNodeManager> &manager,
-      const folly::dynamic &dynamicToValues = folly::dynamic::array());
+      const winrt::Microsoft::ReactNative::JSValueArray &dynamicToValues =
+          winrt::Microsoft::ReactNative::JSValueArray());
 
   double ToValue() override;
 
  protected:
+  bool Update(double timeDeltaMs, bool restarting) override;
   std::tuple<float, double> GetValueAndVelocityForTime(double time) override;
-  bool IsAnimationDone(double currentValue, double currentVelocity) override;
+  bool IsAnimationDone(double currentValue, std::optional<double> previousValue, double currentVelocity) override;
 
  private:
   bool IsAtRest(double currentVelocity, double currentPosition, double endValue);
@@ -37,7 +38,10 @@ class SpringAnimationDriver : public CalculatedAnimationDriver {
   double m_displacementFromRestThreshold{0};
   bool m_overshootClampingEnabled{0};
   int m_iterations{0};
-  folly::dynamic m_dynamicToValues{};
+  winrt::Microsoft::ReactNative::JSValueArray m_dynamicToValues{};
+
+  double m_lastTime{0};
+  double m_timeAccumulator{0};
 
   static constexpr std::string_view s_springStiffnessParameterName{"stiffness"};
   static constexpr std::string_view s_springDampingParameterName{"damping"};
@@ -48,5 +52,5 @@ class SpringAnimationDriver : public CalculatedAnimationDriver {
   static constexpr std::string_view s_displacementFromRestThresholdParameterName{"restDisplacementThreshold"};
   static constexpr std::string_view s_overshootClampingEnabledParameterName{"overshootClamping"};
   static constexpr std::string_view s_iterationsParameterName{"iterations"};
-}; // namespace uwp
-} // namespace react::uwp
+};
+} // namespace Microsoft::ReactNative

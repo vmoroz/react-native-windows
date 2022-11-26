@@ -6,41 +6,57 @@
 #include <math.h>
 #include "DecayAnimationDriver.h"
 
-namespace react::uwp {
+namespace Microsoft::ReactNative {
 DecayAnimationDriver::DecayAnimationDriver(
     int64_t id,
     int64_t animatedValueTag,
     const Callback &endCallback,
-    const folly::dynamic &config,
+    const winrt::Microsoft::ReactNative::JSValueObject &config,
     const std::shared_ptr<NativeAnimatedNodeManager> &manager)
     : CalculatedAnimationDriver(id, animatedValueTag, endCallback, config, manager) {
-  m_deceleration = config.find(s_decelerationName).dereference().second.asDouble();
+  m_deceleration = config[s_decelerationName].AsDouble();
   assert(m_deceleration > 0);
-  m_velocity = config.find(s_velocityName).dereference().second.asDouble();
+  m_velocity = config[s_velocityName].AsDouble();
 }
 
 std::tuple<float, double> DecayAnimationDriver::GetValueAndVelocityForTime(double time) {
-  const auto value =
-      m_startValue + m_velocity / (1 - m_deceleration) * (1 - std::exp(-(1 - m_deceleration) * (1000 * time)));
+  const auto value = m_originalValue.value() +
+      m_velocity / (1 - m_deceleration) * (1 - std::exp(-(1 - m_deceleration) * (1000 * time)));
   return std::make_tuple(static_cast<float>(value),
                          42.0f); // we don't need the velocity, so set it to a dummy value
 }
 
-bool DecayAnimationDriver::IsAnimationDone(double currentValue, double /*currentVelocity*/) {
-  return (std::abs(ToValue() - currentValue) < 0.1);
+bool DecayAnimationDriver::IsAnimationDone(
+    double currentValue,
+    std::optional<double> previousValue,
+    double /*currentVelocity*/) {
+  return previousValue.has_value() && std::abs(currentValue - previousValue.value()) < 0.1;
 }
 
-double DecayAnimationDriver::ToValue() {
-  auto const startValue = [this]() {
-    if (auto const manager = m_manager.lock()) {
-      if (auto const valueNode = manager->GetValueAnimatedNode(m_animatedValueTag)) {
-        return valueNode->Value();
+bool DecayAnimationDriver::Update(double timeDeltaMs, bool restarting) {
+  if (const auto node = GetAnimatedValue()) {
+    if (restarting) {
+      const auto value = node->RawValue();
+      if (!m_originalValue) {
+        // First iteration, assign m_fromValue based on AnimatedValue
+        m_originalValue = value;
+      } else {
+        // Not the first iteration, reset AnimatedValue based on m_originalValue
+        node->RawValue(m_originalValue.value());
       }
-    }
-    return 0.0;
-  }();
 
-  return m_startValue + m_velocity / (1 - m_deceleration);
+      m_lastValue = value;
+    }
+
+    const auto [value, velocity] = GetValueAndVelocityForTime(timeDeltaMs / 1000.0);
+    if (restarting || IsAnimationDone(value, m_lastValue, 0.0 /* ignored */)) {
+      m_lastValue = value;
+      node->RawValue(value);
+      return false;
+    }
+  }
+
+  return true;
 }
 
-} // namespace react::uwp
+} // namespace Microsoft::ReactNative

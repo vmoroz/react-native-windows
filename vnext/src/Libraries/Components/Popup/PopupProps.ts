@@ -4,7 +4,7 @@
  * @format
  */
 
-import * as React from 'react';
+import React from 'react';
 import {ViewProps} from 'react-native';
 
 export interface IPopupProps extends ViewProps {
@@ -29,4 +29,5 @@ export interface IPopupProps extends ViewProps {
    */
   target?: React.ReactNode;
   onDismiss?: () => void;
+  testID?: string;
 }

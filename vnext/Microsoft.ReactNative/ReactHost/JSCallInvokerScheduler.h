@@ -4,6 +4,7 @@
 #pragma once
 
 #include <dispatchQueue/dispatchQueue.h>
+#include "future/future.h"
 
 namespace facebook::react {
 class CallInvoker;
@@ -18,6 +19,7 @@ struct IJSCallInvokerQueueScheduler : IUnknown {
 };
 
 Mso::CntPtr<IDispatchQueueScheduler> MakeJSCallInvokerScheduler(
+    Mso::DispatchQueueSettings const &settings,
     std::shared_ptr<facebook::react::CallInvoker> &&callInvoker,
     Mso::Functor<void(const Mso::ErrorCode &)> &&errorHandler,
     Mso::Promise<void> &&whenQuit = nullptr) noexcept;

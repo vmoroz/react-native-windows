@@ -1,8 +1,286 @@
 # Change Log - @rnw-scripts/create-github-releases
 
-This log was last generated on Thu, 28 Jan 2021 05:06:47 GMT and should not be manually modified.
+This log was last generated on Wed, 16 Nov 2022 06:16:01 GMT and should not be manually modified.
 
 <!-- Start content -->
+
+## 1.4.4
+
+Wed, 16 Nov 2022 06:16:01 GMT
+
+### Patches
+
+- Bump @react-native-windows/find-repo-root to v0.0.0-canary.39
+- Bump @react-native-windows/fs to v0.0.0-canary.10
+- Bump @rnw-scripts/just-task to v2.3.2
+
+## 1.4.3
+
+Sat, 12 Nov 2022 06:17:23 GMT
+
+### Patches
+
+- Bump @react-native-windows/find-repo-root to v0.0.0-canary.38
+- Bump @react-native-windows/fs to v0.0.0-canary.9
+- Bump @rnw-scripts/just-task to v2.3.1
+
+## 1.4.2
+
+Thu, 10 Nov 2022 06:17:12 GMT
+
+### Patches
+
+- Bump @react-native-windows/find-repo-root to v0.0.0-canary.37
+- Bump @react-native-windows/fs to v0.0.0-canary.8
+- Bump @rnw-scripts/just-task to v2.3.0
+
+## 1.4.1
+
+Sat, 15 Oct 2022 05:12:00 GMT
+
+### Patches
+
+- Bump @react-native-windows/find-repo-root to v0.0.0-canary.36
+- Bump @react-native-windows/fs to v0.0.0-canary.7
+
+## 1.4.0
+
+Wed, 05 Oct 2022 05:13:44 GMT
+
+### Minor changes
+
+- integrate 7/29/22 (tatianakapos@microsoft.com)
+- Bump @react-native-windows/find-repo-root to v0.0.0-canary.35
+- Bump @react-native-windows/fs to v0.0.0-canary.6
+- Bump @rnw-scripts/eslint-config to v1.1.14
+- Bump @rnw-scripts/just-task to v2.2.6
+
+## 1.3.0
+
+Fri, 29 Jul 2022 05:09:46 GMT
+
+### Minor changes
+
+- Restore Some Git Tags (ngerlem@microsoft.com)
+
+## 1.2.1
+
+Sat, 04 Jun 2022 05:10:05 GMT
+
+### Patches
+
+- Bump @react-native-windows/find-repo-root to v0.0.0-canary.34
+- Bump @react-native-windows/fs to v0.0.0-canary.5
+- Bump @rnw-scripts/just-task to v2.2.5
+
+## 1.2.0
+
+Thu, 12 May 2022 05:09:44 GMT
+
+### Minor changes
+
+- Tag by package name instead of all tags (ngerlem@microsoft.com)
+- Bump @react-native-windows/find-repo-root to v0.0.0-canary.33
+- Bump @react-native-windows/fs to v0.0.0-canary.4
+- Bump @rnw-scripts/eslint-config to v1.1.13
+- Bump @rnw-scripts/just-task to v2.2.4
+
+## 1.1.13
+
+Wed, 27 Apr 2022 05:10:24 GMT
+
+### Patches
+
+- Merge (34109996+chiaramooney@users.noreply.github.com)
+- Bump @react-native-windows/find-repo-root to v0.0.0-canary.32
+- Bump @react-native-windows/fs to v0.0.0-canary.3
+- Bump @rnw-scripts/eslint-config to v1.1.12
+
+## 1.1.12
+
+Tue, 12 Apr 2022 05:10:38 GMT
+
+### Patches
+
+- Fix Overrides (34109996+chiaramooney@users.noreply.github.com)
+- Bump @react-native-windows/find-repo-root to v0.0.0-canary.31
+- Bump @react-native-windows/fs to v0.0.0-canary.2
+
+## 1.1.11
+
+Tue, 05 Apr 2022 05:10:13 GMT
+
+### Patches
+
+- Security: Update simple-git dependency to 3.3.0 (jthysell@microsoft.com)
+
+## 1.1.10
+
+Fri, 01 Apr 2022 05:09:57 GMT
+
+### Patches
+
+- Fix publish after promotion to preview (ngerlem@microsoft.com)
+- Bump @react-native-windows/find-repo-root to v0.0.0-canary.30
+- Bump @react-native-windows/fs to v0.0.0-canary.1
+
+## 1.1.9
+
+Sun, 13 Feb 2022 06:08:34 GMT
+
+### Patches
+
+- Bump @react-native-windows/find-repo-root to v0.0.0-canary.29
+
+## 1.1.8
+
+Wed, 09 Feb 2022 06:09:37 GMT
+
+### Patches
+
+- Bump minimum Node version to 14 (jthysell@microsoft.com)
+- Bump @react-native-windows/find-repo-root to v0.0.0-canary.28
+- Bump @react-native-windows/fs to v1.0.2
+- Bump @rnw-scripts/eslint-config to v1.1.11
+- Bump @rnw-scripts/just-task to v2.2.3
+- Bump @rnw-scripts/ts-config to v2.0.2
+
+## 1.1.7
+
+Fri, 03 Dec 2021 06:12:10 GMT
+
+### Patches
+
+- Integrate 11/11 (34109996+chiaramooney@users.noreply.github.com)
+- Bump @react-native-windows/find-repo-root to v0.0.0-canary.27
+- Bump @react-native-windows/fs to v1.0.1
+- Bump @rnw-scripts/eslint-config to v1.1.10
+- Bump @rnw-scripts/just-task to v2.2.2
+
+## 1.1.6
+
+Thu, 18 Nov 2021 06:11:20 GMT
+
+### Patches
+
+- Use '@react-native-windows/fs' (ngerlem@microsoft.com)
+- Bump @react-native-windows/find-repo-root to v0.0.0-canary.26
+- Bump @react-native-windows/fs to v1.0.0
+- Bump @rnw-scripts/eslint-config to v1.1.9
+
+## 1.1.5
+
+Thu, 21 Oct 2021 05:08:01 GMT
+
+### Patches
+
+- Update to typescript 4 (30809111+acoates-ms@users.noreply.github.com)
+- Bump @react-native-windows/find-repo-root to v0.0.0-canary.25
+
+## 1.1.4
+
+Wed, 08 Sep 2021 05:08:53 GMT
+
+### Patches
+
+- Set consistent node requirements on our packages (ngerlem@microsoft.com)
+
+### Changes
+
+- Bump @react-native-windows/find-repo-root to v0.0.0-canary.24 (ngerlem@microsoft.com)
+
+## 1.1.3
+
+Fri, 11 Jun 2021 05:08:55 GMT
+
+### Patches
+
+- Bump @rnw-scripts/just-task to v2.2.0 (ngerlem@microsoft.com)
+
+### Changes
+
+- Bump @react-native-windows/find-repo-root to v0.0.0-canary.23 (ngerlem@microsoft.com)
+
+## 1.1.2
+
+Wed, 09 Jun 2021 05:10:07 GMT
+
+### Patches
+
+- Bump @rnw-scripts/just-task to v2.1.3 (igklemen@microsoft.com)
+
+### Changes
+
+- Bump @react-native-windows/find-repo-root to v0.0.0-canary.22 (igklemen@microsoft.com)
+
+## 1.1.1
+
+Thu, 03 Jun 2021 05:09:47 GMT
+
+### Patches
+
+- Enable esModuleInterop Repo Wide (ngerlem@microsoft.com)
+- Fix GitHub Release Generation for Previews (ngerlem@microsoft.com)
+
+### Changes
+
+- Bump @react-native-windows/find-repo-root to v0.0.0-canary.21 (ngerlem@microsoft.com)
+
+## 1.1.0
+
+Fri, 21 May 2021 05:17:18 GMT
+
+### Minor changes
+
+- Link to curated release notes in patch release notes (ngerlem@microsoft.com)
+
+### Patches
+
+- Bump @rnw-scripts/just-task to v2.1.1 (ngerlem@microsoft.com)
+
+### Changes
+
+- Bump @react-native-windows/find-repo-root to v0.0.0-canary.20 (ngerlem@microsoft.com)
+
+## 1.0.27
+
+Thu, 29 Apr 2021 05:07:20 GMT
+
+### Patches
+
+- Update @octokit/rest (ngerlem@microsoft.com)
+
+## 1.0.26
+
+Thu, 04 Mar 2021 05:05:53 GMT
+
+### Patches
+
+- Update yargs version used and patch y18n version 4.0.0 to 4.0.1 as used by detox of transitive dependencies to address https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2020-7774 (dannyvv@microsoft.com)
+
+## 1.0.25
+
+Thu, 11 Feb 2021 05:08:29 GMT
+
+### Patches
+
+- Bump @rnw-scripts/just-task to v2.1.0 (ngerlem@microsoft.com)
+
+### Changes
+
+- Bump @react-native-windows/find-repo-root to v0.0.0-canary.19 (ngerlem@microsoft.com)
+
+## 1.0.24
+
+Tue, 09 Feb 2021 05:07:37 GMT
+
+### Patches
+
+- Bump just-scripts from 1.3.2 to 1.3.3 (dannyvv@microsoft.com)
+
+### Changes
+
+- Bump @react-native-windows/find-repo-root to v0.0.0-canary.18 (dannyvv@microsoft.com)
 
 ## 1.0.23
 

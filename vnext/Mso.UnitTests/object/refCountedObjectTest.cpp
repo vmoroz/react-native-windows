@@ -6,9 +6,9 @@
 #include "eventWaitHandle/eventWaitHandle.h"
 #include "motifCpp/testCheck.h"
 
-//#define TEST_BAD_INHERITANCE1 // Uncomment to see compilation error
-//#define TEST_BAD_INHERITANCE2 // Uncomment to confirm VEC, but observe a memory leak. We cannot safely destroy this
-// class.
+// #define TEST_BAD_INHERITANCE1 // Uncomment to see compilation error
+// #define TEST_BAD_INHERITANCE2 // Uncomment to confirm VEC, but observe a memory leak. We cannot safely destroy this
+//  class.
 
 struct DECLSPEC_NOVTABLE IRefBaseSample1 : public Mso::IRefCounted {
   virtual int GetValue1() = 0;
@@ -310,7 +310,7 @@ struct AsyncDeleter {
     try {
       // Ideally we want to show here how to use dispatch queues, but we cannot add DispatchQueue liblet dependency
       // here.
-#pragma warning(suppress : 4834) // discarding return value of function with 'nodiscard' attribute
+#pragma warning(suppress : 4834 4858) // discarding return value of function with 'nodiscard' attribute
       std::async(std::launch::async, [obj]() noexcept { TObject::RefCountPolicy::template Delete(obj); });
     } catch (...) {
       VerifyElseCrashTag(false, 0x01003707 /* tag_bad2h */);

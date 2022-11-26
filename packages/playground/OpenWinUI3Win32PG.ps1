@@ -5,7 +5,7 @@ param(# Parameter help description
 # First, you have to download the nuget package from the internal CI here (or use a newer one)
 # pipeline:     https://microsoft.visualstudio.com/WinUI/_build?definitionId=38157
 # package link: https://microsoft.visualstudio.com/_apis/resources/Containers/38370988/packaging?itemPath=packaging%2FMicrosoft.WinUI.3.0.0-development.200707.1-CI.nupkg
-# (only works for authenticated Microsoft users) 
+# (only works for authenticated Microsoft users)
 #
 
 if (!((Test-Path $PackagePath) -and $PackagePath.EndsWith('.nupkg'))) {
@@ -31,8 +31,6 @@ $to = (Split-Path $PackagePath -Leaf).Replace('Microsoft.WinUI.', '').Replace('.
 # Convert WinUI from 3.0.0-preview2.200713.0 to 3.0.0-development.200706.1-CI
 $filesToUpdate = @(
     "$rnwDir\vnext\PropertySheets\WinUI.props",
-    "$rnwDir\vnext\Microsoft.ReactNative\packages.config",
-    "$rnwDir\packages\playground\windows\playground\packages.config"
 );
 
 foreach ($filePath in $filesToUpdate) {
@@ -43,6 +41,6 @@ foreach ($filePath in $filesToUpdate) {
 
 $env:UseWinUI3='true'
 $env:UseExperimentalIXP='true'
-& "C:\Program Files (x86)\Microsoft Visual Studio\2019\Preview\Common7\IDE\devenv.exe" $PSScriptRoot\windows\playground-win32-packaged.sln
+& "C:\Program Files\Microsoft Visual Studio\2022\Common7\IDE\devenv.exe" $PSScriptRoot\windows\playground-win32-packaged.sln
 
 

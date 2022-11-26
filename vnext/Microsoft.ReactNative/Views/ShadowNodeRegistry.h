@@ -4,7 +4,7 @@
 #pragma once
 #include <Views/PaperShadowNode.h>
 #include <functional/functorref.h>
-#include <map>
+#include <unordered_map>
 
 namespace Microsoft::ReactNative {
 
@@ -30,13 +30,11 @@ struct ShadowNodeRegistry {
 
   std::unordered_set<int64_t> &getAllRoots();
 
-  ShadowNode *getParentRootShadowNode(int64_t nodeTag);
-
   void ForAllNodes(const Mso::FunctorRef<void(int64_t, shadow_ptr const &) noexcept> &fnDo) noexcept;
 
  private:
   std::unordered_set<int64_t> m_roots;
-  std::map<int64_t, std::unique_ptr<ShadowNode, ShadowNodeDeleter>> m_allNodes;
+  std::unordered_map<int64_t, std::unique_ptr<ShadowNode, ShadowNodeDeleter>> m_allNodes;
 };
 
 } // namespace Microsoft::ReactNative

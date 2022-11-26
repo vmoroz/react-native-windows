@@ -14,10 +14,6 @@
 #include <UI.Xaml.Controls.Primitives.h>
 #include <UI.Xaml.Controls.h>
 
-namespace winrt {
-using ToggleButton = xaml::Controls::Primitives::ToggleButton;
-}
-
 namespace Microsoft::ReactNative {
 
 class SliderShadowNode : public ShadowNodeBase {
@@ -25,12 +21,12 @@ class SliderShadowNode : public ShadowNodeBase {
 
  public:
   SliderShadowNode() = default;
-  void createView() override;
+  void createView(const winrt::Microsoft::ReactNative::JSValueObject &) override;
   void updateProperties(winrt::Microsoft::ReactNative::JSValueObject &props) override;
 };
 
-void SliderShadowNode::createView() {
-  Super::createView();
+void SliderShadowNode::createView(const winrt::Microsoft::ReactNative::JSValueObject &props) {
+  Super::createView(props);
 }
 
 void SliderShadowNode::updateProperties(winrt::Microsoft::ReactNative::JSValueObject &props) {
@@ -56,7 +52,7 @@ ShadowNode *SliderViewManager::createShadow() const {
   return new SliderShadowNode();
 }
 
-XamlView SliderViewManager::CreateViewCore(int64_t /*tag*/) {
+XamlView SliderViewManager::CreateViewCore(int64_t /*tag*/, const winrt::Microsoft::ReactNative::JSValueObject &) {
   auto slider = xaml::Controls::Slider();
   return slider;
 }
@@ -80,6 +76,18 @@ bool SliderViewManager::UpdateProperty(
       slider.Value(propertyValue.AsDouble());
     else if (propertyValue.IsNull())
       slider.Value(0);
+  } else if (propertyName == "maximumValue") {
+    if (propertyValue.Type() == winrt::Microsoft::ReactNative::JSValueType::Double ||
+        propertyValue.Type() == winrt::Microsoft::ReactNative::JSValueType::Int64)
+      slider.Maximum(propertyValue.AsDouble());
+    else if (propertyValue.IsNull())
+      slider.Maximum(100);
+  } else if (propertyName == "minimumValue") {
+    if (propertyValue.Type() == winrt::Microsoft::ReactNative::JSValueType::Double ||
+        propertyValue.Type() == winrt::Microsoft::ReactNative::JSValueType::Int64)
+      slider.Minimum(propertyValue.AsDouble());
+    else if (propertyValue.IsNull())
+      slider.Minimum(0);
   } else {
     return Super::UpdateProperty(nodeToUpdate, propertyName, propertyValue);
   }

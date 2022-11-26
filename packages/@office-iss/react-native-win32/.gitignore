@@ -1,0 +1,17 @@
+/dist
+/flow
+/flow-typed
+/index.*
+/interface.*
+/IntegrationTests
+/jest
+/lib
+/Libraries
+/RNTester
+/RNTester.*
+/temp
+/types
+/typings-index.*
+/rntypes
+/src/rntypes
+/rn-get-polyfills.js

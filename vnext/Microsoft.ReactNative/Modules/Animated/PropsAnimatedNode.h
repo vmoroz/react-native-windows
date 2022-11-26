@@ -4,22 +4,27 @@
 #pragma once
 #include <IReactInstance.h>
 #include <React.h>
+#include <ReactContext.h>
 #include <folly/dynamic.h>
 #include "AnimatedNode.h"
-
 #include "FacadeType.h"
+#include "JSValue.h"
+
+#ifdef USE_FABRIC
+#include <Fabric/Composition/CompositionViewComponentView.h>
+#endif
 
 namespace Microsoft::ReactNative {
 struct ShadowNodeBase;
 }
 
-namespace react::uwp {
+namespace Microsoft::ReactNative {
 class PropsAnimatedNode final : public AnimatedNode {
  public:
   PropsAnimatedNode(
       int64_t tag,
-      const folly::dynamic &config,
-      const Mso::CntPtr<Mso::React::IReactContext> &context,
+      const winrt::Microsoft::ReactNative::JSValueObject &config,
+      const winrt::Microsoft::ReactNative::ReactContext &context,
       const std::shared_ptr<NativeAnimatedNodeManager> &manager);
   void ConnectToView(int64_t viewTag);
   void DisconnectFromView(int64_t viewTag);
@@ -30,13 +35,31 @@ class PropsAnimatedNode final : public AnimatedNode {
   void ResumeSuspendedAnimations(int64_t valueTag);
 
  private:
+  struct AnimationView {
+    xaml::UIElement m_element;
+#ifdef USE_FABRIC
+    std::shared_ptr<CompositionBaseComponentView> m_componentView;
+#endif
+    operator bool() const noexcept {
+#ifdef USE_FABRIC
+      return m_element || m_componentView;
+#else
+      return m_element != nullptr;
+#endif
+    }
+  };
+
+  void CommitProps();
   void MakeAnimation(int64_t valueNodeTag, FacadeType facadeType);
   Microsoft::ReactNative::ShadowNodeBase *GetShadowNodeBase();
   xaml::UIElement GetUIElement();
+  AnimationView GetAnimationView();
+  void StartAnimation(const AnimationView &view, const comp::CompositionAnimation &animation) noexcept;
+  comp::CompositionPropertySet EnsureCenterPointPropertySet(const AnimationView &view) noexcept;
 
-  Mso::CntPtr<Mso::React::IReactContext> m_context{};
+  winrt::Microsoft::ReactNative::ReactContext m_context;
   std::map<std::string, int64_t> m_propMapping{};
-  folly::dynamic m_propMap{};
+  winrt::Microsoft::ReactNative::JSValueObject m_props{};
 
   int64_t m_connectedViewTag{s_connectedViewTagUnset};
   std::unordered_map<int64_t, comp::CompositionAnimation> m_expressionAnimations{};
@@ -50,4 +73,4 @@ class PropsAnimatedNode final : public AnimatedNode {
 
   static constexpr int64_t s_connectedViewTagUnset{-1};
 };
-} // namespace react::uwp
+} // namespace Microsoft::ReactNative

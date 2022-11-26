@@ -9,23 +9,10 @@
 #include <UI.Xaml.Controls.h>
 
 #include <JSValue.h>
+#include <Utils/ImageUtils.h>
 #include <folly/dynamic.h>
 
-namespace react::uwp {
-
-enum class ImageSourceType { Uri = 0, Download = 1, InlineData = 2, Svg = 3 };
-
-struct ReactImageSource {
-  std::string uri;
-  std::string method;
-  std::string bundleRootPath;
-  std::vector<std::pair<std::string, std::string>> headers;
-  double width = 0;
-  double height = 0;
-  double scale = 1.0;
-  bool packagerAsset = false;
-  ImageSourceType sourceType = ImageSourceType::Uri;
-};
+namespace Microsoft::ReactNative {
 
 struct ReactImage : xaml::Controls::GridT<ReactImage> {
   using Super = xaml::Controls::GridT<ReactImage>;
@@ -37,6 +24,7 @@ struct ReactImage : xaml::Controls::GridT<ReactImage> {
 
   // Overrides
   winrt::Windows::Foundation::Size ArrangeOverride(winrt::Windows::Foundation::Size finalSize);
+  xaml::Automation::Peers::AutomationPeer OnCreateAutomationPeer();
 
   // Events
   winrt::event_token OnLoadEnd(winrt::Windows::Foundation::EventHandler<bool> const &handler);
@@ -48,10 +36,10 @@ struct ReactImage : xaml::Controls::GridT<ReactImage> {
   }
   void Source(ReactImageSource source);
 
-  react::uwp::ResizeMode ResizeMode() {
+  facebook::react::ImageResizeMode ResizeMode() {
     return m_resizeMode;
   }
-  void ResizeMode(react::uwp::ResizeMode value);
+  void ResizeMode(facebook::react::ImageResizeMode value);
 
   float BlurRadius() {
     return m_blurRadius;
@@ -64,15 +52,15 @@ struct ReactImage : xaml::Controls::GridT<ReactImage> {
   void TintColor(winrt::Windows::UI::Color value);
 
  private:
-  xaml::Media::Stretch ResizeModeToStretch(react::uwp::ResizeMode value);
-  winrt::Windows::Foundation::IAsyncOperation<winrt::Windows::Storage::Streams::InMemoryRandomAccessStream>
-  GetImageMemoryStreamAsync(ReactImageSource source);
+  xaml::Media::Stretch ResizeModeToStretch();
+  xaml::Media::Stretch ResizeModeToStretch(winrt::Windows::Foundation::Size size);
   winrt::fire_and_forget SetBackground(bool fireLoadEndEvent);
 
   bool m_useCompositionBrush{false};
   float m_blurRadius{0};
+  int m_imageSourceId{0};
   ReactImageSource m_imageSource;
-  react::uwp::ResizeMode m_resizeMode{ResizeMode::Contain};
+  facebook::react::ImageResizeMode m_resizeMode{facebook::react::ImageResizeMode::Contain};
   winrt::Windows::UI::Color m_tintColor{winrt::Colors::Transparent()};
 
   winrt::event<winrt::Windows::Foundation::EventHandler<bool>> m_onLoadEndEvent;
@@ -85,9 +73,4 @@ struct ReactImage : xaml::Controls::GridT<ReactImage> {
   xaml::Media::Imaging::SvgImageSource::OpenFailed_revoker m_svgImageSourceOpenFailedRevoker;
 };
 
-// Helper functions
-winrt::Windows::Foundation::IAsyncOperation<winrt::Windows::Storage::Streams::InMemoryRandomAccessStream>
-GetImageStreamAsync(ReactImageSource source);
-winrt::Windows::Foundation::IAsyncOperation<winrt::Windows::Storage::Streams::InMemoryRandomAccessStream>
-GetImageInlineDataAsync(ReactImageSource source);
-} // namespace react::uwp
+} // namespace Microsoft::ReactNative

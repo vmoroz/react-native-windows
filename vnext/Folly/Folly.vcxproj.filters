@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="16.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <Filter Include="Header Files">
       <UniqueIdentifier>{7de8a65b-754e-48e7-b880-4d0aed31f89c}</UniqueIdentifier>
@@ -28,9 +28,18 @@
     <Filter Include="Source Files\portability">
       <UniqueIdentifier>{9ad1fbe7-56fb-40d8-b0a2-ac0d6d0799e3}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\lang">
+      <UniqueIdentifier>{ed8c80f6-ff7c-4f61-b7ec-a2aee564d575}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="$(FollyDir)\folly\lang\Assume.cpp">
+    <ClCompile Include="$(FollyDir)\folly\system\ThreadId.cpp">
+      <Filter>Source Files\lang</Filter>
+    </ClCompile>
+    <ClCompile Include="$(FollyDir)\folly\lang\SafeAssert.cpp">
+      <Filter>Source Files\lang</Filter>
+    </ClCompile>
+    <ClCompile Include="$(FollyDir)\folly\lang\ToAscii.cpp">
       <Filter>Source Files\lang</Filter>
     </ClCompile>
     <ClCompile Include="$(FollyDir)\folly\Conv.cpp">
@@ -73,6 +82,7 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="pch.cpp" />
+    <ClCompile Include="$(FollyDir)\folly\system\AtFork.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="$(FollyDir)\folly\portability\Asm.h">
@@ -526,11 +536,11 @@
       <Filter>Header Files\detail</Filter>
     </ClInclude>
     <ClInclude Include="pch.h" />
+    <ClInclude Include="$(FollyDir)\folly\lang\ToAscii.h">
+      <Filter>Header Files\lang</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="Folly.natvis" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="packages.config" />
   </ItemGroup>
 </Project>

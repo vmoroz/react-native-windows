@@ -16,6 +16,8 @@ namespace Microsoft::ReactNative {
 
 class ViewManagerBase;
 
+enum class PointerEventsKind : uint8_t { Auto = 0, BoxNone, BoxOnly, None };
+
 enum class ShadowEdges : uint8_t {
   Left = 0,
   Top,
@@ -40,6 +42,13 @@ enum class ShadowCorners : uint8_t {
   BottomEnd,
   AllCorners,
   CountCorners
+};
+
+struct ShadowNodeLayout {
+  float Left;
+  float Top;
+  float Width;
+  float Height;
 };
 
 extern const DECLSPEC_SELECTANY double c_UndefinedEdge = -1;
@@ -69,7 +78,7 @@ struct REACTWINDOWS_EXPORT ShadowNodeBase : public ShadowNode {
   virtual void removeAllChildren() override;
   virtual void AddView(ShadowNode &child, int64_t index) override;
   virtual void RemoveChildAt(int64_t indexToRemove) override;
-  virtual void createView() override;
+  virtual void createView(const winrt::Microsoft::ReactNative::JSValueObject &) override;
   virtual bool NeedsForceLayout();
 
   virtual void updateProperties(winrt::Microsoft::ReactNative::JSValueObject &props) override;
@@ -101,7 +110,6 @@ struct REACTWINDOWS_EXPORT ShadowNodeBase : public ShadowNode {
   virtual bool IsExternalLayoutDirty() const {
     return false;
   }
-  virtual void DoExtraLayoutPrep(YGNodeRef /*yogaNode*/) {}
 
   bool HasTransformPS() const {
     return m_transformPS != nullptr;
@@ -127,6 +135,12 @@ struct REACTWINDOWS_EXPORT ShadowNodeBase : public ShadowNode {
   bool m_onLayoutRegistered = false;
   bool m_onMouseEnterRegistered = false;
   bool m_onMouseLeaveRegistered = false;
+
+  // Pointer events
+  PointerEventsKind m_pointerEvents = PointerEventsKind::Auto;
+
+  // Layout
+  ShadowNodeLayout m_layout;
 
   // Support Keyboard
  public:

@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -10,9 +10,11 @@
 
 'use strict';
 
-import type {RNTesterExample} from '../types/RNTesterTypes';
+import type {RNTesterModuleInfo} from '../types/RNTesterTypes';
 
-const ComponentExamples: Array<RNTesterExample> = [
+import ReactNativeFeatureFlags from 'react-native/Libraries/ReactNative/ReactNativeFeatureFlags';
+
+const Components: Array<RNTesterModuleInfo> = [
   {
     key: 'ActivityIndicatorExample',
     category: 'UI',
@@ -26,8 +28,8 @@ const ComponentExamples: Array<RNTesterExample> = [
     supportsTVOS: true,
   },
   {
-    key: 'FlatListExample',
-    module: require('../examples/FlatList/FlatListExample'),
+    key: 'FlatListExampleIndex',
+    module: require('../examples/FlatList/FlatListExampleIndex').default,
     category: 'ListView',
     supportsTVOS: true,
   },
@@ -59,11 +61,6 @@ const ComponentExamples: Array<RNTesterExample> = [
   {
     key: 'ModalExample',
     module: require('../examples/Modal/ModalExample'),
-    supportsTVOS: true,
-  },
-  {
-    key: 'MultiColumnExample',
-    module: require('../examples/MultiColumn/MultiColumnExample'),
     supportsTVOS: true,
   },
   {
@@ -104,14 +101,24 @@ const ComponentExamples: Array<RNTesterExample> = [
     supportsTVOS: true,
   },
   {
-    key: 'SectionListExample',
-    module: require('../examples/SectionList/SectionListExample'),
+    key: 'ScrollViewIndicatorInsetsExample',
+    module: require('../examples/ScrollView/ScrollViewIndicatorInsetsExample'),
+  },
+  {
+    key: 'SectionListIndex',
+    module: require('../examples/SectionList/SectionListIndex'),
     category: 'ListView',
     supportsTVOS: true,
   },
   {
     key: 'StatusBarExample',
     module: require('../examples/StatusBar/StatusBarExample'),
+    supportsTVOS: false,
+  },
+  {
+    key: 'SwipeableCardExample',
+    module: require('../examples/SwipeableCardExample/SwipeableCardExample'),
+    category: 'UI',
     supportsTVOS: false,
   },
   {
@@ -148,9 +155,21 @@ const ComponentExamples: Array<RNTesterExample> = [
     category: 'Basic',
     supportsTVOS: true,
   },
+  {
+    key: 'NewArchitectureExample',
+    category: 'UI',
+    module: require('../examples/NewArchitecture/NewArchitectureExample'),
+    supportsTVOS: false,
+  },
+  {
+    key: 'ComponentWithState',
+    category: 'UI',
+    module: require('../examples/NewArchitecture/ComponentWithState'),
+    supportsTVOS: false,
+  },
 ];
 
-const APIExamples: Array<RNTesterExample> = [
+const APIs: Array<RNTesterModuleInfo> = [
   {
     key: 'AccessibilityExample',
     module: require('../examples/Accessibility/AccessibilityExample'),
@@ -175,13 +194,13 @@ const APIExamples: Array<RNTesterExample> = [
     supportsTVOS: true,
   },
   {
-    key: 'AnimatedExample',
-    module: require('../examples/Animated/AnimatedExample'),
+    key: 'AnimatedIndex',
+    module: require('../examples/Animated/AnimatedIndex').default,
     supportsTVOS: true,
   },
   {
     key: 'AnExApp',
-    module: require('../examples/Animated/AnimatedGratuitousApp/AnExApp'),
+    module: require('../examples/AnimatedGratuitousApp/AnExApp'),
     supportsTVOS: true,
   },
   {
@@ -216,6 +235,11 @@ const APIExamples: Array<RNTesterExample> = [
   {
     key: 'Dimensions',
     module: require('../examples/Dimensions/DimensionsExample'),
+    supportsTVOS: true,
+  },
+  {
+    key: 'Keyboard',
+    module: require('../examples/Keyboard/KeyboardExample').default,
     supportsTVOS: true,
   },
   {
@@ -310,15 +334,23 @@ const APIExamples: Array<RNTesterExample> = [
   },
 ];
 
+if (ReactNativeFeatureFlags.shouldEmitW3CPointerEvents()) {
+  APIs.push({
+    key: 'W3C PointerEvents',
+    category: 'Experimental',
+    module: require('../examples/Experimental/W3CPointerEventsExample').default,
+  });
+}
+
 const Modules: {...} = {};
 
-APIExamples.concat(ComponentExamples).forEach(Example => {
+APIs.concat(Components).forEach(Example => {
   Modules[Example.key] = Example.module;
 });
 
 const RNTesterList = {
-  APIExamples,
-  ComponentExamples,
+  APIs,
+  Components,
   Modules,
 };
 

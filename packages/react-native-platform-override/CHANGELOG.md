@@ -1,8 +1,332 @@
 # Change Log - react-native-platform-override
 
-This log was last generated on Thu, 28 Jan 2021 05:06:47 GMT and should not be manually modified.
+This log was last generated on Wed, 16 Nov 2022 06:16:01 GMT and should not be manually modified.
 
 <!-- Start content -->
+
+## 1.8.2
+
+Wed, 16 Nov 2022 06:16:01 GMT
+
+### Patches
+
+- Bump @react-native-windows/fs to v0.0.0-canary.10
+- Bump @react-native-windows/package-utils to v0.0.0-canary.36
+- Bump @rnw-scripts/just-task to v2.3.2
+
+## 1.8.1
+
+Sat, 12 Nov 2022 06:17:23 GMT
+
+### Patches
+
+- Integrate 10/10 (34109996+chiaramooney@users.noreply.github.com)
+- Bump @react-native-windows/fs to v0.0.0-canary.9
+- Bump @react-native-windows/package-utils to v0.0.0-canary.35
+- Bump @rnw-scripts/jest-unittest-config to v1.4.1
+- Bump @rnw-scripts/just-task to v2.3.1
+
+## 1.8.0
+
+Thu, 10 Nov 2022 06:17:11 GMT
+
+### Minor changes
+
+- integration 9/26/22 (tatianakapos@microsoft.com)
+- Bump @react-native-windows/fs to v0.0.0-canary.8
+- Bump @react-native-windows/package-utils to v0.0.0-canary.34
+- Bump @rnw-scripts/jest-unittest-config to v1.4.0
+- Bump @rnw-scripts/just-task to v2.3.0
+
+## 1.7.1
+
+Sat, 15 Oct 2022 05:11:59 GMT
+
+### Patches
+
+- Integrate 8/12 (34109996+chiaramooney@users.noreply.github.com)
+- Bump @react-native-windows/fs to v0.0.0-canary.7
+- Bump @react-native-windows/package-utils to v0.0.0-canary.33
+
+## 1.7.0
+
+Wed, 05 Oct 2022 05:13:45 GMT
+
+### Minor changes
+
+- integrate 7/29/22 (tatianakapos@microsoft.com)
+- Bump @react-native-windows/fs to v0.0.0-canary.6
+- Bump @react-native-windows/package-utils to v0.0.0-canary.32
+- Bump @rnw-scripts/eslint-config to v1.1.14
+- Bump @rnw-scripts/jest-unittest-config to v1.3.0
+- Bump @rnw-scripts/just-task to v2.2.6
+
+## 1.6.14
+
+Sat, 24 Sep 2022 05:11:51 GMT
+
+### Patches
+
+- Consolidate JavaScript HTTP module specifications (julio.rocha@microsoft.com)
+
+## 1.6.13
+
+Sat, 04 Jun 2022 05:10:05 GMT
+
+### Patches
+
+- Bump @react-native-windows/fs to v0.0.0-canary.5
+- Bump @react-native-windows/package-utils to v0.0.0-canary.31
+- Bump @rnw-scripts/jest-unittest-config to v1.2.8
+- Bump @rnw-scripts/just-task to v2.2.5
+
+## 1.6.12
+
+Thu, 12 May 2022 05:09:46 GMT
+
+### Patches
+
+- Build/dependency fixes (ngerlem@microsoft.com)
+- Bump @react-native-windows/fs to v0.0.0-canary.4
+- Bump @react-native-windows/package-utils to v0.0.0-canary.30
+- Bump @rnw-scripts/eslint-config to v1.1.13
+- Bump @rnw-scripts/jest-unittest-config to v1.2.7
+- Bump @rnw-scripts/just-task to v2.2.4
+
+## 1.6.11
+
+Wed, 27 Apr 2022 05:10:22 GMT
+
+### Patches
+
+- Integrate 4/15 Test (34109996+chiaramooney@users.noreply.github.com)
+- Bump @react-native-windows/fs to v0.0.0-canary.3
+- Bump @react-native-windows/package-utils to v0.0.0-canary.29
+- Bump @rnw-scripts/eslint-config to v1.1.12
+
+## 1.6.10
+
+Thu, 21 Apr 2022 05:09:33 GMT
+
+### Patches
+
+- CG: Update async to resolve CVE-2021-43138 (jthysell@microsoft.com)
+
+## 1.6.9
+
+Tue, 12 Apr 2022 05:10:39 GMT
+
+### Patches
+
+- Fix Overrides (34109996+chiaramooney@users.noreply.github.com)
+- Bump @react-native-windows/fs to v0.0.0-canary.2
+- Bump @react-native-windows/package-utils to v0.0.0-canary.28
+
+## 1.6.8
+
+Tue, 05 Apr 2022 05:10:13 GMT
+
+### Patches
+
+- Security: Update simple-git dependency to 3.3.0 (jthysell@microsoft.com)
+
+## 1.6.7
+
+Fri, 01 Apr 2022 05:09:57 GMT
+
+### Patches
+
+- Fix publish after promotion to preview (ngerlem@microsoft.com)
+- Bump @react-native-windows/fs to v0.0.0-canary.1
+- Bump @react-native-windows/package-utils to v0.0.0-canary.27
+
+## 1.6.6
+
+Sun, 13 Feb 2022 06:08:34 GMT
+
+### Patches
+
+- Bump @react-native-windows/package-utils to v0.0.0-canary.26
+
+## 1.6.5
+
+Wed, 09 Feb 2022 06:09:38 GMT
+
+### Patches
+
+- Bump minimum Node version to 14 (jthysell@microsoft.com)
+- Bump @react-native-windows/fs to v1.0.2
+- Bump @react-native-windows/package-utils to v0.0.0-canary.25
+- Bump @rnw-scripts/eslint-config to v1.1.11
+- Bump @rnw-scripts/jest-unittest-config to v1.2.6
+- Bump @rnw-scripts/just-task to v2.2.3
+- Bump @rnw-scripts/ts-config to v2.0.2
+
+## 1.6.4
+
+Sat, 29 Jan 2022 06:08:59 GMT
+
+### Patches
+
+- CG: Upgrade to node-fetch@^2.6.7 (30809111+acoates-ms@users.noreply.github.com)
+
+## 1.6.3
+
+Wed, 26 Jan 2022 06:08:34 GMT
+
+### Patches
+
+- Fix integration by tag of newer RN Builds (ngerlem@microsoft.com)
+
+## 1.6.2
+
+Fri, 03 Dec 2021 06:12:08 GMT
+
+### Patches
+
+- Integrate 11/11 (34109996+chiaramooney@users.noreply.github.com)
+- Bump @react-native-windows/fs to v1.0.1
+- Bump @react-native-windows/package-utils to v0.0.0-canary.24
+- Bump @rnw-scripts/eslint-config to v1.1.10
+- Bump @rnw-scripts/jest-unittest-config to v1.2.5
+- Bump @rnw-scripts/just-task to v2.2.2
+
+## 1.6.1
+
+Thu, 18 Nov 2021 06:11:19 GMT
+
+### Patches
+
+- Use '@react-native-windows/fs' (ngerlem@microsoft.com)
+- Bump @react-native-windows/fs to v1.0.0
+- Bump @react-native-windows/package-utils to v0.0.0-canary.23
+- Bump @rnw-scripts/eslint-config to v1.1.9
+
+## 1.6.0
+
+Tue, 26 Oct 2021 05:06:56 GMT
+
+### Minor changes
+
+- Use New RN Nightly Scheme in Scripts (ngerlem@microsoft.com)
+
+## 1.6.0
+
+Tue, 26 Oct 2021 05:06:25 GMT
+
+### Minor changes
+
+- Use New RN Nightly Scheme in Scripts (ngerlem@microsoft.com)
+
+## 1.5.1
+
+Thu, 21 Oct 2021 05:08:01 GMT
+
+### Patches
+
+- Update to typescript 4 (30809111+acoates-ms@users.noreply.github.com)
+- Bump @react-native-windows/package-utils to v0.0.0-canary.22
+
+## 1.5.0
+
+Wed, 06 Oct 2021 05:07:05 GMT
+
+### Minor changes
+
+- Teach integration tooling about new nightly pattern (ngerlem@microsoft.com)
+
+## 1.4.18
+
+Wed, 08 Sep 2021 05:08:53 GMT
+
+### Patches
+
+- Set consistent node requirements on our packages (ngerlem@microsoft.com)
+
+### Changes
+
+- Bump @react-native-windows/package-utils to v0.0.0-canary.21 (ngerlem@microsoft.com)
+
+## 1.4.17
+
+Fri, 11 Jun 2021 05:08:55 GMT
+
+### Patches
+
+- Bump @rnw-scripts/just-task to v2.2.0 (ngerlem@microsoft.com)
+
+### Changes
+
+- Bump @react-native-windows/package-utils to v0.0.0-canary.20 (ngerlem@microsoft.com)
+
+## 1.4.16
+
+Wed, 09 Jun 2021 05:10:07 GMT
+
+### Patches
+
+- Integrate May 19th (igklemen@microsoft.com)
+
+### Changes
+
+- Bump @react-native-windows/package-utils to v0.0.0-canary.19 (igklemen@microsoft.com)
+
+## 1.4.15
+
+Thu, 03 Jun 2021 05:09:47 GMT
+
+### Patches
+
+- Enable esModuleInterop Repo Wide (ngerlem@microsoft.com)
+- Check for missing dependencies during lint (ngerlem@microsoft.com)
+
+### Changes
+
+- Bump @react-native-windows/package-utils to v0.0.0-canary.18 (ngerlem@microsoft.com)
+
+## 1.4.14
+
+Fri, 21 May 2021 05:17:18 GMT
+
+### Patches
+
+- Integrate Apr 28 (base of 0.65) Nightly RN Build (ngerlem@microsoft.com)
+
+### Changes
+
+- Bump @react-native-windows/package-utils to v0.0.0-canary.17 (ngerlem@microsoft.com)
+
+## 1.4.13
+
+Thu, 04 Mar 2021 05:05:53 GMT
+
+### Patches
+
+- Update yargs version used and patch y18n version 4.0.0 to 4.0.1 as used by detox of transitive dependencies to address https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2020-7774 (dannyvv@microsoft.com)
+
+## 1.4.12
+
+Thu, 11 Feb 2021 05:08:29 GMT
+
+### Patches
+
+- Bump @rnw-scripts/just-task to v2.1.0 (ngerlem@microsoft.com)
+
+### Changes
+
+- Bump @react-native-windows/package-utils to v0.0.0-canary.16 (ngerlem@microsoft.com)
+
+## 1.4.11
+
+Tue, 09 Feb 2021 05:07:37 GMT
+
+### Patches
+
+- Bump just-scripts from 1.3.2 to 1.3.3 (dannyvv@microsoft.com)
+
+### Changes
+
+- Bump @react-native-windows/package-utils to v0.0.0-canary.15 (dannyvv@microsoft.com)
 
 ## 1.4.10
 
@@ -58,7 +382,7 @@ Fri, 18 Dec 2020 19:23:58 GMT
 
 ### Patches
 
-- Fix missing dependency / race condition in pacakge.json (dannyvv@microsoft.com)
+- Fix missing dependency / race condition in package.json (dannyvv@microsoft.com)
 
 ## 0.4.4
 

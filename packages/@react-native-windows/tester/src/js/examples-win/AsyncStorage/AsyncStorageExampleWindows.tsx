@@ -4,7 +4,7 @@
  * @format
  */
 
-import * as React from 'react';
+import React from 'react';
 import {
   AsyncStorage,
   Button,
@@ -157,7 +157,7 @@ export const description = 'Usage of AsyncStorage';
 export const examples = [
   {
     title: 'AsyncStorage',
-    render: function(): JSX.Element {
+    render: function (): JSX.Element {
       return <AsyncStorageExample />;
     },
   },

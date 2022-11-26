@@ -4,6 +4,7 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -38,20 +39,28 @@ namespace Microsoft.ReactNative.Managed.CodeGen
       return InvocationStatement(SyntaxFactory.IdentifierName(methodName), arguments);
     }
 
-    internal static ExpressionSyntax MemberAccessExpression(SyntaxToken instance, SyntaxToken method)
+    internal static ExpressionSyntax MemberAccessExpression(ExpressionSyntax instance, SyntaxToken member)
+    {
+      return SyntaxFactory.MemberAccessExpression(
+        SyntaxKind.SimpleMemberAccessExpression,
+        instance,
+        SyntaxFactory.IdentifierName(member));
+    }
+
+    internal static ExpressionSyntax MemberAccessExpression(SyntaxToken instance, SyntaxToken member)
     {
       return SyntaxFactory.MemberAccessExpression(
         SyntaxKind.SimpleMemberAccessExpression,
         SyntaxFactory.IdentifierName(instance),
-        SyntaxFactory.IdentifierName(method));
+        SyntaxFactory.IdentifierName(member));
     }
 
-    internal static ExpressionSyntax MemberAccessExpression(ISymbol type, SyntaxToken method)
+    internal static ExpressionSyntax MemberAccessExpression(ISymbol type, SyntaxToken member)
     {
       return SyntaxFactory.MemberAccessExpression(
         SyntaxKind.SimpleMemberAccessExpression,
         type.ToTypeSyntax(),
-        SyntaxFactory.IdentifierName(method));
+        SyntaxFactory.IdentifierName(member));
     }
 
     internal static StatementSyntax LocalDeclarationStatement(ISymbol type, SyntaxToken variableName, ExpressionSyntax initializer)
@@ -91,6 +100,11 @@ namespace Microsoft.ReactNative.Managed.CodeGen
     }
 
     internal static ExpressionSyntax InvocationExpression(ExpressionSyntax method, params ExpressionSyntax[] arguments)
+    {
+      return InvocationExpression(method, arguments.AsEnumerable());
+    }
+
+    internal static ExpressionSyntax InvocationExpression(ExpressionSyntax method, IEnumerable<ExpressionSyntax> arguments)
     {
       return InvocationExpression(method, arguments.Select(arg => SyntaxFactory.Argument(arg)));
     }

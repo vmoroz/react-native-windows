@@ -2,10 +2,23 @@
   "files.exclude": {
     "**/.git": true
   },
+  "files.associations": {
+    "**/.ado/**/*.yml": "azure-pipelines",
+    "*.idl": "cpp",
+    "deque": "cpp",
+    "format": "cpp",
+    "list": "cpp",
+    "vector": "cpp",
+    "xstring": "cpp",
+    "*.ipp": "cpp",
+    "filesystem": "cpp",
+    "locale": "cpp",
+    "regex": "cpp"
+  },
   "search.exclude": {
     "**/node_modules": true,
-    "**/lib": true,
-    "**/dist": true
+    "**/lib/**/*.js": true,
+    "**/dist/**/*.js": true
   },
   "editor.formatOnSave": true,
   "eslint.format.enable": true,
@@ -18,7 +31,7 @@
     "typescriptreact"
   ],
   "[json]": {
-    "editor.defaultFormatter": "dbaeumer.vscode-eslint"
+    "editor.defaultFormatter": "vscode.json-language-features"
   },
   "[jsonc]": {
     "editor.defaultFormatter": "dbaeumer.vscode-eslint"
@@ -27,7 +40,7 @@
     "editor.defaultFormatter": "dbaeumer.vscode-eslint"
   },
   "[typescriptreact]": {
-    "editor.defaultFormatter": "dbaeumer.vscode-eslint"
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
   "[javascript]": {
     "editor.defaultFormatter": "dbaeumer.vscode-eslint"

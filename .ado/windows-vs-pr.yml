@@ -3,78 +3,29 @@ name: $(Date:yyyyMMdd).$(Rev:r)
 trigger: none # will disable CI builds entirely
 
 pr:
+  - main
   - master
   - "*-stable"
 
 variables:
-  - template: variables/msbuild.yml
   - group: platform-override-zero-permission-token
 
+parameters:
+  - name: AgentPool
+    type: object
+    default:
+      Small:
+        name: rnw-pool-2
+        demands: ImageOverride -equals rnw-img-vs2022
+      Medium:
+        name: rnw-pool-4
+        demands: ImageOverride -equals rnw-img-vs2022
+      Large:
+        name: rnw-pool-8
+        demands: ImageOverride -equals rnw-img-vs2022
+
 stages:
-  - stage: Setup
-    jobs:
-      - job: Setup
-        variables:
-          - template: variables/vs2019.yml
-        steps:
-          - task: powershell@2
-            name: checkPayload
-            displayName: "Check if build is required for this PR"
-            inputs:
-              targetType: filePath
-              filePath: .ado/scripts/shouldSkipPRBuild.ps1
-
-  - stage: Build
-    displayName: Build 🔨
-    dependsOn: Setup
-    condition: ne( dependencies.Setup.outputs['checkPayload.shouldSkipPRBuild'], 'True' )
-    jobs:
-      - template: jobs/universal.yml
-        parameters:
-          buildEnvironment: PullRequest
-
-      - template: jobs/desktop.yml
-        parameters:
-          buildEnvironment: PullRequest
-  
-      - template: jobs/nuget-desktop.yml
-
-      - template: jobs/cli-init.yml
-        parameters:
-          # The Nuget CLI verification is part of 'Build' to speed up the verification
-          buildEnvironment: PullRequest
-          buildNuGetOnly: true
-          
-  - stage: IntegrationTests
-    displayName: Tests 🧪
-    dependsOn: Setup
-    condition: ne( dependencies.Setup.outputs['checkPayload.shouldSkipPRBuild'], 'False' )
-    jobs:
-      - template: jobs/jschecks.yml
-
-      - template: jobs/macos-tests.yml
-
-      - template: jobs/playground.yml
-        parameters:
-          buildEnvironment: PullRequest
-
-      - template: jobs/sample-apps.yml
-        parameters:
-          buildEnvironment: PullRequest
-
-      - template: jobs/e2e-test.yml
-        parameters:
-          buildEnvironment: PullRequest
-
-      - template: jobs/integration-test.yml
-        parameters:
-          buildEnvironment: PullRequest
-
-  - stage: CLI
-    displayName: Cli 🖥
-    dependsOn: Setup
-    condition: ne( dependencies.Setup.outputs['checkPayload.shouldSkipPRBuild'], 'False' )
-    jobs:
-      - template: jobs/cli-init.yml
-        parameters:
-          buildEnvironment: PullRequest
+  - template: stages.yml
+    parameters:
+      buildEnvironment: PullRequest
+      AgentPool: ${{ parameters.AgentPool }}

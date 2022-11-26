@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -8,17 +8,16 @@
  * @flow
  */
 
-'use strict';
-
-import {AsyncStorage} from 'react-native';
+import type {
+  ComponentList,
+  ExamplesList,
+  RNTesterModuleInfo,
+  RNTesterState,
+  SectionData,
+} from '../types/RNTesterTypes';
 
 import RNTesterList from './RNTesterList';
-
-import type {
-  ExamplesList,
-  RNTesterState,
-  ComponentList,
-} from '../types/RNTesterTypes';
+import {AsyncStorage} from 'react-native';
 
 export const Screens = {
   COMPONENTS: 'components',
@@ -27,14 +26,20 @@ export const Screens = {
 };
 
 export const initialState: RNTesterState = {
-  openExample: null,
+  activeModuleKey: null,
+  activeModuleTitle: null,
+  activeModuleExampleKey: null,
   screen: null,
   bookmarks: null,
   recentlyUsed: null,
 };
 
 const filterEmptySections = (examplesList: ExamplesList): any => {
-  const filteredSections = {};
+  const filteredSections: {
+    ['apis' | 'bookmarks' | 'components']: Array<
+      SectionData<RNTesterModuleInfo>,
+    >,
+  } = {};
   const sectionKeys = Object.keys(examplesList);
 
   sectionKeys.forEach(key => {
@@ -58,7 +63,7 @@ export const getExamplesListWithBookmarksAndRecentlyUsed = ({
     return null;
   }
 
-  const components = RNTesterList.ComponentExamples.map(componentExample => ({
+  const components = RNTesterList.Components.map(componentExample => ({
     ...componentExample,
     isBookmarked: bookmarks.components.includes(componentExample.key),
     exampleType: Screens.COMPONENTS,
@@ -74,17 +79,19 @@ export const getExamplesListWithBookmarksAndRecentlyUsed = ({
     component => component.isBookmarked,
   );
 
-  const apis = RNTesterList.APIExamples.map(apiExample => ({
+  const apis = RNTesterList.APIs.map(apiExample => ({
     ...apiExample,
     isBookmarked: bookmarks.apis.includes(apiExample.key),
     exampleType: Screens.APIS,
   }));
 
   const recentlyUsedAPIs = recentlyUsed.apis
-    .map(recentAPIKey => apis.find(apiEample => apiEample.key === recentAPIKey))
+    .map(recentAPIKey =>
+      apis.find(apiExample => apiExample.key === recentAPIKey),
+    )
     .filter(Boolean);
 
-  const bookmarkedAPIs = apis.filter(apiEample => apiEample.isBookmarked);
+  const bookmarkedAPIs = apis.filter(apiExample => apiExample.isBookmarked);
 
   const examplesList: ExamplesList = {
     [Screens.COMPONENTS]: [
@@ -135,7 +142,9 @@ export const getInitialStateFromAsyncStorage = async (
 
   if (!initialStateString) {
     return {
-      openExample: null,
+      activeModuleKey: null,
+      activeModuleTitle: null,
+      activeModuleExampleKey: null,
       screen: Screens.COMPONENTS,
       bookmarks: {components: [], apis: []},
       recentlyUsed: {components: [], apis: []},

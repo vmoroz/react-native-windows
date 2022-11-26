@@ -1,330 +1,355 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  *
+ * #7149 should be strict local
  * @flow
  * @format
  */
 
-'use strict';
-
-import TextInjection from './TextInjection';
-// [Windows]
-// Forking Text as a workaround in order to be able to render borders around it.
-
-import {NativeText, NativeVirtualText} from './TextNativeComponent';
-
-const DeprecatedTextPropTypes = require('../DeprecatedPropTypes/DeprecatedTextPropTypes');
-const React = require('react');
-const StyleSheet = require('../StyleSheet/StyleSheet');
-const TextAncestor = require('./TextAncestor');
-const Touchable = require('../Components/Touchable/Touchable');
-const View = require('../Components/View/View');
-const nullthrows = require('nullthrows');
-const processColor = require('../StyleSheet/processColor');
-
 import type {PressEvent} from '../Types/CoreEventTypes';
-import type {PressRetentionOffset, TextProps} from './TextProps';
-import type {TextStyleProp, ViewStyleProp} from '../StyleSheet/StyleSheet'; // [Windows]
 
-type ResponseHandlers = $ReadOnly<{|
-  onStartShouldSetResponder: () => boolean,
-  onResponderGrant: (event: PressEvent) => void,
-  onResponderMove: (event: PressEvent) => void,
-  onResponderRelease: (event: PressEvent) => void,
-  onResponderTerminate: (event: PressEvent) => void,
-  onResponderTerminationRequest: () => boolean,
-|}>;
+import * as PressabilityDebug from '../Pressability/PressabilityDebug';
+import usePressability from '../Pressability/usePressability';
+import flattenStyle from '../StyleSheet/flattenStyle';
+import processColor from '../StyleSheet/processColor';
+import StyleSheet from '../StyleSheet/StyleSheet';
+import Platform from '../Utilities/Platform';
+import TextAncestor from './TextAncestor';
+import {NativeText, NativeVirtualText} from './TextNativeComponent';
+import {type TextProps} from './TextProps';
+import * as React from 'react';
+import {useContext, useMemo, useState} from 'react';
 
-type Props = $ReadOnly<{|
-  ...TextProps,
-  forwardedRef: ?React.Ref<typeof NativeText | typeof NativeVirtualText>,
-|}>;
-
-type State = {|
-  touchable: {|
-    touchState: ?string,
-    responderID: ?number,
-  |},
-  isHighlighted: boolean,
-  createResponderHandlers: () => ResponseHandlers,
-  responseHandlers: ?ResponseHandlers,
-|};
-
-const PRESS_RECT_OFFSET = {top: 20, left: 20, right: 20, bottom: 30};
+const View = require('../Components/View/View');
+import {type TextStyleProp, type ViewStyleProp} from '../StyleSheet/StyleSheet'; // [Windows]
 
 /**
- * A React component for displaying text.
+ * Text is the fundamental component for displaying text.
  *
- * See https://reactnative.dev/docs/text.html
+ * @see https://reactnative.dev/docs/text
  */
-class TouchableText extends React.Component<Props, State> {
-  static defaultProps = {
-    accessible: true,
-    allowFontScaling: true,
-    ellipsizeMode: 'tail',
-  };
-
-  touchableGetPressRectOffset: ?() => PressRetentionOffset;
-  touchableHandleActivePressIn: ?() => void;
-  touchableHandleActivePressOut: ?() => void;
-  touchableHandleLongPress: ?(event: PressEvent) => void;
-  touchableHandlePress: ?(event: PressEvent) => void;
-  touchableHandleResponderGrant: ?(event: PressEvent) => void;
-  touchableHandleResponderMove: ?(event: PressEvent) => void;
-  touchableHandleResponderRelease: ?(event: PressEvent) => void;
-  touchableHandleResponderTerminate: ?(event: PressEvent) => void;
-  touchableHandleResponderTerminationRequest: ?() => boolean;
-
-  state = {
-    ...Touchable.Mixin.touchableGetInitialState(),
-    isHighlighted: false,
-    createResponderHandlers: this._createResponseHandlers.bind(this),
-    responseHandlers: null,
-  };
-
-  static getDerivedStateFromProps(
-    nextProps: Props,
-    prevState: State,
-  ): $Shape<State> | null {
-    return prevState.responseHandlers == null && isTouchable(nextProps)
-      ? {
-          responseHandlers: prevState.createResponderHandlers(),
-        }
-      : null;
-  }
-
-  render(): React.Node {
-    let {forwardedRef, selectionColor, ...props} = this.props;
-    if (isTouchable(this.props)) {
-      props = {
-        ...props,
-        ...this.state.responseHandlers,
-        isHighlighted: this.state.isHighlighted,
-      };
-    }
-    if (selectionColor != null) {
-      props = {
-        ...props,
-        selectionColor: processColor(selectionColor),
-      };
-    }
-    if (__DEV__) {
-      if (Touchable.TOUCH_TARGET_DEBUG && props.onPress != null) {
-        props = {
-          ...props,
-          style: [props.style, {color: 'magenta'}],
-        };
-      }
-    }
-
-    // [Windows]
-    // Due to XAML limitations, wrapping  Text with a View in order to display borders.
-    // Like other platforms, ignoring borders for nested Text (using the Context API to detect nesting).
-    return (
-      <TextAncestor.Consumer>
-        {hasTextAncestor => {
-          if (hasTextAncestor) {
-            return (
-              // $FlowFixMe[prop-missing] For the `onClick` workaround.
-              <NativeVirtualText
-                {...props}
-                // This is used on Android to call a nested Text component's press handler from the context menu.
-                // TODO T75145059 Clean this up once Text is migrated off of Touchable
-                onClick={props.onPress}
-                ref={forwardedRef}
-              />
-            );
-          } else {
-            // View.js resets the TextAncestor, as a reportedly temporary change,
-            // in order to properly handle nested images inside <Text> on Android/iOS:
-            // https://github.com/facebook/react-native/commit/66601e755fcad10698e61d20878d52194ad0e90c.
-            // Windows doesn't currently support nesting a <View> in a <Text>, so overriding this behavior here
-            // by seting the Provider inside View, doesn't affect us functionally.
-            let styleProps: ViewStyleProp = (props.style: any);
-            if (
-              styleProps &&
-              styleProps.borderColor &&
-              (styleProps.borderWidth ||
-                styleProps.borderBottomWidth ||
-                styleProps.borderEndWidth ||
-                styleProps.borderLeftWidth ||
-                styleProps.borderRightWidth ||
-                styleProps.borderStartWidth ||
-                styleProps.borderTopWidth)
-            ) {
-              let textStyleProps = Array.isArray(styleProps)
-                ? StyleSheet.flatten(styleProps)
-                : styleProps;
-              let {
-                margin,
-                marginBottom,
-                marginEnd,
-                marginHorizontal,
-                marginLeft,
-                marginRight,
-                marginStart,
-                marginTop,
-                marginVertical,
-                padding,
-                paddingBottom,
-                paddingEnd,
-                paddingHorizontal,
-                paddingLeft,
-                paddingRight,
-                paddingStart,
-                paddingTop,
-                paddingVertical,
-                ...rest
-              } = textStyleProps != null ? textStyleProps : {};
-
-              let {style, ...textPropsLessStyle} = props;
-
-              return (
-                <View style={styleProps}>
-                  <TextAncestor.Provider value={true}>
-                    <NativeText
-                      style={((rest: any): TextStyleProp)}
-                      {...textPropsLessStyle}
-                      ref={forwardedRef}
-                    />
-                  </TextAncestor.Provider>
-                </View>
-              );
-            } else {
-              return (
-                <TextAncestor.Provider value={true}>
-                  <NativeText {...props} ref={forwardedRef} />
-                </TextAncestor.Provider>
-              );
-            }
-          }
-        }}
-      </TextAncestor.Consumer>
-    );
-  } // [/Windows]
-
-  _createResponseHandlers(): ResponseHandlers {
-    return {
-      onStartShouldSetResponder: (): boolean => {
-        const {onStartShouldSetResponder} = this.props;
-        const shouldSetResponder =
-          (onStartShouldSetResponder == null
-            ? false
-            : onStartShouldSetResponder()) || isTouchable(this.props);
-
-        if (shouldSetResponder) {
-          this._attachTouchHandlers();
-        }
-        return shouldSetResponder;
-      },
-      onResponderGrant: (event: PressEvent): void => {
-        nullthrows(this.touchableHandleResponderGrant)(event);
-        if (this.props.onResponderGrant != null) {
-          this.props.onResponderGrant.call(this, event);
-        }
-      },
-      onResponderMove: (event: PressEvent): void => {
-        nullthrows(this.touchableHandleResponderMove)(event);
-        if (this.props.onResponderMove != null) {
-          this.props.onResponderMove.call(this, event);
-        }
-      },
-      onResponderRelease: (event: PressEvent): void => {
-        nullthrows(this.touchableHandleResponderRelease)(event);
-        if (this.props.onResponderRelease != null) {
-          this.props.onResponderRelease.call(this, event);
-        }
-      },
-      onResponderTerminate: (event: PressEvent): void => {
-        nullthrows(this.touchableHandleResponderTerminate)(event);
-        if (this.props.onResponderTerminate != null) {
-          this.props.onResponderTerminate.call(this, event);
-        }
-      },
-      onResponderTerminationRequest: (): boolean => {
-        const {onResponderTerminationRequest} = this.props;
-        if (!nullthrows(this.touchableHandleResponderTerminationRequest)()) {
-          return false;
-        }
-        if (onResponderTerminationRequest == null) {
-          return true;
-        }
-        return onResponderTerminationRequest();
-      },
-    };
-  }
-
-  /**
-   * Lazily attaches Touchable.Mixin handlers.
-   */
-  _attachTouchHandlers(): void {
-    if (this.touchableGetPressRectOffset != null) {
-      return;
-    }
-    for (const key in Touchable.Mixin) {
-      if (typeof Touchable.Mixin[key] === 'function') {
-        (this: any)[key] = Touchable.Mixin[key].bind(this);
-      }
-    }
-    this.touchableHandleActivePressIn = (): void => {
-      if (!this.props.suppressHighlighting && isTouchable(this.props)) {
-        this.setState({isHighlighted: true});
-      }
-    };
-    this.touchableHandleActivePressOut = (): void => {
-      if (!this.props.suppressHighlighting && isTouchable(this.props)) {
-        this.setState({isHighlighted: false});
-      }
-    };
-    this.touchableHandlePress = (event: PressEvent): void => {
-      if (this.props.onPress != null) {
-        this.props.onPress(event);
-      }
-    };
-    this.touchableHandleLongPress = (event: PressEvent): void => {
-      if (this.props.onLongPress != null) {
-        this.props.onLongPress(event);
-      }
-    };
-    this.touchableGetPressRectOffset = (): PressRetentionOffset =>
-      this.props.pressRetentionOffset == null
-        ? PRESS_RECT_OFFSET
-        : this.props.pressRetentionOffset;
-  }
-}
-
-const isTouchable = (props: Props): boolean =>
-  props.onPress != null ||
-  props.onLongPress != null ||
-  props.onStartShouldSetResponder != null;
-
 const Text: React.AbstractComponent<
   TextProps,
   React.ElementRef<typeof NativeText | typeof NativeVirtualText>,
-> = React.forwardRef(
-  (
-    props: TextProps,
-    forwardedRef: ?React.Ref<typeof NativeText | typeof NativeVirtualText>,
-  ) => {
-    return <TouchableText {...props} forwardedRef={forwardedRef} />;
-  },
-);
+> = React.forwardRef((props: TextProps, forwardedRef) => {
+  const {
+    accessible,
+    accessibilityLabel,
+    allowFontScaling,
+    'aria-busy': ariaBusy,
+    'aria-checked': ariaChecked,
+    'aria-disabled': ariaDisabled,
+    'aria-expanded': ariaExpanded,
+    'aria-label': ariaLabel,
+    'aria-selected': ariaSelected,
+    ellipsizeMode,
+    id,
+    nativeID,
+    onLongPress,
+    onPress,
+    onPressIn,
+    onPressOut,
+    onResponderGrant,
+    onResponderMove,
+    onResponderRelease,
+    onResponderTerminate,
+    onResponderTerminationRequest,
+    onStartShouldSetResponder,
+    pressRetentionOffset,
+    suppressHighlighting,
+    ...restProps
+  } = props;
+
+  const [isHighlighted, setHighlighted] = useState(false);
+
+  const _accessibilityState = {
+    busy: ariaBusy ?? props.accessibilityState?.busy,
+    checked: ariaChecked ?? props.accessibilityState?.checked,
+    disabled: ariaDisabled ?? props.accessibilityState?.disabled,
+    expanded: ariaExpanded ?? props.accessibilityState?.expanded,
+    selected: ariaSelected ?? props.accessibilityState?.selected,
+  };
+
+  const _disabled =
+    restProps.disabled != null
+      ? restProps.disabled
+      : _accessibilityState?.disabled;
+
+  const nativeTextAccessibilityState =
+    _disabled !== _accessibilityState?.disabled
+      ? {..._accessibilityState, disabled: _disabled}
+      : _accessibilityState;
+
+  const isPressable =
+    (onPress != null ||
+      onLongPress != null ||
+      onStartShouldSetResponder != null) &&
+    _disabled !== true;
+
+  const initialized = useLazyInitialization(isPressable);
+  const config = useMemo(
+    () =>
+      initialized
+        ? {
+            disabled: !isPressable,
+            pressRectOffset: pressRetentionOffset,
+            onLongPress,
+            onPress,
+            onPressIn(event: PressEvent) {
+              setHighlighted(!suppressHighlighting);
+              onPressIn?.(event);
+            },
+            onPressOut(event: PressEvent) {
+              setHighlighted(false);
+              onPressOut?.(event);
+            },
+            onResponderTerminationRequest_DEPRECATED:
+              onResponderTerminationRequest,
+            onStartShouldSetResponder_DEPRECATED: onStartShouldSetResponder,
+          }
+        : null,
+    [
+      initialized,
+      isPressable,
+      pressRetentionOffset,
+      onLongPress,
+      onPress,
+      onPressIn,
+      onPressOut,
+      onResponderTerminationRequest,
+      onStartShouldSetResponder,
+      suppressHighlighting,
+    ],
+  );
+
+  const eventHandlers = usePressability(config);
+  const eventHandlersForText = useMemo(
+    () =>
+      eventHandlers == null
+        ? null
+        : {
+            onResponderGrant(event: PressEvent) {
+              eventHandlers.onResponderGrant(event);
+              if (onResponderGrant != null) {
+                onResponderGrant(event);
+              }
+            },
+            onResponderMove(event: PressEvent) {
+              eventHandlers.onResponderMove(event);
+              if (onResponderMove != null) {
+                onResponderMove(event);
+              }
+            },
+            onResponderRelease(event: PressEvent) {
+              eventHandlers.onResponderRelease(event);
+              if (onResponderRelease != null) {
+                onResponderRelease(event);
+              }
+            },
+            onResponderTerminate(event: PressEvent) {
+              eventHandlers.onResponderTerminate(event);
+              if (onResponderTerminate != null) {
+                onResponderTerminate(event);
+              }
+            },
+            onClick: eventHandlers.onClick,
+            onResponderTerminationRequest:
+              eventHandlers.onResponderTerminationRequest,
+            onStartShouldSetResponder: eventHandlers.onStartShouldSetResponder,
+          },
+    [
+      eventHandlers,
+      onResponderGrant,
+      onResponderMove,
+      onResponderRelease,
+      onResponderTerminate,
+    ],
+  );
+
+  // TODO: Move this processing to the view configuration.
+  const selectionColor =
+    restProps.selectionColor == null
+      ? null
+      : processColor(restProps.selectionColor);
+
+  let style = flattenStyle(restProps.style);
+
+  let _selectable = restProps.selectable;
+  if (style?.userSelect != null) {
+    _selectable = userSelectToSelectableMap[style.userSelect];
+  }
+
+  if (style?.verticalAlign != null) {
+    style = StyleSheet.compose(style, {
+      textAlignVertical:
+        verticalAlignToTextAlignVerticalMap[style.verticalAlign],
+    });
+  }
+
+  if (__DEV__) {
+    if (PressabilityDebug.isEnabled() && onPress != null) {
+      style = StyleSheet.compose(restProps.style, {
+        color: 'magenta',
+      });
+    }
+  }
+
+  let numberOfLines = restProps.numberOfLines;
+  if (numberOfLines != null && !(numberOfLines >= 0)) {
+    console.error(
+      `'numberOfLines' in <Text> must be a non-negative number, received: ${numberOfLines}. The value will be set to 0.`,
+    );
+    numberOfLines = 0;
+  }
+
+  const hasTextAncestor = useContext(TextAncestor);
+
+  const _accessible = Platform.select({
+    ios: accessible !== false,
+    default: accessible,
+  });
+
+  let flattenedStyle = flattenStyle(style);
+
+  if (typeof flattenedStyle?.fontWeight === 'number') {
+    flattenedStyle.fontWeight = flattenedStyle?.fontWeight.toString();
+  }
+
+  const _hasOnPressOrOnLongPress =
+    props.onPress != null || props.onLongPress != null;
+
+  if (hasTextAncestor) {
+    return (
+      <NativeVirtualText
+        {...restProps}
+        {...eventHandlersForText}
+        disabled={_disabled}
+        selectable={_selectable}
+        accessible={
+          accessible == null && Platform.OS === 'android'
+            ? _hasOnPressOrOnLongPress
+            : _accessible
+        }
+        accessibilityLabel={ariaLabel ?? accessibilityLabel}
+        accessibilityState={nativeTextAccessibilityState}
+        allowFontScaling={allowFontScaling !== false}
+        ellipsizeMode={ellipsizeMode ?? 'tail'}
+        isHighlighted={isHighlighted}
+        nativeID={id ?? nativeID}
+        isPressable={isPressable}
+        numberOfLines={numberOfLines}
+        selectionColor={selectionColor}
+        style={flattenedStyle}
+        ref={forwardedRef}
+      />
+    );
+  } else {
+    let styleProps: ViewStyleProp = (restProps.style: any);
+    if (
+      styleProps &&
+      styleProps.borderColor &&
+      (styleProps.borderWidth ||
+        styleProps.borderBottomWidth ||
+        styleProps.borderEndWidth ||
+        styleProps.borderLeftWidth ||
+        styleProps.borderRightWidth ||
+        styleProps.borderStartWidth ||
+        styleProps.borderTopWidth)
+    ) {
+      let textStyleProps = Array.isArray(styleProps)
+        ? StyleSheet.flatten(styleProps)
+        : styleProps;
+      let {
+        margin,
+        marginBottom,
+        marginEnd,
+        marginHorizontal,
+        marginLeft,
+        marginRight,
+        marginStart,
+        marginTop,
+        marginVertical,
+        padding,
+        paddingBottom,
+        paddingEnd,
+        paddingHorizontal,
+        paddingLeft,
+        paddingRight,
+        paddingStart,
+        paddingTop,
+        paddingVertical,
+        ...rest
+      } = textStyleProps != null ? textStyleProps : {};
+
+      let {style, ...textPropsLessStyle} = props;
+      return (
+        <View style={styleProps}>
+          <TextAncestor.Provider value={true}>
+            <NativeText
+              {...textPropsLessStyle}
+              {...eventHandlersForText}
+              accessible={accessible !== false}
+              allowFontScaling={allowFontScaling !== false}
+              ellipsizeMode={ellipsizeMode ?? 'tail'}
+              isHighlighted={isHighlighted}
+              selectionColor={selectionColor}
+              style={((rest: any): TextStyleProp)}
+              ref={forwardedRef}
+            />
+          </TextAncestor.Provider>
+        </View>
+      );
+    } else {
+      return (
+        <TextAncestor.Provider value={true}>
+          <NativeText
+            {...restProps}
+            {...eventHandlersForText}
+            accessible={accessible !== false}
+            allowFontScaling={allowFontScaling !== false}
+            ellipsizeMode={ellipsizeMode ?? 'tail'}
+            isHighlighted={isHighlighted}
+            selectionColor={selectionColor}
+            style={style}
+            ref={forwardedRef}
+          />
+        </TextAncestor.Provider>
+      );
+    }
+  }
+});
+
 Text.displayName = 'Text';
 
-// TODO: Deprecate this.
-/* $FlowFixMe(>=0.89.0 site=react_native_fb) This comment suppresses an error
- * found when Flow v0.89 was deployed. To see the error, delete this comment
- * and run Flow. */
-Text.propTypes = DeprecatedTextPropTypes;
+/**
+ * Returns false until the first time `newValue` is true, after which this will
+ * always return true. This is necessary to lazily initialize `Pressability` so
+ * we do not eagerly create one for every pressable `Text` component.
+ */
+function useLazyInitialization(newValue: boolean): boolean {
+  const [oldValue, setValue] = useState(newValue);
+  if (!oldValue && newValue) {
+    setValue(newValue);
+  }
+  return oldValue;
+}
 
-const TextToExport: typeof Text &
-  $ReadOnly<{|
-    propTypes: typeof DeprecatedTextPropTypes,
-  |}> =
-  // $FlowFixMe[incompatible-type] - No good way to type a React.AbstractComponent with statics.
-  TextInjection.unstable_Text == null ? Text : TextInjection.unstable_Text;
+const userSelectToSelectableMap = {
+  auto: true,
+  text: true,
+  none: false,
+  contain: true,
+  all: true,
+};
 
-module.exports = TextToExport;
+const verticalAlignToTextAlignVerticalMap = {
+  auto: 'auto',
+  top: 'top',
+  bottom: 'bottom',
+  middle: 'center',
+};
+
+module.exports = Text;

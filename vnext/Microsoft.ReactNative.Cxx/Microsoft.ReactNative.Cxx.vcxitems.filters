@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="$(MSBuildThisFileDirectory)JSValue.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)JSValueTreeReader.cpp" />
@@ -12,13 +12,13 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)JSI\JsiAbiApi.cpp">
       <Filter>JSI</Filter>
     </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)JSI\JsiValueHelpers.cpp">
+      <Filter>JSI</Filter>
+    </ClCompile>
     <ClCompile Include="$(MSBuildThisFileDirectory)TurboModuleProvider.cpp">
       <Filter>TurboModule</Filter>
     </ClCompile>
     <ClCompile Include="$(TurboModule_SourcePath)\ReactCommon\TurboModule.cpp">
-      <Filter>TurboModule</Filter>
-    </ClCompile>
-    <ClCompile Include="$(TurboModule_SourcePath)\ReactCommon\LongLivedObject.cpp">
       <Filter>TurboModule</Filter>
     </ClCompile>
     <ClCompile Include="$(TurboModule_SourcePath)\ReactCommon\TurboModuleUtils.cpp">
@@ -27,6 +27,10 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)JSI\JsiApiContext.cpp">
       <Filter>JSI</Filter>
     </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)JSI\NodeApiJsiRuntime.cpp">
+      <Filter>JSI</Filter>
+    </ClCompile>
+    <ClCompile Include="$(Bridging_SourcePath)\LongLivedObject.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="$(MSBuildThisFileDirectory)Crash.h" />
@@ -97,9 +101,6 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)UI.Xaml.Shapes.h">
       <Filter>UI</Filter>
     </ClInclude>
-    <ClInclude Include="$(MSBuildThisFileDirectory)XamlHelpers.h">
-      <Filter>UI</Filter>
-    </ClInclude>
     <ClInclude Include="$(MSBuildThisFileDirectory)JSValueXaml.h">
       <Filter>UI</Filter>
     </ClInclude>
@@ -110,6 +111,9 @@
       <Filter>UI</Filter>
     </ClInclude>
     <ClInclude Include="$(MSBuildThisFileDirectory)JSI\JsiAbiApi.h">
+      <Filter>JSI</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)JSI\JsiValueHelpers.h">
       <Filter>JSI</Filter>
     </ClInclude>
     <ClInclude Include="$(JSI_SourcePath)\jsi\jsi.h">
@@ -143,6 +147,18 @@
       <Filter>TurboModule</Filter>
     </ClInclude>
     <ClInclude Include="$(TurboModule_SourcePath)\ReactCommon\TurboModuleUtils.h">
+      <Filter>TurboModule</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)DesktopWindowBridge.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)XamlUtils.h">
+      <Filter>UI</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)JSI\NodeApiJsiRuntime.h">
+      <Filter>JSI</Filter>
+    </ClInclude>
+    <ClInclude Include="$(Bridging_SourcePath)\CallbackWrapper.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)CoreApp.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)JSI\LongLivedJsiValue.h">
       <Filter>TurboModule</Filter>
     </ClInclude>
   </ItemGroup>

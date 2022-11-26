@@ -6,13 +6,16 @@
 #include <DynamicWriter.h>
 #include <IReactContext.h>
 #include <IReactRootView.h>
+#include <Modules/NativeUIManager.h>
 #include <Modules/PaperUIManagerModule.h>
-#include <Modules\NativeUIManager.h>
 #include <Views/ViewManager.h>
 #include <XamlUtils.h>
+#include <cxxreact/SystraceSection.h>
 #include "ShadowNodeBase.h"
 #include "Unicode.h"
 #include "XamlUIService.h"
+
+using namespace facebook::react;
 
 namespace Microsoft::ReactNative {
 
@@ -77,6 +80,11 @@ std::weak_ptr<NativeUIManager> GetNativeUIManager(const Mso::React::IReactContex
   return v ? v.Value() : std::weak_ptr<NativeUIManager>{};
 }
 
+std::weak_ptr<NativeUIManager> GetNativeUIManager(const winrt::Microsoft::ReactNative::ReactContext &context) {
+  auto v = context.Properties().Get(NativeUIManagerProperty());
+  return v ? v.Value() : std::weak_ptr<NativeUIManager>{};
+}
+
 class UIManagerModule : public std::enable_shared_from_this<UIManagerModule>, public INativeUIManagerHost {
  public:
   UIManagerModule() {}
@@ -110,7 +118,7 @@ class UIManagerModule : public std::enable_shared_from_this<UIManagerModule>, pu
     writer.WriteObjectEnd();
 
     auto val = TakeJSValue(writer);
-    return std::move(val.AsObject().Copy()); // Lame why do we need to copy?
+    return std::move(val.AsObject().Copy()); // Why do we need to copy?
   }
 
   void ConstantsViaConstantsProvider(winrt::Microsoft::ReactNative::ReactConstantProvider &constants) noexcept {
@@ -121,23 +129,29 @@ class UIManagerModule : public std::enable_shared_from_this<UIManagerModule>, pu
       vm->GetConstants(writer);
       writer.WriteObjectEnd();
     }
+    constants.Add(L"AccessibilityEventTypes", accessibilityEventTypes);
   }
 
   void createView(int64_t reactTag, std::string viewName, int64_t rootTag, React::JSValueObject &&props) noexcept {
     m_nativeUIManager->ensureInBatch();
-    auto viewManager = GetViewManager(viewName);
-    auto node = viewManager->createShadow();
-    node->m_className = std::move(viewName);
-    node->m_tag = reactTag;
-    node->m_viewManager = viewManager;
+    if (auto viewManager = GetViewManager(viewName)) {
+      auto node = viewManager->createShadow();
+      node->m_className = std::move(viewName);
+      node->m_tag = reactTag;
+      node->m_rootTag = rootTag;
+      node->m_viewManager = viewManager;
 
-    node->createView();
+      node->createView(props);
 
-    m_nativeUIManager->CreateView(*node, props);
+      m_nativeUIManager->CreateView(*node, props);
 
-    m_nodeRegistry.addNode(shadow_ptr(node), reactTag);
+      m_nodeRegistry.addNode(shadow_ptr(node), reactTag);
 
-    node->updateProperties(props);
+      node->updateProperties(props);
+    } else {
+      assert(false);
+      return;
+    }
   }
 
   void updateView(int64_t reactTag, std::string viewName, React::JSValueObject &&props) noexcept {
@@ -166,10 +180,13 @@ class UIManagerModule : public std::enable_shared_from_this<UIManagerModule>, pu
       React::JSValueArray &&point,
       std::function<void(double nativeViewTag, double left, double top, double width, double height)>
           &&callback) noexcept {
-    auto &node = m_nodeRegistry.getNode(reactTag);
-    float x = static_cast<float>(point[0]);
-    float y = static_cast<float>(point[1]);
-    m_nativeUIManager->findSubviewIn(node, x, y, std::move(callback));
+    if (auto node = m_nodeRegistry.findNode(reactTag)) {
+      float x = static_cast<float>(point[0]);
+      float y = static_cast<float>(point[1]);
+      m_nativeUIManager->findSubviewIn(*node, x, y, std::move(callback));
+    } else {
+      callback(0, 0, 0, 0, 0);
+    }
   }
 
   void dispatchViewManagerCommand(
@@ -177,34 +194,27 @@ class UIManagerModule : public std::enable_shared_from_this<UIManagerModule>, pu
       winrt::Microsoft::ReactNative::JSValue &&commandID,
       React::JSValueArray &&commandArgs) noexcept {
     m_nativeUIManager->ensureInBatch();
-    auto &node = m_nodeRegistry.getNode(reactTag);
-
-    if (!node.m_zombie)
-      node.dispatchCommand(commandID.AsString(), std::move(commandArgs));
+    if (auto node = m_nodeRegistry.findNode(reactTag)) {
+      if (!node->m_zombie)
+        node->dispatchCommand(commandID.AsString(), std::move(commandArgs));
+    }
   }
 
   void measure(
       int64_t reactTag,
       std::function<void(double left, double top, double width, double height, double pageX, double pageY)>
           &&callback) noexcept {
-    auto &node = m_nodeRegistry.getNode(reactTag);
-    int64_t rootTag = reactTag;
-    while (true) {
-      auto &currNode = m_nodeRegistry.getNode(rootTag);
-      if (currNode.m_parent == -1)
-        break;
-      rootTag = currNode.m_parent;
+    if (auto node = m_nodeRegistry.findNode(reactTag)) {
+      auto &rootNode = m_nodeRegistry.getNode(node->m_rootTag);
+      m_nativeUIManager->measure(*node, rootNode, std::move(callback));
     }
-    auto &rootNode = m_nodeRegistry.getNode(rootTag);
-
-    m_nativeUIManager->measure(node, rootNode, std::move(callback));
   }
 
   void measureInWindow(
       int64_t reactTag,
       std::function<void(double x, double y, double width, double height)> &&callback) noexcept {
-    auto &node = m_nodeRegistry.getNode(reactTag);
-    m_nativeUIManager->measureInWindow(node, std::move(callback));
+    if (auto node = m_nodeRegistry.findNode(reactTag))
+      m_nativeUIManager->measureInWindow(*node, std::move(callback));
   }
 
   void viewIsDescendantOf(
@@ -220,9 +230,11 @@ class UIManagerModule : public std::enable_shared_from_this<UIManagerModule>, pu
       int64_t ancestorReactTag,
       std::function<void(React::JSValue const &)> &&errorCallback,
       std::function<void(double left, double top, double width, double height)> &&callback) noexcept {
-    auto &node = m_nodeRegistry.getNode(reactTag);
-    auto &ancestorNode = m_nodeRegistry.getNode(ancestorReactTag);
-    m_nativeUIManager->measureLayout(node, ancestorNode, std::move(errorCallback), std::move(callback));
+    auto node = m_nodeRegistry.findNode(reactTag);
+    auto ancestorNode = m_nodeRegistry.findNode(ancestorReactTag);
+    if (node && ancestorNode) {
+      m_nativeUIManager->measureLayout(*node, *ancestorNode, std::move(errorCallback), std::move(callback));
+    }
   }
 
   void measureLayoutRelativeToParent(
@@ -250,13 +262,13 @@ class UIManagerModule : public std::enable_shared_from_this<UIManagerModule>, pu
 
   void removeSubviewsFromContainerWithID(int64_t containerID) noexcept {
     m_nativeUIManager->ensureInBatch();
-    auto &containerNode = m_nodeRegistry.getNode(containerID);
-
-    std::vector<int64_t> indicesToRemove(containerNode.m_children.size());
-    for (size_t i = 0; i < containerNode.m_children.size(); i++)
-      indicesToRemove[static_cast<size_t>(i)] = static_cast<int64_t>(i);
-    std::vector<int64_t> emptyVec;
-    manageChildren(containerID, emptyVec, emptyVec, emptyVec, emptyVec, indicesToRemove);
+    if (auto containerNode = m_nodeRegistry.findNode(containerID)) {
+      std::vector<int64_t> indicesToRemove(containerNode->m_children.size());
+      for (size_t i = 0; i < containerNode->m_children.size(); i++)
+        indicesToRemove[static_cast<size_t>(i)] = static_cast<int64_t>(i);
+      std::vector<int64_t> emptyVec;
+      manageChildren(containerID, emptyVec, emptyVec, emptyVec, emptyVec, indicesToRemove);
+    }
   }
 
   void replaceExistingNonRootView(int64_t reactTag, int64_t newReactTag) noexcept {
@@ -266,39 +278,44 @@ class UIManagerModule : public std::enable_shared_from_this<UIManagerModule>, pu
     std::vector<int64_t> tagToAdd(1);
     tagToAdd[0] = newReactTag;
 
-    CHECK(m_nodeRegistry.getNode(reactTag).m_parent != -1) << "oldTag must have a parent";
-    auto &parent = m_nodeRegistry.getNode(m_nodeRegistry.getNode(reactTag).m_parent);
-    auto it = find(parent.m_children.begin(), parent.m_children.end(), reactTag);
-    CHECK(it != parent.m_children.end());
-    indicesToAdd[0] = indicesToRemove[0] = it - parent.m_children.begin();
+    if (auto node = m_nodeRegistry.findNode(reactTag)) {
+      CHECK(node->m_parent != -1) << "oldTag must have a parent";
+      if (auto parent = m_nodeRegistry.findNode(node->m_parent)) {
+        auto it = find(parent->m_children.begin(), parent->m_children.end(), reactTag);
+        CHECK(it != parent->m_children.end());
+        indicesToAdd[0] = indicesToRemove[0] = it - parent->m_children.begin();
 
-    std::vector<int64_t> emptyVec;
-    manageChildren(parent.m_tag, emptyVec, emptyVec, tagToAdd, indicesToAdd, indicesToRemove);
+        std::vector<int64_t> emptyVec;
+        manageChildren(parent->m_tag, emptyVec, emptyVec, tagToAdd, indicesToAdd, indicesToRemove);
+      }
+    }
   }
 
   void removeRootView(int64_t rootViewTag) noexcept {
     m_nativeUIManager->ensureInBatch();
-    auto &node = m_nodeRegistry.getRoot(rootViewTag);
-    m_nativeUIManager->removeRootView(node);
-    DropView(rootViewTag, true);
-    m_nodeRegistry.removeRootView(rootViewTag);
-    m_nativeUIManager->destroyRootShadowNode(&node);
+    if (auto node = m_nodeRegistry.findNode(rootViewTag)) {
+      m_nativeUIManager->removeRootView(*node);
+      DropView(rootViewTag, true);
+      m_nodeRegistry.removeRootView(rootViewTag);
+      m_nativeUIManager->destroyRootShadowNode(node);
+    }
   }
 
   void setChildren(int64_t containerTag, React::JSValueArray &&reactTags) noexcept {
     m_nativeUIManager->ensureInBatch();
-    auto &parent = m_nodeRegistry.getNode(containerTag);
-    int64_t index = 0;
-    for (auto &&childTag : reactTags) {
-      auto tag = childTag.AsInt64();
-      auto &childNode = m_nodeRegistry.getNode(tag);
-      childNode.m_parent = parent.m_tag;
-      parent.m_children.push_back(tag);
-      if (!parent.m_zombie)
-        parent.AddView(childNode, index);
+    if (auto parent = m_nodeRegistry.findNode(containerTag)) {
+      int64_t index = 0;
+      for (auto &&childTag : reactTags) {
+        auto tag = childTag.AsInt64();
+        auto childNode = m_nodeRegistry.findNode(tag);
+        childNode->m_parent = parent->m_tag;
+        parent->m_children.push_back(tag);
+        if (!parent->m_zombie)
+          parent->AddView(*childNode, index);
 
-      m_nativeUIManager->AddView(parent, childNode, index);
-      ++index;
+        m_nativeUIManager->AddView(*parent, *childNode, index);
+        ++index;
+      }
     }
   }
 
@@ -323,8 +340,12 @@ class UIManagerModule : public std::enable_shared_from_this<UIManagerModule>, pu
   }
 
   void sendAccessibilityEvent(int64_t reactTag, double eventType) noexcept {
-    assert(false);
-    // TODO
+    auto type = int(eventType);
+    if (type == accessibilityEventTypes["typeViewFocused"]) {
+      focus(reactTag);
+    } else {
+      assert(false);
+    }
   }
 
   void showPopupMenu(
@@ -348,10 +369,6 @@ class UIManagerModule : public std::enable_shared_from_this<UIManagerModule>, pu
 
   ShadowNode *FindShadowNodeForTag(int64_t tag) {
     return m_nodeRegistry.findNode(tag);
-  }
-
-  ShadowNode *FindParentRootShadowNode(int64_t tag) {
-    return m_nodeRegistry.getParentRootShadowNode(tag);
   }
 
   ShadowNode &GetShadowNodeForTag(int64_t tag) {
@@ -466,6 +483,7 @@ class UIManagerModule : public std::enable_shared_from_this<UIManagerModule>, pu
     root->m_className = rootClassName;
     root->m_viewManager = viewManager;
     root->m_tag = rootViewTag;
+    root->m_rootTag = rootViewTag;
     m_nodeRegistry.addRootView(shadow_ptr(root), rootViewTag);
 
     m_nativeUIManager->AddRootView(*root, rootView);
@@ -476,29 +494,30 @@ class UIManagerModule : public std::enable_shared_from_this<UIManagerModule>, pu
   }
 
   void DropView(int64_t tag, bool removeChildren = true, bool zombieView = false) {
-    auto &node = m_nodeRegistry.getNode(tag);
+    if (auto node = m_nodeRegistry.findNode(tag)) {
+      node->onDropViewInstance();
 
-    node.onDropViewInstance();
+      m_nativeUIManager->RemoveView(*node, removeChildren);
 
-    m_nativeUIManager->RemoveView(node, removeChildren);
+      if (zombieView)
+        node->m_zombie = true;
 
-    if (zombieView)
-      node.m_zombie = true;
+      for (auto childTag : node->m_children)
+        DropView(childTag, removeChildren, zombieView);
 
-    for (auto childTag : node.m_children)
-      DropView(childTag, removeChildren, zombieView);
+      if (removeChildren)
+        node->removeAllChildren();
 
-    if (removeChildren)
-      node.removeAllChildren();
-
-    if (!zombieView)
-      m_nodeRegistry.removeNode(tag);
+      if (!zombieView)
+        m_nodeRegistry.removeNode(tag);
+    }
   }
 
   winrt::Microsoft::ReactNative::ReactContext m_context;
   std::vector<std::unique_ptr<IViewManager>> m_viewManagers;
   ShadowNodeRegistry m_nodeRegistry;
   std::shared_ptr<NativeUIManager> m_nativeUIManager;
+  const React::JSValueObject accessibilityEventTypes = React::JSValueObject{{"typeViewFocused", 8}};
 };
 
 UIManager::UIManager() : m_module(std::make_shared<UIManagerModule>()) {}
@@ -506,7 +525,7 @@ UIManager::UIManager() : m_module(std::make_shared<UIManagerModule>()) {}
 UIManager::~UIManager() {
   // To make sure that we destroy UI components in UI thread.
   if (!m_context.UIDispatcher().HasThreadAccess()) {
-    m_context.UIDispatcher().Post([module = std::move(m_module)]() {});
+    m_context.UIDispatcher().Post([module = std::move(m_module)]() mutable { module = nullptr; });
   }
 }
 
@@ -554,6 +573,7 @@ void UIManager::createView(
                                                          viewName = std::move(viewName),
                                                          rootTag,
                                                          props = std::move(props)]() mutable {
+    SystraceSection s("UIManager::createView");
     if (auto module = m.lock()) {
       module->createView(static_cast<int64_t>(reactTag), viewName, static_cast<int64_t>(rootTag), std::move(props));
     }
@@ -565,6 +585,7 @@ void UIManager::updateView(double reactTag, std::string viewName, React::JSValue
                                                          reactTag,
                                                          viewName = std::move(viewName),
                                                          props = std::move(props)]() mutable {
+    SystraceSection s("UIManager::updateView");
     if (auto module = m.lock()) {
       module->updateView(static_cast<int64_t>(reactTag), viewName, std::move(props));
     }
@@ -573,6 +594,7 @@ void UIManager::updateView(double reactTag, std::string viewName, React::JSValue
 
 void UIManager::focus(double reactTag) noexcept {
   m_batchingUIMessageQueue->runOnQueue([m = std::weak_ptr<UIManagerModule>(m_module), reactTag]() {
+    SystraceSection s("UIManager::focus");
     if (auto module = m.lock()) {
       module->focus(static_cast<int64_t>(reactTag));
     }
@@ -581,6 +603,7 @@ void UIManager::focus(double reactTag) noexcept {
 
 void UIManager::blur(double reactTag) noexcept {
   m_batchingUIMessageQueue->runOnQueue(Mso::VoidFunctor([m = std::weak_ptr<UIManagerModule>(m_module), reactTag]() {
+    SystraceSection s("UIManager::blur");
     if (auto module = m.lock()) {
       module->blur(static_cast<int64_t>(reactTag));
     }
@@ -596,6 +619,7 @@ void UIManager::findSubviewIn(
                                                          reactTag,
                                                          point = std::move(point),
                                                          callback = std::move(callback)]() mutable {
+    SystraceSection s("UIManager::findSubviewIn");
     if (auto module = m.lock()) {
       module->findSubviewIn(static_cast<int64_t>(reactTag), std::move(point), std::move(callback));
     }
@@ -610,6 +634,7 @@ void UIManager::dispatchViewManagerCommand(
                                                          reactTag,
                                                          commandID = std::move(commandID),
                                                          commandArgs = std::move(commandArgs)]() mutable {
+    SystraceSection s("UIManager::dispatchViewManagerCommand");
     if (auto module = m.lock()) {
       module->dispatchViewManagerCommand(static_cast<int64_t>(reactTag), std::move(commandID), std::move(commandArgs));
     }
@@ -622,6 +647,7 @@ void UIManager::measure(
         &callback) noexcept {
   m_batchingUIMessageQueue->runOnQueue(Mso::VoidFunctor(
       [m = std::weak_ptr<UIManagerModule>(m_module), reactTag, callback = std::move(callback)]() mutable {
+        SystraceSection s("UIManager::measure");
         if (auto module = m.lock()) {
           module->measure(static_cast<int64_t>(reactTag), std::move(callback));
         }
@@ -633,6 +659,7 @@ void UIManager::measureInWindow(
     std::function<void(double x, double y, double width, double height)> const &callback) noexcept {
   m_batchingUIMessageQueue->runOnQueue(Mso::VoidFunctor(
       [m = std::weak_ptr<UIManagerModule>(m_module), reactTag, callback = std::move(callback)]() mutable {
+        SystraceSection s("UIManager::measureInWindow");
         if (auto module = m.lock()) {
           module->measureInWindow(static_cast<int64_t>(reactTag), std::move(callback));
         }
@@ -647,6 +674,7 @@ void UIManager::viewIsDescendantOf(
                                                          reactTag,
                                                          ancestorReactTag,
                                                          callback = std::move(callback)]() mutable {
+    SystraceSection s("UIManager::viewIsDescendantOf");
     if (auto module = m.lock()) {
       module->viewIsDescendantOf(
           static_cast<int64_t>(reactTag), static_cast<int64_t>(ancestorReactTag), std::move(callback));
@@ -664,6 +692,7 @@ void UIManager::measureLayout(
                                                          ancestorReactTag,
                                                          errorCallback = std::move(errorCallback),
                                                          callback = std::move(callback)]() mutable {
+    SystraceSection s("UIManager::measureLayout");
     if (auto module = m.lock()) {
       module->measureLayout(
           static_cast<int64_t>(reactTag),
@@ -682,6 +711,7 @@ void UIManager::measureLayoutRelativeToParent(
                                                          reactTag,
                                                          errorCallback = std::move(errorCallback),
                                                          callback = std::move(callback)]() mutable {
+    SystraceSection s("UIManager::measureLayoutRelativeToParent");
     if (auto module = m.lock()) {
       module->measureLayoutRelativeToParent(
           static_cast<int64_t>(reactTag), std::move(errorCallback), std::move(callback));
@@ -692,6 +722,7 @@ void UIManager::measureLayoutRelativeToParent(
 void UIManager::setJSResponder(double reactTag, bool blockNativeResponder) noexcept {
   m_batchingUIMessageQueue->runOnQueue(
       Mso::VoidFunctor([m = std::weak_ptr<UIManagerModule>(m_module), reactTag, blockNativeResponder]() mutable {
+        SystraceSection s("UIManager::setJSResponder");
         if (auto module = m.lock()) {
           module->setJSResponder(static_cast<int64_t>(reactTag), blockNativeResponder);
         }
@@ -700,6 +731,7 @@ void UIManager::setJSResponder(double reactTag, bool blockNativeResponder) noexc
 
 void UIManager::clearJSResponder() noexcept {
   m_batchingUIMessageQueue->runOnQueue(Mso::VoidFunctor([m = std::weak_ptr<UIManagerModule>(m_module)]() mutable {
+    SystraceSection s("UIManager::clearJSResponder");
     if (auto module = m.lock()) {
       module->clearJSResponder();
     }
@@ -714,6 +746,7 @@ void UIManager::configureNextLayoutAnimation(
                                                          config = std::move(config),
                                                          callback = std::move(callback),
                                                          errorCallback = std::move(errorCallback)]() mutable {
+    SystraceSection s("UIManager::configureNextLayoutAnimation");
     if (auto module = m.lock()) {
       module->configureNextLayoutAnimation(std::move(config), std::move(callback), std::move(errorCallback));
     }
@@ -722,6 +755,7 @@ void UIManager::configureNextLayoutAnimation(
 
 void UIManager::removeSubviewsFromContainerWithID(double containerID) noexcept {
   m_batchingUIMessageQueue->runOnQueue(Mso::VoidFunctor([m = std::weak_ptr<UIManagerModule>(m_module), containerID]() {
+    SystraceSection s("UIManager::removeSubviewsFromContainerWithID");
     if (auto module = m.lock()) {
       module->removeSubviewsFromContainerWithID(static_cast<int64_t>(containerID));
     }
@@ -731,6 +765,7 @@ void UIManager::removeSubviewsFromContainerWithID(double containerID) noexcept {
 void UIManager::replaceExistingNonRootView(double reactTag, double newReactTag) noexcept {
   m_batchingUIMessageQueue->runOnQueue(
       Mso::VoidFunctor([m = std::weak_ptr<UIManagerModule>(m_module), reactTag, newReactTag]() {
+        SystraceSection s("UIManager::replaceExistingNonRootView");
         if (auto module = m.lock()) {
           module->replaceExistingNonRootView(static_cast<int64_t>(reactTag), static_cast<int64_t>(newReactTag));
         }
@@ -739,6 +774,7 @@ void UIManager::replaceExistingNonRootView(double reactTag, double newReactTag) 
 
 void UIManager::removeRootView(double reactTag) noexcept {
   m_batchingUIMessageQueue->runOnQueue(Mso::VoidFunctor([m = std::weak_ptr<UIManagerModule>(m_module), reactTag]() {
+    SystraceSection s("UIManager::removeRootView");
     if (auto module = m.lock()) {
       module->removeRootView(static_cast<int64_t>(reactTag));
     }
@@ -748,6 +784,7 @@ void UIManager::removeRootView(double reactTag) noexcept {
 void UIManager::setChildren(double containerTag, React::JSValueArray &&reactTags) noexcept {
   m_batchingUIMessageQueue->runOnQueue(Mso::VoidFunctor(
       [m = std::weak_ptr<UIManagerModule>(m_module), containerTag, reactTags = std::move(reactTags)]() mutable {
+        SystraceSection s("UIManager::setChildren");
         if (auto module = m.lock()) {
           module->setChildren(static_cast<int64_t>(containerTag), std::move(reactTags));
         }
@@ -768,6 +805,7 @@ void UIManager::manageChildren(
                                                          addChildReactTags = std::move(addChildReactTags),
                                                          addAtIndices = std::move(addAtIndices),
                                                          removeAtIndices = std::move(removeAtIndices)]() mutable {
+    SystraceSection s("UIManager::manageChildren");
     if (auto module = m.lock()) {
       module->manageChildren(
           static_cast<int64_t>(containerTag),
@@ -783,6 +821,7 @@ void UIManager::manageChildren(
 void UIManager::setLayoutAnimationEnabledExperimental(bool enabled) noexcept {
   m_batchingUIMessageQueue->runOnQueue(
       Mso::VoidFunctor([m = std::weak_ptr<UIManagerModule>(m_module), enabled]() mutable {
+        SystraceSection s("UIManager::setLayoutAnimationEnabledExperimental");
         if (auto module = m.lock()) {
           module->setLayoutAnimationEnabledExperimental(enabled);
         }
@@ -792,6 +831,7 @@ void UIManager::setLayoutAnimationEnabledExperimental(bool enabled) noexcept {
 void UIManager::sendAccessibilityEvent(double reactTag, double eventType) noexcept {
   m_batchingUIMessageQueue->runOnQueue(
       Mso::VoidFunctor([m = std::weak_ptr<UIManagerModule>(m_module), reactTag, eventType]() mutable {
+        SystraceSection s("UIManager::sendAccessibilityEvent");
         if (auto module = m.lock()) {
           module->sendAccessibilityEvent(static_cast<int64_t>(reactTag), eventType);
         }
@@ -808,6 +848,7 @@ void UIManager::showPopupMenu(
                                                          items = std::move(items),
                                                          error = std::move(error),
                                                          success = std::move(success)]() mutable {
+    SystraceSection s("UIManager::showPopupMenu");
     if (auto module = m.lock()) {
       module->showPopupMenu(static_cast<int64_t>(reactTag), std::move(items), std::move(error), std::move(success));
     }
@@ -816,6 +857,7 @@ void UIManager::showPopupMenu(
 
 void UIManager::dismissPopupMenu() noexcept {
   m_batchingUIMessageQueue->runOnQueue(Mso::VoidFunctor([m = std::weak_ptr<UIManagerModule>(m_module)]() mutable {
+    SystraceSection s("UIManager::dismissPopupMenu");
     if (auto module = m.lock()) {
       module->dismissPopupMenu();
     }

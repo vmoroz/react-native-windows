@@ -3,9 +3,17 @@
  * Licensed under the MIT License.
  * @format
  */
-import * as React from 'react';
-import {Picker} from 'react-native-windows';
-import {AppRegistry, Image, View, Text, Switch, StyleSheet} from 'react-native';
+import React from 'react';
+import {Picker} from '@react-native-picker/picker';
+import {
+  AppRegistry,
+  Image,
+  View,
+  Text,
+  Switch,
+  StyleSheet,
+  PlatformColor,
+} from 'react-native';
 
 const largeImageUri =
   'https://cdn.freebiesupply.com/logos/large/2x/react-logo-png-transparent.png';
@@ -15,6 +23,9 @@ const smallImageUri =
 
 const dataImageUri =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADMAAAAzCAYAAAA6oTAqAAAAEXRFWHRTb2Z0d2FyZQBwbmdjcnVzaEB1SfMAAABQSURBVGje7dSxCQBACARB+2/ab8BEeQNhFi6WSYzYLYudDQYGBgYGBgYGBgYGBgYGBgZmcvDqYGBgmhivGQYGBgYGBgYGBgYGBgYGBgbmQw+P/eMrC5UTVAAAAABJRU5ErkJggg==';
+
+const dataImageSvg =
+  'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4gPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyOCAyOCIgZmlsbD0ibm9uZSI+PHBhdGggZD0iTTEzLjEyNSAwSDBWMTMuMTI1SDEzLjEyNVYwWiIgZmlsbD0iI0YyNTAyMiI+PC9wYXRoPjxwYXRoIGQ9Ik0yOCAwSDE0Ljg3NVYxMy4xMjVIMjhWMFoiIGZpbGw9IiM3RkJBMDAiPjwvcGF0aD48cGF0aCBkPSJNMTMuMTI1IDE0Ljg3NUgwVjI4SDEzLjEyNVYxNC44NzVaIiBmaWxsPSIjMDBBNEVGIj48L3BhdGg+PHBhdGggZD0iTTI4IDE0Ljg3NUgxNC44NzVWMjhIMjhWMTQuODc1WiIgZmlsbD0iI0ZGQjkwMCI+PC9wYXRoPjwvc3ZnPiA=';
 
 export default class Bootstrap extends React.Component<
   {},
@@ -51,6 +62,8 @@ export default class Bootstrap extends React.Component<
       imageUri = smallImageUri;
     } else if (value === 'large') {
       imageUri = largeImageUri;
+    } else if (value === 'data-svg') {
+      imageUri = dataImageSvg;
     } else if (value === 'data') {
       imageUri = dataImageUri;
     }
@@ -64,7 +77,7 @@ export default class Bootstrap extends React.Component<
         <View style={styles.rowContainer}>
           <Text style={styles.title}>ResizeMode</Text>
           <Picker
-            style={{width: 125}}
+            style={styles.picker}
             selectedValue={this.state.selectedResizeMode}
             onValueChange={value => this.setState({selectedResizeMode: value})}>
             <Picker.Item label="cover" value="cover" />
@@ -77,19 +90,20 @@ export default class Bootstrap extends React.Component<
         <View style={styles.rowContainer}>
           <Text style={styles.title}>Image Source</Text>
           <Picker
-            style={{width: 125}}
+            style={styles.picker}
             selectedValue={this.state.selectedSource}
             onValueChange={value => this.switchImageUri(value)}>
             <Picker.Item label="small" value="small" />
             <Picker.Item label="large" value="large" />
             <Picker.Item label="data" value="data" />
+            <Picker.Item label="data-svg" value="data-svg" />
             <Picker.Item label="svg" value="svg" />
           </Picker>
         </View>
         <View style={styles.rowContainer}>
           <Text style={styles.title}>Blur Radius</Text>
           <Picker
-            style={{width: 125}}
+            style={styles.picker}
             selectedValue={this.state.blurRadius}
             onValueChange={value => this.setState({blurRadius: value})}>
             <Picker.Item label="0" value={0} />
@@ -100,12 +114,13 @@ export default class Bootstrap extends React.Component<
         <View style={styles.rowContainer}>
           <Text style={styles.title}>Tint Color</Text>
           <Picker
-            style={{width: 125}}
+            style={styles.picker}
             selectedValue={this.state.tintColor}
             onValueChange={value => this.setState({tintColor: value})}>
             <Picker.Item label="None" value="transparent" />
             <Picker.Item label="Purple" value="purple" />
             <Picker.Item label="Green" value="green" />
+            <Picker.Item label="SystemAccentColor" value="platformcolor" />
           </Picker>
         </View>
         <View style={styles.rowContainer}>
@@ -124,7 +139,9 @@ export default class Bootstrap extends React.Component<
             style={[
               styles.image,
               this.state.includeBorder ? styles.imageWithBorder : {},
-              {tintColor: this.state.tintColor},
+              this.state.tintColor === 'platformcolor'
+                ? styles.imageWithPlatformColor
+                : {tintColor: this.state.tintColor},
             ]}
             source={
               this.state.selectedSource === 'svg'
@@ -152,6 +169,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 5,
   },
+  picker: {
+    width: 175,
+  },
   imageContainer: {
     marginTop: 5,
     backgroundColor: 'orange',
@@ -167,6 +187,9 @@ const styles = StyleSheet.create({
     borderWidth: 10,
     borderColor: 'green',
     backgroundColor: 'red',
+  },
+  imageWithPlatformColor: {
+    tintColor: PlatformColor('SystemAccentColor'),
   },
   title: {
     fontWeight: 'bold',

@@ -9,14 +9,15 @@
 // guarantee correct types
 /* eslint-disable @typescript-eslint/no-unnecessary-condition */
 
-import * as path from 'path';
+import {platform} from 'os';
+import path from 'path';
 
 import * as configUtils from './configUtils';
 
 /*
 
 react-native config will generate the following JSON for app projects that have a
-windows implementation, as a target for auto-linking. This is done heurestically,
+windows implementation, as a target for auto-linking. This is done heuristically,
 so if the result isn't quite correct, app developers can provide a manual override
 file: react-native.config.js.
 
@@ -31,12 +32,14 @@ opt  - Item is optional. If an override file exists, it MAY provide it. If no ov
   folder: string,       // (auto) Absolute path to the app root folder, determined by react-native config, ex: 'c:\path\to\my-app'
   sourceDir: string,    // (req) Relative path to the Windows implementation under folder, ex: 'windows'
   solutionFile: string, // (req) Relative path to the app's VS solution file under sourceDir, ex: 'MyApp.sln'
+  useWinUI3: boolean    // (opt) If true, use WinUI 3. If false, use Windows XAML and WinUI 2.x. If missing, the value from rnwRoot\PropertySheets\ExperimentalFeatures.props will be used.
   project: { // (req)
     projectFile: string, // (req) Relative path to the VS project file under sourceDir, ex: 'MyApp\MyApp.vcxproj' for 'c:\path\to\my-app\windows\MyApp\MyApp.vcxproj'
     projectName: string, // (auto) Name of the project, determined from projectFile, ex: 'MyApp'
     projectLang: string, // (auto) Language of the project, cpp or cs, determined from projectFile
     projectGuid: string, // (auto) Project identifier, determined from projectFile
   },
+  experimentalFeatures: Record<String, string> // (auto) Properties extracted from ExperimentalFeatures.props
 }
 
 Example react-native.config.js for a 'MyApp':
@@ -68,6 +71,8 @@ export interface WindowsProjectConfig {
   sourceDir: string;
   solutionFile: string;
   project: Project;
+  useWinUI3?: boolean;
+  experimentalFeatures?: Record<string, string>;
 }
 
 type DeepPartial<T> = {[P in keyof T]?: DeepPartial<T[P]>};
@@ -78,10 +83,16 @@ type DeepPartial<T> = {[P in keyof T]?: DeepPartial<T[P]>};
  * @param userConfig A manually specified override config.
  * @return The config if any RNW apps exist.
  */
+// Disabled due to existing high cyclomatic complexity
+// eslint-disable-next-line complexity
 export function projectConfigWindows(
   folder: string,
   userConfig: Partial<WindowsProjectConfig> | null = {},
 ): WindowsProjectConfig | null {
+  if (platform() !== 'win32') {
+    return null;
+  }
+
   if (userConfig === null) {
     return null;
   }
@@ -102,6 +113,7 @@ export function projectConfigWindows(
     sourceDir: path.relative(folder, sourceDir),
   };
 
+  let validSolution = false;
   let validProject = false;
 
   if (usingManualOverride) {
@@ -113,7 +125,8 @@ export function projectConfigWindows(
       result.solutionFile =
         'Error: Solution file is null in react-native.config.';
     } else {
-      result.solutionFile = userConfig.solutionFile;
+      result.solutionFile = path.normalize(userConfig.solutionFile!);
+      validSolution = true;
     }
 
     // Manual override, try to use it for project
@@ -138,10 +151,14 @@ export function projectConfigWindows(
         };
       } else {
         result.project = {
-          projectFile: userConfig.project.projectFile,
+          projectFile: path.normalize(userConfig.project.projectFile),
         };
         validProject = true;
       }
+    }
+
+    if ('useWinUI3' in userConfig) {
+      result.useWinUI3 = userConfig.useWinUI3;
     }
   } else {
     // No manually provided solutionFile, try to find it
@@ -153,7 +170,8 @@ export function projectConfigWindows(
       result.solutionFile =
         'Error: Too many app solution files found, please specify in react-native.config.';
     } else {
-      result.solutionFile = foundSolutions[0];
+      result.solutionFile = path.normalize(foundSolutions[0]);
+      validSolution = true;
     }
 
     // No manually provided project, try to find it
@@ -170,9 +188,24 @@ export function projectConfigWindows(
       };
     } else {
       result.project = {
-        projectFile: foundProjects[0],
+        projectFile: path.normalize(foundProjects[0]),
       };
       validProject = true;
+    }
+  }
+
+  if (validSolution) {
+    result.solutionFile = path.relative(
+      sourceDir,
+      path.join(sourceDir, result.solutionFile),
+    );
+
+    // Populating experimental features from ExperimentalFeatures.props
+    const experimentalFeatures = configUtils.getExperimentalFeatures(
+      path.dirname(path.join(sourceDir, result.solutionFile)),
+    );
+    if (experimentalFeatures) {
+      result.experimentalFeatures = experimentalFeatures;
     }
   }
 
@@ -180,10 +213,27 @@ export function projectConfigWindows(
     const projectFile = path.join(sourceDir, result.project.projectFile!);
     const projectContents = configUtils.readProjectFile(projectFile);
 
+    result.project.projectFile = path.relative(sourceDir, projectFile);
+
     // Add missing (auto) items
-    result.project.projectName = configUtils.getProjectName(projectContents);
+    result.project.projectName = configUtils.getProjectName(
+      projectFile,
+      projectContents,
+    );
     result.project.projectLang = configUtils.getProjectLanguage(projectFile);
     result.project.projectGuid = configUtils.getProjectGuid(projectContents);
+
+    // Since we moved the UseExperimentalNuget property from the project to the
+    // ExperimentalFeatures.props file, we should should double-check the project file
+    // in case it was made with an older template
+    const useExperimentalNuget = configUtils.tryFindPropertyValue(
+      projectContents,
+      'UseExperimentalNuget',
+    );
+    if (useExperimentalNuget) {
+      result.experimentalFeatures = result.experimentalFeatures ?? {};
+      result.experimentalFeatures.UseExperimentalNuget = useExperimentalNuget;
+    }
   }
 
   return result as WindowsProjectConfig;

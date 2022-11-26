@@ -5,8 +5,8 @@
  * @format
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
+import fs from '@react-native-windows/fs';
+import path from 'path';
 
 import UpgradeStrategy, {
   UpgradeResult,
@@ -330,10 +330,10 @@ async function evaluateStrategy(opts: {
     const {referenceFile, ...expectedResult} = opts.expected;
     expect(actualResult).toEqual(expectedResult);
 
-    const actualContent = await fs.promises.readFile(
+    const actualContent = await fs.readFile(
       path.join(overridesPath, opts.overrideFile),
     );
-    const expectedContent = await fs.promises.readFile(
+    const expectedContent = await fs.readFile(
       path.join(__dirname, 'collateral', referenceFile),
     );
 

@@ -33,6 +33,14 @@ winrt::Microsoft::ReactNative::IReactPropertyName UseDeveloperSupportProperty() 
   return propName;
 }
 
+winrt::Microsoft::ReactNative::IReactPropertyName JSIEngineProperty() noexcept {
+  static winrt::Microsoft::ReactNative::IReactPropertyName propName =
+      winrt::Microsoft::ReactNative::ReactPropertyBagHelper::GetName(
+          winrt::Microsoft::ReactNative::ReactPropertyBagHelper::GetNamespace(L"ReactNative.ReactOptions"),
+          L"JSIEngine");
+  return propName;
+}
+
 winrt::Microsoft::ReactNative::IReactPropertyName LiveReloadEnabledProperty() noexcept {
   static winrt::Microsoft::ReactNative::IReactPropertyName propName =
       winrt::Microsoft::ReactNative::ReactPropertyBagHelper::GetName(
@@ -72,6 +80,22 @@ winrt::Microsoft::ReactNative::IReactPropertyName BackgroundModeProperty() noexc
   return propName;
 }
 
+winrt::Microsoft::ReactNative::IReactPropertyName EnableFabricProperty() noexcept {
+  static winrt::Microsoft::ReactNative::IReactPropertyName propName =
+      winrt::Microsoft::ReactNative::ReactPropertyBagHelper::GetName(
+          winrt::Microsoft::ReactNative::ReactPropertyBagHelper::GetNamespace(L"ReactNative.ReactOptions"),
+          L"EnableFabric");
+  return propName;
+}
+
+winrt::Microsoft::ReactNative::IReactPropertyName EnableDefaultCrashHandlerProperty() noexcept {
+  static winrt::Microsoft::ReactNative::IReactPropertyName propName =
+      winrt::Microsoft::ReactNative::ReactPropertyBagHelper::GetName(
+          winrt::Microsoft::ReactNative::ReactPropertyBagHelper::GetNamespace(L"ReactNative.ReactOptions"),
+          L"EnableDefaultCrashHandler");
+  return propName;
+}
+
 //=============================================================================================
 // ReactOptions implementation
 //=============================================================================================
@@ -106,6 +130,24 @@ bool ReactOptions::UseDeveloperSupport() const noexcept {
 /*static*/ bool ReactOptions::UseDeveloperSupport(
     winrt::Microsoft::ReactNative::IReactPropertyBag const &properties) noexcept {
   return winrt::unbox_value_or<bool>(properties.Get(UseDeveloperSupportProperty()), false);
+}
+
+/*static*/ JSIEngine ReactOptions::JsiEngine(
+    winrt::Microsoft::ReactNative::IReactPropertyBag const &properties) noexcept {
+  return (Mso::React::JSIEngine)winrt::unbox_value_or<uint32_t>(properties.Get(JSIEngineProperty()), 0);
+}
+
+JSIEngine ReactOptions::JsiEngine() const noexcept {
+  return static_cast<JSIEngine>(JsiEngine(Properties));
+}
+
+void ReactOptions::SetJsiEngine(JSIEngine value) noexcept {
+  Properties.Set(JSIEngineProperty(), winrt::box_value(static_cast<uint32_t>(value)));
+}
+/*static*/ void ReactOptions::SetJsiEngine(
+    winrt::Microsoft::ReactNative::IReactPropertyBag const &properties,
+    JSIEngine value) noexcept {
+  properties.Set(JSIEngineProperty(), winrt::box_value(static_cast<uint32_t>(value)));
 }
 
 /*static*/ void ReactOptions::SetUseFastRefresh(
@@ -232,6 +274,25 @@ bool ReactOptions::BackgroundMode() const noexcept {
   return winrt::unbox_value_or<bool>(properties.Get(BackgroundModeProperty()), false);
 }
 
+void ReactOptions::SetEnableDefaultCrashHandler(bool enabled) noexcept {
+  Properties.Set(EnableDefaultCrashHandlerProperty(), winrt::box_value(enabled));
+}
+
+bool ReactOptions::EnableDefaultCrashHandler() const noexcept {
+  return EnableDefaultCrashHandler(Properties);
+}
+
+/*static*/ void ReactOptions::SetEnableDefaultCrashHandler(
+    winrt::Microsoft::ReactNative::IReactPropertyBag const &properties,
+    bool value) noexcept {
+  properties.Set(EnableDefaultCrashHandlerProperty(), winrt::box_value(value));
+}
+
+/*static*/ bool ReactOptions::EnableDefaultCrashHandler(
+    winrt::Microsoft::ReactNative::IReactPropertyBag const &properties) noexcept {
+  return winrt::unbox_value_or<bool>(properties.Get(EnableDefaultCrashHandlerProperty()), false);
+}
+
 //=============================================================================================
 // ReactHost implementation
 //=============================================================================================
@@ -277,8 +338,8 @@ size_t ReactHost::PendingUnloadActionId() const noexcept {
   return m_pendingUnloadActionId;
 }
 
-bool ReactHost::IsInstanceLoaded() const noexcept {
-  return m_isInstanceLoaded.Load();
+bool ReactHost::IsInstanceUnloading() const noexcept {
+  return m_isInstanceUnloading.Load();
 }
 
 /*static*/ Mso::DispatchQueue ReactHost::EnsureSerialQueue(Mso::DispatchQueue const &queue) noexcept {
@@ -361,7 +422,6 @@ Mso::Future<void> ReactHost::LoadInQueue(ReactOptions &&options) noexcept {
   Mso::Promise<void> whenCreated;
   Mso::Promise<void> whenLoaded;
 
-#ifndef CORE_ABI
   // Requires MakeReactInstance which incurs platform-specific dependencies.
   m_reactInstance.Exchange(
       MakeReactInstance(*this, std::move(options), Mso::Copy(whenCreated), Mso::Copy(whenLoaded), [this]() noexcept {
@@ -369,9 +429,6 @@ Mso::Future<void> ReactHost::LoadInQueue(ReactOptions &&options) noexcept {
           ForEachViewHost([](auto &viewHost) noexcept { viewHost.UpdateViewInstanceInQueue(); });
         });
       }));
-#else
-  assert(false);
-#endif
 
   return whenCreated.AsFuture().Then(Mso::Executors::Inline{}, [this, whenLoaded]() noexcept {
     std::vector<Mso::Future<void>> initCompletionList;
@@ -381,10 +438,13 @@ Mso::Future<void> ReactHost::LoadInQueue(ReactOptions &&options) noexcept {
       }
     }
 
-    return whenLoaded.AsFuture().Then(m_executor, [this](Mso::Maybe<void> && /*value*/) noexcept {
-      m_isInstanceLoaded.Store(true);
-
+    return whenLoaded.AsFuture().Then(m_executor, [this](Mso::Maybe<void> &&value) noexcept {
       std::vector<Mso::Future<void>> loadCompletionList;
+
+      if (value.IsError()) {
+        return Mso::MakeFailedFuture<void>(std::move(value.TakeError()));
+      }
+
       ForEachViewHost([&loadCompletionList](auto &viewHost) noexcept {
         loadCompletionList.push_back(viewHost.UpdateViewInstanceInQueue());
       });
@@ -406,6 +466,9 @@ Mso::Future<void> ReactHost::UnloadInQueue(size_t unloadActionId) noexcept {
   // Clear the pending unload action Id
   m_pendingUnloadActionId = 0;
 
+  // This allows us to avoid initializing any new ReactViews against the old instance that is being unloaded
+  m_isInstanceUnloading.Store(true);
+
   std::vector<Mso::Future<void>> unloadCompletionList;
   ForEachViewHost([&unloadCompletionList](auto &viewHost) noexcept {
     unloadCompletionList.push_back(viewHost.UninitViewInstanceInQueue(0));
@@ -416,10 +479,10 @@ Mso::Future<void> ReactHost::UnloadInQueue(size_t unloadActionId) noexcept {
   return Mso::WhenAllCompleted(unloadCompletionList).Then(m_executor, [this](Mso::Maybe<void> && /*value*/) noexcept {
     Mso::Future<void> onUnloaded;
     if (auto reactInstance = m_reactInstance.Exchange(nullptr)) {
-      m_isInstanceLoaded.Store(false);
       onUnloaded = reactInstance->Destroy();
     }
 
+    m_isInstanceUnloading.Store(false);
     m_lastError.Store({});
 
     if (!onUnloaded) {
@@ -481,25 +544,26 @@ void ReactViewHost::SetOptions(ReactViewOptions &&options) noexcept {
 }
 
 Mso::Future<void> ReactViewHost::ReloadViewInstance() noexcept {
-  return m_reactHost->PostInQueue([this]() noexcept {
+  return PostInQueue([this]() noexcept {
     return m_actionQueue.Load()->PostActions({MakeUninitViewInstanceAction(), MakeInitViewInstanceAction()});
   });
 }
 
 Mso::Future<void> ReactViewHost::ReloadViewInstanceWithOptions(ReactViewOptions &&options) noexcept {
-  return m_reactHost->PostInQueue([this, options = std::move(options)]() mutable noexcept {
+  return PostInQueue([this, options = std::move(options)]() mutable noexcept {
     return m_actionQueue.Load()->PostActions(
         {MakeUninitViewInstanceAction(), MakeInitViewInstanceAction(std::move(options))});
   });
 }
 
 Mso::Future<void> ReactViewHost::UnloadViewInstance() noexcept {
-  return m_reactHost->PostInQueue(
-      [this]() noexcept { return m_actionQueue.Load()->PostAction(MakeUninitViewInstanceAction()); });
+  return PostInQueue([this, spThis = Mso::CntPtr{this}]() noexcept {
+    return m_actionQueue.Load()->PostAction(MakeUninitViewInstanceAction());
+  });
 }
 
 Mso::Future<void> ReactViewHost::AttachViewInstance(IReactViewInstance &viewInstance) noexcept {
-  return m_reactHost->PostInQueue([this, viewInstance = Mso::CntPtr{&viewInstance}]() noexcept {
+  return PostInQueue([this, viewInstance = Mso::CntPtr{&viewInstance}]() noexcept {
     auto previousViewInstance = m_viewInstance.Exchange(Mso::Copy(viewInstance));
     VerifyElseCrashSzTag(
         !previousViewInstance, "ViewInstance must not be previously attached.", 0x028508d6 /* tag_c7q9w */);
@@ -513,7 +577,7 @@ Mso::Future<void> ReactViewHost::AttachViewInstance(IReactViewInstance &viewInst
 }
 
 Mso::Future<void> ReactViewHost::DetachViewInstance() noexcept {
-  return m_reactHost->PostInQueue([this]() noexcept {
+  return PostInQueue([this, spThis = Mso::CntPtr{this}]() noexcept {
     auto viewInstance = m_viewInstance.Exchange(nullptr);
     VerifyElseCrashSzTag(viewInstance, "ViewInstance is not attached.", 0x0281e3db /* tag_c64p1 */);
     m_reactHost->DetachViewHost(*this);
@@ -559,10 +623,10 @@ Mso::Future<void> ReactViewHost::InitViewInstanceInQueue() noexcept {
     return Mso::MakeCanceledFuture();
   }
 
-  //// We cannot load if instance is not loaded.
-  // if (!m_reactHost->IsInstanceLoaded()) {
-  //  return Mso::MakeCanceledFuture();
-  //}
+  // We cannot load if instance is in the process of being unloaded.
+  if (m_reactHost->IsInstanceUnloading()) {
+    return Mso::MakeCanceledFuture();
+  }
 
   // Make sure that we have a ReactInstance
   if (!m_reactHost->Instance()) {

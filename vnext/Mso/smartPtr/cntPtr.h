@@ -124,19 +124,19 @@ struct CntPtr {
 
   template <typename T1, typename T2>
   friend bool operator==(CntPtr<T1> const &left, CntPtr<T2> const &right) noexcept;
-  template <typename T>
-  friend bool operator==(CntPtr<T> const &left, std::nullptr_t) noexcept;
-  template <typename T>
-  friend bool operator==(std::nullptr_t, CntPtr<T> const &right) noexcept;
+  template <typename T1>
+  friend bool operator==(CntPtr<T1> const &left, std::nullptr_t) noexcept;
+  template <typename T1>
+  friend bool operator==(std::nullptr_t, CntPtr<T1> const &right) noexcept;
   template <typename T1, typename T2>
   friend bool operator!=(CntPtr<T1> const &left, CntPtr<T2> const &right) noexcept;
-  template <typename T>
-  friend bool operator!=(CntPtr<T> const &left, std::nullptr_t) noexcept;
-  template <typename T>
-  friend bool operator!=(std::nullptr_t, CntPtr<T> const &right) noexcept;
+  template <typename T1>
+  friend bool operator!=(CntPtr<T1> const &left, std::nullptr_t) noexcept;
+  template <typename T1>
+  friend bool operator!=(std::nullptr_t, CntPtr<T1> const &right) noexcept;
 
-  template <typename T>
-  friend void std::swap(CntPtr<T> &left, CntPtr<T> &right) noexcept;
+  template <typename T1>
+  friend void std::swap(CntPtr<T1> &left, CntPtr<T1> &right) noexcept;
 
   template <typename TOther>
   friend struct CntPtr;
@@ -155,12 +155,12 @@ struct CntPtrRef {
 
   operator CntPtr<T> *() const noexcept;
   operator void *() const noexcept;
-  operator T * *() const noexcept;
-  operator void * *() const noexcept;
-  operator const void * *() const noexcept;
+  operator T **() const noexcept;
+  operator void **() const noexcept;
+  operator const void **() const noexcept;
 
   template <typename TBase, EnableIfIsBaseOf<TBase, T> = 0>
-  explicit operator TBase * *() const noexcept;
+  explicit operator TBase **() const noexcept;
 
   T *&operator*() noexcept;
   T **ClearAndGetAddressOf() noexcept;
@@ -450,13 +450,13 @@ inline bool operator==(CntPtr<T1> const &left, CntPtr<T2> const &right) noexcept
   return left.m_ptr == right.m_ptr;
 }
 
-template <typename T>
-inline bool operator==(CntPtr<T> const &left, std::nullptr_t) noexcept {
+template <typename T1>
+inline bool operator==(CntPtr<T1> const &left, std::nullptr_t) noexcept {
   return left.m_ptr == nullptr;
 }
 
-template <typename T>
-inline bool operator==(std::nullptr_t, CntPtr<T> const &right) noexcept {
+template <typename T1>
+inline bool operator==(std::nullptr_t, CntPtr<T1> const &right) noexcept {
   return right.m_ptr == nullptr;
 }
 
@@ -465,13 +465,13 @@ inline bool operator!=(CntPtr<T1> const &left, CntPtr<T2> const &right) noexcept
   return left.m_ptr != right.m_ptr;
 }
 
-template <typename T>
-inline bool operator!=(CntPtr<T> const &left, std::nullptr_t) noexcept {
+template <typename T1>
+inline bool operator!=(CntPtr<T1> const &left, std::nullptr_t) noexcept {
   return left.m_ptr != nullptr;
 }
 
-template <typename T>
-inline bool operator!=(std::nullptr_t, CntPtr<T> const &right) noexcept {
+template <typename T1>
+inline bool operator!=(std::nullptr_t, CntPtr<T1> const &right) noexcept {
   return right.m_ptr != nullptr;
 }
 
@@ -479,9 +479,9 @@ inline bool operator!=(std::nullptr_t, CntPtr<T> const &right) noexcept {
 
 namespace std {
 
-template <typename T>
-inline void swap(Mso::CntPtr<T> &left, Mso::CntPtr<T> &right) noexcept {
-  T *temp = left.m_ptr;
+template <typename T1>
+inline void swap(Mso::CntPtr<T1> &left, Mso::CntPtr<T1> &right) noexcept {
+  T1 *temp = left.m_ptr;
   left.m_ptr = right.m_ptr;
   right.m_ptr = temp;
 }
@@ -508,23 +508,23 @@ inline CntPtrRef<T>::operator void *() const noexcept {
 }
 
 template <typename T>
-inline CntPtrRef<T>::operator T * *() const noexcept {
+inline CntPtrRef<T>::operator T **() const noexcept {
   return const_cast<CntPtrRef *>(this)->m_pCntPtr->GetAddressOf();
 }
 
 template <typename T>
-inline CntPtrRef<T>::operator void * *() const noexcept {
+inline CntPtrRef<T>::operator void **() const noexcept {
   return reinterpret_cast<void **>(const_cast<CntPtrRef *>(this)->m_pCntPtr->GetAddressOf());
 }
 
 template <typename T>
-inline CntPtrRef<T>::operator const void * *() const noexcept {
+inline CntPtrRef<T>::operator const void **() const noexcept {
   return (const void **)(const_cast<CntPtrRef *>(this)->m_pCntPtr->GetAddressOf());
 }
 
 template <typename T>
 template <typename TBase, EnableIfIsBaseOf<TBase, T>>
-inline CntPtrRef<T>::operator TBase * *() const noexcept {
+inline CntPtrRef<T>::operator TBase **() const noexcept {
   return (TBase **)const_cast<CntPtrRef *>(this)->m_pCntPtr->GetAddressOf();
 }
 

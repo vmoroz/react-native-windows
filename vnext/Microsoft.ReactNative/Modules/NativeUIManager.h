@@ -11,12 +11,14 @@
 #include <yoga/yoga.h>
 
 #include <ReactHost/React.h>
+#include <ReactRootView.h>
 #include <nativemodules.h>
 #include <map>
 #include <memory>
+#include <unordered_map>
 #include <vector>
 
-namespace react::uwp {
+namespace Microsoft::ReactNative {
 struct IXamlReactControl;
 }
 
@@ -54,6 +56,7 @@ class NativeUIManager final : public INativeUIManager {
   void UpdateView(ShadowNode &shadowNode, winrt::Microsoft::ReactNative::JSValueObject &props) override;
   void onBatchComplete() override;
   void ensureInBatch() override;
+  bool isInBatch() override;
   void measure(
       ShadowNode &shadowNode,
       ShadowNode &shadowRoot,
@@ -87,18 +90,25 @@ class NativeUIManager final : public INativeUIManager {
   // and try to get a valid XamlRoot.
   xaml::XamlRoot tryGetXamlRoot();
 
+  // For unparented node like Flyout, XamlRoot should be set to handle
+  // XamlIsland/AppWindow scenarios. This function retrieves the XamlRoot for a
+  // specific root tag.
+  xaml::XamlRoot tryGetXamlRoot(int64_t rootTag);
+
   // Searches itself and its parent to get a valid XamlView.
   // Like Mouse/Keyboard, the event source may not have matched XamlView.
   XamlView reactPeerOrContainerFrom(xaml::FrameworkElement fe);
 
   int64_t AddMeasuredRootView(facebook::react::IReactRootView *rootView);
 
- private:
   void DoLayout();
-  void UpdateExtraLayout(int64_t tag);
+  void ApplyLayout(int64_t tag, float width = YGUndefined, float height = YGUndefined);
+
+ private:
+  void SetLayoutPropsRecursive(int64_t tag);
   YGNodeRef GetYogaNode(int64_t tag) const;
 
-  std::weak_ptr<react::uwp::IXamlReactControl> GetParentXamlReactControl(int64_t tag) const;
+  winrt::weak_ref<winrt::Microsoft::ReactNative::ReactRootView> GetParentXamlReactControl(int64_t tag) const;
 
  private:
   INativeUIManagerHost *m_host = nullptr;
@@ -106,13 +116,13 @@ class NativeUIManager final : public INativeUIManager {
   YGConfigRef m_yogaConfig;
   bool m_inBatch = false;
 
-  std::map<int64_t, YogaNodePtr> m_tagsToYogaNodes;
-  std::map<int64_t, std::unique_ptr<YogaContext>> m_tagsToYogaContext;
+  std::unordered_map<int64_t, YogaNodePtr> m_tagsToYogaNodes;
+  std::unordered_map<int64_t, std::unique_ptr<YogaContext>> m_tagsToYogaContext;
   std::vector<xaml::FrameworkElement::SizeChanged_revoker> m_sizeChangedVector;
   std::vector<std::function<void()>> m_batchCompletedCallbacks;
   std::vector<int64_t> m_extraLayoutNodes;
 
-  std::map<int64_t, std::weak_ptr<react::uwp::IXamlReactControl>> m_tagsToXamlReactControl;
+  std::map<int64_t, winrt::weak_ref<winrt::Microsoft::ReactNative::ReactRootView>> m_tagsToXamlReactControl;
 };
 
 } // namespace Microsoft::ReactNative

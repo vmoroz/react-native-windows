@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <Filter Include="activeObject">
       <UniqueIdentifier>{50fef318-b0d8-4d29-bcbc-b73bc4e33db3}</UniqueIdentifier>
@@ -27,6 +27,9 @@
     </Filter>
     <Filter Include="pch">
       <UniqueIdentifier>{c1f49da1-d949-4a14-a312-36dd851d3f85}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dispatchQueue">
+      <UniqueIdentifier>{f4486561-9d0c-45ec-a4a2-571345827d07}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -118,6 +121,9 @@
     <ClCompile Include="pch.cpp">
       <Filter>pch</Filter>
     </ClCompile>
+    <ClCompile Include="dispatchQueue\dispatchQueueTest.cpp">
+      <Filter>dispatchQueue</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="functional\functorTest.h">
@@ -140,6 +146,5 @@
     <None Include="future\futureTest.tt">
       <Filter>future</Filter>
     </None>
-    <None Include="packages.config" />
   </ItemGroup>
 </Project>

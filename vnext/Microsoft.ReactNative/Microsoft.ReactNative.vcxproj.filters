@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <Natvis Include="$(ReactNativeWindowsDir)Folly\Folly.natvis" />
   </ItemGroup>
@@ -28,7 +28,7 @@
     <ClCompile Include="ReactHost\MsoUtils.cpp">
       <Filter>ReactHost</Filter>
     </ClCompile>
-    <ClCompile Include="ReactHost\ReactContext.cpp">
+    <ClCompile Include="ReactHost\MsoReactContext.cpp">
       <Filter>ReactHost</Filter>
     </ClCompile>
     <ClCompile Include="ReactHost\ReactErrorProvider.cpp">
@@ -38,6 +38,9 @@
       <Filter>ReactHost</Filter>
     </ClCompile>
     <ClCompile Include="ReactHost\ReactInstanceWin.cpp">
+      <Filter>ReactHost</Filter>
+    </ClCompile>
+    <ClCompile Include="ReactHost\CrashManager.cpp">
       <Filter>ReactHost</Filter>
     </ClCompile>
     <ClCompile Include="ReactSupport.cpp" />
@@ -60,6 +63,9 @@
       <Filter>Modules\Animated</Filter>
     </ClCompile>
     <ClCompile Include="Modules\Animated\AnimatedNode.cpp">
+      <Filter>Modules\Animated</Filter>
+    </ClCompile>
+    <ClCompile Include="Modules\Animated\AnimatedPlatformConfig.cpp">
       <Filter>Modules\Animated</Filter>
     </ClCompile>
     <ClCompile Include="Modules\Animated\AnimationDriver.cpp">
@@ -158,9 +164,6 @@
     <ClCompile Include="Modules\TimingModule.cpp">
       <Filter>Modules</Filter>
     </ClCompile>
-    <ClCompile Include="Modules\WebSocketModuleUwp.cpp">
-      <Filter>Modules</Filter>
-    </ClCompile>
     <ClCompile Include="Views\Image\ImageViewManager.cpp">
       <Filter>Views\Image</Filter>
     </ClCompile>
@@ -183,9 +186,6 @@
       <Filter>Views</Filter>
     </ClCompile>
     <ClCompile Include="Views\ControlViewManager.cpp">
-      <Filter>Views</Filter>
-    </ClCompile>
-    <ClCompile Include="Views\DatePickerViewManager.cpp">
       <Filter>Views</Filter>
     </ClCompile>
     <ClCompile Include="Views\DevMenu.cpp">
@@ -212,16 +212,10 @@
     <ClCompile Include="Views\KeyboardEventHandler.cpp">
       <Filter>Views</Filter>
     </ClCompile>
-    <ClCompile Include="Views\PickerViewManager.cpp">
-      <Filter>Views</Filter>
-    </ClCompile>
     <ClCompile Include="Views\PopupViewManager.cpp">
       <Filter>Views</Filter>
     </ClCompile>
     <ClCompile Include="Views\RawTextViewManager.cpp">
-      <Filter>Views</Filter>
-    </ClCompile>
-    <ClCompile Include="Views\ReactRootControl.cpp">
       <Filter>Views</Filter>
     </ClCompile>
     <ClCompile Include="Views\RefreshControlManager.cpp">
@@ -296,6 +290,9 @@
     <ClCompile Include="Utils\ValueUtils.cpp">
       <Filter>Utils</Filter>
     </ClCompile>
+    <ClCompile Include="Utils\XamlIslandUtils.cpp">
+      <Filter>Utils</Filter>
+    </ClCompile>
     <ClCompile Include="JsiApi.cpp" />
     <ClCompile Include="RedBoxErrorInfo.cpp" />
     <ClCompile Include="RedBoxErrorFrameInfo.cpp" />
@@ -305,14 +302,43 @@
     <ClCompile Include="GlyphViewManager.cpp">
       <Filter>Modules</Filter>
     </ClCompile>
-    <ClCompile Include="Modules\ReactRootViewTagGenerator.cpp" />
     <ClCompile Include="Modules\PaperUIManagerModule.cpp" />
     <ClCompile Include="Views\PaperShadowNode.cpp" />
     <ClCompile Include="Views\ShadowNodeRegistry.cpp" />
-    <ClCompile Include="ReactHost\JSCallInvokerScheduler.cpp" />
-    <ClCompile Include="JSI\ChakraJsiRuntime_edgemode.cpp">
-      <Filter>JSI</Filter>
+    <ClCompile Include="Utils\BatchingEventEmitter.cpp">
+      <Filter>Utils</Filter>
     </ClCompile>
+    <ClCompile Include="ReactHost\JSCallInvokerScheduler.cpp">
+      <Filter>ReactHost</Filter>
+    </ClCompile>
+    <ClCompile Include="Views\Text\TextHighlighterVisitor.cpp">
+      <Filter>Views\Text</Filter>
+    </ClCompile>
+    <ClCompile Include="Views\Text\TextHitTestUtils.cpp">
+      <Filter>Views\Text</Filter>
+    </ClCompile>
+    <ClCompile Include="Views\Text\TextHitTestVisitor.cpp">
+      <Filter>Views\Text</Filter>
+    </ClCompile>
+    <ClCompile Include="Views\Text\TextParentVisitor.cpp">
+      <Filter>Views\Text</Filter>
+    </ClCompile>
+    <ClCompile Include="Views\Text\TextPropertyChangedParentVisitor.cpp">
+      <Filter>Views\Text</Filter>
+    </ClCompile>
+    <ClCompile Include="Views\Text\TextTransformParentVisitor.cpp">
+      <Filter>Views\Text</Filter>
+    </ClCompile>
+    <ClCompile Include="Views\Text\TextTransformVisitor.cpp">
+      <Filter>Views\Text</Filter>
+    </ClCompile>
+    <ClCompile Include="Views\Text\TextVisitor.cpp">
+      <Filter>Views\Text</Filter>
+    </ClCompile>
+    <ClCompile Include="ReactPointerEventArgs.cpp" />
+    <ClCompile Include="Views\FrameworkElementTransferProperties.cpp" />
+    <ClCompile Include="Views\ReactViewInstance.cpp" />
+    <ClCompile Include="CoreApp.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ABICxxModule.h" />
@@ -355,7 +381,7 @@
     <ClInclude Include="ReactHost\React_Win.h">
       <Filter>ReactHost</Filter>
     </ClInclude>
-    <ClInclude Include="ReactHost\ReactContext.h">
+    <ClInclude Include="ReactHost\MsoReactContext.h">
       <Filter>ReactHost</Filter>
     </ClInclude>
     <ClInclude Include="ReactHost\ReactErrorProvider.h">
@@ -365,6 +391,9 @@
       <Filter>ReactHost</Filter>
     </ClInclude>
     <ClInclude Include="ReactHost\ReactInstanceWin.h">
+      <Filter>ReactHost</Filter>
+    </ClInclude>
+    <ClInclude Include="ReactHost\CrashManager.h">
       <Filter>ReactHost</Filter>
     </ClInclude>
     <ClInclude Include="ReactHost\ReactNativeHeaders.h">
@@ -386,6 +415,9 @@
     <ClInclude Include="Modules\Animated\AnimatedNode.h">
       <Filter>Modules\Animated</Filter>
     </ClInclude>
+    <ClInclude Include="Modules\Animated\AnimatedPlatformConfig.h">
+      <Filter>Modules\Animated</Filter>
+    </ClInclude>
     <ClInclude Include="Modules\Animated\AnimatedNodeType.h">
       <Filter>Modules\Animated</Filter>
     </ClInclude>
@@ -393,6 +425,9 @@
       <Filter>Modules\Animated</Filter>
     </ClInclude>
     <ClInclude Include="Modules\Animated\AnimationType.h">
+      <Filter>Modules\Animated</Filter>
+    </ClInclude>
+    <ClInclude Include="Modules\Animated\AnimationUtils.h">
       <Filter>Modules\Animated</Filter>
     </ClInclude>
     <ClInclude Include="Modules\Animated\CalculatedAnimationDriver.h">
@@ -494,9 +529,6 @@
     <ClInclude Include="Modules\TimingModule.h">
       <Filter>Modules</Filter>
     </ClInclude>
-    <ClInclude Include="Modules\WebSocketModuleUwp.h">
-      <Filter>Modules</Filter>
-    </ClInclude>
     <ClInclude Include="Views\Image\ImageViewManager.h">
       <Filter>Views\Image</Filter>
     </ClInclude>
@@ -519,9 +551,6 @@
       <Filter>Views</Filter>
     </ClInclude>
     <ClInclude Include="Views\ControlViewManager.h">
-      <Filter>Views</Filter>
-    </ClInclude>
-    <ClInclude Include="Views\DatePickerViewManager.h">
       <Filter>Views</Filter>
     </ClInclude>
     <ClInclude Include="Views\DevMenu.h">
@@ -548,16 +577,10 @@
     <ClInclude Include="Views\KeyboardEventHandler.h">
       <Filter>Views</Filter>
     </ClInclude>
-    <ClInclude Include="Views\PickerViewManager.h">
-      <Filter>Views</Filter>
-    </ClInclude>
     <ClInclude Include="Views\PopupViewManager.h">
       <Filter>Views</Filter>
     </ClInclude>
     <ClInclude Include="Views\RawTextViewManager.h">
-      <Filter>Views</Filter>
-    </ClInclude>
-    <ClInclude Include="Views\ReactRootControl.h">
       <Filter>Views</Filter>
     </ClInclude>
     <ClInclude Include="Views\RefreshControlManager.h">
@@ -641,6 +664,9 @@
     <ClInclude Include="Utils\ValueUtils.h">
       <Filter>Utils</Filter>
     </ClInclude>
+    <ClInclude Include="Utils\XamlIslandUtils.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
     <ClInclude Include="XamlLoadState.h" />
     <ClInclude Include="XamlView.h" />
     <ClInclude Include="ReactHost\IReactInstance.h">
@@ -667,6 +693,54 @@
     <ClInclude Include="Views\PaperShadowNode.h" />
     <ClInclude Include="Views\ShadowNodeRegistry.h" />
     <ClInclude Include="DocString.h" />
+    <ClInclude Include="Utils\BatchingEventEmitter.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="ReactHost\JSCallInvokerScheduler.h">
+      <Filter>ReactHost</Filter>
+    </ClInclude>
+    <ClInclude Include="Views\ViewManager.h">
+      <Filter>Views</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\TextTransform.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\ShadowNodeTypeUtils.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Views\Text\TextHighlighterVisitor.h">
+      <Filter>Views\Text</Filter>
+    </ClInclude>
+    <ClInclude Include="Views\Text\TextHitTestVisitor.h">
+      <Filter>Views\Text</Filter>
+    </ClInclude>
+    <ClInclude Include="Views\Text\TextHitTestUtils.h">
+      <Filter>Views\Text</Filter>
+    </ClInclude>
+    <ClInclude Include="Views\Text\TextParentVisitor.h">
+      <Filter>Views\Text</Filter>
+    </ClInclude>
+    <ClInclude Include="Views\Text\TextPropertyChangedParentVisitor.h">
+      <Filter>Views\Text</Filter>
+    </ClInclude>
+    <ClInclude Include="Views\Text\TextTransformParentVisitor.h">
+      <Filter>Views\Text</Filter>
+    </ClInclude>
+    <ClInclude Include="Views\Text\TextTransformVisitor.h">
+      <Filter>Views\Text</Filter>
+    </ClInclude>
+    <ClInclude Include="Views\Text\TextVisitorScope.h">
+      <Filter>Views\Text</Filter>
+    </ClInclude>
+    <ClInclude Include="Views\Text\TextVisitor.h">
+      <Filter>Views\Text</Filter>
+    </ClInclude>
+    <ClInclude Include="Views\Text\TextVisitors.h">
+      <Filter>Views\Text</Filter>
+    </ClInclude>
+    <ClInclude Include="ReactPointerEventArgs.h" />
+    <ClInclude Include="Views\FrameworkElementTransferProperties.h" />
+    <ClInclude Include="Views\ReactViewInstance.h" />
   </ItemGroup>
   <ItemGroup>
     <Midl Include="IJSValueReader.idl" />
@@ -687,6 +761,7 @@
     <Midl Include="RedBoxHandler.idl" />
     <Midl Include="QuirkSettings.idl" />
     <Midl Include="XamlHelper.idl" />
+    <Midl Include="LayoutService.idl" />
     <Midl Include="XamlUIService.idl" />
     <Midl Include="Views\cppwinrt\AccessibilityAction.idl">
       <Filter>Views\cppwinrt</Filter>
@@ -703,10 +778,12 @@
     <Midl Include="IViewManagerCore.idl" />
     <Midl Include="JsiApi.idl" />
     <Midl Include="DocString.idl" />
+    <Midl Include="DesktopWindowMessage.idl" />
+    <Midl Include="ReactPointerEventArgs.idl" />
+    <Midl Include="ReactCoreInjection.idl" />
   </ItemGroup>
   <ItemGroup>
     <None Include="microsoft.reactnative.def" />
-    <None Include="packages.config" />
     <None Include="PropertySheet.props" />
   </ItemGroup>
   <ItemGroup>
@@ -749,11 +826,15 @@
     <Filter Include="JSI">
       <UniqueIdentifier>{24290499-e864-407e-89c0-473f2b8dbb6e}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Views\Text">
+      <UniqueIdentifier>{8b871c42-6131-44c2-a73f-f1061780e97f}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Version.rc" />
   </ItemGroup>
   <ItemGroup>
     <Page Include="DevMenuControl.xaml" />
+    <Page Include="CoreAppPage.xaml" />
   </ItemGroup>
 </Project>

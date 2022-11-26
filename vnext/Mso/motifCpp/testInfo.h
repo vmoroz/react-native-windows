@@ -4,6 +4,7 @@
 #pragma once
 #ifndef MSO_MOTIFCPP_TESTINFO_H
 #define MSO_MOTIFCPP_TESTINFO_H
+#ifdef MSO_MOTIFCPP
 
 #include <memory>
 #include <vector>
@@ -30,15 +31,13 @@
                                                                                                                 \
   struct className : Mso::UnitTests::Internal::TestClassBase<className, TestClassInfo_##className>
 
-#define TEST_METHOD(methodName)                                                                                  \
-  struct TestMethodInfo_##methodName final                                                                       \
-      : Mso::UnitTests::Internal::TestMethodInfoReg<TestMethodInfo_##methodName> {                               \
-    TestMethodInfo_##methodName() : TestMethodInfoRegType{TestClassInfoType::Instance, #methodName, __LINE__} {} \
-                                                                                                                 \
-    void Invoke(Mso::UnitTests::TestClass &test) const override {                                                \
-      static_cast<TestClassType &>(test).methodName();                                                           \
-    }                                                                                                            \
-  };                                                                                                             \
+#define TEST_METHOD(methodName)                                                                                      \
+  struct TestMethodInfo_##methodName final                                                                           \
+      : Mso::UnitTests::Internal::TestMethodInfoReg<TestMethodInfo_##methodName> {                                   \
+    TestMethodInfo_##methodName() : TestMethodInfoRegType{TestClassInfoType::Instance, #methodName, __LINE__} {}     \
+                                                                                                                     \
+    void Invoke(Mso::UnitTests::TestClass &test) const override { static_cast<TestClassType &>(test).methodName(); } \
+  };                                                                                                                 \
   virtual void methodName()
 
 #define TESTMETHOD_REQUIRES_SEH(methodName) TEST_METHOD(methodName)
@@ -165,4 +164,5 @@ TMethodInfo TestMethodInfoReg<TMethodInfo>::Instance;
 
 } // namespace Mso::UnitTests::Internal
 
+#endif // MSO_MOTIFCPP
 #endif // MSO_MOTIFCPP_TESTINFO_H

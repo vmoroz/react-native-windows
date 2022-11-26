@@ -10,9 +10,23 @@
 
 #include <JSValueWriter.h>
 #include <Utils/ValueUtils.h>
+#include <Views/ShadowNodeBase.h>
 #include "ReactHost/MsoUtils.h"
 
 namespace winrt::Microsoft::ReactNative {
+
+class ABIShadowNode : public ::Microsoft::ReactNative::ShadowNodeBase {
+  using Super = ShadowNodeBase;
+
+ public:
+  ABIShadowNode(bool needsForceLayout) : m_needsForceLayout(needsForceLayout) {}
+  bool NeedsForceLayout() override {
+    return m_needsForceLayout;
+  }
+
+ private:
+  bool m_needsForceLayout;
+};
 
 ABIViewManager::ABIViewManager(
     Mso::CntPtr<Mso::React::IReactContext> const &reactContext,
@@ -25,7 +39,11 @@ ABIViewManager::ABIViewManager(
       m_viewManagerWithNativeProperties{viewManager.try_as<IViewManagerWithNativeProperties>()},
       m_viewManagerWithCommands{viewManager.try_as<IViewManagerWithCommands>()},
       m_viewManagerWithExportedEventTypeConstants{viewManager.try_as<IViewManagerWithExportedEventTypeConstants>()},
-      m_viewManagerWithChildren{viewManager.try_as<IViewManagerWithChildren>()} {
+      m_viewManagerRequiresNativeLayout{viewManager.try_as<IViewManagerRequiresNativeLayout>()},
+      m_viewManagerWithChildren{viewManager.try_as<IViewManagerWithChildren>()},
+      m_viewManagerWithPointerEvents{viewManager.try_as<IViewManagerWithPointerEvents>()},
+      m_viewManagerWithDropViewInstance{viewManager.try_as<IViewManagerWithDropViewInstance>()},
+      m_viewManagerWithOnLayout{viewManager.try_as<IViewManagerWithOnLayout>()} {
   if (m_viewManagerWithReactContext) {
     m_viewManagerWithReactContext.ReactContext(winrt::make<implementation::ReactContext>(Mso::Copy(reactContext)));
   }
@@ -38,9 +56,15 @@ const wchar_t *ABIViewManager::GetName() const {
   return m_name.c_str();
 }
 
-xaml::DependencyObject ABIViewManager::CreateViewCore(int64_t) {
-  auto view = m_viewManager.CreateView();
-  return view;
+xaml::DependencyObject ABIViewManager::CreateViewCore(
+    int64_t,
+    const winrt::Microsoft::ReactNative::JSValueObject &props) {
+  if (auto viewCreateProps = m_viewManager.try_as<IViewManagerCreateWithProperties>()) {
+    auto view = viewCreateProps.CreateViewWithProperties(
+        MakeJSValueTreeReader(winrt::Microsoft::ReactNative::JSValue(props.Copy())));
+    return view.as<xaml::DependencyObject>();
+  }
+  return m_viewManager.CreateView();
 }
 
 void ABIViewManager::GetExportedViewConstants(const winrt::Microsoft::ReactNative::IJSValueWriter &writer) const {
@@ -79,6 +103,12 @@ void ABIViewManager::GetNativeProps(const winrt::Microsoft::ReactNative::IJSValu
         case ViewManagerPropertyType::Color:
           writer.WriteString(L"Color");
           break;
+        case ViewManagerPropertyType::Function:
+          writer.WriteString(L"function");
+          break;
+        case ViewManagerPropertyType::ImageSource:
+          writer.WriteString(L"ImageSource");
+          break;
       }
     }
   }
@@ -87,12 +117,16 @@ void ABIViewManager::GetNativeProps(const winrt::Microsoft::ReactNative::IJSValu
 void ABIViewManager::UpdateProperties(
     ::Microsoft::ReactNative::ShadowNodeBase *nodeToUpdate,
     winrt::Microsoft::ReactNative::JSValueObject &props) {
+  if (m_viewManagerRequiresNativeLayout && m_viewManagerRequiresNativeLayout.RequiresNativeLayout()) {
+    MarkDirty(nodeToUpdate->m_tag);
+  }
+
   if (m_viewManagerWithNativeProperties) {
     auto view = nodeToUpdate->GetView().as<xaml::FrameworkElement>();
 
     if (props.size() > 0) {
       m_viewManagerWithNativeProperties.UpdateProperties(
-          view, MakeJSValueTreeReader(winrt::Microsoft::ReactNative::JSValue(std::move(props.Copy()))));
+          view, MakeJSValueTreeReader(winrt::Microsoft::ReactNative::JSValue(props.Copy())));
     }
   }
 
@@ -181,6 +215,49 @@ void ABIViewManager::ReplaceChild(
   } else {
     Super::ReplaceChild(parent, oldChild, newChild);
   }
+}
+
+YGMeasureFunc ABIViewManager::GetYogaCustomMeasureFunc() const {
+  if (m_viewManagerRequiresNativeLayout && m_viewManagerRequiresNativeLayout.RequiresNativeLayout()) {
+    return ::Microsoft::ReactNative::DefaultYogaSelfMeasureFunc;
+  } else {
+    return nullptr;
+  }
+}
+
+void ABIViewManager::OnPointerEvent(::Microsoft::ReactNative::ShadowNodeBase *node, const ReactPointerEventArgs &args) {
+  if (m_viewManagerWithPointerEvents) {
+    m_viewManagerWithPointerEvents.OnPointerEvent(node->GetView(), args);
+  }
+  // Call the base method to handle `pointerEvents` behavior
+  Super::OnPointerEvent(node, args);
+}
+
+void ABIViewManager::OnDropViewInstance(const ::Microsoft::ReactNative::XamlView &view) {
+  if (m_viewManagerWithDropViewInstance) {
+    m_viewManagerWithDropViewInstance.OnDropViewInstance(view.try_as<xaml::FrameworkElement>());
+  } else {
+    Super::OnDropViewInstance(view);
+  }
+}
+
+void ABIViewManager::SetLayoutProps(
+    ::Microsoft::ReactNative::ShadowNodeBase &nodeToUpdate,
+    const ::Microsoft::ReactNative::XamlView &viewToUpdate,
+    float left,
+    float top,
+    float width,
+    float height) {
+  if (m_viewManagerWithOnLayout) {
+    m_viewManagerWithOnLayout.OnLayout(viewToUpdate.as<xaml::FrameworkElement>(), left, top, width, height);
+  }
+  // Call the base method to handle `SetLayoutProps` behavior
+  Super::SetLayoutProps(nodeToUpdate, viewToUpdate, left, top, width, height);
+}
+
+::Microsoft::ReactNative::ShadowNode *ABIViewManager::createShadow() const {
+  return new ABIShadowNode(
+      m_viewManagerRequiresNativeLayout && m_viewManagerRequiresNativeLayout.RequiresNativeLayout());
 }
 
 } // namespace winrt::Microsoft::ReactNative

@@ -2,16 +2,18 @@
 // Licensed under the MIT License.
 
 #pragma once
-#include <folly/dynamic.h>
+#include <JSValue.h>
 #include "ValueAnimatedNode.h"
 
-namespace react::uwp {
+namespace Microsoft::ReactNative {
 class ModulusAnimatedNode final : public ValueAnimatedNode {
  public:
   ModulusAnimatedNode(
       int64_t tag,
-      const folly::dynamic &config,
+      const winrt::Microsoft::ReactNative::JSValueObject &config,
       const std::shared_ptr<NativeAnimatedNodeManager> &manager);
+
+  virtual void Update() override;
 
  private:
   int64_t m_inputNodeTag{};
@@ -22,4 +24,4 @@ class ModulusAnimatedNode final : public ValueAnimatedNode {
   static constexpr std::wstring_view s_inputParameterName{L"input"};
   static constexpr std::wstring_view s_modName{L"mod"};
 };
-} // namespace react::uwp
+} // namespace Microsoft::ReactNative

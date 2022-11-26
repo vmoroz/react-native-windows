@@ -10,17 +10,17 @@
 <PROJECT_ROOT>/index.js
 <PROJECT_ROOT>/Libraries/Alert/Alert.js
 <PROJECT_ROOT>/Libraries/Components/Button.js
-<PROJECT_ROOT>/Libraries/Components/Picker/Picker.js
 <PROJECT_ROOT>/Libraries/Components/Picker/RCTPickerNativeComponent.js
 <PROJECT_ROOT>/Libraries/Components/RefreshControl/RefreshControl.js
 <PROJECT_ROOT>/Libraries/Components/SafeAreaView/SafeAreaView.js
 <PROJECT_ROOT>/Libraries/Components/TextInput/TextInput.js
 <PROJECT_ROOT>/Libraries/Components/TextInput/TextInputState.js
+<PROJECT_ROOT>/Libraries/Components/Touchable/Touchable.js
 <PROJECT_ROOT>/Libraries/Components/Touchable/TouchableBounce.js
 <PROJECT_ROOT>/Libraries/Components/Touchable/TouchableHighlight.js
 <PROJECT_ROOT>/Libraries/Components/Touchable/TouchableOpacity.js
 <PROJECT_ROOT>/Libraries/Components/Touchable/TouchableWithoutFeedback.js
-<PROJECT_ROOT>/Libraries/Components/View/ReactNativeViewViewConfig.js
+<PROJECT_ROOT>/Libraries/Components/View/ReactNativeViewAttributes.js
 <PROJECT_ROOT>/Libraries/Components/View/ViewAccessibility.js
 <PROJECT_ROOT>/Libraries/Components/View/ViewPropTypes.js
 <PROJECT_ROOT>/Libraries/Components/View/View.js
@@ -44,14 +44,14 @@
 
 ; These files dont need to be checked and just increase the build time
 .*/node_modules/e2etest/.*
-.*/node_modules/microsoft-reactnative-sampleapps/.*
+.*/node_modules/sample-apps/.*
 .*/node_modules/playground/.*
 
 ; Ignore templates for 'react-native init'
 <PROJECT_ROOT>/template/.*
 
 ; Ignore the Dangerfile
-<PROJECT_ROOT>/bots/dangerfile.js
+<PROJECT_ROOT>/packages/react-native-bots/dangerfile.js
 
 ; Ignore "BUCK" generated dirs
 <PROJECT_ROOT>/\.buckd/
@@ -59,11 +59,9 @@
 ; Ignore the src folder - flow files are combined with ones from react-native into the root Libraries folder
 .*/vnext/src/.*
 
-; Ignore RN copies, which cause duplicate violations to be shown
-.*/vnext/ReactCopies/.*
+.*/node_modules/resolve/test/resolver/malformed_package_json/package\.json$
 
 [untyped]
-<PROJECT_ROOT>/Libraries/DeprecatedPropTypes/.*
 .*/node_modules/@react-native-community/cli/.*/.*
 
 [include]
@@ -78,6 +76,9 @@ flow/
 emoji=true
 
 exact_by_default=true
+exact_empty_objects=true
+
+format.bracket_spacing=false
 
 module.file_ext=.js
 module.file_ext=.json
@@ -97,7 +98,7 @@ suppress_type=$FlowFixMeProps
 suppress_type=$FlowFixMeState
 suppress_type=$FlowFixMeEmpty
 
-experimental.abstract_locations=true
+inference_mode=constrain_writes
 
 [lints]
 sketchy-null-number=warn
@@ -105,10 +106,9 @@ sketchy-null-mixed=warn
 sketchy-number=warn
 untyped-type-import=warn
 nonstrict-import=warn
-deprecated-type=warn
+deprecated-type=error
 unsafe-getters-setters=warn
 unnecessary-invariant=warn
-signature-verification-failure=warn
 
 [strict]
 deprecated-type
@@ -120,4 +120,4 @@ untyped-import
 untyped-type-import
 
 [version]
-^0.142.0
+^0.188.1

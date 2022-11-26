@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -19,7 +19,7 @@ const {
 } = require('react-native');
 
 class AppPropertiesUpdateExample extends React.Component<{...}> {
-  render() {
+  render(): React.Node {
     // Do not require this unless we are actually rendering.
     const UpdatePropertiesExampleView = requireNativeComponent(
       'UpdatePropertiesExampleView',
@@ -41,7 +41,7 @@ class AppPropertiesUpdateExample extends React.Component<{...}> {
 }
 
 class RootViewSizeFlexibilityExample extends React.Component<{...}> {
-  render() {
+  render(): React.Node {
     // Do not require this unless we are actually rendering.
     const FlexibleSizeExampleView = requireNativeComponent(
       'FlexibleSizeExampleView',

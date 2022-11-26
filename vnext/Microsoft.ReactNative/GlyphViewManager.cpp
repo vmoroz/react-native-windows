@@ -8,6 +8,7 @@
 #include "GlyphViewManager.h"
 
 #include <UI.Xaml.Documents.h>
+#include <UI.Xaml.Media.h>
 #include <Utils/ValueUtils.h>
 #include <Views/ShadowNodeBase.h>
 
@@ -31,7 +32,7 @@ class GlyphShadowNode : public ShadowNodeBase {
  public:
   GlyphShadowNode() = default;
 
-  void createView() override;
+  void createView(const winrt::Microsoft::ReactNative::JSValueObject &) override;
   void updateProperties(winrt::Microsoft::ReactNative::JSValueObject &props) override;
 
  private:
@@ -41,8 +42,8 @@ class GlyphShadowNode : public ShadowNodeBase {
   double m_height = 24;
 };
 
-void GlyphShadowNode::createView() {
-  Super::createView();
+void GlyphShadowNode::createView(const winrt::Microsoft::ReactNative::JSValueObject &props) {
+  Super::createView(props);
   auto glyphs = GetView().as<winrt::Glyphs>();
 
   glyphs.FontRenderingEmSize(24);
@@ -59,8 +60,8 @@ void GlyphShadowNode::updateProperties(winrt::Microsoft::ReactNative::JSValueObj
     const auto &propertyValue = pair.second;
 
     if (propertyName == "color") {
-      if (react::uwp::IsValidColorValue(propertyValue))
-        glyphs.Fill(react::uwp::BrushFrom(propertyValue));
+      if (IsValidColorValue(propertyValue))
+        glyphs.Fill(BrushFrom(propertyValue));
 #ifdef DEBUG
       else if (propertyValue.IsNull()) {
         // Log error, must have a color
@@ -69,12 +70,12 @@ void GlyphShadowNode::updateProperties(winrt::Microsoft::ReactNative::JSValueObj
 #endif
     } else if (propertyName == "fontUri") {
       if (propertyValue.Type() == winrt::Microsoft::ReactNative::JSValueType::String) {
-        auto uri = winrt::Uri(react::uwp::asHstring(propertyValue));
+        auto uri = winrt::Uri(asHstring(propertyValue));
         glyphs.FontUri(uri);
       }
     } else if (propertyName == "glyph") {
       if (propertyValue.Type() == winrt::Microsoft::ReactNative::JSValueType::String) {
-        glyphs.Indices(react::uwp::asHstring(propertyValue));
+        glyphs.Indices(asHstring(propertyValue));
       }
     } else if (propertyName == "colorEnabled") {
       if (propertyValue.Type() == winrt::Microsoft::ReactNative::JSValueType::Boolean)
@@ -158,7 +159,7 @@ void GlyphViewManager::GetNativeProps(const winrt::Microsoft::ReactNative::IJSVa
   writer.WriteString(L"boolean");
 }
 
-XamlView GlyphViewManager::CreateViewCore(int64_t /*tag*/) {
+XamlView GlyphViewManager::CreateViewCore(int64_t /*tag*/, const winrt::Microsoft::ReactNative::JSValueObject &) {
   winrt::Glyphs glyphs = winrt::Glyphs();
   return glyphs;
 }

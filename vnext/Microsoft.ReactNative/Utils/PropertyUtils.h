@@ -20,6 +20,10 @@ static double DefaultOrOverride(double defaultValue, double x) {
   return x != c_UndefinedEdge ? x : defaultValue;
 };
 
+static double DefaultOrOverrideWithClamp(double defaultValue, double x, double clamp) {
+  return std::min(DefaultOrOverride(defaultValue, x), clamp);
+};
+
 static const std::unordered_map<std::string, ShadowEdges> edgeTypeMap = {
     {"borderLeftWidth", ShadowEdges::Left},
     {"borderTopWidth", ShadowEdges::Top},
@@ -56,7 +60,9 @@ inline xaml::Thickness GetThickness(double thicknesses[(int)ShadowEdges::CountEd
   return thickness;
 }
 
-inline xaml::CornerRadius GetCornerRadius(double cornerRadii[(int)ShadowCorners::CountCorners]) {
+inline xaml::CornerRadius GetCornerRadius(
+    double cornerRadii[(int)ShadowCorners::CountCorners],
+    double maxCornerRadius) {
   xaml::CornerRadius cornerRadius;
   const double defaultRadius = std::max<double>(0, cornerRadii[(int)ShadowCorners::AllCorners]);
   double topStartRadius =
@@ -68,10 +74,15 @@ inline xaml::CornerRadius GetCornerRadius(double cornerRadii[(int)ShadowCorners:
   double bottomEndRadius =
       DefaultOrOverride(cornerRadii[(int)ShadowCorners::BottomRight], cornerRadii[(int)ShadowCorners::BottomEnd]);
 
-  cornerRadius.TopLeft = DefaultOrOverride(defaultRadius, topStartRadius);
-  cornerRadius.TopRight = DefaultOrOverride(defaultRadius, topEndRadius);
-  cornerRadius.BottomLeft = DefaultOrOverride(defaultRadius, bottomStartRadius);
-  cornerRadius.BottomRight = DefaultOrOverride(defaultRadius, bottomEndRadius);
+  // These values are clamped to 50% of the minimum of width or height
+  // dimension for cross-platform consistency with iOS, Android, and Web. We
+  // should revisit this clamping behavior if RN ever supports percentage
+  // values for the borderRadius prop as the default XAML behavior is
+  // consistent with Web behavior in this case.
+  cornerRadius.TopLeft = DefaultOrOverrideWithClamp(defaultRadius, topStartRadius, maxCornerRadius);
+  cornerRadius.TopRight = DefaultOrOverrideWithClamp(defaultRadius, topEndRadius, maxCornerRadius);
+  cornerRadius.BottomLeft = DefaultOrOverrideWithClamp(defaultRadius, bottomStartRadius, maxCornerRadius);
+  cornerRadius.BottomRight = DefaultOrOverrideWithClamp(defaultRadius, bottomEndRadius, maxCornerRadius);
 
   return cornerRadius;
 }
@@ -101,13 +112,13 @@ bool TryUpdateBackgroundBrush(
     const std::string &propertyName,
     const winrt::Microsoft::ReactNative::JSValue &propertyValue) {
   if (propertyName == "backgroundColor") {
-    if (react::uwp::IsValidColorValue(propertyValue)) {
-      const auto brush = react::uwp::BrushFrom(propertyValue);
+    if (IsValidColorValue(propertyValue)) {
+      const auto brush = BrushFrom(propertyValue);
       element.Background(brush);
-      react::uwp::UpdateControlBackgroundResourceBrushes(element, brush);
+      UpdateControlBackgroundResourceBrushes(element, brush);
     } else if (propertyValue.IsNull()) {
       element.ClearValue(T::BackgroundProperty());
-      react::uwp::UpdateControlBackgroundResourceBrushes(element, nullptr);
+      UpdateControlBackgroundResourceBrushes(element, nullptr);
     }
 
     return true;
@@ -128,9 +139,20 @@ inline void UpdateCornerRadiusValueOnNode(
 }
 
 template <class T>
-void UpdateCornerRadiusOnElement(ShadowNodeBase *node, const T &element) {
-  xaml::CornerRadius cornerRadius = GetCornerRadius(node->m_cornerRadius);
+void UpdateCornerRadiusOnElement(ShadowNodeBase *node, const T &element, double maxCornerRadius) {
+  xaml::CornerRadius cornerRadius = GetCornerRadius(node->m_cornerRadius, maxCornerRadius);
   element.CornerRadius(cornerRadius);
+}
+
+template <class T>
+void UpdateCornerRadiusOnElement(ShadowNodeBase *node, const T &element) {
+  auto maxCornerRadius = std::numeric_limits<double>::max();
+  if (element.ReadLocalValue(xaml::FrameworkElement::WidthProperty()) != xaml::DependencyProperty::UnsetValue() &&
+      element.ReadLocalValue(xaml::FrameworkElement::HeightProperty()) != xaml::DependencyProperty::UnsetValue()) {
+    // Clamp CornerRadius to 50% of the minimum dimension between width and height.
+    maxCornerRadius = std::min(element.Width(), element.Height()) / 2;
+  }
+  UpdateCornerRadiusOnElement(node, element, maxCornerRadius);
 }
 
 template <class T>
@@ -139,13 +161,20 @@ bool TryUpdateForeground(
     const std::string &propertyName,
     const winrt::Microsoft::ReactNative::JSValue &propertyValue) {
   if (propertyName == "color") {
-    if (react::uwp::IsValidColorValue(propertyValue)) {
-      const auto brush = react::uwp::BrushFrom(propertyValue);
+    auto uielement = element.try_as<xaml::UIElement>();
+    if (IsValidColorValue(propertyValue)) {
+      const auto brush = BrushFrom(propertyValue);
       element.Foreground(brush);
-      react::uwp::UpdateControlForegroundResourceBrushes(element, brush);
+      UpdateControlForegroundResourceBrushes(element, brush);
+      if (uielement) {
+        uielement.HighContrastAdjustment(xaml::ElementHighContrastAdjustment::None);
+      }
     } else if (propertyValue.IsNull()) {
       element.ClearValue(T::ForegroundProperty());
-      react::uwp::UpdateControlForegroundResourceBrushes(element, nullptr);
+      if (uielement) {
+        uielement.HighContrastAdjustment(xaml::ElementHighContrastAdjustment::Application);
+      }
+      UpdateControlForegroundResourceBrushes(element, nullptr);
     }
 
     return true;
@@ -163,18 +192,18 @@ bool TryUpdateBorderProperties(
   bool isBorderProperty = true;
 
   if (propertyName == "borderColor") {
-    if (react::uwp::IsValidColorValue(propertyValue)) {
-      const auto brush = react::uwp::BrushFrom(propertyValue);
+    if (IsValidColorValue(propertyValue)) {
+      const auto brush = BrushFrom(propertyValue);
       element.BorderBrush(brush);
-      react::uwp::UpdateControlBorderResourceBrushes(element, brush);
+      UpdateControlBorderResourceBrushes(element, brush);
     } else if (propertyValue.IsNull()) {
       // If there's still a border thickness, use the default border brush.
       if (element.BorderThickness() != xaml::ThicknessHelper::FromUniformLength(0.0)) {
-        element.BorderBrush(react::uwp::DefaultBrushStore::Instance().GetDefaultBorderBrush());
+        element.BorderBrush(DefaultBrushStore::Instance().GetDefaultBorderBrush());
       } else {
         element.ClearValue(T::BorderBrushProperty());
       }
-      react::uwp::UpdateControlBorderResourceBrushes(element, nullptr);
+      UpdateControlBorderResourceBrushes(element, nullptr);
     }
   } else {
     auto iter = edgeTypeMap.find(propertyName);
@@ -186,7 +215,7 @@ bool TryUpdateBorderProperties(
           // Borders with no brush draw something other than transparent on other platforms.
           // To match, we'll use a default border brush if one isn't already set.
           // Note:  Keep this in sync with code in ViewPanel::FinalizeProperties().
-          element.BorderBrush(react::uwp::DefaultBrushStore::Instance().GetDefaultBorderBrush());
+          element.BorderBrush(DefaultBrushStore::Instance().GetDefaultBorderBrush());
         }
       } else if (propertyValue.IsNull()) {
         SetBorderThickness(node, element, iter->second, 0);
@@ -527,9 +556,9 @@ inline bool TryUpdateMouseEvents(
     const std::string &propertyName,
     const winrt::Microsoft::ReactNative::JSValue &propertyValue) {
   if (propertyName == "onMouseEnter")
-    node->m_onMouseEnterRegistered = !propertyValue.IsNull() && propertyValue.AsBoolean();
+    node->m_onMouseEnterRegistered = propertyValue.AsBoolean();
   else if (propertyName == "onMouseLeave")
-    node->m_onMouseLeaveRegistered = !propertyValue.IsNull() && propertyValue.AsBoolean();
+    node->m_onMouseLeaveRegistered = propertyValue.AsBoolean();
   else
     return false;
 

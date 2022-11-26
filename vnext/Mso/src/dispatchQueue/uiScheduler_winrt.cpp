@@ -13,13 +13,15 @@ using namespace Windows::Foundation;
 #include "winrt/Windows.System.h"
 using namespace Windows::System;
 #else
-#include "winrt/Microsoft.System.h"
-using namespace Microsoft::System;
+#include "winrt/Microsoft.UI.Dispatching.h"
+using namespace Microsoft::UI::Dispatching;
 #endif
 
 namespace Mso {
 
 namespace {
+
+using IInspectable = winrt::Windows::Foundation::IInspectable;
 
 // TODO: consider to move it into its own liblet
 template <class TKey, class TValue>
@@ -287,7 +289,12 @@ void UISchedulerWinRT::AwaitTermination() noexcept {
     return queue;
   }
 
-  auto dispatcher = DispatcherQueue::GetForCurrentThread();
+  decltype(DispatcherQueue::GetForCurrentThread()) dispatcher{nullptr};
+  try {
+    dispatcher = DispatcherQueue::GetForCurrentThread();
+  } catch (winrt::hresult_error const &) {
+  }
+
   if (!dispatcher) {
     return queue;
   }

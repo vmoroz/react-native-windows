@@ -13,7 +13,46 @@
 #pragma optimize("", off)
 #endif
 
-namespace react::uwp {
+namespace Microsoft::ReactNative {
+
+std::string GetBundleFromEmbeddedResource(winrt::hstring str) {
+  winrt::Windows::Foundation::Uri uri(str);
+  auto moduleName = uri.Host();
+  auto path = uri.Path();
+  // skip past the leading / slash
+  auto resourceName = path.c_str() + 1;
+
+  auto hmodule = GetModuleHandle(moduleName != L"" ? moduleName.c_str() : nullptr);
+  if (!hmodule) {
+    throw std::invalid_argument(fmt::format("Couldn't find module {}", winrt::to_string(moduleName)));
+  }
+
+  auto resource = FindResourceW(hmodule, resourceName, RT_RCDATA);
+  if (!resource) {
+    throw std::invalid_argument(fmt::format(
+        "Couldn't find resource {} in module {}", winrt::to_string(resourceName), winrt::to_string(moduleName)));
+  }
+
+  auto hglobal = LoadResource(hmodule, resource);
+  if (!hglobal) {
+    throw std::invalid_argument(fmt::format(
+        "Couldn't load resource {} in module {}", winrt::to_string(resourceName), winrt::to_string(moduleName)));
+  }
+
+  auto start = static_cast<char *>(LockResource(hglobal));
+  if (!start) {
+    throw std::invalid_argument(fmt::format(
+        "Couldn't lock resource {} in module {}", winrt::to_string(resourceName), winrt::to_string(moduleName)));
+  }
+
+  auto size = SizeofResource(hmodule, resource);
+  if (!size) {
+    throw std::invalid_argument(fmt::format(
+        "Couldn't get size of resource {} in module {}", winrt::to_string(resourceName), winrt::to_string(moduleName)));
+  }
+
+  return std::string(start, start + size);
+}
 
 std::future<std::string> LocalBundleReader::LoadBundleAsync(const std::string &bundleUri) {
   winrt::hstring str(Microsoft::Common::Unicode::Utf8ToUtf16(bundleUri));
@@ -26,6 +65,8 @@ std::future<std::string> LocalBundleReader::LoadBundleAsync(const std::string &b
   if (bundleUri._Starts_with("ms-app")) {
     winrt::Windows::Foundation::Uri uri(str);
     file = co_await winrt::Windows::Storage::StorageFile::GetFileFromApplicationUriAsync(uri);
+  } else if (bundleUri._Starts_with("resource://")) {
+    co_return GetBundleFromEmbeddedResource(str);
   } else {
     file = co_await winrt::Windows::Storage::StorageFile::GetFileFromPathAsync(str);
   }
@@ -35,14 +76,15 @@ std::future<std::string> LocalBundleReader::LoadBundleAsync(const std::string &b
   auto fileBuffer{co_await winrt::Windows::Storage::FileIO::ReadBufferAsync(file)};
   auto dataReader{winrt::Windows::Storage::Streams::DataReader::FromBuffer(fileBuffer)};
 
-  std::string script(fileBuffer.Length() + 1, '\0');
+  // No need to use length + 1, STL guarantees that string storage is null-terminated.
+  std::string script(fileBuffer.Length(), '\0');
 
   // Construct the array_view to slice into the first fileBuffer.Length bytes.
   // DataReader.ReadBytes will read as many bytes as are present in the
   // array_view. The backing string has fileBuffer.Length() + 1 bytes, without
   // an explicit end it will read 1 byte to many and throw.
   dataReader.ReadBytes(winrt::array_view<uint8_t>{
-      reinterpret_cast<uint8_t *>(&script[0]), reinterpret_cast<uint8_t *>(&script[script.length() - 1])});
+      reinterpret_cast<uint8_t *>(&script[0]), reinterpret_cast<uint8_t *>(&script[script.length()])});
   dataReader.Close();
 
   co_return script;
@@ -76,4 +118,4 @@ void StorageFileBigString::ensure() const {
   }
 }
 
-} // namespace react::uwp
+} // namespace Microsoft::ReactNative

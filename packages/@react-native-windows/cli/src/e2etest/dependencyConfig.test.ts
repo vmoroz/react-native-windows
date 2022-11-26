@@ -4,25 +4,22 @@
  * @format
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
+import path from 'path';
 
 import {
   dependencyConfigWindows,
   WindowsDependencyConfig,
 } from '../config/dependencyConfig';
 
+import {
+  ensureCppAppProject,
+  ensureCSharpAppProject,
+  tryMkdir,
+  templateRoot,
+  testProjectGuid,
+} from './projectConfig.utils';
+
 import {copyAndReplace} from '../generator-common';
-
-const templateRoot = path.resolve('../../../vnext/template');
-
-const testProjectGuid = '{416476D5-974A-4EE2-8145-4E331297247E}';
-
-async function tryMkdir(dir: string): Promise<void> {
-  try {
-    await fs.promises.mkdir(dir, {recursive: true});
-  } catch (err) {}
-}
 
 type TargetProject = [string, ((folder: string) => Promise<void>)?];
 
@@ -40,6 +37,10 @@ const projects: TargetProject[] = [
   project('MissingProjectFilesLib', async (folder: string) => {
     const windowsDir = path.join(folder, 'windows');
     await tryMkdir(windowsDir);
+  }),
+  // New C++ app project based on the template
+  project('SimpleCppApp', async (folder: string) => {
+    await ensureCppAppProject(folder, 'SimpleCppApp');
   }),
   // New C++ project based on the template
   project('SimpleCppLib', async (folder: string) => {
@@ -71,6 +72,10 @@ const projects: TargetProject[] = [
       null,
     );
   }),
+  // New C# app project based on the template
+  project('SimpleCSharpApp', async (folder: string) => {
+    await ensureCSharpAppProject(folder, 'SimpleCSharpApp');
+  }),
   // New C# project based on the template
   project('SimpleCSharpLib', async (folder: string) => {
     const windowsDir = path.join(folder, 'windows');
@@ -101,6 +106,7 @@ const projects: TargetProject[] = [
       null,
     );
   }),
+  project('WithIndirectDependency'),
 ];
 
 // Tests that given userConfig is null, the result will always be null
@@ -114,9 +120,8 @@ test.each(projects)(
     }
 
     const userConfig = null;
-    const expectedConfig: WindowsDependencyConfig | null = null;
 
-    expect(dependencyConfigWindows(folder, userConfig)).toBe(expectedConfig);
+    expect(dependencyConfigWindows(folder, userConfig)).toBeNull();
   },
 );
 
@@ -133,13 +138,25 @@ test.each(projects)(
 
     const userConfig: Partial<WindowsDependencyConfig> =
       rnc.dependency.platforms.windows;
-    const expectedConfig: WindowsDependencyConfig | null = rnc.expectedConfig;
 
-    if (expectedConfig !== null) {
-      expectedConfig.folder = folder;
+    if (name === 'BlankLib') {
+      expect(dependencyConfigWindows(folder, userConfig)).toMatchSnapshot();
+    } else if (name.endsWith('App')) {
+      expect(dependencyConfigWindows(folder, userConfig)).toMatchSnapshot({
+        folder: expect.stringContaining(name),
+        projects: expect.arrayContaining([
+          expect.objectContaining({
+            projectFile: expect.stringMatching(
+              /Error: .*\.(?:cs|vcx)proj is type '\w+'/,
+            ),
+          }),
+        ]),
+      });
+    } else {
+      expect(dependencyConfigWindows(folder, userConfig)).toMatchSnapshot({
+        folder: expect.stringContaining(name),
+      });
     }
-
-    expect(dependencyConfigWindows(folder, userConfig)).toEqual(expectedConfig);
   },
 );
 
@@ -148,20 +165,30 @@ test.each(projects)(
   'dependencyConfig - %s (Ignore react-native.config.js)',
   async (name, setup) => {
     const folder = path.resolve('src/e2etest/projects/', name);
-    const rnc = require(path.join(folder, 'react-native.config.js'));
 
     if (setup !== undefined) {
       await setup(folder);
     }
 
     const userConfig: Partial<WindowsDependencyConfig> = {};
-    const expectedConfig: WindowsDependencyConfig | null =
-      rnc.expectedConfigIgnoringOverride;
 
-    if (expectedConfig !== null) {
-      expectedConfig.folder = folder;
+    if (name === 'BlankLib') {
+      expect(dependencyConfigWindows(folder, userConfig)).toMatchSnapshot();
+    } else if (name.endsWith('App')) {
+      expect(dependencyConfigWindows(folder, userConfig)).toMatchSnapshot({
+        folder: expect.stringContaining(name),
+        projects: expect.arrayContaining([
+          expect.objectContaining({
+            projectFile: expect.stringMatching(
+              /Error: .*\.(?:cs|vcx)proj is type '\w+'/,
+            ),
+          }),
+        ]),
+      });
+    } else {
+      expect(dependencyConfigWindows(folder, userConfig)).toMatchSnapshot({
+        folder: expect.stringContaining(name),
+      });
     }
-
-    expect(dependencyConfigWindows(folder, userConfig)).toEqual(expectedConfig);
   },
 );

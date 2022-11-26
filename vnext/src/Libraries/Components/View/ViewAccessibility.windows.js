@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -52,6 +52,7 @@ export type AccessibilityNodeInfoProp = {
 export type AccessibilityRole =
   | 'none'
   | 'button'
+  | 'togglebutton'
   | 'link'
   | 'search'
   | 'image'
@@ -74,11 +75,80 @@ export type AccessibilityRole =
   | 'spinbutton'
   | 'switch'
   | 'tab'
+  | 'tabbar'
   | 'tablist'
   | 'timer'
+  | 'list'
   | 'toolbar'
-  | 'list' // RNW-only
+  | 'grid'
   | 'listitem'; // RNW-only
+
+// Role types for web
+export type Role =
+  | 'alert'
+  | 'alertdialog'
+  | 'application'
+  | 'article'
+  | 'banner'
+  | 'button'
+  | 'cell'
+  | 'checkbox'
+  | 'columnheader'
+  | 'combobox'
+  | 'complementary'
+  | 'contentinfo'
+  | 'definition'
+  | 'dialog'
+  | 'directory'
+  | 'document'
+  | 'feed'
+  | 'figure'
+  | 'form'
+  | 'grid'
+  | 'group'
+  | 'heading'
+  | 'img'
+  | 'link'
+  | 'list'
+  | 'listitem'
+  | 'log'
+  | 'main'
+  | 'marquee'
+  | 'math'
+  | 'menu'
+  | 'menubar'
+  | 'menuitem'
+  | 'meter'
+  | 'navigation'
+  | 'none'
+  | 'note'
+  | 'presentation'
+  | 'progressbar'
+  | 'radio'
+  | 'radiogroup'
+  | 'region'
+  | 'row'
+  | 'rowgroup'
+  | 'rowheader'
+  | 'scrollbar'
+  | 'searchbox'
+  | 'separator'
+  | 'slider'
+  | 'spinbutton'
+  | 'status'
+  | 'summary'
+  | 'switch'
+  | 'tab'
+  | 'table'
+  | 'tablist'
+  | 'tabpanel'
+  | 'term'
+  | 'timer'
+  | 'toolbar'
+  | 'tooltip'
+  | 'tree'
+  | 'treegrid'
+  | 'treeitem';
 
 // the info associated with an accessibility action
 export type AccessibilityActionInfo = $ReadOnly<{
@@ -120,5 +190,5 @@ export type AccessibilityValue = $ReadOnly<{|
   /**
    * A textual description of this component's value. (will override minimum, current, and maximum if set)
    */
-  text?: string,
+  text?: Stringish,
 |}>;

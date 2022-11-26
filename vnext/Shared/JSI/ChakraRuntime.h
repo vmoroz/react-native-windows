@@ -1,6 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+// Do not include this file directly.
+// To obtain a chakra runtime instance, include <ChakraRuntimeFactory.h>.
 #pragma once
 
 #include "ChakraApi.h"
@@ -8,32 +10,18 @@
 
 #include <jsi/jsi.h>
 
-#ifdef CHAKRACORE
-#include "ChakraCore.h"
-#include "ChakraCoreDebugger.h"
-#else
-#ifndef USE_EDGEMODE_JSRT
-#define USE_EDGEMODE_JSRT
-#endif
-#include "jsrt.h"
-#endif
-
 #include <array>
 #include <mutex>
 #include <sstream>
 
-#if !defined(CHAKRACORE)
-class DebugProtocolHandler {};
-class DebugService {};
-#endif
-
 namespace Microsoft::JSI {
 
 // Implementation of Chakra JSI Runtime
-class ChakraRuntime : public facebook::jsi::Runtime, ChakraApi, ChakraApi::IExceptionThrower {
+class ChakraRuntime : public facebook::jsi::Runtime, public ChakraApi, ChakraApi::IExceptionThrower {
  public:
   ChakraRuntime(ChakraRuntimeArgs &&args) noexcept;
-  ~ChakraRuntime() noexcept;
+  void Init() noexcept;
+  virtual ~ChakraRuntime() noexcept;
 
 #pragma region Functions_inherited_from_Runtime
 
@@ -47,6 +35,8 @@ class ChakraRuntime : public facebook::jsi::Runtime, ChakraApi, ChakraApi::IExce
 
   facebook::jsi::Value evaluatePreparedJavaScript(
       const std::shared_ptr<const facebook::jsi::PreparedJavaScript> &js) override;
+
+  bool drainMicrotasks(int maxMicrotasksHint = -1) override;
 
   facebook::jsi::Object global() override;
 
@@ -66,6 +56,7 @@ class ChakraRuntime : public facebook::jsi::Runtime, ChakraApi, ChakraApi::IExce
   // return value must only be used as an argument to the constructor of
   // jsi::Pointer or one of its derived classes.
   PointerValue *cloneSymbol(const PointerValue *pointerValue) override;
+  PointerValue *cloneBigInt(const PointerValue *pointerValue) override;
   PointerValue *cloneString(const PointerValue *pointerValue) override;
   PointerValue *cloneObject(const PointerValue *pointerValue) override;
   PointerValue *clonePropNameID(const PointerValue *pointerValue) override;
@@ -73,8 +64,22 @@ class ChakraRuntime : public facebook::jsi::Runtime, ChakraApi, ChakraApi::IExce
   facebook::jsi::PropNameID createPropNameIDFromAscii(const char *str, size_t length) override;
   facebook::jsi::PropNameID createPropNameIDFromUtf8(const uint8_t *utf8, size_t length) override;
   facebook::jsi::PropNameID createPropNameIDFromString(const facebook::jsi::String &str) override;
+  facebook::jsi::PropNameID createPropNameIDFromSymbol(const facebook::jsi::Symbol &sym) override;
   std::string utf8(const facebook::jsi::PropNameID &id) override;
   bool compare(const facebook::jsi::PropNameID &lhs, const facebook::jsi::PropNameID &rhs) override;
+
+  facebook::jsi::BigInt createBigIntFromInt64(int64_t value) override;
+  facebook::jsi::BigInt createBigIntFromUint64(uint64_t value) override;
+  bool bigintIsInt64(const facebook::jsi::BigInt &) override;
+  bool bigintIsUint64(const facebook::jsi::BigInt &) override;
+  uint64_t truncate(const facebook::jsi::BigInt &) override;
+  facebook::jsi::String bigintToString(const facebook::jsi::BigInt &, int) override;
+
+  bool hasNativeState(const facebook::jsi::Object &) override;
+  std::shared_ptr<facebook::jsi::NativeState> getNativeState(const facebook::jsi::Object &) override;
+  void setNativeState(const facebook::jsi::Object &, std::shared_ptr<facebook::jsi::NativeState> state) override;
+
+  facebook::jsi::ArrayBuffer createArrayBuffer(std::shared_ptr<facebook::jsi::MutableBuffer> buffer) override;
 
   std::string symbolToString(const facebook::jsi::Symbol &s) override;
 
@@ -142,6 +147,7 @@ class ChakraRuntime : public facebook::jsi::Runtime, ChakraApi, ChakraApi::IExce
   void popScope(ScopeState *) override;
 
   bool strictEquals(const facebook::jsi::Symbol &a, const facebook::jsi::Symbol &b) const override;
+  bool strictEquals(const facebook::jsi::BigInt &a, const facebook::jsi::BigInt &b) const override;
   bool strictEquals(const facebook::jsi::String &a, const facebook::jsi::String &b) const override;
   bool strictEquals(const facebook::jsi::Object &a, const facebook::jsi::Object &b) const override;
 
@@ -153,6 +159,31 @@ class ChakraRuntime : public facebook::jsi::Runtime, ChakraApi, ChakraApi::IExce
   ChakraRuntimeArgs &runtimeArgs() {
     return m_args;
   }
+
+  // Promise Helpers
+  static void CALLBACK PromiseContinuationCallback(JsValueRef funcRef, void *callbackState) noexcept;
+  static void CALLBACK
+  PromiseRejectionTrackerCallback(JsValueRef promise, JsValueRef reason, bool handled, void *callbackState);
+
+  // Note: For simplicity, We are pinning the script and serialized script
+  // buffers in the facebook::jsi::Runtime instance assuming as these buffers
+  // are needed to stay alive for the lifetime of the facebook::jsi::Runtime
+  // implementation. This approach doesn't make sense for other external buffers
+  // which may get created during the execution as that will stop the backing
+  // buffer from getting released when the JSValue gets collected.
+  JsRuntimeHandle m_runtime;
+  std::string m_debugRuntimeName;
+  int m_debugPort{0};
+  constexpr static char DebuggerDefaultRuntimeName[] = "runtime1";
+  constexpr static int DebuggerDefaultPort = 9229;
+
+  // These buffers are kept to serve the source callbacks when evaluating
+  // serialized scripts.
+  std::vector<std::shared_ptr<const facebook::jsi::Buffer>> m_pinnedScripts;
+
+  // These three functions only performs shallow copies.
+  facebook::jsi::Value ToJsiValue(JsValueRef ref);
+  JsValueRef ToJsValueRef(const facebook::jsi::Value &value);
 
  private: //  ChakraApi::IExceptionThrower members
   [[noreturn]] void ThrowJsExceptionOverride(JsErrorCode errorCode, JsValueRef jsError) override;
@@ -233,10 +264,6 @@ class ChakraRuntime : public facebook::jsi::Runtime, ChakraApi, ChakraApi::IExce
     return static_cast<const ChakraPointerValueView *>(getPointerValue(p))->GetRef();
   }
 
-  // These three functions only performs shallow copies.
-  facebook::jsi::Value ToJsiValue(JsValueRef ref);
-  JsValueRef ToJsValueRef(const facebook::jsi::Value &value);
-
   JsValueRef CreateExternalFunction(
       JsPropertyIdRef name,
       int32_t paramCount,
@@ -267,6 +294,13 @@ class ChakraRuntime : public facebook::jsi::Runtime, ChakraApi, ChakraApi::IExce
       void *callbackState) noexcept;
 
   static JsValueRef CALLBACK HostObjectOwnKeysTrap(
+      JsValueRef callee,
+      bool isConstructCall,
+      JsValueRef *args,
+      unsigned short argCount,
+      void *callbackState) noexcept;
+
+  static JsValueRef CALLBACK HostObjectGetOwnPropertyDescriptorTrap(
       JsValueRef callee,
       bool isConstructCall,
       JsValueRef *args,
@@ -308,33 +342,14 @@ class ChakraRuntime : public facebook::jsi::Runtime, ChakraApi, ChakraApi::IExce
     return m_undefinedValue;
   }
 
-  // Promise Helpers
-  static void CALLBACK PromiseContinuationCallback(JsValueRef funcRef, void *callbackState) noexcept;
-  static void CALLBACK
-  PromiseRejectionTrackerCallback(JsValueRef promise, JsValueRef reason, bool handled, void *callbackState);
-
   void PromiseContinuation(JsValueRef value) noexcept;
   void PromiseRejectionTracker(JsValueRef promise, JsValueRef reason, bool handled);
 
-  void setupNativePromiseContinuation() noexcept;
-
-  // Memory tracker helpers
-  void setupMemoryTracker() noexcept;
+  virtual void setupNativePromiseContinuation() noexcept;
 
   // In-proc debugging helpers
-  void startDebuggingIfNeeded();
-  void stopDebuggingIfNeeded();
-
-  JsErrorCode enableDebugging(
-      JsRuntimeHandle runtime,
-      std::string const &runtimeName,
-      bool breakOnNextLine,
-      uint16_t port,
-      std::unique_ptr<DebugProtocolHandler> &debugProtocolHandler,
-      std::unique_ptr<DebugService> &debugService);
-  void ProcessDebuggerCommandQueue();
-
-  static void CALLBACK ProcessDebuggerCommandQueueCallback(void *callbackState);
+  virtual void startDebuggingIfNeeded() = 0;
+  virtual void stopDebuggingIfNeeded() = 0;
 
   // Version related helpers
   static void initRuntimeVersion() noexcept;
@@ -343,15 +358,17 @@ class ChakraRuntime : public facebook::jsi::Runtime, ChakraApi, ChakraApi::IExce
   }
 
   // Miscellaneous
-  std::unique_ptr<const facebook::jsi::Buffer> generatePreparedScript(
+  virtual std::unique_ptr<const facebook::jsi::Buffer> generatePreparedScript(
       const std::string &sourceURL,
-      const facebook::jsi::Buffer &sourceBuffer) noexcept;
-  facebook::jsi::Value evaluateJavaScriptSimple(const facebook::jsi::Buffer &buffer, const std::string &sourceURL);
-  bool evaluateSerializedScript(
+      const facebook::jsi::Buffer &sourceBuffer) noexcept = 0;
+  virtual facebook::jsi::Value evaluateJavaScriptSimple(
+      const facebook::jsi::Buffer &buffer,
+      const std::string &sourceURL) = 0;
+  virtual bool evaluateSerializedScript(
       const facebook::jsi::Buffer &scriptBuffer,
       const facebook::jsi::Buffer &serializedScriptBuffer,
       const std::string &sourceURL,
-      JsValueRef *result);
+      JsValueRef *result) = 0;
 
   enum class PropertyAttibutes {
     None = 0,
@@ -445,6 +462,7 @@ class ChakraRuntime : public facebook::jsi::Runtime, ChakraApi, ChakraApi::IExce
     JsRefHolder configurable;
     JsRefHolder enumerable;
     JsRefHolder get;
+    JsRefHolder getOwnPropertyDescriptor;
     JsRefHolder hostFunctionSymbol;
     JsRefHolder hostObjectSymbol;
     JsRefHolder length;
@@ -468,34 +486,17 @@ class ChakraRuntime : public facebook::jsi::Runtime, ChakraApi, ChakraApi::IExce
   // Arguments shared by the specializations
   ChakraRuntimeArgs m_args;
 
-  JsRuntimeHandle m_runtime;
   JsRefHolder m_context;
   JsRefHolder m_prevContext;
 
   // Set the Chakra API exception thrower on this thread
   ExceptionThrowerHolder m_exceptionThrower{this};
 
-  // Note: For simplicity, We are pinning the script and serialized script
-  // buffers in the facebook::jsi::Runtime instance assuming as these buffers
-  // are needed to stay alive for the lifetime of the facebook::jsi::Runtime
-  // implementation. This approach doesn't make sense for other external buffers
-  // which may get created during the execution as that will stop the backing
-  // buffer from getting released when the JSValue gets collected.
-
-  // These buffers are kept to serve the source callbacks when evaluating
-  // serialized scripts.
-  std::vector<std::shared_ptr<const facebook::jsi::Buffer>> m_pinnedScripts;
-
   // These buffers back the external array buffers that we handover to
   // ChakraCore.
   std::vector<std::shared_ptr<const facebook::jsi::Buffer>> m_pinnedPreparedScripts;
 
-  std::string m_debugRuntimeName;
-  int m_debugPort{0};
-  std::unique_ptr<DebugProtocolHandler> m_debugProtocolHandler;
-  std::unique_ptr<DebugService> m_debugService;
-  constexpr static char DebuggerDefaultRuntimeName[] = "runtime1";
-  constexpr static int DebuggerDefaultPort = 9229;
+  bool m_pendingJSError{false};
 };
 
 } // namespace Microsoft::JSI

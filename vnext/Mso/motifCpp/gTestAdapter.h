@@ -4,6 +4,7 @@
 #pragma once
 #ifndef MSO_MOTIFCPP_GTESTADAPTER_H
 #define MSO_MOTIFCPP_GTESTADAPTER_H
+#ifdef MSO_MOTIFCPP
 
 #include "gtest/gtest.h"
 #include "motifCpp/testInfo.h"
@@ -31,7 +32,7 @@ struct GTestFixture : ::testing::Test {
   std::unique_ptr<TestClass> m_test;
 };
 
-template <int &... ExplicitParameterBarrier, typename Factory>
+template <int &...ExplicitParameterBarrier, typename Factory>
 inline auto RegisterTest(
     const char *test_suite_name,
     const char *test_name,
@@ -84,4 +85,5 @@ inline void RegisterUnitTests() {
 
 } // namespace Mso::UnitTests::GTest
 
+#endif // MSO_MOTIFCPP
 #endif // MSO_MOTIFCPP_GTESTADAPTER_H

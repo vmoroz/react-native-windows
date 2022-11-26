@@ -2,41 +2,50 @@
 #include <windows.h>
 #include <ostream>
 #include <sstream>
+#include <string>
 
-template <typename CharT = char>
-struct debugbuffer_t : public std::basic_stringbuf<CharT, std::char_traits<CharT>> {
-  virtual ~debugbuffer_t() {
-    sync();
-  }
+struct basic_dostream {};
 
-  virtual int sync() override {
-    _OutputDebugString(this->str().c_str());
-    this->str(std::basic_string<CharT>());
-    return 0;
-  }
+inline constexpr basic_dostream cdebug{};
 
- private:
-  void _OutputDebugString(PCSTR str) {
-    ::OutputDebugStringA(str);
-  }
-  void _OutputDebugString(PCWSTR str) {
-    ::OutputDebugStringW(str);
-  }
-};
+inline const basic_dostream &operator<<(const basic_dostream &o, const char *str) {
+  OutputDebugStringA(str);
+  return o;
+}
+inline const basic_dostream &operator<<(const basic_dostream &o, const wchar_t *str) {
+  OutputDebugStringW(str);
+  return o;
+}
+template <typename T>
+const basic_dostream &operator<<(const basic_dostream &o, const T &t) {
+  auto str = std::to_string(t);
+  return o << str;
+}
 
-template <class CharT>
-class basic_dostream : public std::basic_ostream<CharT> {
- public:
-  basic_dostream() : std::basic_ostream<CharT>(new debugbuffer_t<CharT>()) {}
-  ~basic_dostream() {
-    delete this->rdbuf();
-  }
-};
+inline const basic_dostream &operator<<(const basic_dostream &o, const std::string_view &sv) {
+  return o << sv.data();
+}
 
-extern basic_dostream<char> cdebug;
-extern basic_dostream<wchar_t> cwdebug;
+inline const basic_dostream &operator<<(const basic_dostream &o, const std::string &sv) {
+  return o << sv.data();
+}
+
+inline const basic_dostream &operator<<(const basic_dostream &o, const std::wstring_view &sv) {
+  return o << sv.data();
+}
+
+inline const basic_dostream &operator<<(const basic_dostream &o, const std::wstring &sv) {
+  return o << sv.data();
+}
+
+namespace std {
+inline string to_string(int32_t n, int base) {
+  char buf[32]{};
+  _itoa_s(n, buf, base);
+  return buf;
+}
+} // namespace std
 
 #define DEBUG_HRESULT_ERROR(e)                    \
   cdebug << __FILE__ << " (" << __LINE__ << ") "; \
-  cdebug.flush();                                 \
-  cwdebug << e.message().c_str() << std::endl;
+  cdebug << e.message().c_str() << "\n";

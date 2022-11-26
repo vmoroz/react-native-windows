@@ -7,7 +7,6 @@
 
 const path = require('path');
 const {
-  cleanTask,
   task,
   series,
   condition,
@@ -26,14 +25,16 @@ const fs = require('fs');
 option('production');
 option('clean');
 
-task(
-  'codegen',
-  series(cleanTask({paths: ['./codegen']}), () => {
-    execSync(
-      'npx react-native-windows-codegen --files Libraries/**/Native*.js --namespace Microsoft::ReactNativeSpecs',
-    );
-  }),
-);
+task('codegen', () => {
+  execSync(
+    'react-native-windows-codegen --files Libraries/**/*Native*.js --namespace Microsoft::ReactNativeSpecs --libraryName rnwcore --modulesWindows --modulesCxx',
+    {env: process.env},
+  );
+  execSync(
+    'react-native-windows-codegen --files Microsoft.ReactNative.IntegrationTests/**/*Native*.js --namespace Microsoft::ReactNativeIntegrationTestSpecs --libraryName msrnIntegrationTests --modulesCxx --outputDirectory Microsoft.ReactNative.IntegrationTests/codegen',
+    {env: process.env},
+  );
+});
 
 task('copyReadmeAndLicenseFromRoot', () => {
   fs.copyFileSync(
@@ -46,17 +47,7 @@ task('copyReadmeAndLicenseFromRoot', () => {
   );
 });
 
-task(
-  'compileTsPlatformOverrides',
-  tscTask({
-    pretty: true,
-    ...(argv().production && {
-      inlineSources: true,
-    }),
-    target: 'es5',
-    module: 'commonjs',
-  }),
-);
+task('compileTsPlatformOverrides', tscTask());
 
 task(
   'build',

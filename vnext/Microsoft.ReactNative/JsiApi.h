@@ -58,16 +58,16 @@ struct RuntimeAccessor;
 
 struct JsiRuntime : JsiRuntimeT<JsiRuntime> {
   JsiRuntime(
-      std::shared_ptr<facebook::jsi::RuntimeHolderLazyInit> &&runtimeHolder,
+      std::shared_ptr<::Microsoft::JSI::RuntimeHolderLazyInit> &&runtimeHolder,
       std::shared_ptr<facebook::jsi::Runtime> &&runtime) noexcept;
   ~JsiRuntime() noexcept;
 
   static ReactNative::JsiRuntime FromRuntime(facebook::jsi::Runtime &runtime) noexcept;
   static ReactNative::JsiRuntime GetOrCreate(
-      std::shared_ptr<facebook::jsi::RuntimeHolderLazyInit> const &jsiRuntimeHolder,
+      std::shared_ptr<::Microsoft::JSI::RuntimeHolderLazyInit> const &jsiRuntimeHolder,
       std::shared_ptr<facebook::jsi::Runtime> const &jsiRuntime) noexcept;
   static ReactNative::JsiRuntime Create(
-      std::shared_ptr<facebook::jsi::RuntimeHolderLazyInit> const &jsiRuntimeHolder,
+      std::shared_ptr<::Microsoft::JSI::RuntimeHolderLazyInit> const &jsiRuntimeHolder,
       std::shared_ptr<facebook::jsi::Runtime> const &jsiRuntime) noexcept;
 
  public: // JsiRuntime
@@ -76,11 +76,13 @@ struct JsiRuntime : JsiRuntimeT<JsiRuntime> {
   JsiValueRef EvaluateJavaScript(IJsiByteBuffer const &buffer, hstring const &sourceUrl);
   ReactNative::JsiPreparedJavaScript PrepareJavaScript(IJsiByteBuffer const &buffer, hstring const &sourceUrl);
   JsiValueRef EvaluatePreparedJavaScript(ReactNative::JsiPreparedJavaScript const &js);
+  bool DrainMicrotasks(int32_t maxMicrotasksHint);
   JsiObjectRef Global();
   hstring Description();
   bool IsInspectable();
 
   JsiSymbolRef CloneSymbol(JsiSymbolRef symbol);
+  JsiBigIntRef CloneBigInt(JsiBigIntRef bigInt);
   JsiStringRef CloneString(JsiStringRef str);
   JsiObjectRef CloneObject(JsiObjectRef obj);
   JsiPropertyIdRef ClonePropertyId(JsiPropertyIdRef propertyId);
@@ -89,12 +91,26 @@ struct JsiRuntime : JsiRuntimeT<JsiRuntime> {
   JsiPropertyIdRef CreatePropertyIdFromAscii(array_view<uint8_t const> ascii);
   JsiPropertyIdRef CreatePropertyIdFromUtf8(array_view<uint8_t const> utf8);
   JsiPropertyIdRef CreatePropertyIdFromString(JsiStringRef str);
+  JsiPropertyIdRef CreatePropertyIdFromSymbol(JsiSymbolRef sym);
   hstring PropertyIdToString(JsiPropertyIdRef propertyId);
   void PropertyIdToUtf8(JsiPropertyIdRef propertyId, JsiByteArrayUser const &useUtf8String);
   bool PropertyIdEquals(JsiPropertyIdRef left, JsiPropertyIdRef right);
 
   hstring SymbolToString(JsiSymbolRef symbol);
   void SymbolToUtf8(JsiSymbolRef symbol, JsiByteArrayUser const &useUtf8String);
+
+  JsiBigIntRef CreateBigIntFromInt64(int64_t value);
+  JsiBigIntRef CreateBigIntFromUint64(uint64_t value);
+  bool BigintIsInt64(JsiBigIntRef obj);
+  bool BigintIsUint64(JsiBigIntRef obj);
+  uint64_t Truncate(JsiBigIntRef obj);
+  JsiStringRef BigintToString(JsiBigIntRef obj, int radix);
+
+  bool HasNativeState(JsiObjectRef obj);
+  JsiObjectRef GetNativeState(JsiObjectRef obj);
+  void SetNativeState(JsiObjectRef obj, JsiObjectRef state);
+
+  JsiObjectRef CreateArrayBuffer(JsiObjectRef buffer);
 
   JsiStringRef CreateString(hstring const &value);
   JsiStringRef CreateStringFromAscii(array_view<uint8_t const> utf8);
@@ -140,11 +156,13 @@ struct JsiRuntime : JsiRuntimeT<JsiRuntime> {
   void PopScope(JsiScopeState scopeState);
 
   bool SymbolStrictEquals(JsiSymbolRef left, JsiSymbolRef right);
+  bool BigIntStrictEquals(JsiBigIntRef left, JsiBigIntRef right);
   bool StringStrictEquals(JsiStringRef left, JsiStringRef right);
   bool ObjectStrictEquals(JsiObjectRef left, JsiObjectRef right);
   bool InstanceOf(JsiObjectRef obj, JsiObjectRef constructor);
 
   void ReleaseSymbol(JsiSymbolRef const &symbol);
+  void ReleaseBigInt(JsiBigIntRef const &bigInt);
   void ReleaseString(JsiStringRef const &str);
   void ReleaseObject(JsiObjectRef const &obj);
   void ReleasePropertyId(JsiPropertyIdRef const &propertyId);
@@ -167,7 +185,7 @@ struct JsiRuntime : JsiRuntimeT<JsiRuntime> {
   void SetError(facebook::jsi::JSINativeException const &nativeException) noexcept;
 
  private:
-  std::shared_ptr<facebook::jsi::RuntimeHolderLazyInit> m_runtimeHolder;
+  std::shared_ptr<::Microsoft::JSI::RuntimeHolderLazyInit> m_runtimeHolder;
   std::shared_ptr<facebook::jsi::Runtime> m_runtime;
   RuntimeAccessor *m_runtimeAccessor{};
   std::mutex m_mutex;

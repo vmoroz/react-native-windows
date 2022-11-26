@@ -4,73 +4,104 @@
 #include "pch.h"
 #include "TestEventService.h"
 #include <motifCpp/testCheck.h>
-#include <chrono>
 #include <sstream>
-#include <thread>
 
 namespace ReactNativeIntegrationTests {
 
 using namespace std::literals::chrono_literals;
 
+//=============================================================================
+// TestEventService implementation
+//=============================================================================
+
 /*static*/ std::mutex TestEventService::s_mutex;
 /*static*/ std::condition_variable TestEventService::s_cv;
-/*static*/ TestEvent TestEventService::s_loggedEvent{};
-/*static*/ bool TestEventService::s_previousEventIsObserved{true}; // true to allow new event to be logged
-/*static*/ uint32_t TestEventService::s_observeEventIndex{0};
+/*static*/ std::queue<TestEvent> TestEventService::s_eventQueue;
+/*static*/ bool TestEventService::s_hasNewEvent{false};
 
 /*static*/ void TestEventService::Initialize() noexcept {
   auto lock = std::scoped_lock{s_mutex};
-  s_previousEventIsObserved = true;
-  s_observeEventIndex = 0;
+  s_eventQueue = {};
 }
 
 /*static*/ void TestEventService::LogEvent(std::string_view eventName, JSValue &&value) noexcept {
-  // Blocks the thread until the previous logged event is observed.
-  while (true) {
-    {
-      // Do not hold the lock while the thread sleeps.
-      auto lock = std::scoped_lock{s_mutex};
-      if (s_previousEventIsObserved) {
-        s_loggedEvent.EventName = eventName;
-        s_loggedEvent.Value = std::move(value);
-        s_previousEventIsObserved = false;
-        s_cv.notify_all();
-        break;
-      }
-    }
-
-    std::this_thread::sleep_for(1ms);
-  }
+  auto lock = std::scoped_lock{s_mutex};
+  s_eventQueue.push(TestEvent{eventName, std::move(value)});
+  s_hasNewEvent = true;
+  s_cv.notify_all();
 }
 
 /*static*/ void TestEventService::ObserveEvents(winrt::array_view<const TestEvent> expectedEvents) noexcept {
-  auto lock = std::unique_lock{s_mutex};
-  s_cv.wait(lock, [&]() {
-    if (!s_previousEventIsObserved) {
-      TestCheck(s_observeEventIndex < expectedEvents.size());
-      auto const &expectedEvent = expectedEvents[s_observeEventIndex];
+  uint32_t observeEventIndex{0};
+  while (observeEventIndex < expectedEvents.size()) {
+    auto lock = std::unique_lock{s_mutex};
+    if (!s_eventQueue.empty()) {
+      TestEvent loggedEvent{std::move(s_eventQueue.front())};
+      s_eventQueue.pop();
 
       // Check the event name and value
-      TestCheckEqual(expectedEvent.EventName, s_loggedEvent.EventName);
-      if (auto d1 = expectedEvent.Value.TryGetDouble(), d2 = s_loggedEvent.Value.TryGetDouble(); d1 && d2) {
+      auto const &expectedEvent = expectedEvents[observeEventIndex];
+      TestCheckEqual(expectedEvent.EventName, loggedEvent.EventName);
+      if (expectedEvent.EventName != loggedEvent.EventName) {
+        std::stringstream os;
+        os << "Values:" << '\n'
+           << "Expected: " << expectedEvent.Value.ToString() << '\n'
+           << "Actual: " << loggedEvent.Value.ToString();
+        TestCheckFail("%s", os.str().c_str());
+        break; // Don't hang waiting for more data
+      }
+      if (auto d1 = expectedEvent.Value.TryGetDouble(), d2 = loggedEvent.Value.TryGetDouble(); d1 && d2) {
         // Comparison of doubles has special logic because NaN != NaN.
         if (!isnan(*d1) && !isnan(*d2)) {
           TestCheckEqual(*d1, *d2);
+          if (*d1 != *d2) {
+            break; // Don't hang waiting for more data
+          }
         }
-      } else if (expectedEvent.Value != s_loggedEvent.Value) { // Use JSValue strict compare
+      } else if (expectedEvent.Value != loggedEvent.Value) { // Use JSValue strict compare
         std::stringstream os;
-        os << "Event index: " << s_observeEventIndex << '\n'
+        os << "Event index: " << observeEventIndex << '\n'
            << "Expected: " << expectedEvent.Value.ToString() << '\n'
-           << "Actual: " << s_loggedEvent.Value.ToString();
+           << "Actual: " << loggedEvent.Value.ToString();
         TestCheckFail("%s", os.str().c_str());
+        break; // Don't hang waiting for more data
       }
-      s_previousEventIsObserved = true;
-      ++s_observeEventIndex;
-    }
 
-    // Finish observing after we observed the last event.
-    return s_observeEventIndex >= expectedEvents.size();
+      ++observeEventIndex;
+    } else {
+      s_cv.wait(lock, [&]() { return s_hasNewEvent; });
+      s_hasNewEvent = false;
+    }
+  }
+}
+
+//=============================================================================
+// TestNotificationService implementation
+//=============================================================================
+
+/*static*/ std::mutex TestNotificationService::s_mutex;
+/*static*/ std::condition_variable TestNotificationService::s_cv;
+/*static*/ std::set<std::string, std::less<>> TestNotificationService::s_events;
+
+/*static*/ void TestNotificationService::Initialize() noexcept {
+  auto lock = std::scoped_lock{s_mutex};
+  s_events = {};
+}
+
+/*static*/ void TestNotificationService::Set(std::string_view eventName) noexcept {
+  auto lock = std::scoped_lock{s_mutex};
+  s_events.insert(std::string(eventName));
+  s_cv.notify_all();
+};
+
+/*static*/ void TestNotificationService::Wait(std::string_view eventName) noexcept {
+  auto lock = std::unique_lock{s_mutex};
+  auto it = s_events.end();
+  s_cv.wait(lock, [&]() {
+    it = s_events.find(eventName);
+    return it != s_events.end();
   });
+  s_events.erase(it);
 }
 
 } // namespace ReactNativeIntegrationTests

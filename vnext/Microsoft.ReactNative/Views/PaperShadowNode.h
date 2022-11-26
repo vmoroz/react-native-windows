@@ -24,9 +24,10 @@ struct ShadowNode {
   virtual void removeAllChildren() = 0;
   virtual void AddView(ShadowNode &child, int64_t index) = 0;
   virtual void RemoveChildAt(int64_t indexToRemove) = 0;
-  virtual void createView() = 0;
+  virtual void createView(const winrt::Microsoft::ReactNative::JSValueObject &props) = 0;
 
   int64_t m_tag{0};
+  int64_t m_rootTag{0};
   std::string m_className;
   std::vector<int64_t> m_children;
   int64_t m_parent = -1;

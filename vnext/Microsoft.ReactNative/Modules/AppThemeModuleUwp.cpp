@@ -5,10 +5,16 @@
 
 #include "AppThemeModuleUwp.h"
 
+#include <DesktopWindowBridge.h>
+#include <IReactContext.h>
+#include <ReactPropertyBag.h>
+#include <Utils/Helpers.h>
 #include <Utils/ValueUtils.h>
+#include <XamlUIService.h>
 #include <XamlUtils.h>
 #include <cxxreact/CxxModule.h>
-
+#include <functional>
+#include <memory>
 #if _MSC_VER <= 1913
 // VC 19 (2015-2017.6) cannot optimize co_await/cppwinrt usage
 #pragma optimize("", off)
@@ -19,76 +25,100 @@ using namespace xaml;
 using namespace Windows::UI::ViewManagement;
 } // namespace winrt
 
-namespace react::uwp {
+using namespace winrt::Microsoft::ReactNative;
+
+namespace Microsoft::ReactNative {
+
+static const React::ReactPropertyId<React::ReactNonAbiValue<std::shared_ptr<AppThemeHolder>>>
+    &AppThemeHolderPropertyId() noexcept {
+  static const React::ReactPropertyId<React::ReactNonAbiValue<std::shared_ptr<AppThemeHolder>>> prop{
+      L"ReactNative.AppTheme", L"AppThemeHolder"};
+  return prop;
+}
 
 //
-// AppTheme
+// AppThemeHolder
 //
 
-AppTheme::AppTheme(
-    const Mso::React::IReactContext &context,
-    const std::shared_ptr<facebook::react::MessageQueueThread> &defaultQueueThread)
-    : m_context(&context), m_queueThread(defaultQueueThread) {
+AppThemeHolder::AppThemeHolder(const Mso::React::IReactContext &context) : m_context(&context) {
   if (auto currentApp = xaml::TryGetCurrentApplication()) {
-    m_isHighContrast = m_accessibilitySettings.HighContrast();
-    m_highContrastColors = getHighContrastColors();
+    NotifyHighContrastChanged();
 
-    if (!context.SettingsSnapshot().BackgroundMode()) {
-      m_highContrastChangedRevoker =
-          m_accessibilitySettings.HighContrastChanged(winrt::auto_revoke, [this](const auto &, const auto &) {
-            folly::dynamic eventData = folly::dynamic::object("highContrastColors", getHighContrastColors())(
-                "isHighContrast", getIsHighContrast());
-
-            fireEvent("highContrastChanged", std::move(eventData));
+    if (IsWinUI3Island()) {
+      m_wmSubscription = SubscribeToWindowMessage(
+          ReactNotificationService(m_context->Notifications()), WM_THEMECHANGED, [this](const auto &, const auto &) {
+            NotifyHighContrastChanged();
           });
+    } else {
+      m_highContrastChangedRevoker = m_accessibilitySettings.HighContrastChanged(
+          winrt::auto_revoke, [this](const auto &, const auto &) { NotifyHighContrastChanged(); });
     }
   }
 }
 
-bool AppTheme::getIsHighContrast() {
-  return m_accessibilitySettings.HighContrast();
-  ;
+ReactNativeSpecs::AppThemeSpec_AppThemeData AppThemeHolder::GetConstants() noexcept {
+  return m_appThemeData;
 }
 
-// Returns the RBG values for the 8 relevant High Contrast elements.
-folly::dynamic AppTheme::getHighContrastColors() {
-  winrt::Windows::UI::Color ButtonFaceColor = m_uiSettings.UIElementColor(winrt::UIElementType::ButtonFace);
-  winrt::Windows::UI::Color ButtonTextColor = m_uiSettings.UIElementColor(winrt::UIElementType::ButtonText);
-  winrt::Windows::UI::Color GrayTextColor = m_uiSettings.UIElementColor(winrt::UIElementType::GrayText);
-  winrt::Windows::UI::Color HighlightColor = m_uiSettings.UIElementColor(winrt::UIElementType::Highlight);
-  winrt::Windows::UI::Color HighlightTextColor = m_uiSettings.UIElementColor(winrt::UIElementType::HighlightText);
-  winrt::Windows::UI::Color HotlightColor = m_uiSettings.UIElementColor(winrt::UIElementType::Hotlight);
-  winrt::Windows::UI::Color WindowColor = m_uiSettings.UIElementColor(winrt::UIElementType::Window);
-  winrt::Windows::UI::Color WindowTextColor = m_uiSettings.UIElementColor(winrt::UIElementType::WindowText);
-
-  folly::dynamic rbgValues = folly::dynamic::object("ButtonFaceColor", formatRGB(ButtonFaceColor))(
-      "ButtonTextColor", formatRGB(ButtonTextColor))("GrayTextColor", formatRGB(GrayTextColor))(
-      "HighlightColor", formatRGB(HighlightColor))("HighlightTextColor", formatRGB(HighlightTextColor))(
-      "HotlightColor", formatRGB(HotlightColor))("WindowColor", formatRGB(WindowColor))(
-      "WindowTextColor", formatRGB(WindowTextColor));
-  return rbgValues;
+/*static*/ void AppThemeHolder::InitAppThemeHolder(const Mso::React::IReactContext &context) noexcept {
+  auto appThemeHolder = std::make_shared<AppThemeHolder>(context);
+  winrt::Microsoft::ReactNative::ReactPropertyBag pb{context.Properties()};
+  pb.Set(AppThemeHolderPropertyId(), std::move(appThemeHolder));
 }
 
-std::string AppTheme::formatRGB(winrt::Windows::UI::Color ElementColor) {
+void AppThemeHolder::SetCallback(
+    const React::ReactPropertyBag &propertyBag,
+    Mso::Functor<void(React::JSValueObject &&)> &&callback) noexcept {
+  auto holder = propertyBag.Get(AppThemeHolderPropertyId());
+
+  (*holder)->m_notifyCallback = std::move(callback);
+}
+
+void AppThemeHolder::NotifyHighContrastChanged() noexcept {
+  m_appThemeData.isHighContrast = m_accessibilitySettings.HighContrast();
+  m_appThemeData.highContrastColors.ButtonFaceColor =
+      FormatRGB(m_uiSettings.UIElementColor(winrt::UIElementType::ButtonFace));
+  m_appThemeData.highContrastColors.ButtonTextColor =
+      FormatRGB(m_uiSettings.UIElementColor(winrt::UIElementType::ButtonText));
+  m_appThemeData.highContrastColors.GrayTextColor =
+      FormatRGB(m_uiSettings.UIElementColor(winrt::UIElementType::GrayText));
+  m_appThemeData.highContrastColors.HighlightColor =
+      FormatRGB(m_uiSettings.UIElementColor(winrt::UIElementType::Highlight));
+  m_appThemeData.highContrastColors.HighlightTextColor =
+      FormatRGB(m_uiSettings.UIElementColor(winrt::UIElementType::HighlightText));
+  m_appThemeData.highContrastColors.HotlightColor =
+      FormatRGB(m_uiSettings.UIElementColor(winrt::UIElementType::Hotlight));
+  m_appThemeData.highContrastColors.WindowColor = FormatRGB(m_uiSettings.UIElementColor(winrt::UIElementType::Window));
+  m_appThemeData.highContrastColors.WindowTextColor =
+      FormatRGB(m_uiSettings.UIElementColor(winrt::UIElementType::WindowText));
+
+  if (m_notifyCallback) {
+    auto writer = MakeJSValueTreeWriter();
+    WriteValue(writer, m_appThemeData);
+    m_notifyCallback(TakeJSValue(writer).MoveObject());
+  }
+}
+
+/*static*/ std::string AppThemeHolder::FormatRGB(winrt::Windows::UI::Color ElementColor) {
   char colorChars[8];
   sprintf_s(colorChars, "#%02x%02x%02x", ElementColor.R, ElementColor.G, ElementColor.B);
   return colorChars;
 }
 
-void AppTheme::fireEvent(std::string const &eventName, folly::dynamic &&eventData) {
-  m_context->CallJSFunction("RCTDeviceEventEmitter", "emit", folly::dynamic::array(eventName, std::move(eventData)));
+void AppTheme::Initialize(React::ReactContext const &reactContext) noexcept {
+  m_context = reactContext;
+
+  AppThemeHolder::SetCallback(
+      m_context.Properties(), [weakThis = weak_from_this()](React::JSValueObject &&appThemeInfo) {
+        if (auto strongThis = weakThis.lock()) {
+          strongThis->m_context.EmitJSEvent(L"RCTDeviceEventEmitter", L"highContrastChanged", appThemeInfo);
+        }
+      });
 }
 
-AppThemeModule::AppThemeModule(std::shared_ptr<AppTheme> &&appTheme) : m_appTheme(std::move(appTheme)) {}
-
-auto AppThemeModule::getConstants() -> std::map<std::string, folly::dynamic> {
-  return {
-      {"initialHighContrast", folly::dynamic{m_appTheme->getIsHighContrast()}},
-      {"initialHighContrastColors", folly::dynamic{m_appTheme->getHighContrastColors()}}};
+ReactNativeSpecs::AppThemeSpec_AppThemeData AppTheme::GetConstants() noexcept {
+  winrt::Microsoft::ReactNative::ReactPropertyBag pb{m_context.Properties()};
+  return (*pb.Get(AppThemeHolderPropertyId()))->GetConstants();
 }
 
-auto AppThemeModule::getMethods() -> std::vector<facebook::xplat::module::CxxModule::Method> {
-  return {};
-}
-
-} // namespace react::uwp
+} // namespace Microsoft::ReactNative

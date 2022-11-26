@@ -4,12 +4,12 @@
  * @format
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
-import * as glob from 'glob';
+import fs from '@react-native-windows/fs';
+import path from 'path';
+import glob from 'glob';
 
-import {DOMParser} from 'xmldom';
-import * as xpath from 'xpath';
+import {DOMParser} from '@xmldom/xmldom';
+import xpath from 'xpath';
 import {CodedError} from '@react-native-windows/telemetry';
 
 const msbuildSelect = xpath.useNamespaces({
@@ -29,7 +29,6 @@ export function findFiles(folder: string, filenamePattern: string): string[] {
       'node_modules/**',
       '**/Debug/**',
       '**/Release/**',
-      '**/WinUI3/**',
       '**/Generated Files/**',
       '**/packages/**',
     ],
@@ -141,12 +140,34 @@ export function findDependencyProjectFiles(winFolder: string): string[] {
 
   // Try to find any project file that appears to be a dependency project
   for (const projectFile of allProjects) {
-    if (isRnwDependencyProject(path.join(winFolder, projectFile))) {
+    // A project is marked as a RNW dependency iff either:
+    // - If the project has the standard native module imports, or
+    // - If we only have a single project (and it doesn't have the standard native module imports),
+    // pick it and hope for the best. This enables autolinking for modules that were written
+    // before the standard native module template existed.
+    if (
+      allProjects.length === 1 ||
+      isRnwDependencyProject(path.join(winFolder, projectFile))
+    ) {
       dependencyProjectFiles.push(path.normalize(projectFile));
     }
   }
 
   return dependencyProjectFiles;
+}
+
+type ReactNativeProjectType = 'unknown' | 'App-WinAppSDK';
+
+function getReactNativeProjectType(
+  value: string | null,
+): ReactNativeProjectType {
+  switch (value) {
+    case 'App-WinAppSDK':
+      return value;
+
+    default:
+      return 'unknown';
+  }
 }
 
 /**
@@ -156,6 +177,14 @@ export function findDependencyProjectFiles(winFolder: string): string[] {
  */
 function isRnwAppProject(filePath: string): boolean {
   const projectContents = readProjectFile(filePath);
+
+  const rnProjectType = getReactNativeProjectType(
+    tryFindPropertyValue(projectContents, 'ReactNativeProjectType'),
+  );
+
+  if (rnProjectType !== 'unknown') {
+    return true;
+  }
 
   const projectLang = getProjectLanguage(filePath);
   if (projectLang === 'cs') {
@@ -245,6 +274,15 @@ export function tryFindPropertyValue(
   if (nodes.length > 0) {
     // Take the last one
     return (nodes[nodes.length - 1] as Node).textContent;
+  } else {
+    const noNamespaceNodes = xpath.select(
+      `//PropertyGroup/${propertyName}`,
+      projectContents,
+    );
+    if (noNamespaceNodes.length > 0) {
+      return (noNamespaceNodes[noNamespaceNodes.length - 1] as Node)
+        .textContent;
+    }
   }
 
   return null;
@@ -284,16 +322,105 @@ export function importProjectExists(
   return nodes.length > 0;
 }
 
+export type ConfigurationType =
+  | 'application'
+  | 'dynamiclibrary'
+  | 'generic'
+  | 'staticlibrary'
+  | 'unknown';
+
+/**
+ * Gets the configuration type of the project from the project contents.
+ * @param projectContents The XML project contents.
+ * @return The project configuration type.
+ */
+export function getConfigurationType(projectContents: Node): ConfigurationType {
+  const configurationType = tryFindPropertyValue(
+    projectContents,
+    'ConfigurationType',
+  )?.toLowerCase();
+
+  switch (configurationType) {
+    case 'application':
+    case 'dynamiclibrary':
+    case 'generic':
+    case 'staticlibrary':
+      return configurationType;
+
+    default:
+      return 'unknown';
+  }
+}
+
+export type OutputType =
+  | 'appcontainerexe'
+  | 'exe'
+  | 'library'
+  | 'module'
+  | 'unknown'
+  | 'winexe'
+  | 'winmdobj';
+
+/**
+ * Gets the output type of the project from the project contents.
+ * @param projectContents The XML project contents.
+ * @return The project output type.
+ */
+export function getOutputType(projectContents: Node): OutputType {
+  const outputType = tryFindPropertyValue(
+    projectContents,
+    'OutputType',
+  )?.toLowerCase();
+
+  switch (outputType) {
+    case 'appcontainerexe':
+    case 'exe':
+    case 'library':
+    case 'module':
+    case 'winexe':
+    case 'winmdobj':
+      return outputType;
+
+    default:
+      return 'unknown';
+  }
+}
+
+/**
+ * Gets the type of the project from the project contents.
+ * @param projectPath The project file path to check.
+ * @param projectContents The XML project contents.
+ * @return The project type.
+ */
+export function getProjectType(
+  projectPath: string,
+  projectContents: Node,
+): ConfigurationType | OutputType {
+  switch (getProjectLanguage(projectPath)) {
+    case 'cpp':
+      return getConfigurationType(projectContents);
+
+    case 'cs':
+      return getOutputType(projectContents);
+
+    default:
+      return 'unknown';
+  }
+}
+
 /**
  * Gets the name of the project from the project contents.
  * @param projectPath The project file path to check.
  * @param projectContents The XML project contents.
  * @return The project name.
  */
-export function getProjectName(projectContents: Node): string {
+export function getProjectName(
+  projectPath: string,
+  projectContents: Node,
+): string {
   const name =
     tryFindPropertyValue(projectContents, 'ProjectName') ||
-    tryFindPropertyValue(projectContents, 'AssemblyName') ||
+    path.parse(projectPath).name ||
     '';
 
   return name;
@@ -315,4 +442,26 @@ export function getProjectNamespace(projectContents: Node): string | null {
  */
 export function getProjectGuid(projectContents: Node): string | null {
   return tryFindPropertyValue(projectContents, 'ProjectGuid');
+}
+
+export function getExperimentalFeatures(
+  solutionDir: string,
+): Record<string, string> | undefined {
+  const propsFile = path.join(solutionDir, 'ExperimentalFeatures.props');
+
+  if (!fs.existsSync(propsFile)) {
+    return undefined;
+  }
+
+  const result: Record<string, any> = {};
+  const propsContents = readProjectFile(propsFile);
+  const nodes = msbuildSelect(
+    `//msbuild:PropertyGroup/msbuild:*`,
+    propsContents,
+  );
+  for (const node of nodes) {
+    const propertyNode = node as Node;
+    result[propertyNode.nodeName] = propertyNode.textContent;
+  }
+  return result;
 }

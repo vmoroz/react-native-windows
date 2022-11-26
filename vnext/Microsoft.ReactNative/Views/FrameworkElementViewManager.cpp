@@ -6,6 +6,7 @@
 #include <IReactInstance.h>
 
 #include <Views/ExpressionAnimationStore.h>
+#include <Views/FrameworkElementTransferProperties.h>
 #include <Views/FrameworkElementViewManager.h>
 
 #include <JSValueWriter.h>
@@ -16,6 +17,7 @@
 #include <WindowsNumerics.h>
 #include <winrt/Windows.Foundation.h>
 
+#include <UI.Xaml.Automation.Peers.h>
 #include <UI.Xaml.Automation.h>
 #include <UI.Xaml.Controls.h>
 #include "Utils/PropertyHandlerUtils.h"
@@ -35,15 +37,16 @@ using namespace Windows::Foundation::Collections;
 } // namespace winrt
 
 template <>
-struct json_type_traits<winrt::react::uwp::AccessibilityAction> {
-  static winrt::react::uwp::AccessibilityAction parseJson(const winrt::Microsoft::ReactNative::JSValue &json) {
-    auto action = winrt::react::uwp::AccessibilityAction();
+struct json_type_traits<winrt::Microsoft::ReactNative::AccessibilityAction> {
+  static winrt::Microsoft::ReactNative::AccessibilityAction parseJson(
+      const winrt::Microsoft::ReactNative::JSValue &json) {
+    auto action = winrt::Microsoft::ReactNative::AccessibilityAction();
 
     for (auto &item : json.AsObject()) {
       if (item.first == "name") {
-        action.Name = react::uwp::asHstring(item.second);
+        action.Name = Microsoft::ReactNative::asHstring(item.second);
       } else if (item.first == "label") {
-        action.Label = react::uwp::asHstring(item.second);
+        action.Label = Microsoft::ReactNative::asHstring(item.second);
       }
     }
     return action;
@@ -51,17 +54,17 @@ struct json_type_traits<winrt::react::uwp::AccessibilityAction> {
 };
 
 template <>
-struct json_type_traits<winrt::IVector<winrt::react::uwp::AccessibilityAction>> {
-  static winrt::IVector<winrt::react::uwp::AccessibilityAction> parseJson(
+struct json_type_traits<winrt::IVector<winrt::Microsoft::ReactNative::AccessibilityAction>> {
+  static winrt::IVector<winrt::Microsoft::ReactNative::AccessibilityAction> parseJson(
       const winrt::Microsoft::ReactNative::JSValue &json) {
-    auto vector = winrt::single_threaded_vector<winrt::react::uwp::AccessibilityAction>();
+    auto vector = winrt::single_threaded_vector<winrt::Microsoft::ReactNative::AccessibilityAction>();
 
     if (json.Type() == winrt::Microsoft::ReactNative::JSValueType::Array) {
       for (const auto &action : json.AsArray()) {
         if (action.Type() != winrt::Microsoft::ReactNative::JSValueType::Object)
           continue;
 
-        vector.Append(json_type_traits<winrt::react::uwp::AccessibilityAction>::parseJson(action));
+        vector.Append(json_type_traits<winrt::Microsoft::ReactNative::AccessibilityAction>::parseJson(action));
       }
     }
     return vector;
@@ -70,82 +73,12 @@ struct json_type_traits<winrt::IVector<winrt::react::uwp::AccessibilityAction>> 
 
 namespace Microsoft::ReactNative {
 
-using DynamicAutomationProperties = react::uwp::DynamicAutomationProperties;
+using DynamicAutomationProperties = Microsoft::ReactNative::DynamicAutomationProperties;
 
 FrameworkElementViewManager::FrameworkElementViewManager(const Mso::React::IReactContext &context) : Super(context) {}
 
-void FrameworkElementViewManager::TransferProperty(
-    const XamlView &oldView,
-    const XamlView &newView,
-    xaml::DependencyProperty dp) {
-  TransferProperty(oldView, newView, dp, dp);
-}
-
-void FrameworkElementViewManager::TransferProperty(
-    const XamlView &oldView,
-    const XamlView &newView,
-    xaml::DependencyProperty oldViewDP,
-    xaml::DependencyProperty newViewDP) {
-  auto oldValue = oldView.ReadLocalValue(oldViewDP);
-  if (oldValue != nullptr) {
-    oldView.ClearValue(oldViewDP);
-    newView.SetValue(newViewDP, oldValue);
-  }
-}
-
 void FrameworkElementViewManager::TransferProperties(const XamlView &oldView, const XamlView &newView) {
-  // Render Properties
-  TransferProperty(oldView, newView, xaml::UIElement::OpacityProperty());
-
-  // Layout Properties
-  TransferProperty(oldView, newView, xaml::FrameworkElement::WidthProperty());
-  TransferProperty(oldView, newView, xaml::FrameworkElement::HeightProperty());
-  TransferProperty(oldView, newView, xaml::FrameworkElement::MinWidthProperty());
-  TransferProperty(oldView, newView, xaml::FrameworkElement::MinHeightProperty());
-  TransferProperty(oldView, newView, xaml::FrameworkElement::MaxWidthProperty());
-  TransferProperty(oldView, newView, xaml::FrameworkElement::MaxHeightProperty());
-  TransferProperty(oldView, newView, xaml::FrameworkElement::FlowDirectionProperty());
-  TransferProperty(oldView, newView, winrt::Canvas::ZIndexProperty());
-  TransferProperty(oldView, newView, react::uwp::ViewPanel::LeftProperty());
-  TransferProperty(oldView, newView, react::uwp::ViewPanel::TopProperty());
-
-  // Accessibility Properties
-  TransferProperty(oldView, newView, xaml::Automation::AutomationProperties::AutomationIdProperty());
-  TransferProperty(oldView, newView, xaml::Automation::AutomationProperties::NameProperty());
-  TransferProperty(oldView, newView, xaml::Automation::AutomationProperties::HelpTextProperty());
-  TransferProperty(oldView, newView, xaml::Automation::AutomationProperties::LiveSettingProperty());
-  TransferProperty(oldView, newView, xaml::Automation::AutomationProperties::PositionInSetProperty());
-  TransferProperty(oldView, newView, xaml::Automation::AutomationProperties::SizeOfSetProperty());
-  auto accessibilityView = xaml::Automation::AutomationProperties::GetAccessibilityView(oldView);
-  xaml::Automation::AutomationProperties::SetAccessibilityView(newView, accessibilityView);
-  xaml::Automation::AutomationProperties::SetAccessibilityView(oldView, winrt::Peers::AccessibilityView::Raw);
-  TransferProperty(oldView, newView, DynamicAutomationProperties::AccessibilityRoleProperty());
-  TransferProperty(oldView, newView, DynamicAutomationProperties::AccessibilityStateSelectedProperty());
-  TransferProperty(oldView, newView, DynamicAutomationProperties::AccessibilityStateDisabledProperty());
-  TransferProperty(oldView, newView, DynamicAutomationProperties::AccessibilityStateCheckedProperty());
-  TransferProperty(oldView, newView, DynamicAutomationProperties::AccessibilityStateUncheckedProperty());
-  TransferProperty(oldView, newView, DynamicAutomationProperties::AccessibilityStateBusyProperty());
-  TransferProperty(oldView, newView, DynamicAutomationProperties::AccessibilityStateExpandedProperty());
-  TransferProperty(oldView, newView, DynamicAutomationProperties::AccessibilityStateCollapsedProperty());
-  TransferProperty(oldView, newView, DynamicAutomationProperties::AccessibilityValueMinProperty());
-  TransferProperty(oldView, newView, DynamicAutomationProperties::AccessibilityValueMaxProperty());
-  TransferProperty(oldView, newView, DynamicAutomationProperties::AccessibilityValueNowProperty());
-  TransferProperty(oldView, newView, DynamicAutomationProperties::AccessibilityValueTextProperty());
-  TransferProperty(oldView, newView, DynamicAutomationProperties::AccessibilityInvokeEventHandlerProperty());
-  TransferProperty(oldView, newView, DynamicAutomationProperties::AccessibilityActionEventHandlerProperty());
-  TransferProperty(oldView, newView, DynamicAutomationProperties::AccessibilityActionsProperty());
-
-  auto tooltip = winrt::ToolTipService::GetToolTip(oldView);
-  oldView.ClearValue(winrt::ToolTipService::ToolTipProperty());
-  winrt::ToolTipService::SetToolTip(newView, tooltip);
-
-  // Clear the TransformMatrix from the old View.  The TransformMatrix will be
-  // set on the new View a bit later in RefreshProperties() (as we need data
-  // from the ShadowNode not available here).
-  auto oldElement = oldView.try_as<xaml::UIElement>();
-  if (oldElement && oldElement.try_as<xaml::IUIElement10>()) {
-    oldElement.TransformMatrix(winrt::Windows::Foundation::Numerics::float4x4::identity());
-  }
+  TransferFrameworkElementProperties(oldView, newView);
 }
 
 static void GetAccessibilityStateProps(const winrt::Microsoft::ReactNative::IJSValueWriter &writer) {
@@ -160,11 +93,32 @@ static void GetAccessibilityStateProps(const winrt::Microsoft::ReactNative::IJSV
 
 static void GetAccessibilityValueProps(const winrt::Microsoft::ReactNative::IJSValueWriter &writer) {
   writer.WriteObjectBegin();
-  winrt::Microsoft::ReactNative::WriteProperty(writer, L"min", L"boolean");
-  winrt::Microsoft::ReactNative::WriteProperty(writer, L"max", L"boolean");
+  winrt::Microsoft::ReactNative::WriteProperty(writer, L"min", L"number");
+  winrt::Microsoft::ReactNative::WriteProperty(writer, L"max", L"number");
   winrt::Microsoft::ReactNative::WriteProperty(writer, L"now", L"number");
   winrt::Microsoft::ReactNative::WriteProperty(writer, L"text", L"string");
   writer.WriteObjectEnd();
+}
+
+inline float ToRadians(const winrt::Microsoft::ReactNative::JSValue &value) {
+  if ((value.Type() == winrt::Microsoft::ReactNative::JSValueType::Double)) {
+    return value.AsSingle();
+  }
+  assert(value.Type() == winrt::Microsoft::ReactNative::JSValueType::String);
+
+  auto stringValue = value.AsString();
+  char *suffixStart;
+  double num = strtod(stringValue.c_str(), &suffixStart);
+  if (0 == strncmp(suffixStart, "deg", 3)) {
+    return static_cast<float>(num * M_PI / 180.0f);
+  }
+  return static_cast<float>(num); // assume suffix is "rad"
+}
+
+static void MultiplyInto(
+    winrt::Windows::Foundation::Numerics::float4x4 &m,
+    winrt::Windows::Foundation::Numerics::float4x4 o) {
+  m = o * m;
 }
 
 void FrameworkElementViewManager::GetNativeProps(const winrt::Microsoft::ReactNative::IJSValueWriter &writer) const {
@@ -207,27 +161,92 @@ bool FrameworkElementViewManager::UpdateProperty(
       if (element.try_as<xaml::IUIElement10>()) // Works on 19H1+
       {
         if (propertyValue.Type() == winrt::Microsoft::ReactNative::JSValueType::Array) {
-          assert(propertyValue.AsArray().size() == 16);
-          winrt::Windows::Foundation::Numerics::float4x4 transformMatrix;
-          transformMatrix.m11 = static_cast<float>(propertyValue[0].AsDouble());
-          transformMatrix.m12 = static_cast<float>(propertyValue[1].AsDouble());
-          transformMatrix.m13 = static_cast<float>(propertyValue[2].AsDouble());
-          transformMatrix.m14 = static_cast<float>(propertyValue[3].AsDouble());
-          transformMatrix.m21 = static_cast<float>(propertyValue[4].AsDouble());
-          transformMatrix.m22 = static_cast<float>(propertyValue[5].AsDouble());
-          transformMatrix.m23 = static_cast<float>(propertyValue[6].AsDouble());
-          transformMatrix.m24 = static_cast<float>(propertyValue[7].AsDouble());
-          transformMatrix.m31 = static_cast<float>(propertyValue[8].AsDouble());
-          transformMatrix.m32 = static_cast<float>(propertyValue[9].AsDouble());
-          transformMatrix.m33 = static_cast<float>(propertyValue[10].AsDouble());
-          transformMatrix.m34 = static_cast<float>(propertyValue[11].AsDouble());
-          transformMatrix.m41 = static_cast<float>(propertyValue[12].AsDouble());
-          transformMatrix.m42 = static_cast<float>(propertyValue[13].AsDouble());
-          transformMatrix.m43 = static_cast<float>(propertyValue[14].AsDouble());
-          transformMatrix.m44 = static_cast<float>(propertyValue[15].AsDouble());
+          winrt::Windows::Foundation::Numerics::float4x4 transformMatrix{
+              winrt::Windows::Foundation::Numerics::float4x4::identity()};
+          for (const auto &transform : propertyValue.AsArray()) {
+            for (const auto &operation : transform.AsObject()) {
+              const std::string &transformType = operation.first;
+              const auto &innerValue = operation.second;
+
+              if (transformType == "matrix") {
+                assert(innerValue.AsArray().size() == 16);
+                winrt::Windows::Foundation::Numerics::float4x4 innerMatrix;
+                innerMatrix.m11 = static_cast<float>(innerValue[0].AsDouble());
+                innerMatrix.m12 = static_cast<float>(innerValue[1].AsDouble());
+                innerMatrix.m13 = static_cast<float>(innerValue[2].AsDouble());
+                innerMatrix.m14 = static_cast<float>(innerValue[3].AsDouble());
+                innerMatrix.m21 = static_cast<float>(innerValue[4].AsDouble());
+                innerMatrix.m22 = static_cast<float>(innerValue[5].AsDouble());
+                innerMatrix.m23 = static_cast<float>(innerValue[6].AsDouble());
+                innerMatrix.m24 = static_cast<float>(innerValue[7].AsDouble());
+                innerMatrix.m31 = static_cast<float>(innerValue[8].AsDouble());
+                innerMatrix.m32 = static_cast<float>(innerValue[9].AsDouble());
+                innerMatrix.m33 = static_cast<float>(innerValue[10].AsDouble());
+                innerMatrix.m34 = static_cast<float>(innerValue[11].AsDouble());
+                innerMatrix.m41 = static_cast<float>(innerValue[12].AsDouble());
+                innerMatrix.m42 = static_cast<float>(innerValue[13].AsDouble());
+                innerMatrix.m43 = static_cast<float>(innerValue[14].AsDouble());
+                innerMatrix.m44 = static_cast<float>(innerValue[15].AsDouble());
+                MultiplyInto(transformMatrix, innerMatrix);
+              } else if (transformType == "perspective") {
+                auto innerMatrix = winrt::Windows::Foundation::Numerics::float4x4::identity();
+                innerMatrix.m34 = -1 / innerValue.AsSingle();
+                MultiplyInto(transformMatrix, innerMatrix);
+              } else if (transformType == "rotateX") {
+                MultiplyInto(
+                    transformMatrix,
+                    winrt::Windows::Foundation::Numerics::make_float4x4_rotation_x(ToRadians(innerValue)));
+              } else if (transformType == "rotateY") {
+                MultiplyInto(
+                    transformMatrix,
+                    winrt::Windows::Foundation::Numerics::make_float4x4_rotation_y(ToRadians(innerValue)));
+              } else if (transformType == "rotate" || transformType == "rotateZ") {
+                MultiplyInto(
+                    transformMatrix,
+                    winrt::Windows::Foundation::Numerics::make_float4x4_rotation_z(ToRadians(innerValue)));
+              } else if (transformType == "scale") {
+                MultiplyInto(
+                    transformMatrix,
+                    winrt::Windows::Foundation::Numerics::make_float4x4_scale(
+                        innerValue.AsSingle(), innerValue.AsSingle(), 1));
+              } else if (transformType == "scaleX") {
+                MultiplyInto(
+                    transformMatrix,
+                    winrt::Windows::Foundation::Numerics::make_float4x4_scale(innerValue.AsSingle(), 1, 1));
+              } else if (transformType == "scaleY") {
+                MultiplyInto(
+                    transformMatrix,
+                    winrt::Windows::Foundation::Numerics::make_float4x4_scale(1, innerValue.AsSingle(), 1));
+              } else if (transformType == "translate") {
+                auto &params = innerValue.AsArray();
+                MultiplyInto(
+                    transformMatrix,
+                    winrt::Windows::Foundation::Numerics::make_float4x4_translation(
+                        params[0].AsSingle(), params[1].AsSingle(), params.size() > 2 ? params[2].AsSingle() : 0.f));
+              } else if (transformType == "translateX") {
+                MultiplyInto(
+                    transformMatrix,
+                    winrt::Windows::Foundation::Numerics::make_float4x4_translation(innerValue.AsSingle(), 0.f, 0.f));
+              } else if (transformType == "translateY") {
+                MultiplyInto(
+                    transformMatrix,
+                    winrt::Windows::Foundation::Numerics::make_float4x4_translation(0.f, innerValue.AsSingle(), 0.f));
+              } else if (transformType == "skewX") {
+                MultiplyInto(
+                    transformMatrix,
+                    winrt::Windows::Foundation::Numerics::float4x4(
+                        winrt::Windows::Foundation::Numerics::make_float3x2_skew(ToRadians(innerValue), 0.f)));
+              } else if (transformType == "skewY") {
+                MultiplyInto(
+                    transformMatrix,
+                    winrt::Windows::Foundation::Numerics::float4x4(
+                        winrt::Windows::Foundation::Numerics::make_float3x2_skew(0.f, ToRadians(innerValue))));
+              }
+            }
+          }
 
           if (!element.IsLoaded()) {
-            element.Loaded([=](auto sender, auto &&) -> auto {
+            element.Loaded([=](auto sender, auto &&) -> auto{
               ApplyTransformMatrix(sender.as<xaml::UIElement>(), nodeToUpdate, transformMatrix);
             });
           } else {
@@ -237,80 +256,11 @@ bool FrameworkElementViewManager::UpdateProperty(
           element.TransformMatrix(winrt::Windows::Foundation::Numerics::float4x4::identity());
         }
       } else {
-        cdebug << "[Dim down] " << propertyName << std::endl;
+        cdebug << "[Dim down] " << propertyName << "\n";
       }
-    } else if (propertyName == "width") {
-      if (propertyValue.Type() == winrt::Microsoft::ReactNative::JSValueType::Double ||
-          propertyValue.Type() == winrt::Microsoft::ReactNative::JSValueType::Int64) {
-        double width = propertyValue.AsDouble();
-        if (width >= 0)
-          element.Width(width);
-        // else
-        // TODO report error
-      } else if (propertyValue.IsNull()) {
-        element.ClearValue(xaml::FrameworkElement::WidthProperty());
-      }
-
-    } else if (propertyName == "height") {
-      if (propertyValue.Type() == winrt::Microsoft::ReactNative::JSValueType::Double ||
-          propertyValue.Type() == winrt::Microsoft::ReactNative::JSValueType::Int64) {
-        double height = propertyValue.AsDouble();
-        if (height >= 0)
-          element.Height(height);
-        // else
-        // TODO report error
-      } else if (propertyValue.IsNull()) {
-        element.ClearValue(xaml::FrameworkElement::HeightProperty());
-      }
-    } else if (propertyName == "minWidth") {
-      if (propertyValue.Type() == winrt::Microsoft::ReactNative::JSValueType::Double ||
-          propertyValue.Type() == winrt::Microsoft::ReactNative::JSValueType::Int64) {
-        double minWidth = propertyValue.AsDouble();
-        if (minWidth >= 0)
-          element.MinWidth(minWidth);
-        // else
-        // TODO report error
-      } else if (propertyValue.IsNull()) {
-        element.ClearValue(xaml::FrameworkElement::MinWidthProperty());
-      }
-    } else if (propertyName == "maxWidth") {
-      if (propertyValue.Type() == winrt::Microsoft::ReactNative::JSValueType::Double ||
-          propertyValue.Type() == winrt::Microsoft::ReactNative::JSValueType::Int64) {
-        double maxWidth = propertyValue.AsDouble();
-        if (maxWidth >= 0)
-          element.MaxWidth(maxWidth);
-        // else
-        // TODO report error
-      } else if (propertyValue.IsNull()) {
-        element.ClearValue(xaml::FrameworkElement::MaxWidthProperty());
-      }
-
-    } else if (propertyName == "minHeight") {
-      if (propertyValue.Type() == winrt::Microsoft::ReactNative::JSValueType::Double ||
-          propertyValue.Type() == winrt::Microsoft::ReactNative::JSValueType::Int64) {
-        double minHeight = propertyValue.AsDouble();
-        if (minHeight >= 0)
-          element.MinHeight(minHeight);
-        // else
-        // TODO report error
-      } else if (propertyValue.IsNull()) {
-        element.ClearValue(xaml::FrameworkElement::MinHeightProperty());
-      }
-    } else if (propertyName == "maxHeight") {
-      if (propertyValue.Type() == winrt::Microsoft::ReactNative::JSValueType::Double ||
-          propertyValue.Type() == winrt::Microsoft::ReactNative::JSValueType::Int64) {
-        double maxHeight = propertyValue.AsDouble();
-        if (maxHeight >= 0)
-          element.MaxHeight(maxHeight);
-        // else
-        // TODO report error
-      } else if (propertyValue.IsNull()) {
-        element.ClearValue(xaml::FrameworkElement::MaxHeightProperty());
-      }
-
     } else if (propertyName == "accessibilityHint") {
       if (propertyValue.Type() == winrt::Microsoft::ReactNative::JSValueType::String) {
-        auto value = react::uwp::asHstring(propertyValue);
+        auto value = asHstring(propertyValue);
         auto boxedValue = winrt::Windows::Foundation::PropertyValue::CreateString(value);
 
         element.SetValue(xaml::Automation::AutomationProperties::HelpTextProperty(), boxedValue);
@@ -319,18 +269,23 @@ bool FrameworkElementViewManager::UpdateProperty(
       }
     } else if (propertyName == "accessibilityLabel") {
       if (propertyValue.Type() == winrt::Microsoft::ReactNative::JSValueType::String) {
-        auto value = react::uwp::asHstring(propertyValue);
+        auto value = asHstring(propertyValue);
         auto boxedValue = winrt::Windows::Foundation::PropertyValue::CreateString(value);
 
         element.SetValue(xaml::Automation::AutomationProperties::NameProperty(), boxedValue);
       } else if (propertyValue.IsNull()) {
         element.ClearValue(xaml::Automation::AutomationProperties::NameProperty());
       }
-      react::uwp::AnnounceLiveRegionChangedIfNeeded(element);
+      AnnounceLiveRegionChangedIfNeeded(element);
     } else if (propertyName == "accessible") {
       if (propertyValue.Type() == winrt::Microsoft::ReactNative::JSValueType::Boolean) {
-        if (!propertyValue.AsBoolean())
-          xaml::Automation::AutomationProperties::SetAccessibilityView(element, winrt::Peers::AccessibilityView::Raw);
+        if (propertyValue.AsBoolean()) {
+          xaml::Automation::AutomationProperties::SetAccessibilityView(element, winrt::AccessibilityView::Content);
+        } else {
+          xaml::Automation::AutomationProperties::SetAccessibilityView(element, winrt::AccessibilityView::Raw);
+        }
+      } else if (propertyValue.IsNull()) {
+        element.ClearValue(xaml::Automation::AutomationProperties::AccessibilityViewProperty());
       }
     } else if (propertyName == "accessibilityLiveRegion") {
       if (propertyValue.Type() == winrt::Microsoft::ReactNative::JSValueType::String) {
@@ -348,7 +303,7 @@ bool FrameworkElementViewManager::UpdateProperty(
       } else if (propertyValue.IsNull()) {
         element.ClearValue(xaml::Automation::AutomationProperties::LiveSettingProperty());
       }
-      react::uwp::AnnounceLiveRegionChangedIfNeeded(element);
+      AnnounceLiveRegionChangedIfNeeded(element);
     } else if (propertyName == "accessibilityPosInSet") {
       if (propertyValue.Type() == winrt::Microsoft::ReactNative::JSValueType::Double ||
           propertyValue.Type() == winrt::Microsoft::ReactNative::JSValueType::Int64) {
@@ -373,144 +328,280 @@ bool FrameworkElementViewManager::UpdateProperty(
       if (propertyValue.Type() == winrt::Microsoft::ReactNative::JSValueType::String) {
         const std::string &role = propertyValue.AsString();
         if (role == "none")
-          DynamicAutomationProperties::SetAccessibilityRole(element, winrt::react::uwp::AccessibilityRoles::None);
+          DynamicAutomationProperties::SetAccessibilityRole(
+              element, winrt::Microsoft::ReactNative::AccessibilityRoles::None);
         else if (role == "button")
-          DynamicAutomationProperties::SetAccessibilityRole(element, winrt::react::uwp::AccessibilityRoles::Button);
+          DynamicAutomationProperties::SetAccessibilityRole(
+              element, winrt::Microsoft::ReactNative::AccessibilityRoles::Button);
         else if (role == "link")
-          DynamicAutomationProperties::SetAccessibilityRole(element, winrt::react::uwp::AccessibilityRoles::Link);
+          DynamicAutomationProperties::SetAccessibilityRole(
+              element, winrt::Microsoft::ReactNative::AccessibilityRoles::Link);
         else if (role == "search")
-          DynamicAutomationProperties::SetAccessibilityRole(element, winrt::react::uwp::AccessibilityRoles::Search);
+          DynamicAutomationProperties::SetAccessibilityRole(
+              element, winrt::Microsoft::ReactNative::AccessibilityRoles::Search);
         else if (role == "image")
-          DynamicAutomationProperties::SetAccessibilityRole(element, winrt::react::uwp::AccessibilityRoles::Image);
+          DynamicAutomationProperties::SetAccessibilityRole(
+              element, winrt::Microsoft::ReactNative::AccessibilityRoles::Image);
         else if (role == "keyboardkey")
           DynamicAutomationProperties::SetAccessibilityRole(
-              element, winrt::react::uwp::AccessibilityRoles::KeyboardKey);
+              element, winrt::Microsoft::ReactNative::AccessibilityRoles::KeyboardKey);
         else if (role == "text")
-          DynamicAutomationProperties::SetAccessibilityRole(element, winrt::react::uwp::AccessibilityRoles::Text);
+          DynamicAutomationProperties::SetAccessibilityRole(
+              element, winrt::Microsoft::ReactNative::AccessibilityRoles::Text);
         else if (role == "adjustable")
-          DynamicAutomationProperties::SetAccessibilityRole(element, winrt::react::uwp::AccessibilityRoles::Adjustable);
+          DynamicAutomationProperties::SetAccessibilityRole(
+              element, winrt::Microsoft::ReactNative::AccessibilityRoles::Adjustable);
         else if (role == "imagebutton")
           DynamicAutomationProperties::SetAccessibilityRole(
-              element, winrt::react::uwp::AccessibilityRoles::ImageButton);
+              element, winrt::Microsoft::ReactNative::AccessibilityRoles::ImageButton);
         else if (role == "header")
-          DynamicAutomationProperties::SetAccessibilityRole(element, winrt::react::uwp::AccessibilityRoles::Header);
+          DynamicAutomationProperties::SetAccessibilityRole(
+              element, winrt::Microsoft::ReactNative::AccessibilityRoles::Header);
         else if (role == "summary")
-          DynamicAutomationProperties::SetAccessibilityRole(element, winrt::react::uwp::AccessibilityRoles::Summary);
+          DynamicAutomationProperties::SetAccessibilityRole(
+              element, winrt::Microsoft::ReactNative::AccessibilityRoles::Summary);
         else if (role == "alert")
-          DynamicAutomationProperties::SetAccessibilityRole(element, winrt::react::uwp::AccessibilityRoles::Alert);
+          DynamicAutomationProperties::SetAccessibilityRole(
+              element, winrt::Microsoft::ReactNative::AccessibilityRoles::Alert);
         else if (role == "checkbox")
-          DynamicAutomationProperties::SetAccessibilityRole(element, winrt::react::uwp::AccessibilityRoles::CheckBox);
+          DynamicAutomationProperties::SetAccessibilityRole(
+              element, winrt::Microsoft::ReactNative::AccessibilityRoles::CheckBox);
         else if (role == "combobox")
-          DynamicAutomationProperties::SetAccessibilityRole(element, winrt::react::uwp::AccessibilityRoles::ComboBox);
+          DynamicAutomationProperties::SetAccessibilityRole(
+              element, winrt::Microsoft::ReactNative::AccessibilityRoles::ComboBox);
         else if (role == "menu")
-          DynamicAutomationProperties::SetAccessibilityRole(element, winrt::react::uwp::AccessibilityRoles::Menu);
+          DynamicAutomationProperties::SetAccessibilityRole(
+              element, winrt::Microsoft::ReactNative::AccessibilityRoles::Menu);
         else if (role == "menubar")
-          DynamicAutomationProperties::SetAccessibilityRole(element, winrt::react::uwp::AccessibilityRoles::MenuBar);
+          DynamicAutomationProperties::SetAccessibilityRole(
+              element, winrt::Microsoft::ReactNative::AccessibilityRoles::MenuBar);
         else if (role == "menuitem")
-          DynamicAutomationProperties::SetAccessibilityRole(element, winrt::react::uwp::AccessibilityRoles::MenuItem);
+          DynamicAutomationProperties::SetAccessibilityRole(
+              element, winrt::Microsoft::ReactNative::AccessibilityRoles::MenuItem);
         else if (role == "progressbar")
           DynamicAutomationProperties::SetAccessibilityRole(
-              element, winrt::react::uwp::AccessibilityRoles::ProgressBar);
+              element, winrt::Microsoft::ReactNative::AccessibilityRoles::ProgressBar);
         else if (role == "radio")
-          DynamicAutomationProperties::SetAccessibilityRole(element, winrt::react::uwp::AccessibilityRoles::Radio);
+          DynamicAutomationProperties::SetAccessibilityRole(
+              element, winrt::Microsoft::ReactNative::AccessibilityRoles::Radio);
         else if (role == "radiogroup")
-          DynamicAutomationProperties::SetAccessibilityRole(element, winrt::react::uwp::AccessibilityRoles::RadioGroup);
+          DynamicAutomationProperties::SetAccessibilityRole(
+              element, winrt::Microsoft::ReactNative::AccessibilityRoles::RadioGroup);
         else if (role == "scrollbar")
-          DynamicAutomationProperties::SetAccessibilityRole(element, winrt::react::uwp::AccessibilityRoles::ScrollBar);
+          DynamicAutomationProperties::SetAccessibilityRole(
+              element, winrt::Microsoft::ReactNative::AccessibilityRoles::ScrollBar);
         else if (role == "spinbutton")
-          DynamicAutomationProperties::SetAccessibilityRole(element, winrt::react::uwp::AccessibilityRoles::SpinButton);
+          DynamicAutomationProperties::SetAccessibilityRole(
+              element, winrt::Microsoft::ReactNative::AccessibilityRoles::SpinButton);
         else if (role == "switch")
-          DynamicAutomationProperties::SetAccessibilityRole(element, winrt::react::uwp::AccessibilityRoles::Switch);
+          DynamicAutomationProperties::SetAccessibilityRole(
+              element, winrt::Microsoft::ReactNative::AccessibilityRoles::Switch);
         else if (role == "tab")
-          DynamicAutomationProperties::SetAccessibilityRole(element, winrt::react::uwp::AccessibilityRoles::Tab);
+          DynamicAutomationProperties::SetAccessibilityRole(
+              element, winrt::Microsoft::ReactNative::AccessibilityRoles::Tab);
         else if (role == "tablist")
-          DynamicAutomationProperties::SetAccessibilityRole(element, winrt::react::uwp::AccessibilityRoles::TabList);
+          DynamicAutomationProperties::SetAccessibilityRole(
+              element, winrt::Microsoft::ReactNative::AccessibilityRoles::TabList);
         else if (role == "timer")
-          DynamicAutomationProperties::SetAccessibilityRole(element, winrt::react::uwp::AccessibilityRoles::Timer);
+          DynamicAutomationProperties::SetAccessibilityRole(
+              element, winrt::Microsoft::ReactNative::AccessibilityRoles::Timer);
+        else if (role == "togglebutton")
+          DynamicAutomationProperties::SetAccessibilityRole(
+              element, winrt::Microsoft::ReactNative::AccessibilityRoles::ToggleButton);
         else if (role == "toolbar")
-          DynamicAutomationProperties::SetAccessibilityRole(element, winrt::react::uwp::AccessibilityRoles::ToolBar);
+          DynamicAutomationProperties::SetAccessibilityRole(
+              element, winrt::Microsoft::ReactNative::AccessibilityRoles::ToolBar);
         else if (role == "list")
-          DynamicAutomationProperties::SetAccessibilityRole(element, winrt::react::uwp::AccessibilityRoles::List);
+          DynamicAutomationProperties::SetAccessibilityRole(
+              element, winrt::Microsoft::ReactNative::AccessibilityRoles::List);
         else if (role == "listitem")
-          DynamicAutomationProperties::SetAccessibilityRole(element, winrt::react::uwp::AccessibilityRoles::ListItem);
+          DynamicAutomationProperties::SetAccessibilityRole(
+              element, winrt::Microsoft::ReactNative::AccessibilityRoles::ListItem);
         else
-          DynamicAutomationProperties::SetAccessibilityRole(element, winrt::react::uwp::AccessibilityRoles::Unknown);
+          DynamicAutomationProperties::SetAccessibilityRole(
+              element, winrt::Microsoft::ReactNative::AccessibilityRoles::Unknown);
       } else if (propertyValue.IsNull()) {
         element.ClearValue(DynamicAutomationProperties::AccessibilityRoleProperty());
       }
     } else if (propertyName == "accessibilityState") {
-      bool states[static_cast<int32_t>(winrt::react::uwp::AccessibilityStates::CountStates)] = {};
+      bool states[static_cast<int32_t>(winrt::Microsoft::ReactNative::AccessibilityStates::CountStates)] = {};
 
       if (propertyValue.Type() == winrt::Microsoft::ReactNative::JSValueType::Object) {
         for (const auto &pair : propertyValue.AsObject()) {
           const std::string &innerName = pair.first;
           const auto &innerValue = pair.second;
 
-          if (innerName == "selected")
-            states[static_cast<int32_t>(winrt::react::uwp::AccessibilityStates::Selected)] = innerValue.AsBoolean();
-          else if (innerName == "disabled")
-            states[static_cast<int32_t>(winrt::react::uwp::AccessibilityStates::Disabled)] = innerValue.AsBoolean();
-          else if (innerName == "checked") {
-            states[static_cast<int32_t>(winrt::react::uwp::AccessibilityStates::Checked)] =
+          auto peer = xaml::Automation::Peers::FrameworkElementAutomationPeer::FromElement(element);
+
+          if (innerName == "selected") {
+            states[static_cast<int32_t>(winrt::Microsoft::ReactNative::AccessibilityStates::Selected)] =
+                innerValue.AsBoolean();
+            const auto prevSelectedState = DynamicAutomationProperties::GetAccessibilityStateSelected(element);
+            if (peer != nullptr && prevSelectedState != innerValue.AsBoolean()) {
+              peer.RaisePropertyChangedEvent(
+                  winrt::SelectionItemPatternIdentifiers::IsSelectedProperty(),
+                  winrt::box_value(prevSelectedState),
+                  winrt::box_value(innerValue.AsBoolean()));
+            }
+          } else if (innerName == "disabled") {
+            states[static_cast<int32_t>(winrt::Microsoft::ReactNative::AccessibilityStates::Disabled)] =
+                innerValue.AsBoolean();
+            const auto prevDisabledState = DynamicAutomationProperties::GetAccessibilityStateDisabled(element);
+
+            if (peer != nullptr && prevDisabledState != innerValue.AsBoolean()) {
+              peer.RaisePropertyChangedEvent(
+                  winrt::AutomationElementIdentifiers::IsEnabledProperty(),
+                  winrt::box_value(!prevDisabledState),
+                  winrt::box_value(!innerValue.AsBoolean()));
+            }
+          } else if (innerName == "checked") {
+            states[static_cast<int32_t>(winrt::Microsoft::ReactNative::AccessibilityStates::Checked)] =
                 innerValue.Type() == winrt::Microsoft::ReactNative::JSValueType::Boolean && innerValue.AsBoolean();
-            states[static_cast<int32_t>(winrt::react::uwp::AccessibilityStates::Unchecked)] =
+            states[static_cast<int32_t>(winrt::Microsoft::ReactNative::AccessibilityStates::Unchecked)] =
                 innerValue.Type() == winrt::Microsoft::ReactNative::JSValueType::Boolean && !innerValue.AsBoolean();
             // If the state is "mixed" we'll just set both Checked and Unchecked to false,
             // then later in the IToggleProvider implementation it will return the Intermediate state
             // due to both being set to false (see  DynamicAutomationPeer::ToggleState()).
+            const auto prevCheckedState = DynamicAutomationProperties::GetAccessibilityStateChecked(element);
+            const auto prevUncheckedState = DynamicAutomationProperties::GetAccessibilityStateUnchecked(element);
+
+            if (peer != nullptr) {
+              if (prevCheckedState !=
+                      states[static_cast<int32_t>(winrt::Microsoft::ReactNative::AccessibilityStates::Checked)] ||
+                  prevUncheckedState !=
+                      states[static_cast<int32_t>(winrt::Microsoft::ReactNative::AccessibilityStates::Unchecked)]) {
+                // Checking if either state has changed here to catch changes involving "mixed" state.
+                const auto oldValue = prevCheckedState ? winrt::ToggleState::On : winrt::ToggleState::Off;
+                if (innerValue.Type() != winrt::Microsoft::ReactNative::JSValueType::Boolean) {
+                  peer.RaisePropertyChangedEvent(
+                      winrt::TogglePatternIdentifiers::ToggleStateProperty(),
+                      winrt::box_value(oldValue),
+                      winrt::box_value(winrt::ToggleState::Indeterminate));
+                } else {
+                  const auto newValue = innerValue.AsBoolean() ? winrt::ToggleState::On : winrt::ToggleState::Off;
+                  peer.RaisePropertyChangedEvent(
+                      winrt::TogglePatternIdentifiers::ToggleStateProperty(),
+                      winrt::box_value(oldValue),
+                      winrt::box_value(newValue));
+                }
+              }
+            }
           } else if (innerName == "busy")
-            states[static_cast<int32_t>(winrt::react::uwp::AccessibilityStates::Busy)] =
+            states[static_cast<int32_t>(winrt::Microsoft::ReactNative::AccessibilityStates::Busy)] =
                 !innerValue.IsNull() && innerValue.AsBoolean();
           else if (innerName == "expanded") {
-            states[static_cast<int32_t>(winrt::react::uwp::AccessibilityStates::Expanded)] =
+            states[static_cast<int32_t>(winrt::Microsoft::ReactNative::AccessibilityStates::Expanded)] =
                 !innerValue.IsNull() && innerValue.AsBoolean();
-            states[static_cast<int32_t>(winrt::react::uwp::AccessibilityStates::Collapsed)] =
+            states[static_cast<int32_t>(winrt::Microsoft::ReactNative::AccessibilityStates::Collapsed)] =
                 innerValue.IsNull() || !innerValue.AsBoolean();
+
+            const auto prevExpandedState = DynamicAutomationProperties::GetAccessibilityStateExpanded(element);
+
+            if (peer != nullptr && prevExpandedState != innerValue.AsBoolean()) {
+              const auto newValue =
+                  innerValue.AsBoolean() ? winrt::ExpandCollapseState::Expanded : winrt::ExpandCollapseState::Collapsed;
+              const auto oldValue =
+                  prevExpandedState ? winrt::ExpandCollapseState::Expanded : winrt::ExpandCollapseState::Collapsed;
+              peer.RaisePropertyChangedEvent(
+                  winrt::ExpandCollapsePatternIdentifiers::ExpandCollapseStateProperty(),
+                  winrt::box_value(oldValue),
+                  winrt::box_value(newValue));
+            }
           }
         }
       }
 
       DynamicAutomationProperties::SetAccessibilityStateSelected(
-          element, states[static_cast<int32_t>(winrt::react::uwp::AccessibilityStates::Selected)]);
+          element, states[static_cast<int32_t>(winrt::Microsoft::ReactNative::AccessibilityStates::Selected)]);
       DynamicAutomationProperties::SetAccessibilityStateDisabled(
-          element, states[static_cast<int32_t>(winrt::react::uwp::AccessibilityStates::Disabled)]);
+          element, states[static_cast<int32_t>(winrt::Microsoft::ReactNative::AccessibilityStates::Disabled)]);
       DynamicAutomationProperties::SetAccessibilityStateChecked(
-          element, states[static_cast<int32_t>(winrt::react::uwp::AccessibilityStates::Checked)]);
+          element, states[static_cast<int32_t>(winrt::Microsoft::ReactNative::AccessibilityStates::Checked)]);
       DynamicAutomationProperties::SetAccessibilityStateUnchecked(
-          element, states[static_cast<int32_t>(winrt::react::uwp::AccessibilityStates::Unchecked)]);
+          element, states[static_cast<int32_t>(winrt::Microsoft::ReactNative::AccessibilityStates::Unchecked)]);
       DynamicAutomationProperties::SetAccessibilityStateBusy(
-          element, states[static_cast<int32_t>(winrt::react::uwp::AccessibilityStates::Busy)]);
+          element, states[static_cast<int32_t>(winrt::Microsoft::ReactNative::AccessibilityStates::Busy)]);
       DynamicAutomationProperties::SetAccessibilityStateExpanded(
-          element, states[static_cast<int32_t>(winrt::react::uwp::AccessibilityStates::Expanded)]);
+          element, states[static_cast<int32_t>(winrt::Microsoft::ReactNative::AccessibilityStates::Expanded)]);
       DynamicAutomationProperties::SetAccessibilityStateCollapsed(
-          element, states[static_cast<int32_t>(winrt::react::uwp::AccessibilityStates::Collapsed)]);
+          element, states[static_cast<int32_t>(winrt::Microsoft::ReactNative::AccessibilityStates::Collapsed)]);
     } else if (propertyName == "accessibilityValue") {
+      winrt::hstring textValue;
+      const int numericValuesCount = 3;
+      double numericValues[numericValuesCount] = {};
+
       if (propertyValue.Type() == winrt::Microsoft::ReactNative::JSValueType::Object) {
         for (const auto &pair : propertyValue.AsObject()) {
           const std::string &innerName = pair.first;
           const auto &innerValue = pair.second;
 
+          auto peer = xaml::Automation::Peers::FrameworkElementAutomationPeer::FromElement(element);
+
           if (innerName == "min" &&
               (innerValue.Type() == winrt::Microsoft::ReactNative::JSValueType::Double ||
                innerValue.Type() == winrt::Microsoft::ReactNative::JSValueType::Int64)) {
-            DynamicAutomationProperties::SetAccessibilityValueMin(element, innerValue.AsDouble());
+            numericValues[static_cast<int32_t>(winrt::Microsoft::ReactNative::AccessibilityValue::Min)] =
+                innerValue.AsDouble();
+
+            const auto prevMinValue = DynamicAutomationProperties::GetAccessibilityValueMin(element);
+            if (peer != nullptr && prevMinValue != innerValue.AsDouble()) {
+              peer.RaisePropertyChangedEvent(
+                  winrt::RangeValuePatternIdentifiers::MinimumProperty(),
+                  winrt::box_value(prevMinValue),
+                  winrt::box_value(innerValue.AsDouble()));
+            }
           } else if (
-              innerName == "max" && innerValue.Type() == winrt::Microsoft::ReactNative::JSValueType::Double ||
-              innerValue.Type() == winrt::Microsoft::ReactNative::JSValueType::Int64) {
-            DynamicAutomationProperties::SetAccessibilityValueMax(element, innerValue.AsDouble());
+              innerName == "max" &&
+              (innerValue.Type() == winrt::Microsoft::ReactNative::JSValueType::Double ||
+               innerValue.Type() == winrt::Microsoft::ReactNative::JSValueType::Int64)) {
+            numericValues[static_cast<int32_t>(winrt::Microsoft::ReactNative::AccessibilityValue::Max)] =
+                innerValue.AsDouble();
+
+            const auto prevMaxValue = DynamicAutomationProperties::GetAccessibilityValueMax(element);
+            if (peer != nullptr && prevMaxValue != innerValue.AsDouble()) {
+              peer.RaisePropertyChangedEvent(
+                  winrt::RangeValuePatternIdentifiers::MaximumProperty(),
+                  winrt::box_value(prevMaxValue),
+                  winrt::box_value(innerValue.AsDouble()));
+            }
           } else if (
-              innerName == "now" && innerValue.Type() == winrt::Microsoft::ReactNative::JSValueType::Double ||
-              innerValue.Type() == winrt::Microsoft::ReactNative::JSValueType::Int64) {
-            DynamicAutomationProperties::SetAccessibilityValueNow(element, innerValue.AsDouble());
+              innerName == "now" &&
+              (innerValue.Type() == winrt::Microsoft::ReactNative::JSValueType::Double ||
+               innerValue.Type() == winrt::Microsoft::ReactNative::JSValueType::Int64)) {
+            numericValues[static_cast<int32_t>(winrt::Microsoft::ReactNative::AccessibilityValue::Now)] =
+                innerValue.AsDouble();
+
+            const auto prevNowValue = DynamicAutomationProperties::GetAccessibilityValueNow(element);
+            if (peer != nullptr && prevNowValue != innerValue.AsDouble()) {
+              peer.RaisePropertyChangedEvent(
+                  winrt::RangeValuePatternIdentifiers::ValueProperty(),
+                  winrt::box_value(prevNowValue),
+                  winrt::box_value(innerValue.AsDouble()));
+            }
           } else if (innerName == "text" && innerValue.Type() == winrt::Microsoft::ReactNative::JSValueType::String) {
-            auto value = react::uwp::asHstring(innerValue);
-            DynamicAutomationProperties::SetAccessibilityValueText(element, value);
+            textValue = asHstring(innerValue);
+
+            const auto prevTextValue = DynamicAutomationProperties::GetAccessibilityValueText(element);
+            if (peer != nullptr && prevTextValue != textValue) {
+              peer.RaisePropertyChangedEvent(
+                  winrt::ValuePatternIdentifiers::ValueProperty(),
+                  winrt::box_value(prevTextValue),
+                  winrt::box_value(textValue));
+            }
           }
         }
       }
+
+      DynamicAutomationProperties::SetAccessibilityValueMin(
+          element, numericValues[static_cast<int32_t>(winrt::Microsoft::ReactNative::AccessibilityValue::Min)]);
+      DynamicAutomationProperties::SetAccessibilityValueMax(
+          element, numericValues[static_cast<int32_t>(winrt::Microsoft::ReactNative::AccessibilityValue::Max)]);
+      DynamicAutomationProperties::SetAccessibilityValueNow(
+          element, numericValues[static_cast<int32_t>(winrt::Microsoft::ReactNative::AccessibilityValue::Now)]);
+      DynamicAutomationProperties::SetAccessibilityValueText(element, textValue);
     } else if (propertyName == "testID") {
       if (propertyValue.Type() == winrt::Microsoft::ReactNative::JSValueType::String) {
-        auto value = react::uwp::asHstring(propertyValue);
+        auto value = asHstring(propertyValue);
         auto boxedValue = winrt::Windows::Foundation::PropertyValue::CreateString(value);
 
         element.SetValue(xaml::Automation::AutomationProperties::AutomationIdProperty(), boxedValue);
@@ -519,7 +610,7 @@ bool FrameworkElementViewManager::UpdateProperty(
       }
     } else if (propertyName == "tooltip") {
       if (propertyValue.Type() == winrt::Microsoft::ReactNative::JSValueType::String) {
-        winrt::ToolTipService::SetToolTip(element, winrt::box_value(react::uwp::asHstring(propertyValue)));
+        winrt::ToolTipService::SetToolTip(element, winrt::box_value(asHstring(propertyValue)));
       }
     } else if (propertyName == "zIndex") {
       if (propertyValue.Type() == winrt::Microsoft::ReactNative::JSValueType::Double ||
@@ -533,8 +624,20 @@ bool FrameworkElementViewManager::UpdateProperty(
       }
     } else if (TryUpdateFlowDirection(element, propertyName, propertyValue)) {
     } else if (propertyName == "accessibilityActions") {
-      auto value = json_type_traits<winrt::IVector<winrt::react::uwp::AccessibilityAction>>::parseJson(propertyValue);
+      auto value = json_type_traits<winrt::IVector<winrt::Microsoft::ReactNative::AccessibilityAction>>::parseJson(
+          propertyValue);
       DynamicAutomationProperties::SetAccessibilityActions(element, value);
+    } else if (propertyName == "display") {
+      if (propertyValue.Type() == winrt::Microsoft::ReactNative::JSValueType::String) {
+        auto value = propertyValue.AsString();
+        if (value == "none") {
+          element.Visibility(xaml::Visibility::Collapsed);
+        } else {
+          element.Visibility(xaml::Visibility::Visible);
+        }
+      } else if (propertyValue.IsNull()) {
+        element.ClearValue(xaml::UIElement::VisibilityProperty());
+      }
     } else {
       return Super::UpdateProperty(nodeToUpdate, propertyName, propertyValue);
     }

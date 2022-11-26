@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 #pragma once
 
+#include "codegen/NativeUIManagerSpec.g.h"
 #include <CxxMessageQueue.h>
 #include <INativeUIManager.h>
 #include <NativeModules.h>
@@ -28,9 +29,15 @@ struct UIManagerSettings {
 };
 
 std::weak_ptr<NativeUIManager> GetNativeUIManager(const Mso::React::IReactContext &context);
+std::weak_ptr<NativeUIManager> GetNativeUIManager(const winrt::Microsoft::ReactNative::ReactContext &context);
 
 REACT_MODULE(UIManager)
 struct UIManager final {
+  // TODO:
+  // Spec incorrectly reports commandID as a number, but its actually a number | string..
+  // There is also other issues to catch up, so dont use the spec for now
+  // using ModuleSpec = ReactNativeSpecs::UIManagerSpec;
+
   UIManager();
   ~UIManager();
 

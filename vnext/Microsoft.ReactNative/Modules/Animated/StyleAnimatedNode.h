@@ -5,15 +5,16 @@
 #include <folly/dynamic.h>
 #include "AnimatedNode.h"
 #include "FacadeType.h"
+#include "JSValue.h"
 
-namespace react::uwp {
+namespace Microsoft::ReactNative {
 class StyleAnimatedNode final : public AnimatedNode {
  public:
   StyleAnimatedNode(
       int64_t tag,
-      const folly::dynamic &config,
+      const winrt::Microsoft::ReactNative::JSValueObject &config,
       const std::shared_ptr<NativeAnimatedNodeManager> &manager);
-  void CollectViewUpdates(const folly::dynamic &propsMap);
+  void CollectViewUpdates(winrt::Microsoft::ReactNative::JSValueObject &propsMap);
 
   std::unordered_map<FacadeType, int64_t> GetMapping();
 
@@ -22,4 +23,4 @@ class StyleAnimatedNode final : public AnimatedNode {
 
   static constexpr std::string_view s_styleName{"style"};
 };
-} // namespace react::uwp
+} // namespace Microsoft::ReactNative

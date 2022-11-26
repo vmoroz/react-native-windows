@@ -6,9 +6,20 @@
 #include <UI.Composition.h>
 #include <UI.Xaml.Controls.Primitives.h>
 #include <UI.Xaml.Documents.h>
+#include <UI.Xaml.Media.h>
 #include "Utils/Helpers.h"
 
 namespace Microsoft::ReactNative {
+
+xaml::DependencyProperty ReactTagProperty() noexcept {
+  static xaml::DependencyProperty s_tagProperty = xaml::DependencyProperty::RegisterAttached(
+      L"ReactTag",
+      winrt::xaml_typename<int64_t>(),
+      winrt::xaml_typename<XamlView>(),
+      xaml::PropertyMetadata(winrt::box_value(InvalidTag)));
+
+  return s_tagProperty;
+}
 
 xaml::XamlRoot TryGetXamlRoot(const XamlView &view) {
   xaml::XamlRoot root{nullptr};
@@ -22,13 +33,6 @@ xaml::XamlRoot TryGetXamlRoot(const XamlView &view) {
   return root;
 }
 
-comp::Compositor GetCompositor(const XamlView &view) {
-  if (auto window = xaml::Window::Current()) {
-    return window.Compositor();
-  }
-  return GetCompositor();
-}
-
 thread_local comp::Compositor tlsCompositor{nullptr};
 
 void SetCompositor(const comp::Compositor &compositor) {
@@ -40,13 +44,16 @@ void SetCompositor(const comp::Compositor &compositor) {
   }
 }
 
-comp::Compositor GetCompositor() {
-  if (!react::uwp::IsXamlIsland()) {
-    return xaml::Window::Current().Compositor();
+comp::Compositor GetCompositor(const XamlView &view) {
+  if (auto window = xaml::Window::Current()) {
+    return window.Compositor();
   }
-  comp::Compositor compositor;
+#ifndef USE_WINUI3
   assert(tlsCompositor != nullptr);
   return tlsCompositor;
+#else
+  return tlsCompositor ? tlsCompositor : xaml::Media::CompositionTarget::GetCompositorForCurrentThread();
+#endif
 }
 
 } // namespace Microsoft::ReactNative

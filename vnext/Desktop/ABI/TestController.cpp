@@ -15,7 +15,7 @@
 #include "RedBoxErrorInfo.h"
 #include "TestController.h"
 
-#include <ReactHost/ReactContext.h>
+#include <ReactHost/MsoReactContext.h>
 
 #include "Microsoft.Internal.TestController.g.cpp"
 
@@ -91,7 +91,7 @@ msrn::IReactModuleBuilder TestController::CreateReactModuleBuilder(msrn::IReactC
 msrn::IReactPackageBuilder TestController::CreateReactPackageBuilder() {
   auto nativeModulesProvider = std::make_shared<msrn::NativeModulesProvider>();
   auto turboModulesProvider = std::make_shared<msrn::TurboModulesProvider>();
-  return make<msrn::ReactPackageBuilder>(nativeModulesProvider, turboModulesProvider);
+  return make<msrn::ReactPackageBuilder>(nativeModulesProvider, turboModulesProvider, true);
 }
 
 msrn::IRedBoxErrorFrameInfo

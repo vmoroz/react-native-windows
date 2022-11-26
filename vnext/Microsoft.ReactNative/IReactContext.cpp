@@ -14,7 +14,6 @@ namespace winrt::Microsoft::ReactNative::implementation {
 // ReactSettingsSnapshot implementation
 //=============================================================================
 
-#ifndef CORE_ABI
 ReactSettingsSnapshot::ReactSettingsSnapshot(Mso::CntPtr<const Mso::React::IReactSettingsSnapshot> &&settings) noexcept
     : m_settings{std::move(settings)} {}
 
@@ -54,6 +53,10 @@ uint16_t ReactSettingsSnapshot::SourceBundlePort() const noexcept {
   return m_settings->SourceBundlePort();
 }
 
+bool ReactSettingsSnapshot::RequestInlineSourceMap() const noexcept {
+  return m_settings->RequestInlineSourceMap();
+}
+
 hstring ReactSettingsSnapshot::JavaScriptBundleFile() const noexcept {
   return winrt::to_hstring(m_settings->JavaScriptBundleFile());
 }
@@ -66,27 +69,16 @@ Mso::React::IReactSettingsSnapshot const &ReactSettingsSnapshot::GetInner() cons
   return *m_settings;
 }
 
-#endif
-
 //=============================================================================
 // ReactContext implementation
 //=============================================================================
 
-ReactContext::ReactContext(Mso::CntPtr<Mso::React::IReactContext> &&context) noexcept : m_context {
-  std::move(context)
-}
-#ifndef CORE_ABI
-, m_settings {
-  winrt::make<ReactSettingsSnapshot>(&m_context->SettingsSnapshot())
-}
-#endif
-{}
+ReactContext::ReactContext(Mso::CntPtr<Mso::React::IReactContext> &&context) noexcept
+    : m_context{std::move(context)}, m_settings{winrt::make<ReactSettingsSnapshot>(&m_context->SettingsSnapshot())} {}
 
-#ifndef CORE_ABI
 IReactSettingsSnapshot ReactContext::SettingsSnapshot() noexcept {
   return m_settings;
 }
-#endif
 
 IReactPropertyBag ReactContext::Properties() noexcept {
   return m_context->Properties();
@@ -106,6 +98,23 @@ IReactDispatcher ReactContext::JSDispatcher() noexcept {
 
 Windows::Foundation::IInspectable ReactContext::JSRuntime() noexcept {
   return m_context->JsiRuntime();
+}
+
+LoadingState ReactContext::LoadingState() noexcept {
+  switch (m_context->State()) {
+    case Mso::React::ReactInstanceState::Loading:
+    case Mso::React::ReactInstanceState::WaitingForDebugger:
+      return LoadingState::Loading;
+    case Mso::React::ReactInstanceState::Loaded:
+      return LoadingState::Loaded;
+    case Mso::React::ReactInstanceState::HasError:
+      return LoadingState::HasError;
+    case Mso::React::ReactInstanceState::Unloaded:
+      return LoadingState::Unloaded;
+    default:
+      assert(false);
+      return LoadingState::HasError;
+  };
 }
 
 #ifndef CORE_ABI

@@ -16,14 +16,23 @@
 #include <Modules/PaperUIManagerModule.h>
 #include <ReactPropertyBag.h>
 #include <TestHook.h>
+#include <Utils/PropertyUtils.h>
 #include <Views/ExpressionAnimationStore.h>
 #include <Views/ShadowNodeBase.h>
+#include <cxxreact/SystraceSection.h>
 
 namespace winrt {
 using namespace xaml;
 }
 
+using namespace facebook::react;
+
 namespace Microsoft::ReactNative {
+
+static const std::unordered_map<std::string, PointerEventsKind> pointerEventsMap = {
+    {"box-none", PointerEventsKind::BoxNone},
+    {"box-only", PointerEventsKind::BoxOnly},
+    {"none", PointerEventsKind::None}};
 
 float GetConstrainedResult(float constrainTo, float measuredSize, YGMeasureMode measureMode) {
   // Round up to workaround truncation inside yoga
@@ -80,7 +89,9 @@ YGSize DefaultYogaSelfMeasureFunc(
   return desiredSize;
 }
 
-ViewManagerBase::ViewManagerBase(const Mso::React::IReactContext &context) : m_context(&context) {}
+ViewManagerBase::ViewManagerBase(const Mso::React::IReactContext &context)
+    : m_context(&context),
+      m_batchingEventEmitter{std::make_shared<React::BatchingEventEmitter>(Mso::CntPtr(&context))} {}
 
 void ViewManagerBase::GetExportedViewConstants(const winrt::Microsoft::ReactNative::IJSValueWriter &writer) const {}
 
@@ -90,6 +101,8 @@ void ViewManagerBase::GetNativeProps(const winrt::Microsoft::ReactNative::IJSVal
   React::WriteProperty(writer, L"onLayout", L"function");
   React::WriteProperty(writer, L"keyDownEvents", L"array");
   React::WriteProperty(writer, L"keyUpEvents", L"array");
+  React::WriteProperty(writer, L"onMouseEnter", L"function");
+  React::WriteProperty(writer, L"onMouseLeave", L"function");
 }
 
 void ViewManagerBase::GetConstants(const winrt::Microsoft::ReactNative::IJSValueWriter &writer) const {
@@ -152,6 +165,24 @@ void ViewManagerBase::GetExportedCustomBubblingEventTypeConstants(
       // Keyboard events
       L"KeyUp",
       L"KeyDown",
+
+      // Pointer events
+      L"PointerCancel",
+      L"PointerCancelCapture",
+      L"PointerDown",
+      L"PointerDownCapture",
+      L"PointerEnter",
+      L"PointerEnterCapture",
+      L"PointerLeave",
+      L"PointerLeaveCapture",
+      L"PointerMove",
+      L"PointerMoveCapture",
+      L"PointerUp",
+      L"PointerUpCapture",
+      L"PointerOut",
+      L"PointerOutCapture",
+      L"PointerOver",
+      L"PointerOverCapture",
   };
 
   folly::dynamic bubblingEvents = folly::dynamic::object();
@@ -165,7 +196,7 @@ void ViewManagerBase::GetExportedCustomBubblingEventTypeConstants(
     writer.WritePropertyName(L"phasedRegistrationNames");
     writer.WriteObjectBegin();
     React::WriteProperty(writer, L"captured", bubbleName + L"Capture");
-    React::WriteProperty(writer, L"capbubbledtured", std::move(bubbleName));
+    React::WriteProperty(writer, L"bubbled", std::move(bubbleName));
     writer.WriteObjectEnd();
     writer.WriteObjectEnd();
   }
@@ -191,8 +222,8 @@ void ViewManagerBase::GetExportedCustomDirectEventTypeConstants(
   }
 }
 
-XamlView ViewManagerBase::CreateView(int64_t tag) {
-  XamlView view = CreateViewCore(tag);
+XamlView ViewManagerBase::CreateView(int64_t tag, const winrt::Microsoft::ReactNative::JSValueObject &props) {
+  XamlView view = CreateViewCore(tag, props);
 
   OnViewCreated(view);
   // Set the tag if the element type supports it
@@ -230,15 +261,6 @@ void ViewManagerBase::ReplaceChild(const XamlView &parent, const XamlView &oldCh
 void ViewManagerBase::UpdateProperties(
     ShadowNodeBase *nodeToUpdate,
     winrt::Microsoft::ReactNative::JSValueObject &props) {
-  // Directly dirty this node since non-layout changes like the text property do
-  // not trigger relayout
-  //  There isn't actually a yoga node for RawText views, but it will invalidate
-  //  the ancestors which
-  //  will include the containing Text element. And that's what matters.
-  int64_t tag = GetTag(nodeToUpdate->GetView());
-  if (auto uiManager = GetNativeUIManager(GetReactContext()).lock())
-    uiManager->DirtyYogaNode(tag);
-
   for (const auto &pair : props) {
     const std::string &propertyName = pair.first;
     const auto &propertyValue = pair.second;
@@ -247,7 +269,10 @@ void ViewManagerBase::UpdateProperties(
     }
   }
 
-  OnPropertiesUpdated(nodeToUpdate);
+  {
+    SystraceSection s("ViewManagerBase::OnPropertiesUpdated");
+    OnPropertiesUpdated(nodeToUpdate);
+  }
 }
 
 bool ViewManagerBase::UpdateProperty(
@@ -260,6 +285,24 @@ bool ViewManagerBase::UpdateProperty(
     nodeToUpdate->UpdateHandledKeyboardEvents(propertyName, propertyValue);
   } else if (propertyName == "keyUpEvents") {
     nodeToUpdate->UpdateHandledKeyboardEvents(propertyName, propertyValue);
+  } else if (propertyName == "pointerEvents") {
+    const auto iter = pointerEventsMap.find(propertyValue.AsString());
+    if (iter != pointerEventsMap.end()) {
+      nodeToUpdate->m_pointerEvents = iter->second;
+      if (const auto uiElement = nodeToUpdate->GetView().try_as<xaml::UIElement>()) {
+        if (nodeToUpdate->m_pointerEvents == PointerEventsKind::None) {
+          uiElement.IsHitTestVisible(false);
+        } else {
+          uiElement.ClearValue(xaml::UIElement::IsHitTestVisibleProperty());
+        }
+      }
+    } else {
+      nodeToUpdate->m_pointerEvents = PointerEventsKind::Auto;
+      if (const auto uiElement = nodeToUpdate->GetView().try_as<xaml::UIElement>()) {
+        uiElement.ClearValue(xaml::UIElement::IsHitTestVisibleProperty());
+      }
+    }
+  } else if (TryUpdateMouseEvents(nodeToUpdate, propertyName, propertyValue)) {
   } else {
     return false;
   }
@@ -276,19 +319,17 @@ void ViewManagerBase::DispatchCommand(
 }
 
 static const winrt::Microsoft::ReactNative::ReactPropertyId<
-    winrt::Microsoft::ReactNative::ReactNonAbiValue<std::shared_ptr<react::uwp::ExpressionAnimationStore>>>
+    winrt::Microsoft::ReactNative::ReactNonAbiValue<std::shared_ptr<ExpressionAnimationStore>>>
     &ExpressionAnimationStorePropertyId() noexcept {
   static const winrt::Microsoft::ReactNative::ReactPropertyId<
-      winrt::Microsoft::ReactNative::ReactNonAbiValue<std::shared_ptr<react::uwp::ExpressionAnimationStore>>>
+      winrt::Microsoft::ReactNative::ReactNonAbiValue<std::shared_ptr<ExpressionAnimationStore>>>
       prop{L"ReactNative.ViewManagerBase", L"ExpressionAnimationStore"};
   return prop;
 }
 
-std::shared_ptr<react::uwp::ExpressionAnimationStore> ViewManagerBase::GetExpressionAnimationStore() noexcept {
+std::shared_ptr<ExpressionAnimationStore> ViewManagerBase::GetExpressionAnimationStore() noexcept {
   return winrt::Microsoft::ReactNative::ReactPropertyBag(GetReactContext().Properties())
-      .GetOrCreate(
-          ExpressionAnimationStorePropertyId(),
-          []() { return std::make_shared<react::uwp::ExpressionAnimationStore>(); })
+      .GetOrCreate(ExpressionAnimationStorePropertyId(), []() { return std::make_shared<ExpressionAnimationStore>(); })
       .Value();
 }
 
@@ -305,7 +346,7 @@ void ViewManagerBase::NotifyUnimplementedProperty(
     TestHook::NotifyUnimplementedProperty(
         Microsoft::Common::Unicode::Utf16ToUtf8(viewManagerName), className, propertyName, value);
   } else {
-    cdebug << "[NonIInspectable] viewManagerName = " << viewManagerName << std::endl;
+    cdebug << "[NonIInspectable] viewManagerName = " << viewManagerName << "\n";
   }
 #endif // DEBUG
 }
@@ -317,6 +358,17 @@ void ViewManagerBase::SetLayoutProps(
     float top,
     float width,
     float height) {
+  if (auto uiManager = GetNativeUIManager(GetReactContext()).lock()) {
+    auto parent = nodeToUpdate.GetParent();
+    if (parent != -1) {
+      const auto &parentShadowNode = uiManager->getHost()->GetShadowNodeForTag(parent);
+      const auto &parentVM = parentShadowNode.m_viewManager;
+      if (parentVM->RequiresNativeLayout()) {
+        return;
+      }
+    }
+  }
+
   auto element = viewToUpdate.as<xaml::UIElement>();
   if (element == nullptr) {
     // TODO: Assert
@@ -325,21 +377,11 @@ void ViewManagerBase::SetLayoutProps(
   auto fe = element.as<xaml::FrameworkElement>();
 
   // Set Position & Size Properties
-  react::uwp::ViewPanel::SetLeft(element, left);
-  react::uwp::ViewPanel::SetTop(element, top);
+  ViewPanel::SetLeft(element, left);
+  ViewPanel::SetTop(element, top);
 
   fe.Width(width);
   fe.Height(height);
-
-  // Fire Events
-  if (nodeToUpdate.m_onLayoutRegistered) {
-    int64_t tag = GetTag(viewToUpdate);
-    folly::dynamic layout = folly::dynamic::object("x", left)("y", top)("height", height)("width", width);
-
-    folly::dynamic eventData = folly::dynamic::object("target", tag)("layout", std::move(layout));
-
-    m_context->DispatchEvent(tag, "topLayout", std::move(eventData));
-  }
 }
 
 YGMeasureFunc ViewManagerBase::GetYogaCustomMeasureFunc() const {
@@ -354,10 +396,34 @@ bool ViewManagerBase::IsNativeControlWithSelfLayout() const {
   return GetYogaCustomMeasureFunc() != nullptr;
 }
 
-void ViewManagerBase::DispatchEvent(int64_t viewTag, std::string &&eventName, folly::dynamic &&eventData)
-    const noexcept {
-  folly::dynamic params = folly::dynamic::array(viewTag, std::move(eventName), std::move(eventData));
-  m_context->CallJSFunction("RCTEventEmitter", "receiveEvent", std::move(params));
+void ViewManagerBase::MarkDirty(int64_t tag) {
+  if (auto uiManager = GetNativeUIManager(GetReactContext()).lock())
+    uiManager->DirtyYogaNode(tag);
+}
+
+void ViewManagerBase::OnPointerEvent(
+    ShadowNodeBase *node,
+    const winrt::Microsoft::ReactNative::ReactPointerEventArgs &args) {
+  if ((args.Target() == node->GetView() && node->m_pointerEvents == PointerEventsKind::BoxNone) ||
+      node->m_pointerEvents == PointerEventsKind::None) {
+    args.Target(nullptr);
+  } else if (node->m_pointerEvents == PointerEventsKind::BoxOnly) {
+    args.Target(node->GetView());
+  }
+}
+
+void ViewManagerBase::DispatchEvent(
+    int64_t viewTag,
+    winrt::hstring &&eventName,
+    const React::JSValueArgWriter &eventDataWriter) const noexcept {
+  m_batchingEventEmitter->DispatchEvent(viewTag, std::move(eventName), eventDataWriter);
+}
+
+void ViewManagerBase::DispatchCoalescingEvent(
+    int64_t viewTag,
+    winrt::hstring &&eventName,
+    const React::JSValueArgWriter &eventDataWriter) const noexcept {
+  m_batchingEventEmitter->DispatchCoalescingEvent(viewTag, std::move(eventName), eventDataWriter);
 }
 
 } // namespace Microsoft::ReactNative

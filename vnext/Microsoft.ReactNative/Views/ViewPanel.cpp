@@ -9,6 +9,7 @@
 #include <UI.Xaml.Media.h>
 #include <Utils/PropertyUtils.h>
 #include <Utils/ResourceBrushUtils.h>
+#include <cxxreact/SystraceSection.h>
 #include <winrt/Windows.Foundation.h>
 #include <winrt/Windows.UI.Xaml.Interop.h>
 
@@ -28,7 +29,9 @@ using namespace xaml::Media;
 using namespace Windows::Foundation;
 } // namespace winrt
 
-namespace winrt::PROJECT_ROOT_NAMESPACE::implementation {
+using namespace facebook::react;
+
+namespace winrt::Microsoft::ReactNative::implementation {
 
 const winrt::TypeName viewPanelTypeName{winrt::hstring{L"ViewPanel"}, winrt::TypeKind::Metadata};
 
@@ -45,14 +48,6 @@ winrt::AutomationPeer ViewPanel::OnCreateAutomationPeer() {
   auto panel{sender.as<ViewPanel>()};
   if (panel.get() != nullptr)
     panel->m_propertiesChanged = true;
-}
-
-/*static*/ void ViewPanel::PositionPropertyChanged(
-    xaml::DependencyObject sender,
-    xaml::DependencyPropertyChangedEventArgs e) {
-  auto element{sender.as<xaml::UIElement>()};
-  if (element != nullptr)
-    InvalidateForArrange(element);
 }
 
 /*static*/ xaml::DependencyProperty ViewPanel::ViewBackgroundProperty() {
@@ -96,23 +91,11 @@ winrt::AutomationPeer ViewPanel::OnCreateAutomationPeer() {
 }
 
 /*static*/ xaml::DependencyProperty ViewPanel::TopProperty() {
-  static xaml::DependencyProperty s_topProperty = xaml::DependencyProperty::RegisterAttached(
-      L"Top",
-      winrt::xaml_typename<double>(),
-      viewPanelTypeName,
-      winrt::PropertyMetadata(winrt::box_value((double)0), ViewPanel::PositionPropertyChanged));
-
-  return s_topProperty;
+  return xaml::Controls::Canvas::TopProperty();
 }
 
 /*static*/ xaml::DependencyProperty ViewPanel::LeftProperty() {
-  static xaml::DependencyProperty s_LeftProperty = xaml::DependencyProperty::RegisterAttached(
-      L"Left",
-      winrt::xaml_typename<double>(),
-      viewPanelTypeName,
-      winrt::PropertyMetadata(winrt::box_value((double)0), ViewPanel::PositionPropertyChanged));
-
-  return s_LeftProperty;
+  return xaml::Controls::Canvas::LeftProperty();
 }
 
 /*static*/ xaml::DependencyProperty ViewPanel::ClipChildrenProperty() {
@@ -135,7 +118,7 @@ winrt::AutomationPeer ViewPanel::OnCreateAutomationPeer() {
   InvalidateForArrange(element);
 }
 
-void ViewPanel::InvalidateForArrange(xaml::UIElement element) {
+void ViewPanel::InvalidateForArrange(const xaml::DependencyObject &element) {
   // If the element's position has changed, we must invalidate the parent for arrange,
   // as it's the parent's responsibility to arrange its children.
   if (auto parent = VisualTreeHelper::GetParent(element)) {
@@ -247,6 +230,7 @@ void ViewPanel::ClipChildren(bool value) {
 }
 
 void ViewPanel::FinalizeProperties() {
+  SystraceSection s("ViewPanel::FinalizeProperties");
   if (!m_propertiesChanged)
     return;
 
@@ -321,7 +305,7 @@ void ViewPanel::FinalizeProperties() {
         // Borders with no brush draw something other than transparent on other platforms.
         // To match, we'll use a default border brush if one isn't already set.
         // Note:  Keep this in sync with code in TryUpdateBorderProperties().
-        m_border.BorderBrush(::react::uwp::DefaultBrushStore::Instance().GetDefaultBorderBrush());
+        m_border.BorderBrush(::Microsoft::ReactNative::DefaultBrushStore::Instance().GetDefaultBorderBrush());
       }
     } else
       m_border.ClearValue(xaml::Controls::Border::BorderThicknessProperty());
@@ -376,4 +360,4 @@ void ViewPanel::UpdateClip(winrt::Size &finalSize) {
   }
 }
 
-} // namespace winrt::PROJECT_ROOT_NAMESPACE::implementation
+} // namespace winrt::Microsoft::ReactNative::implementation

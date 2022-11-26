@@ -1,5 +1,11 @@
 {
   "extends": "@rnw-scripts/ts-config",
   "include": ["."],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules"],
+  "compilerOptions": {
+    "noEmit": true,
+    "paths": {
+      "Utilities": ["../../node_modules/react-native/types/Utilities.d.ts"],
+    },
+  },
 }

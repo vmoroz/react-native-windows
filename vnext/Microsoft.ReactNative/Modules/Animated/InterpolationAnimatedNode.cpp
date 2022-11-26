@@ -3,70 +3,88 @@
 
 #include "pch.h"
 
+#include "AnimationUtils.h"
 #include "ExtrapolationType.h"
 #include "InterpolationAnimatedNode.h"
 #include "NativeAnimatedNodeManager.h"
 
-namespace react::uwp {
+namespace Microsoft::ReactNative {
 InterpolationAnimatedNode::InterpolationAnimatedNode(
     int64_t tag,
-    const folly::dynamic &config,
+    const winrt::Microsoft::ReactNative::JSValueObject &config,
     const std::shared_ptr<NativeAnimatedNodeManager> &manager)
-    : ValueAnimatedNode(tag, manager) {
-  for (const auto &rangeValue : config.find(s_inputRangeName).dereference().second) {
-    m_inputRanges.push_back(rangeValue.asDouble());
+    : ValueAnimatedNode(tag, config, manager) {
+  for (const auto &rangeValue : config[s_inputRangeName].AsArray()) {
+    m_inputRanges.push_back(rangeValue.AsDouble());
   }
-  for (const auto &rangeValue : config.find(s_outputRangeName).dereference().second) {
-    m_outputRanges.push_back(rangeValue.asDouble());
+  for (const auto &rangeValue : config[s_outputRangeName].AsArray()) {
+    m_outputRanges.push_back(rangeValue.AsDouble());
   }
 
-  m_extrapolateLeft = config.find(s_extrapolateLeftName).dereference().second.asString();
-  m_extrapolateRight = config.find(s_extrapolateRightName).dereference().second.asString();
+  m_extrapolateLeft = config[s_extrapolateLeftName].AsString();
+  m_extrapolateRight = config[s_extrapolateRightName].AsString();
 }
 
-void InterpolationAnimatedNode::Update() {}
+void InterpolationAnimatedNode::Update() {
+  assert(!m_useComposition);
+  if (m_parentTag == s_parentTagUnset) {
+    return;
+  }
+
+  if (const auto manager = m_manager.lock()) {
+    if (const auto node = manager->GetValueAnimatedNode(m_parentTag)) {
+      RawValue(InterpolateValue(node->Value()));
+    }
+  }
+}
 
 void InterpolationAnimatedNode::OnDetachedFromNode([[maybe_unused]] int64_t animatedNodeTag) {
   assert(m_parentTag == animatedNodeTag);
   m_parentTag = s_parentTagUnset;
-  m_propertySet.StopAnimation(s_valueName);
-  m_propertySet.StopAnimation(s_valueName);
-  m_rawValueAnimation = nullptr;
-  m_offsetAnimation = nullptr;
+
+  if (m_useComposition) {
+    m_propertySet.StopAnimation(s_valueName);
+    m_propertySet.StopAnimation(s_offsetName);
+    m_rawValueAnimation = nullptr;
+    m_offsetAnimation = nullptr;
+  }
 }
 
 void InterpolationAnimatedNode::OnAttachToNode(int64_t animatedNodeTag) {
+  assert(HasCompatibleAnimationDriver(animatedNodeTag));
   assert(m_parentTag == s_parentTagUnset);
   m_parentTag = animatedNodeTag;
 
-  const auto [rawValueAnimation, offsetAnimation] = [this]() {
-    if (const auto manager = m_manager.lock()) {
-      if (const auto parent = manager->GetValueAnimatedNode(m_parentTag)) {
-        const auto compositor = Microsoft::ReactNative::GetCompositor();
+  if (m_useComposition) {
+    const auto [rawValueAnimation, offsetAnimation] = [this]() {
+      if (const auto manager = m_manager.lock()) {
+        if (const auto parent = manager->GetValueAnimatedNode(m_parentTag)) {
+          const auto compositor = manager->Compositor();
 
-        const auto rawValueAnimation = CreateExpressionAnimation(compositor, *parent);
-        rawValueAnimation.Expression(
-            GetExpression(s_parentPropsName + static_cast<winrt::hstring>(L".") + s_valueName));
+          const auto rawValueAnimation = CreateExpressionAnimation(compositor, *parent);
+          rawValueAnimation.Expression(
+              GetExpression(s_parentPropsName + static_cast<winrt::hstring>(L".") + s_valueName));
 
-        const auto offsetAnimation = CreateExpressionAnimation(compositor, *parent);
-        offsetAnimation.Expression(
-            L"(" +
-            GetExpression(
-                s_parentPropsName + static_cast<winrt::hstring>(L".") + s_offsetName + L" + " + s_parentPropsName +
-                L"." + s_valueName) +
-            L") - this.target." + s_valueName);
+          const auto offsetAnimation = CreateExpressionAnimation(compositor, *parent);
+          offsetAnimation.Expression(
+              L"(" +
+              GetExpression(
+                  s_parentPropsName + static_cast<winrt::hstring>(L".") + s_offsetName + L" + " + s_parentPropsName +
+                  L"." + s_valueName) +
+              L") - this.target." + s_valueName);
 
-        return std::make_tuple(rawValueAnimation, offsetAnimation);
+          return std::make_tuple(rawValueAnimation, offsetAnimation);
+        }
       }
-    }
-    return std::tuple<comp::ExpressionAnimation, comp::ExpressionAnimation>(nullptr, nullptr);
-  }();
+      return std::tuple<comp::ExpressionAnimation, comp::ExpressionAnimation>(nullptr, nullptr);
+    }();
 
-  m_propertySet.StartAnimation(s_valueName, rawValueAnimation);
-  m_propertySet.StartAnimation(s_offsetName, offsetAnimation);
+    m_propertySet.StartAnimation(s_valueName, rawValueAnimation);
+    m_propertySet.StartAnimation(s_offsetName, offsetAnimation);
 
-  m_rawValueAnimation = rawValueAnimation;
-  m_offsetAnimation = offsetAnimation;
+    m_rawValueAnimation = rawValueAnimation;
+    m_offsetAnimation = offsetAnimation;
+  }
 }
 
 comp::ExpressionAnimation InterpolationAnimatedNode::CreateExpressionAnimation(
@@ -138,9 +156,10 @@ winrt::hstring InterpolationAnimatedNode::GetLeftExpression(
     const winrt::hstring &value,
     const winrt::hstring &leftInterpolateExpression) {
   const auto firstInput = s_inputName.data() + std::to_wstring(0);
+  const auto firstOutput = s_outputName.data() + std::to_wstring(0);
   switch (ExtrapolationTypeFromString(m_extrapolateLeft)) {
     case ExtrapolationType::Clamp:
-      return value + L" < " + firstInput + L" ? " + firstInput + L" : ";
+      return value + L" < " + firstInput + L" ? " + firstOutput + L" : ";
     case ExtrapolationType::Identity:
       return value + L" < " + firstInput + L" ? " + value + L" : ";
     case ExtrapolationType::Extend:
@@ -154,9 +173,10 @@ winrt::hstring InterpolationAnimatedNode::GetRightExpression(
     const winrt::hstring &value,
     const winrt::hstring &rightInterpolateExpression) {
   const auto lastInput = s_inputName.data() + std::to_wstring(m_inputRanges.size() - 1);
+  const auto lastOutput = s_outputName.data() + std::to_wstring(m_outputRanges.size() - 1);
   switch (ExtrapolationTypeFromString(m_extrapolateRight)) {
     case ExtrapolationType::Clamp:
-      return value + L" > " + lastInput + L" ? " + lastInput + L" : ";
+      return value + L" > " + lastInput + L" ? " + lastOutput + L" : ";
     case ExtrapolationType::Identity:
       return value + L" > " + lastInput + L" ? " + value + L" : ";
     case ExtrapolationType::Extend:
@@ -166,4 +186,24 @@ winrt::hstring InterpolationAnimatedNode::GetRightExpression(
   }
 }
 
-} // namespace react::uwp
+double InterpolationAnimatedNode::InterpolateValue(double value) {
+  // Compute range index
+  size_t index = 1;
+  for (; index < m_inputRanges.size() - 1; ++index) {
+    if (m_inputRanges[index] >= value) {
+      break;
+    }
+  }
+  index--;
+
+  return Interpolate(
+      value,
+      m_inputRanges[index],
+      m_inputRanges[index + 1],
+      m_outputRanges[index],
+      m_outputRanges[index + 1],
+      m_extrapolateLeft,
+      m_extrapolateRight);
+}
+
+} // namespace Microsoft::ReactNative

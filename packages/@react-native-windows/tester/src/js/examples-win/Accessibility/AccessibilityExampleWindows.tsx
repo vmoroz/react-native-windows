@@ -4,7 +4,7 @@
  * @format
  */
 
-import * as React from 'react';
+import React from 'react';
 import {
   FlatList,
   Text,
@@ -73,8 +73,8 @@ class HighContrastExample extends React.Component {
               ? [
                   this.styles.enabled,
                   {
-                    backgroundColor: this.state.highContrastColorValues
-                      .ButtonFaceColor,
+                    backgroundColor:
+                      this.state.highContrastColorValues.ButtonFaceColor,
                   },
                 ]
               : this.styles.disabled
@@ -90,8 +90,8 @@ class HighContrastExample extends React.Component {
               ? [
                   this.styles.enabled,
                   {
-                    backgroundColor: this.state.highContrastColorValues
-                      .ButtonTextColor,
+                    backgroundColor:
+                      this.state.highContrastColorValues.ButtonTextColor,
                   },
                 ]
               : this.styles.disabled
@@ -107,8 +107,8 @@ class HighContrastExample extends React.Component {
               ? [
                   this.styles.enabled,
                   {
-                    backgroundColor: this.state.highContrastColorValues
-                      .GrayTextColor,
+                    backgroundColor:
+                      this.state.highContrastColorValues.GrayTextColor,
                   },
                 ]
               : this.styles.disabled
@@ -124,8 +124,8 @@ class HighContrastExample extends React.Component {
               ? [
                   this.styles.enabled,
                   {
-                    backgroundColor: this.state.highContrastColorValues
-                      .HighlightColor,
+                    backgroundColor:
+                      this.state.highContrastColorValues.HighlightColor,
                   },
                 ]
               : this.styles.disabled
@@ -141,8 +141,8 @@ class HighContrastExample extends React.Component {
               ? [
                   this.styles.enabled,
                   {
-                    backgroundColor: this.state.highContrastColorValues
-                      .HighlightTextColor,
+                    backgroundColor:
+                      this.state.highContrastColorValues.HighlightTextColor,
                   },
                 ]
               : this.styles.disabled
@@ -158,8 +158,8 @@ class HighContrastExample extends React.Component {
               ? [
                   this.styles.enabled,
                   {
-                    backgroundColor: this.state.highContrastColorValues
-                      .HotlightColor,
+                    backgroundColor:
+                      this.state.highContrastColorValues.HotlightColor,
                   },
                 ]
               : this.styles.disabled
@@ -175,8 +175,8 @@ class HighContrastExample extends React.Component {
               ? [
                   this.styles.enabled,
                   {
-                    backgroundColor: this.state.highContrastColorValues
-                      .WindowColor,
+                    backgroundColor:
+                      this.state.highContrastColorValues.WindowColor,
                   },
                 ]
               : this.styles.disabled
@@ -192,8 +192,8 @@ class HighContrastExample extends React.Component {
               ? [
                   this.styles.enabled,
                   {
-                    backgroundColor: this.state.highContrastColorValues
-                      .WindowTextColor,
+                    backgroundColor:
+                      this.state.highContrastColorValues.WindowTextColor,
                   },
                 ]
               : this.styles.disabled
@@ -427,12 +427,14 @@ class AccessibilityStateExamples extends React.Component {
             backgroundColor: 'gray',
             height: 50,
           }}
+          focusable={true}
+          accessible={true}
+          accessibilityRole="adjustable"
           accessibilityValue={{
             min: this.state.viewRangeMin,
             max: this.state.viewRangeMax,
             now: this.state.viewRangeNow,
-          }}
-          accessibilityRole="adjustable">
+          }}>
           <Text>
             The View's (accessibilityRole == adjustable, ie. Slider) properties
             should be the following according to UIA: Min-{' '}
@@ -560,31 +562,31 @@ export const description = 'Usage of accessibility properties.';
 export const examples = [
   {
     title: 'Label, Hint',
-    render: function(): JSX.Element {
+    render: function (): JSX.Element {
       return <AccessibilityBaseExample />;
     },
   },
   {
     title: 'Touchables',
-    render: function(): JSX.Element {
+    render: function (): JSX.Element {
       return <TouchableExamples />;
     },
   },
   {
     title: 'HighContrast',
-    render: function(): JSX.Element {
+    render: function (): JSX.Element {
       return <HighContrastExample />;
     },
   },
   {
     title: 'States',
-    render: function(): JSX.Element {
+    render: function (): JSX.Element {
       return <AccessibilityStateExamples />;
     },
   },
   {
     title: 'Lists',
-    render: function(): JSX.Element {
+    render: function (): JSX.Element {
       return <AccessibilityListExamples />;
     },
   },

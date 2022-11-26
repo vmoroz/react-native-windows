@@ -1,0 +1,8 @@
+steps:
+  - task: ms.vss-governance-buildtask.governance-build-task-component-detection.ComponentGovernanceComponentDetection@0
+    displayName: 'Component Governance Detection'
+    inputs:
+      alertWarningLevel: Medium
+      scanType: 'Register'
+      failOnAlert: $(FailCGOnAlert)
+      ignoreDirectories: 'node_modules\resolve\test\resolver\malformed_package_json'

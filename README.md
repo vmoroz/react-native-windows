@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/microsoft/react-native-windows/blob/master/LICENSE">
+  <a href="https://github.com/microsoft/react-native-windows/blob/main/LICENSE">
     <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="React Native for Windows is released under the MIT license." />
   </a>
   <a href="https://www.npmjs.org/package/react-native-windows">
@@ -16,11 +16,11 @@
   </a>
 </p>
 
-![Hero Image with Logo](https://github.com/microsoft/react-native-windows/raw/master/.github/hero2.png)
+![Hero Image with Logo](https://github.com/microsoft/react-native-windows/raw/main/.github/hero2.png)
 
 > See the official [React Native website](https://reactnative.dev/) for an introduction to React Native.
 
-[React Native](https://reactnative.dev) is a framework developed by Facebook that enables you to build world-class application experiences on native platforms using a consistent developer experience based on JavaScript and [React](https://reactjs.org/). The focus of React Native is on developer efficiency across all the platforms you care about - learn once, write anywhere.
+[React Native](https://reactnative.dev) is a framework developed by Meta that enables you to build world-class application experiences on native platforms using a consistent developer experience based on JavaScript and [React](https://reactjs.org/). The focus of React Native is on developer efficiency across all the platforms you care about - learn once, write anywhere.
 
 This repository adds support for the [Windows 10 SDK](https://developer.microsoft.com/en-us/windows/downloads), which allows you to build apps for [all devices supported by Windows 10](https://developer.microsoft.com/en-us/windows/get-started-windows-10) including PCs, tablets, 2-in-1s, Xbox, Mixed reality devices etc.
 
@@ -54,9 +54,9 @@ Search the [existing issues](https://github.com/microsoft/react-native-windows/i
 - Ensure the [appropriate template](https://github.com/microsoft/react-native-windows/issues/new/choose) is used when filing your issue(s).
 
 ## Contributing
-See [Contributing guidelines](https://github.com/microsoft/react-native-windows/blob/master/docs/contributing.md) for how to setup your fork of the repo and start a PR to contribute to React Native for Windows.
+See [Contributing guidelines](https://github.com/microsoft/react-native-windows/blob/main/CONTRIBUTING.md) for how to setup your fork of the repo and start a PR to contribute to React Native for Windows.
 
-[Good First Task](https://github.com/microsoft/react-native-windows/labels/Good%20First%20Task) and [help wanted](https://github.com/microsoft/react-native-windows/labels/help%20wanted) are great starting points for PRs.
+[good first issue](https://github.com/microsoft/react-native-windows/labels/good%20first%20issue) and [help wanted](https://github.com/microsoft/react-native-windows/labels/help%20wanted) are great starting points for PRs.
 
 ## Documentation
 [React Native already has great documentation](https://reactnative.dev/docs/getting-started) and we're working to ensure the React Native Windows is part of that documentation story.
@@ -68,7 +68,7 @@ See [Contributing guidelines](https://github.com/microsoft/react-native-windows/
 - If you're looking for sample code, just browse the RNTester folder in the GitHub web UI
 
 ## License
-The React Native Windows extension, including modifications to the original Facebook source code, and all newly contributed code is provided under the [MIT License](LICENSE). Portions of the React Native Windows extension derived from React Native are copyright Facebook.
+The React Native Windows extension, including modifications to the original Meta source code, and all newly contributed code is provided under the [MIT License](LICENSE). Portions of the React Native Windows extension derived from React Native are copyright Meta.
 
 ## Code of Conduct
 This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/). For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.

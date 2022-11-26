@@ -9,6 +9,7 @@
 #include "DynamicWriter.h"
 #include "ShadowNodeBase.h"
 #include "Views/ShadowNodeBase.h"
+#include "XamlView.h"
 
 namespace winrt::Microsoft::ReactNative::implementation {
 
@@ -35,14 +36,33 @@ void XamlUIService::DispatchEvent(
     xaml::FrameworkElement const &view,
     hstring const &eventName,
     JSValueArgWriter const &eventDataArgWriter) noexcept {
-  folly::dynamic eventData; // default to NULLT
-  if (eventDataArgWriter != nullptr) {
-    auto eventDataWriter = winrt::make_self<DynamicWriter>();
-    eventDataArgWriter(*eventDataWriter);
-    eventData = eventDataWriter->TakeValue();
+  auto paramsWriter = winrt::make_self<DynamicWriter>();
+  paramsWriter->WriteArrayBegin();
+  paramsWriter->WriteInt64(::Microsoft::ReactNative::GetTag(view));
+  paramsWriter->WriteString(eventName);
+  if (eventDataArgWriter) {
+    eventDataArgWriter(*paramsWriter);
+  } else {
+    paramsWriter->WriteNull();
   }
+  paramsWriter->WriteArrayEnd();
+  auto params = paramsWriter->TakeValue();
+  m_context->CallJSFunction("RCTEventEmitter", "receiveEvent", std::move(params));
+}
 
-  m_context->DispatchEvent(unbox_value<int64_t>(view.Tag()), to_string(eventName), std::move(eventData));
+winrt::Microsoft::ReactNative::ReactRootView XamlUIService::GetReactRootView(
+    xaml::FrameworkElement const &view) noexcept {
+  if (auto uiManager = ::Microsoft::ReactNative::GetNativeUIManager(*m_context).lock()) {
+    const auto reactTag = ::Microsoft::ReactNative::GetTag(view);
+    if (auto shadowNode = static_cast<::Microsoft::ReactNative::ShadowNodeBase *>(
+            uiManager->getHost()->FindShadowNodeForTag(reactTag))) {
+      if (auto rootNode = static_cast<::Microsoft::ReactNative::ShadowNodeBase *>(
+              uiManager->getHost()->FindShadowNodeForTag(shadowNode->m_rootTag))) {
+        return rootNode->GetView().as<winrt::Microsoft::ReactNative::ReactRootView>();
+      }
+    }
+  }
+  return nullptr;
 }
 
 /*static*/ ReactPropertyId<XamlUIService> XamlUIService::XamlUIServiceProperty() noexcept {
@@ -55,14 +75,42 @@ ReactPropertyId<xaml::XamlRoot> XamlRootProperty() noexcept {
   return propId;
 }
 
+ReactPropertyId<xaml::FrameworkElement> AccessibleRootProperty() noexcept {
+  static ReactPropertyId<xaml::FrameworkElement> propId{L"ReactNative.UIManager", L"AccessibleRoot"};
+  return propId;
+}
+
 /*static*/ void XamlUIService::SetXamlRoot(
     IReactPropertyBag const &properties,
     xaml::XamlRoot const &xamlRoot) noexcept {
   winrt::Microsoft::ReactNative::ReactPropertyBag(properties).Set(XamlRootProperty(), xamlRoot);
 }
 
+/*static*/ void XamlUIService::SetAccessibleRoot(
+    IReactPropertyBag const &properties,
+    xaml::FrameworkElement const &accessibleRoot) noexcept {
+  winrt::Microsoft::ReactNative::ReactPropertyBag(properties).Set(AccessibleRootProperty(), accessibleRoot);
+}
+
 /*static*/ xaml::XamlRoot XamlUIService::GetXamlRoot(IReactPropertyBag const &properties) noexcept {
   return winrt::Microsoft::ReactNative::ReactPropertyBag(properties).Get(XamlRootProperty());
+}
+
+/*static*/ xaml::FrameworkElement XamlUIService::GetAccessibleRoot(IReactPropertyBag const &properties) noexcept {
+  return winrt::Microsoft::ReactNative::ReactPropertyBag(properties).Get(AccessibleRootProperty());
+}
+
+ReactPropertyId<uint64_t> XamlIslandProperty() noexcept {
+  static ReactPropertyId<uint64_t> propId{L"ReactNative.UIManager", L"XamlIsland"};
+  return propId;
+}
+
+/*static*/ void XamlUIService::SetIslandWindowHandle(IReactPropertyBag const &properties, uint64_t hwnd) noexcept {
+  winrt::Microsoft::ReactNative::ReactPropertyBag(properties).Set(XamlIslandProperty(), hwnd);
+}
+/*static*/ uint64_t XamlUIService::GetIslandWindowHandle(IReactPropertyBag const &properties) noexcept {
+  auto hwnd = winrt::Microsoft::ReactNative::ReactPropertyBag(properties).Get(XamlIslandProperty());
+  return hwnd.value_or(0);
 }
 
 } // namespace winrt::Microsoft::ReactNative::implementation

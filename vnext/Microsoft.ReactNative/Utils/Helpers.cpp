@@ -12,13 +12,17 @@
 #include <appmodel.h>
 #include <processthreadsapi.h>
 
+#ifdef USE_FABRIC
+#include <Fabric/Composition/CompositionUIService.h>
+#endif // USE_FABRIC
+
 namespace winrt {
 using namespace xaml::Controls::Primitives;
 using namespace xaml::Media;
 using namespace Windows::Foundation::Metadata;
 } // namespace winrt
 
-namespace react::uwp {
+namespace Microsoft::ReactNative {
 
 // Not only react-native, native modules could set tag too for controls.
 // For example, to identify an clicked item, customer may add tag in
@@ -31,7 +35,7 @@ namespace react::uwp {
 // Instead of deduce view id directly from FrameworkElement.Tag, this do
 // additional check by uimanager.
 ReactId getViewId(const Mso::React::IReactContext &context, xaml::FrameworkElement const &fe) {
-  ReactId reactId;
+  ReactId reactId{};
   if (auto uiManager = Microsoft::ReactNative::GetNativeUIManager(context).lock()) {
     if (auto peer = uiManager->reactPeerOrContainerFrom(fe)) {
       reactId.isValid = true;
@@ -78,6 +82,10 @@ bool IsAPIContractV8Available() {
   return IsAPIContractVxAvailable<8>();
 }
 
+bool IsAPIContractV12Available() {
+  return IsAPIContractVxAvailable<12>();
+}
+
 bool IsRS3OrHigher() {
   return IsAPIContractV5Available();
 }
@@ -94,6 +102,10 @@ bool Is19H1OrHigher() {
   return IsAPIContractV8Available();
 }
 
+bool Is21H1OrHigher() {
+  return IsAPIContractV12Available();
+}
+
 bool IsXamlIsland() {
   AppPolicyWindowingModel e;
   if (FAILED(AppPolicyGetWindowingModel(GetCurrentThreadEffectiveToken(), &e)) ||
@@ -103,4 +115,21 @@ bool IsXamlIsland() {
   return false;
 }
 
-} // namespace react::uwp
+bool IsWinUI3Island() {
+#ifndef USE_WINUI3
+  return false;
+#else
+  return IsXamlIsland();
+#endif
+}
+
+bool IsFabricEnabled(winrt::Microsoft::ReactNative::IReactPropertyBag const &properties) {
+#ifdef USE_FABRIC
+  return winrt::Microsoft::ReactNative::Composition::implementation::CompositionUIService::GetCompositionContext(
+             properties) != nullptr;
+#else
+  return false;
+#endif
+}
+
+} // namespace Microsoft::ReactNative

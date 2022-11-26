@@ -9,7 +9,8 @@
 // guarantee correct types
 /* eslint-disable @typescript-eslint/no-unnecessary-condition */
 
-import * as path from 'path';
+import {platform} from 'os';
+import path from 'path';
 
 import * as configUtils from './configUtils';
 
@@ -17,7 +18,7 @@ import * as configUtils from './configUtils';
 
 react-native config will generate the following JSON for each native module dependency
 under node_modules that has a Windows implementation, in order to support auto-linking.
-This is done heurestically, so if the result isn't quite correct, native module developers
+This is done heuristically, so if the result isn't quite correct, native module developers
 can provide a manual override file: react-native.config.js.
 
 Schema for dependencies:
@@ -117,6 +118,10 @@ export function dependencyConfigWindows(
   folder: string,
   userConfig: Partial<WindowsDependencyConfig> | null = {},
 ): WindowsDependencyConfig | null {
+  if (platform() !== 'win32') {
+    return null;
+  }
+
   if (userConfig === null) {
     return null;
   }
@@ -226,17 +231,21 @@ export function dependencyConfigWindows(
 
       const projectContents = configUtils.readProjectFile(projectFile);
 
+      project.projectFile = path.relative(sourceDir, projectFile);
+
       // Calculating (auto) items
-      project.projectName = configUtils.getProjectName(projectContents);
+      project.projectName = configUtils.getProjectName(
+        projectFile,
+        projectContents,
+      );
       project.projectLang = configUtils.getProjectLanguage(projectFile);
       project.projectGuid = configUtils.getProjectGuid(projectContents);
 
       if (project.directDependency) {
         // Calculating more (auto) items
 
-        const projectNamespace = configUtils.getProjectNamespace(
-          projectContents,
-        );
+        const projectNamespace =
+          configUtils.getProjectNamespace(projectContents);
 
         if (projectNamespace !== null) {
           const cppNamespace = projectNamespace!.replace(/\./g, '::');
@@ -254,51 +263,79 @@ export function dependencyConfigWindows(
       }
     }
   } else {
-    // No react-native.config, try to heurestically find any projects
+    // No react-native.config, try to heuristically find any projects
 
     const foundProjects = configUtils.findDependencyProjectFiles(sourceDir);
 
     for (const foundProject of foundProjects) {
       const projectFile = path.join(sourceDir, foundProject);
 
-      const projectLang = configUtils.getProjectLanguage(projectFile);
-
       const projectContents = configUtils.readProjectFile(projectFile);
 
-      const projectName = configUtils.getProjectName(projectContents);
+      const projectType = configUtils.getProjectType(
+        projectFile,
+        projectContents,
+      );
 
-      const projectGuid = configUtils.getProjectGuid(projectContents);
+      if (
+        projectType === 'dynamiclibrary' ||
+        projectType === 'winmdobj' ||
+        projectType === 'library'
+      ) {
+        const projectLang = configUtils.getProjectLanguage(projectFile);
 
-      const projectNamespace = configUtils.getProjectNamespace(projectContents);
+        const projectName = configUtils.getProjectName(
+          projectFile,
+          projectContents,
+        );
 
-      const directDependency = true;
+        const projectGuid = configUtils.getProjectGuid(projectContents);
 
-      const cppHeaders: string[] = [];
-      const cppPackageProviders: string[] = [];
-      const csNamespaces: string[] = [];
-      const csPackageProviders: string[] = [];
+        const projectNamespace =
+          configUtils.getProjectNamespace(projectContents);
 
-      if (projectNamespace !== null) {
-        const cppNamespace = projectNamespace.replace(/\./g, '::');
-        const csNamespace = projectNamespace.replace(/::/g, '.');
+        const directDependency = true;
 
-        cppHeaders.push(`winrt/${csNamespace}.h`);
-        cppPackageProviders.push(`${cppNamespace}::ReactPackageProvider`);
-        csNamespaces.push(`${csNamespace}`);
-        csPackageProviders.push(`${csNamespace}.ReactPackageProvider`);
+        const cppHeaders: string[] = [];
+        const cppPackageProviders: string[] = [];
+        const csNamespaces: string[] = [];
+        const csPackageProviders: string[] = [];
+
+        if (projectNamespace !== null) {
+          const cppNamespace = projectNamespace.replace(/\./g, '::');
+          const csNamespace = projectNamespace.replace(/::/g, '.');
+
+          cppHeaders.push(`winrt/${csNamespace}.h`);
+          cppPackageProviders.push(`${cppNamespace}::ReactPackageProvider`);
+          csNamespaces.push(`${csNamespace}`);
+          csPackageProviders.push(`${csNamespace}.ReactPackageProvider`);
+        }
+
+        result.projects.push({
+          projectFile: path.relative(sourceDir, projectFile),
+          projectName,
+          projectLang,
+          projectGuid,
+          directDependency,
+          cppHeaders,
+          cppPackageProviders,
+          csNamespaces,
+          csPackageProviders,
+        });
+      } else {
+        const projectPath = path.relative(sourceDir, projectFile);
+        result.projects.push({
+          projectFile: `Error: ${projectPath} is type '${projectType}'`,
+          directDependency: false,
+          projectName: '',
+          projectLang: null,
+          projectGuid: null,
+          cppHeaders: [],
+          cppPackageProviders: [],
+          csNamespaces: [],
+          csPackageProviders: [],
+        });
       }
-
-      result.projects.push({
-        projectFile: path.relative(sourceDir, projectFile),
-        projectName,
-        projectLang,
-        projectGuid,
-        directDependency,
-        cppHeaders,
-        cppPackageProviders,
-        csNamespaces,
-        csPackageProviders,
-      });
     }
   }
 

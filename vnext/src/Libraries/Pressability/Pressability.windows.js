@@ -1,5 +1,5 @@
 /**
- * Copyright (c) Facebook, Inc. and its affiliates.
+ * Copyright (c) Meta Platforms, Inc. and affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -8,22 +8,25 @@
  * @format
  */
 
-'use strict';
-
-import {isHoverEnabled} from './HoverState';
-import invariant from 'invariant';
-import SoundManager from '../Components/Sound/SoundManager';
-import {normalizeRect, type RectOrSize} from '../StyleSheet/Rect';
+import type {HostComponent} from '../Renderer/shims/ReactNativeTypes';
 import type {
   BlurEvent,
   FocusEvent,
-  PressEvent,
   MouseEvent,
+  PressEvent,
   KeyEvent, // [Windows]
 } from '../Types/CoreEventTypes';
-import Platform from '../Utilities/Platform';
+
+import SoundManager from '../Components/Sound/SoundManager';
+import ReactNativeFeatureFlags from '../ReactNative/ReactNativeFeatureFlags';
 import UIManager from '../ReactNative/UIManager';
-import type {HostComponent} from '../Renderer/shims/ReactNativeTypes';
+import {type RectOrSize, normalizeRect} from '../StyleSheet/Rect';
+import {type PointerEvent} from '../Types/CoreEventTypes';
+import Platform from '../Utilities/Platform';
+import {isHoverEnabled} from './HoverState';
+import PressabilityPerformanceEventEmitter from './PressabilityPerformanceEventEmitter.js';
+import {type PressabilityTouchSignal as TouchSignal} from './PressabilityTypes.js';
+import invariant from 'invariant';
 import * as React from 'react';
 
 export type PressabilityConfig = $ReadOnly<{|
@@ -93,6 +96,16 @@ export type PressabilityConfig = $ReadOnly<{|
    * Called after the element is focused.
    */
   onFocus?: ?(event: FocusEvent) => mixed,
+
+  /*
+   * Called after a key down event is detected.
+   */
+  onKeyDown?: ?(event: KeyEvent) => mixed,
+
+  /*
+   * Called after a key up event is detected.
+   */
+  onKeyUp?: ?(event: KeyEvent) => mixed,
 
   /**
    * Called when the hover is activated to provide visual feedback.
@@ -175,6 +188,8 @@ export type EventHandlers = $ReadOnly<{|
   onFocus: (event: FocusEvent) => void,
   onMouseEnter?: (event: MouseEvent) => void,
   onMouseLeave?: (event: MouseEvent) => void,
+  onPointerEnter?: (event: PointerEvent) => void,
+  onPointerLeave?: (event: PointerEvent) => void,
   onResponderGrant: (event: PressEvent) => void,
   onResponderMove: (event: PressEvent) => void,
   onResponderRelease: (event: PressEvent) => void,
@@ -196,15 +211,6 @@ type TouchState =
   | 'RESPONDER_ACTIVE_LONG_PRESS_IN'
   | 'RESPONDER_ACTIVE_LONG_PRESS_OUT'
   | 'ERROR';
-
-type TouchSignal =
-  | 'DELAY'
-  | 'RESPONDER_GRANT'
-  | 'RESPONDER_RELEASE'
-  | 'RESPONDER_TERMINATED'
-  | 'ENTER_PRESS_RECT'
-  | 'LEAVE_PRESS_RECT'
-  | 'LONG_PRESS_DETECTED';
 
 const Transitions = Object.freeze({
   NOT_RESPONDER: {
@@ -281,20 +287,20 @@ const Transitions = Object.freeze({
   },
 });
 
-const isActiveSignal = signal =>
+const isActiveSignal = (signal: TouchState) =>
   signal === 'RESPONDER_ACTIVE_PRESS_IN' ||
   signal === 'RESPONDER_ACTIVE_LONG_PRESS_IN';
 
-const isActivationSignal = signal =>
+const isActivationSignal = (signal: TouchState) =>
   signal === 'RESPONDER_ACTIVE_PRESS_OUT' ||
   signal === 'RESPONDER_ACTIVE_PRESS_IN';
 
-const isPressInSignal = signal =>
+const isPressInSignal = (signal: TouchState) =>
   signal === 'RESPONDER_INACTIVE_PRESS_IN' ||
   signal === 'RESPONDER_ACTIVE_PRESS_IN' ||
   signal === 'RESPONDER_ACTIVE_LONG_PRESS_IN';
 
-const isTerminalSignal = signal =>
+const isTerminalSignal = (signal: TouchSignal) =>
   signal === 'RESPONDER_TERMINATED' || signal === 'RESPONDER_RELEASE';
 
 const DEFAULT_LONG_PRESS_DELAY_MS = 500;
@@ -421,6 +427,7 @@ export default class Pressability {
   |}>;
   _touchActivateTime: ?number;
   _touchState: TouchState = 'NOT_RESPONDER';
+  _isKeyDown: boolean = false;
 
   constructor(config: PressabilityConfig) {
     this.configure(config);
@@ -462,6 +469,7 @@ export default class Pressability {
         if (onBlur != null) {
           onBlur(event);
         }
+        this._isKeyDown = false;
       },
       onFocus: (event: FocusEvent): void => {
         const {onFocus} = this._config;
@@ -485,7 +493,6 @@ export default class Pressability {
 
       onResponderGrant: (event: PressEvent): void => {
         event.persist();
-
         this._cancelPressOutDelayTimeout();
 
         this._responderID = event.currentTarget;
@@ -566,8 +573,8 @@ export default class Pressability {
       },
 
       onClick: (event: PressEvent): void => {
-        const {onPress} = this._config;
-        if (onPress != null) {
+        const {onPress, disabled} = this._config;
+        if (onPress != null && disabled !== true) {
           onPress(event);
         }
       },
@@ -575,93 +582,45 @@ export default class Pressability {
 
     if (process.env.NODE_ENV === 'test') {
       // We are setting this in order to find this node in ReactNativeTestTools
-      responderEventHandlers.onStartShouldSetResponder.testOnly_pressabilityConfig = () =>
-        this._config;
+      // $FlowFixMe[prop-missing]
+      responderEventHandlers.onStartShouldSetResponder.testOnly_pressabilityConfig =
+        () => this._config;
     }
-
-    const mouseEventHandlers =
-      Platform.OS === 'ios' || Platform.OS === 'android'
-        ? null
-        : {
-            onMouseEnter: (event: MouseEvent): void => {
-              // [Windows Add attached raw mouse event handler for compat
-              if (this._config.onMouseEnter) {
-                this._config.onMouseEnter(event);
-              }
-              // Windows]
-
-              if (isHoverEnabled()) {
-                this._isHovered = true;
-                this._cancelHoverOutDelayTimeout();
-                const {onHoverIn} = this._config;
-                if (onHoverIn != null) {
-                  const delayHoverIn = normalizeDelay(
-                    this._config.delayHoverIn,
-                  );
-                  if (delayHoverIn > 0) {
-                    event.persist();
-                    this._hoverInDelayTimeout = setTimeout(() => {
-                      onHoverIn(event);
-                    }, delayHoverIn);
-                  } else {
-                    onHoverIn(event);
-                  }
-                }
-              }
-            },
-
-            onMouseLeave: (event: MouseEvent): void => {
-              // [Windows Add attached raw mouse event handler for compat
-              if (this._config.onMouseLeave) {
-                this._config.onMouseLeave(event);
-              }
-              // Windows]
-
-              if (this._isHovered) {
-                this._isHovered = false;
-                this._cancelHoverInDelayTimeout();
-                const {onHoverOut} = this._config;
-                if (onHoverOut != null) {
-                  const delayHoverOut = normalizeDelay(
-                    this._config.delayHoverOut,
-                  );
-                  if (delayHoverOut > 0) {
-                    event.persist();
-                    this._hoverInDelayTimeout = setTimeout(() => {
-                      onHoverOut(event);
-                    }, delayHoverOut);
-                  } else {
-                    onHoverOut(event);
-                  }
-                }
-              }
-            },
-          };
 
     // [Windows
     const keyboardEventHandlers = {
       onKeyUp: (event: KeyEvent): void => {
+        const {onKeyUp} = this._config;
+        onKeyUp && onKeyUp(event);
+
         if (
-          event.nativeEvent.code === 'Space' ||
-          event.nativeEvent.code === 'Enter' ||
-          event.nativeEvent.code === 'GamepadA'
+          (event.nativeEvent.code === 'Space' ||
+            event.nativeEvent.code === 'Enter' ||
+            event.nativeEvent.code === 'GamepadA') &&
+          event.defaultPrevented != true &&
+          this._isKeyDown
         ) {
           const {onPressOut, onPress} = this._config;
-
           // $FlowFixMe: PressEvents don't mesh with keyboarding APIs. Keep legacy behavior of passing KeyEvents instead
           onPressOut && onPressOut(event);
           // $FlowFixMe: PressEvents don't mesh with keyboarding APIs. Keep legacy behavior of passing KeyEvents instead
           onPress && onPress(event);
         }
+        // Native windows app clears the key pressed state when another key press interrupts the current
+        this._isKeyDown = false;
       },
       onKeyDown: (event: KeyEvent): void => {
+        const {onKeyDown} = this._config;
+        onKeyDown && onKeyDown(event);
+
         if (
-          event.nativeEvent.code === 'Space' ||
-          event.nativeEvent.code === 'Enter' ||
-          event.nativeEvent.code === 'GamepadA'
+          (event.nativeEvent.code === 'Space' ||
+            event.nativeEvent.code === 'Enter' ||
+            event.nativeEvent.code === 'GamepadA') &&
+          event.defaultPrevented != true
         ) {
           const {onPressIn} = this._config;
-
+          this._isKeyDown = true;
           // $FlowFixMe: PressEvents don't mesh with keyboarding APIs. Keep legacy behavior of passing KeyEvents instead
           onPressIn && onPressIn(event);
         }
@@ -669,12 +628,123 @@ export default class Pressability {
     };
     // Windows]
 
-    return {
-      ...focusEventHandlers,
-      ...responderEventHandlers,
-      ...mouseEventHandlers,
-      ...keyboardEventHandlers, // [Windows]
-    };
+    if (
+      ReactNativeFeatureFlags.shouldPressibilityUseW3CPointerEventsForHover()
+    ) {
+      const hoverPointerEvents = {
+        onPointerEnter: undefined,
+        onPointerLeave: undefined,
+      };
+      const {onHoverIn, onHoverOut} = this._config;
+      if (onHoverIn != null) {
+        hoverPointerEvents.onPointerEnter = (event: PointerEvent) => {
+          this._isHovered = true;
+          this._cancelHoverOutDelayTimeout();
+          if (onHoverIn != null) {
+            const delayHoverIn = normalizeDelay(this._config.delayHoverIn);
+            if (delayHoverIn > 0) {
+              event.persist();
+              this._hoverInDelayTimeout = setTimeout(() => {
+                onHoverIn(convertPointerEventToMouseEvent(event));
+              }, delayHoverIn);
+            } else {
+              onHoverIn(convertPointerEventToMouseEvent(event));
+            }
+          }
+        };
+      }
+      if (onHoverOut != null) {
+        hoverPointerEvents.onPointerLeave = (event: PointerEvent) => {
+          if (this._isHovered) {
+            this._isHovered = false;
+            this._cancelHoverInDelayTimeout();
+            if (onHoverOut != null) {
+              const delayHoverOut = normalizeDelay(this._config.delayHoverOut);
+              if (delayHoverOut > 0) {
+                event.persist();
+                this._hoverOutDelayTimeout = setTimeout(() => {
+                  onHoverOut(convertPointerEventToMouseEvent(event));
+                }, delayHoverOut);
+              } else {
+                onHoverOut(convertPointerEventToMouseEvent(event));
+              }
+            }
+          }
+        };
+      }
+      return {
+        ...focusEventHandlers,
+        ...responderEventHandlers,
+        ...hoverPointerEvents,
+        ...keyboardEventHandlers, // [Windows]
+      };
+    } else {
+      const mouseEventHandlers =
+        Platform.OS === 'ios' || Platform.OS === 'android'
+          ? null
+          : {
+              onMouseEnter: (event: MouseEvent): void => {
+                // [Windows Add attached raw mouse event handler for compat
+                if (this._config.onMouseEnter) {
+                  this._config.onMouseEnter(event);
+                }
+                // Windows]
+
+                if (isHoverEnabled()) {
+                  this._isHovered = true;
+                  this._cancelHoverOutDelayTimeout();
+                  const {onHoverIn} = this._config;
+                  if (onHoverIn != null) {
+                    const delayHoverIn = normalizeDelay(
+                      this._config.delayHoverIn,
+                    );
+                    if (delayHoverIn > 0) {
+                      event.persist();
+                      this._hoverInDelayTimeout = setTimeout(() => {
+                        onHoverIn(event);
+                      }, delayHoverIn);
+                    } else {
+                      onHoverIn(event);
+                    }
+                  }
+                }
+              },
+
+              onMouseLeave: (event: MouseEvent): void => {
+                // [Windows Add attached raw mouse event handler for compat
+                if (this._config.onMouseLeave) {
+                  this._config.onMouseLeave(event);
+                }
+                // Windows]
+
+                if (this._isHovered) {
+                  this._isHovered = false;
+                  this._cancelHoverInDelayTimeout();
+                  const {onHoverOut} = this._config;
+                  if (onHoverOut != null) {
+                    const delayHoverOut = normalizeDelay(
+                      this._config.delayHoverOut,
+                    );
+                    if (delayHoverOut > 0) {
+                      event.persist();
+                      this._hoverInDelayTimeout = setTimeout(() => {
+                        onHoverOut(event);
+                      }, delayHoverOut);
+                    } else {
+                      onHoverOut(event);
+                    }
+                  }
+                }
+              },
+            };
+
+      return {
+        ...focusEventHandlers,
+        ...responderEventHandlers,
+        ...mouseEventHandlers,
+        ...keyboardEventHandlers, // [Windows]
+      };
+    }
   }
 
   /**
@@ -682,6 +752,19 @@ export default class Pressability {
    * and stores the new state. Validates the transition as well.
    */
   _receiveSignal(signal: TouchSignal, event: PressEvent): void {
+    // Especially on iOS, not all events have timestamps associated.
+    // For telemetry purposes, this doesn't matter too much, as long as *some* do.
+    // Since the native timestamp is integral for logging telemetry, just skip
+    // events if they don't have a timestamp attached.
+    if (event.nativeEvent.timestamp != null) {
+      PressabilityPerformanceEventEmitter.emitEvent(() => {
+        return {
+          signal,
+          nativeTimestamp: event.nativeEvent.timestamp,
+        };
+      });
+    }
+
     const prevState = this._touchState;
     const nextState = Transitions[prevState]?.[signal];
     if (this._responderID == null && signal === 'RESPONDER_RELEASE') {
@@ -700,6 +783,11 @@ export default class Pressability {
       this._performTransitionSideEffects(prevState, nextState, signal, event);
       this._touchState = nextState;
     }
+  }
+
+  // [Windows]
+  _isDefaultPressButton(button) {
+    return !button; // Treat 0 or undefined as default press
   }
 
   /**
@@ -730,7 +818,10 @@ export default class Pressability {
 
     if (isPressInSignal(prevState) && signal === 'LONG_PRESS_DETECTED') {
       const {onLongPress} = this._config;
-      if (onLongPress != null) {
+      if (
+        onLongPress != null &&
+        this._isDefaultPressButton(getTouchFromPressEvent(event).button)
+      ) {
         onLongPress(event);
       }
     }
@@ -751,7 +842,11 @@ export default class Pressability {
         this._deactivate(event);
       }
       const {onLongPress, onPress, android_disableSound} = this._config;
-      if (onPress != null) {
+
+      if (
+        onPress != null &&
+        this._isDefaultPressButton(getTouchFromPressEvent(event).button)
+      ) {
         const isPressCanceledByLongPress =
           onLongPress != null &&
           prevState === 'RESPONDER_ACTIVE_LONG_PRESS_IN' &&
@@ -770,17 +865,20 @@ export default class Pressability {
 
   _activate(event: PressEvent): void {
     const {onPressIn} = this._config;
-    const {pageX, pageY} = getTouchFromPressEvent(event);
+    const {pageX, pageY, button} = getTouchFromPressEvent(event);
     this._touchActivatePosition = {pageX, pageY};
     this._touchActivateTime = Date.now();
-    if (onPressIn != null) {
+    if (onPressIn != null && button === 0) {
       onPressIn(event);
     }
   }
 
   _deactivate(event: PressEvent): void {
     const {onPressOut} = this._config;
-    if (onPressOut != null) {
+    if (
+      onPressOut != null &&
+      this._isDefaultPressButton(getTouchFromPressEvent(event).button)
+    ) {
       const minPressDuration = normalizeDelay(
         this._config.minPressDuration,
         0,
@@ -815,7 +913,14 @@ export default class Pressability {
     }
   }
 
-  _measureCallback = (left, top, width, height, pageX, pageY) => {
+  _measureCallback = (
+    left: number,
+    top: number,
+    width: number,
+    height: number,
+    pageX: number,
+    pageY: number,
+  ) => {
     if (!left && !top && !width && !height && !pageX && !pageY) {
       return;
     }
@@ -925,7 +1030,11 @@ export default class Pressability {
   }
 }
 
-function normalizeDelay(delay: ?number, min = 0, fallback = 0): number {
+function normalizeDelay(
+  delay: ?number,
+  min: number = 0,
+  fallback: number = 0,
+): number {
   return Math.max(min, delay ?? fallback);
 }
 
@@ -940,3 +1049,51 @@ const getTouchFromPressEvent = (event: PressEvent) => {
   }
   return event.nativeEvent;
 };
+
+function convertPointerEventToMouseEvent(input: PointerEvent): MouseEvent {
+  const {clientX, clientY} = input.nativeEvent;
+  // [Windows
+  const {
+    pointerType,
+    pressure,
+    isLeftButton,
+    isRightButton,
+    isMiddleButton,
+    isBarrelButtonPressed,
+    isHorizontalScrollWheel,
+    isEraser,
+    shiftKey,
+    ctrlKey,
+    altKey,
+  } = input.nativeEvent;
+  // Windows]
+  return {
+    ...input,
+    nativeEvent: {
+      clientX,
+      clientY,
+      pageX: clientX,
+      pageY: clientY,
+      timestamp: input.timeStamp,
+      // [Windows
+      target:
+        input.nativeEvent.target ??
+        (typeof input.target === 'number' ? input.target : -1),
+      identifier: input.nativeEvent.pointerId,
+      locationX: clientX,
+      locationY: clientY,
+      pointerType,
+      force: pressure,
+      isLeftButton,
+      isRightButton,
+      isMiddleButton,
+      isBarrelButtonPressed,
+      isHorizontalScrollWheel,
+      isEraser,
+      shiftKey,
+      ctrlKey,
+      altKey,
+      // Windows]
+    },
+  };
+}

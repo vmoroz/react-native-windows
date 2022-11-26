@@ -3,7 +3,6 @@
 
 #pragma once
 #include "Logging.h"
-#include "MemoryTracker.h"
 
 #include <IRedBoxHandler.h>
 #include <functional>
@@ -15,11 +14,9 @@
 #define STRING_(s) #s
 #define STRING(s) STRING_(s)
 
-namespace facebook {
-namespace jsi {
+namespace Microsoft::JSI {
 struct RuntimeHolderLazyInit;
-}
-} // namespace facebook
+} // namespace Microsoft::JSI
 
 namespace facebook {
 namespace react {
@@ -27,20 +24,18 @@ namespace react {
 enum class JSIEngineOverride : int32_t {
   Default = 0, // No JSI, will use the legacy ExecutorFactory
   Chakra = 1, // Use the JSIExecutorFactory with ChakraRuntime
+
+#if 0 // Deprecated
   ChakraCore = 2, // Use the JSIExecutorFactory with ChakraCoreRuntime
+#endif
+
   Hermes = 3, // Use the JSIExecutorFactory with Hermes
   V8 = 4, // Use the JSIExecutorFactory with V8
   V8Lite = 5, // Use the JSIExecutorFactory with V8Lite
+  V8NodeApi = 6, // Use the JSIExecutorFactory with V8 via ABI-safe NAPI
 
-  Last = V8Lite
+  Last = V8NodeApi
 };
-
-struct ChakraBundleMetadata {
-  uint64_t version;
-  std::string bytecodeFilename;
-};
-
-using ChakraBundleUrlMetadataMap = std::map<std::string, ChakraBundleMetadata>;
 
 struct DevSettings {
   bool useJITCompilation{true};
@@ -84,31 +79,22 @@ struct DevSettings {
 
   bool useFastRefresh{false};
 
-  // Enables ChakraCore console redirection to debugger
-  bool debuggerConsoleRedirection{false};
-
-  /// Dispatcher for notifications about JS engine memory consumption.
-  std::shared_ptr<MemoryTracker> memoryTracker;
-
   /// A factory and holder of jsi::Runtime instance to be used for this react
   /// instance. This object should in general be used only from the JS engine
   /// thread, unless the specific runtime implementation explicitly guarantees
   /// reentrancy.
-  std::shared_ptr<jsi::RuntimeHolderLazyInit> jsiRuntimeHolder;
+  std::shared_ptr<Microsoft::JSI::RuntimeHolderLazyInit> jsiRuntimeHolder;
 
   // Until the ABI story is addressed we'll use this instead of the above for
   // the purposes of selecting a JSI Runtime to use.
   JSIEngineOverride jsiEngineOverride{JSIEngineOverride::Default};
 
-  /// Optionally used by ChakraExecutor to allow bundle bytecode caching.
-  /// Superseded by PreparedScriptStore on the JSI stack, and will be removed
-  /// soon. (See #3603)
-  ChakraBundleUrlMetadataMap chakraBundleUrlMetadataMap;
-
   /// Callback to show the devmenu
   std::function<void()> showDevMenuCallback;
 
   bool inlineSourceMap{true};
+
+  bool enableDefaultCrashHandler{false};
 };
 
 } // namespace react

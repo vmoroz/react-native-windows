@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <Utils/TextTransform.h>
 #include <Views/FrameworkElementViewManager.h>
 
 namespace Microsoft::ReactNative {
@@ -20,10 +21,19 @@ class TextViewManager : public FrameworkElementViewManager {
   void AddView(const XamlView &parent, const XamlView &child, int64_t index) override;
   void RemoveAllChildren(const XamlView &parent) override;
   void RemoveChildAt(const XamlView &parent, int64_t index) override;
+  void UpdateProperties(ShadowNodeBase *nodeToUpdate, winrt::Microsoft::ReactNative::JSValueObject &props) override;
 
   YGMeasureFunc GetYogaCustomMeasureFunc() const override;
 
-  void OnDescendantTextPropertyChanged(ShadowNodeBase *node);
+  void OnPointerEvent(ShadowNodeBase *node, const winrt::Microsoft::ReactNative::ReactPointerEventArgs &args) override;
+
+  static void UpdateTextHighlighters(ShadowNodeBase *node, bool highlightAdded);
+
+  static void UpdateOptimizedText(ShadowNodeBase *node);
+
+  static void SetDescendantPressable(ShadowNodeBase *node);
+
+  static TextTransform GetTextTransformValue(ShadowNodeBase *node);
 
  protected:
   bool UpdateProperty(
@@ -31,7 +41,7 @@ class TextViewManager : public FrameworkElementViewManager {
       const std::string &propertyName,
       const winrt::Microsoft::ReactNative::JSValue &propertyValue) override;
 
-  XamlView CreateViewCore(int64_t tag) override;
+  XamlView CreateViewCore(int64_t tag, const winrt::Microsoft::ReactNative::JSValueObject &) override;
 };
 
 } // namespace Microsoft::ReactNative

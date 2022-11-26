@@ -13,6 +13,12 @@
 #include <UI.Xaml.Media.Imaging.h>
 #include <Views/Image/ReactImage.h>
 #include <cxxreact/JsArgumentHelpers.h>
+#ifdef USE_FABRIC
+#include <Utils/Helpers.h>
+#include <wincodec.h>
+#include "XamlUtils.h"
+#endif // USE_FABRIC
+#include <winrt/Windows.Storage.Streams.h>
 #include "Unicode.h"
 
 namespace winrt {
@@ -21,40 +27,31 @@ using namespace Windows::Storage::Streams;
 using namespace xaml::Media::Imaging;
 } // namespace winrt
 
-namespace react::uwp {
-//
-// ImageViewManagerModule::ImageViewManagerModuleImpl
-//
-class ImageViewManagerModule::ImageViewManagerModuleImpl {
- public:
-  ImageViewManagerModuleImpl(ImageViewManagerModule *parent) : m_parent(parent) {}
+namespace Microsoft::ReactNative {
 
-  void Disconnect() {
-    m_parent = nullptr;
-  }
-
-  void getSize(std::string uri, Callback successCallback, Callback errorCallback);
-  void getSizeWithHeaders(std::string uri, folly::dynamic &headers, Callback successCallback, Callback errorCallback);
-  void prefetchImage(std::string uri, Callback successCallback, Callback errorCallback);
-  void queryCache(const folly::dynamic &requests, Callback successCallback, Callback errorCallback);
-
- private:
-  ImageViewManagerModule *m_parent;
-};
+#ifdef USE_FABRIC
+winrt::com_ptr<IWICBitmapSource> wicBitmapSourceFromStream(
+    const winrt::Windows::Storage::Streams::IRandomAccessStream &results) noexcept;
+#endif // USE_FABRIC
 
 winrt::fire_and_forget GetImageSizeAsync(
     std::string uriString,
-    folly::dynamic &headers,
-    facebook::xplat::module::CxxModule::Callback successCallback,
-    facebook::xplat::module::CxxModule::Callback errorCallback) {
+    winrt::Microsoft::ReactNative::JSValue &&headers,
+    Mso::Functor<void(int32_t width, int32_t height)> successCallback,
+    Mso::Functor<void()> errorCallback
+#ifdef USE_FABRIC
+    ,
+    bool useFabric
+#endif // USE_FABRIC
+) {
   bool succeeded{false};
 
   try {
     ReactImageSource source;
     source.uri = uriString;
-    if (!headers.isNull()) {
-      for (auto &header : headers.items()) {
-        source.headers.push_back(std::make_pair(header.first.asString(), header.second.asString()));
+    if (!headers.IsNull()) {
+      for (auto &header : headers.AsObject()) {
+        source.headers.push_back(std::make_pair(header.first, header.second.AsString()));
       }
     }
 
@@ -63,109 +60,97 @@ winrt::fire_and_forget GetImageSizeAsync(
     bool needsDownload = (scheme == L"http") || (scheme == L"https");
     bool inlineData = scheme == L"data";
 
-    winrt::InMemoryRandomAccessStream memoryStream;
+    winrt::IRandomAccessStream memoryStream;
     if (needsDownload) {
       memoryStream = co_await GetImageStreamAsync(source);
     } else if (inlineData) {
       memoryStream = co_await GetImageInlineDataAsync(source);
     }
 
-    winrt::BitmapImage bitmap;
-    if (memoryStream) {
-      co_await bitmap.SetSourceAsync(memoryStream);
+#ifdef USE_FABRIC
+    if (!useFabric) {
+#endif // USE_FABRIC
+      winrt::BitmapImage bitmap;
+      if (memoryStream) {
+        co_await bitmap.SetSourceAsync(memoryStream);
+      }
+      if (bitmap) {
+        successCallback(bitmap.PixelWidth(), bitmap.PixelHeight());
+        succeeded = true;
+      }
+#ifdef USE_FABRIC
+    } else {
+      UINT width, height;
+      auto wicBmpSource = wicBitmapSourceFromStream(memoryStream);
+      if (SUCCEEDED(wicBmpSource->GetSize(&width, &height))) {
+        successCallback(width, height);
+        succeeded = true;
+      }
     }
-
-    if (bitmap) {
-      successCallback({folly::dynamic::array(bitmap.PixelWidth(), bitmap.PixelHeight())});
-      succeeded = true;
-    }
+#endif // USE_FABRIC
   } catch (winrt::hresult_error const &) {
   }
 
   if (!succeeded)
-    errorCallback({});
+    errorCallback();
 
   co_return;
 }
 
-void ImageViewManagerModule::ImageViewManagerModuleImpl::getSize(
+void ImageLoader::Initialize(React::ReactContext const &reactContext) noexcept {
+  m_context = reactContext;
+}
+
+void ImageLoader::getSize(std::string uri, React::ReactPromise<React::JSValue> &&result) noexcept {
+  getSizeWithHeaders(std::move(uri), {}, std::move(result));
+}
+
+void ImageLoader::getSizeWithHeaders(
     std::string uri,
-    Callback successCallback,
-    Callback errorCallback) {
-  folly::dynamic headers{};
-  GetImageSizeAsync(uri, headers, successCallback, errorCallback);
+    React::JSValue &&headers,
+    React::ReactPromise<React::JSValue> &&result) noexcept {
+  m_context.UIDispatcher().Post([context = m_context,
+                                 uri = std::move(uri),
+                                 headers = std::move(headers),
+                                 result = std::move(result)]() mutable noexcept {
+    GetImageSizeAsync(
+        std::move(uri),
+        std::move(headers),
+        [result, context](int32_t width, int32_t height) noexcept {
+          context.JSDispatcher().Post([result = std::move(result), width, height]() noexcept {
+            result.Resolve(React::JSValueArray{width, height});
+          });
+        },
+        [result, context]() noexcept {
+          context.JSDispatcher().Post([result = std::move(result)]() noexcept { result.Reject("Failed"); });
+        }
+#ifdef USE_FABRIC
+        ,
+        IsFabricEnabled(context.Properties().Handle())
+#endif // USE_FABRIC
+    );
+  });
 }
 
-void ImageViewManagerModule::ImageViewManagerModuleImpl::getSizeWithHeaders(
+void ImageLoader::prefetchImage(std::string uri, React::ReactPromise<React::JSValue> &&result) noexcept {
+  // NYI
+  result.Resolve(true);
+}
+
+void ImageLoader::prefetchImageWithMetadata(
     std::string uri,
-    folly::dynamic &headers,
-    Callback successCallback,
-    Callback errorCallback) {
-  GetImageSizeAsync(uri, headers, successCallback, errorCallback);
+    std::string queryRootName,
+    double rootTag,
+    React::ReactPromise<React::JSValue> &&result) noexcept {
+  // NYI
+  result.Resolve(true);
 }
 
-void ImageViewManagerModule::ImageViewManagerModuleImpl::prefetchImage(
-    std::string /*uri*/,
-    Callback successCallback,
-    Callback /*errorCallback*/) {
-  // NotYetImplemented
-  successCallback({});
+void ImageLoader::queryCache(
+    std::vector<std::string> const &uris,
+    React::ReactPromise<React::JSValue> &&result) noexcept {
+  // NYI
+  result.Resolve(React::JSValueObject{});
 }
 
-void ImageViewManagerModule::ImageViewManagerModuleImpl::queryCache(
-    const folly::dynamic & /*requests*/,
-    Callback successCallback,
-    Callback /*errorCallback*/) {
-  // NotYetImplemented
-  successCallback({folly::dynamic::object()});
-}
-
-//
-// ImageViewManagerModule
-//
-const char *ImageViewManagerModule::name = "ImageLoader";
-
-ImageViewManagerModule::ImageViewManagerModule()
-    : m_imageViewManagerModule(std::make_shared<ImageViewManagerModuleImpl>(this)) {}
-
-ImageViewManagerModule::~ImageViewManagerModule() {}
-
-std::string ImageViewManagerModule::getName() {
-  return name;
-}
-
-std::map<std::string, folly::dynamic> ImageViewManagerModule::getConstants() {
-  return {{}};
-}
-
-auto ImageViewManagerModule::getMethods() -> std::vector<Method> {
-  std::shared_ptr<ImageViewManagerModuleImpl> imageViewManager(m_imageViewManagerModule);
-  return {
-      Method(
-          "getSize",
-          [imageViewManager](folly::dynamic args, Callback successCallback, Callback errorCallback) {
-            imageViewManager->getSize(facebook::xplat::jsArgAsString(args, 0), successCallback, errorCallback);
-          }),
-      Method(
-          "getSizeWithHeaders",
-          [imageViewManager](folly::dynamic args, Callback successCallback, Callback errorCallback) {
-            imageViewManager->getSizeWithHeaders(
-                facebook::xplat::jsArgAsString(args, 0),
-                facebook::xplat::jsArgAsObject(args, 1),
-                successCallback,
-                errorCallback);
-          }),
-      Method(
-          "prefetchImage",
-          [imageViewManager](folly::dynamic args, Callback successCallback, Callback errorCallback) {
-            imageViewManager->prefetchImage(facebook::xplat::jsArgAsString(args, 0), successCallback, errorCallback);
-          }),
-      Method(
-          "queryCache",
-          [imageViewManager](folly::dynamic args, Callback successCallback, Callback errorCallback) {
-            imageViewManager->queryCache(args[0], successCallback, errorCallback);
-          }),
-  };
-}
-
-} // namespace react::uwp
+} // namespace Microsoft::ReactNative

@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <Utils/BatchingEventEmitter.h>
 #include <Views/ControlViewManager.h>
 #include "Impl/ScrollViewUWPImplementation.h"
 
@@ -29,8 +30,10 @@ class ScrollViewManager : public ControlViewManager {
   void SnapToInterval(const XamlView &parent, float interval);
   void SnapToOffsets(const XamlView &parent, const winrt::IVectorView<float> &offsets);
 
+  winrt::Microsoft::ReactNative::BatchingEventEmitter &BatchingEmitter() noexcept;
+
  protected:
-  XamlView CreateViewCore(int64_t tag) override;
+  XamlView CreateViewCore(int64_t tag, const winrt::Microsoft::ReactNative::JSValueObject &) override;
 
  private:
   friend class ScrollViewShadowNode;

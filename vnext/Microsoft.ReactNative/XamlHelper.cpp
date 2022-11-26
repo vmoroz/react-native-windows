@@ -7,17 +7,30 @@
 
 #include <Utils/ValueUtils.h>
 #include "DynamicWriter.h"
+#include "XamlView.h"
 
 namespace winrt::Microsoft::ReactNative::implementation {
 
 xaml::Media::Brush XamlHelper::BrushFrom(JSValueArgWriter const &valueProvider) noexcept {
   auto value = GetFollyDynamicFromValueProvider(valueProvider);
-  return react::uwp::IsValidColorValue(value) ? react::uwp::BrushFrom(value) : nullptr;
+  return ::Microsoft::ReactNative::IsValidColorValue(value) ? ::Microsoft::ReactNative::BrushFrom(value) : nullptr;
 }
 
 Windows::UI::Color XamlHelper::ColorFrom(JSValueArgWriter const &valueProvider) noexcept {
   auto value = GetFollyDynamicFromValueProvider(valueProvider);
-  return react::uwp::ColorFrom(value);
+  return ::Microsoft::ReactNative::ColorFrom(value);
+}
+
+xaml::DependencyProperty XamlHelper::ReactTagProperty() noexcept {
+  return ::Microsoft::ReactNative::ReactTagProperty();
+}
+
+int64_t XamlHelper::GetReactTag(xaml::DependencyObject const &dependencyObject) noexcept {
+  return ::Microsoft::ReactNative::GetTag(dependencyObject);
+}
+
+void XamlHelper::SetReactTag(xaml::DependencyObject const &dependencyObject, int64_t tag) noexcept {
+  return ::Microsoft::ReactNative::SetTag(dependencyObject, tag);
 }
 
 folly::dynamic XamlHelper::GetFollyDynamicFromValueProvider(JSValueArgWriter const &valueProvider) noexcept {

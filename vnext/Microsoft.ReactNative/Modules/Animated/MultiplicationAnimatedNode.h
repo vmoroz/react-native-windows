@@ -2,18 +2,19 @@
 // Licensed under the MIT License.
 
 #pragma once
-#include <folly/dynamic.h>
 #include "ValueAnimatedNode.h"
 
-namespace react::uwp {
+namespace Microsoft::ReactNative {
 class MultiplicationAnimatedNode final : public ValueAnimatedNode {
  public:
   MultiplicationAnimatedNode(
       int64_t tag,
-      const folly::dynamic &config,
+      const winrt::Microsoft::ReactNative::JSValueObject &config,
       const std::shared_ptr<NativeAnimatedNodeManager> &manager);
+
+  virtual void Update() override;
 
  private:
   std::unordered_set<int64_t> m_inputNodes{};
 };
-} // namespace react::uwp
+} // namespace Microsoft::ReactNative

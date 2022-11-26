@@ -5,11 +5,11 @@
  */
 
 import {spawn, execSync, SpawnOptions} from 'child_process';
-import * as fs from 'fs';
-import * as http from 'http';
-import * as path from 'path';
-import * as glob from 'glob';
-import * as parse from 'xml-parser';
+import fs from '@react-native-windows/fs';
+import http from 'http';
+import path from 'path';
+import glob from 'glob';
+import parse from 'xml-parser';
 import WinAppDeployTool from './winappdeploytool';
 import {
   newInfo,
@@ -19,11 +19,13 @@ import {
   newSpinner,
   commandWithProgress,
   runPowerShellScriptFunction,
+  powershell,
 } from './commandWithProgress';
 import * as build from './build';
 import {BuildConfig, RunWindowsOptions} from '../runWindowsOptions';
 import MSBuildTools from './msbuildtools';
 import {Config} from '@react-native-community/cli-types';
+import * as configUtils from '../../config/configUtils';
 import {WindowsProjectConfig} from '../../config/projectConfig';
 import {CodedError} from '@react-native-windows/telemetry';
 import Version from './version';
@@ -44,8 +46,71 @@ export function getBuildConfiguration(options: RunWindowsOptions): BuildConfig {
     : 'Debug';
 }
 
+function shouldDeployByPackage(
+  options: RunWindowsOptions,
+  config: Config,
+): boolean {
+  if (options.deployFromLayout) {
+    // Force deploy by layout
+    return false;
+  }
+
+  let hasAppxSigningEnabled: boolean | null = null;
+  let hasPackageCertificateKeyFile: boolean | null = null;
+
+  // TODO: These two properties should really be determined by
+  // getting the actual values msbuild used during the build,
+  // but for now we'll try to get them manually
+
+  // Check passed in msbuild property overrides
+  if (options.msbuildprops) {
+    const msbuildprops = build.parseMsBuildProps(options);
+    if ('AppxSigningEnabled' in msbuildprops) {
+      hasAppxSigningEnabled =
+        msbuildprops.AppxSigningEnabled.toLowerCase() === 'true';
+    }
+    if ('PackageCertificateKeyFile' in msbuildprops) {
+      hasPackageCertificateKeyFile = true;
+    }
+  }
+
+  // If at least one override wasn't set, we need to parse the project file
+  if (hasAppxSigningEnabled === null || hasPackageCertificateKeyFile === null) {
+    const projectFile = build.getAppProjectFile(options, config);
+    if (projectFile) {
+      const projectContents = configUtils.readProjectFile(projectFile);
+
+      // Find AppxSigningEnabled
+      if (hasAppxSigningEnabled === null) {
+        const appxSigningEnabled = configUtils.tryFindPropertyValue(
+          projectContents,
+          'AppxSigningEnabled',
+        );
+        if (appxSigningEnabled !== null) {
+          hasAppxSigningEnabled = appxSigningEnabled.toLowerCase() === 'true';
+        }
+      }
+
+      // Find PackageCertificateKeyFile
+      if (hasPackageCertificateKeyFile === null) {
+        const packageCertificateKeyFile = configUtils.tryFindPropertyValue(
+          projectContents,
+          'PackageCertificateKeyFile',
+        );
+        if (packageCertificateKeyFile !== null) {
+          hasPackageCertificateKeyFile = true;
+        }
+      }
+    }
+  }
+
+  return (
+    hasAppxSigningEnabled === true && hasPackageCertificateKeyFile === true
+  );
+}
+
 function shouldLaunchApp(options: RunWindowsOptions): boolean {
-  return options.launch;
+  return options.launch === true;
 }
 
 function getAppPackage(
@@ -115,7 +180,9 @@ function getWindowsStoreAppUtils(options: RunWindowsOptions) {
     'powershell',
     'WindowsStoreAppUtils.ps1',
   );
-  execSync(`powershell -NoProfile Unblock-File "${windowsStoreAppUtilsPath}"`);
+  execSync(
+    `${powershell} -NoProfile Unblock-File '${windowsStoreAppUtilsPath}'`,
+  );
   popd();
   return windowsStoreAppUtilsPath;
 }
@@ -125,21 +192,31 @@ function getAppxManifestPath(
   projectName?: string,
 ): string {
   const configuration = getBuildConfiguration(options);
-  const appxManifestGlob = `windows/{*/bin/${options.arch}/${configuration},${configuration}/*,target/${options.arch}/${configuration},${options.arch}/${configuration}/*}/AppxManifest.xml`;
+  // C++ x86 manifest would go under windows/Debug whereas x64 goes under windows/x64/Debug
+  // If we've built both, this causes us to end up with two matches, so we have to carefully select the right folder
+  let archFolder;
+  if (options.arch !== 'x86') {
+    archFolder = `${options.arch}/${configuration}`;
+  } else {
+    archFolder = `${configuration}`;
+  }
+
+  const appxManifestGlob = `windows/{*/bin/${options.arch}/${configuration},${archFolder}/*,target/${options.arch}/${configuration}}/AppxManifest.xml`;
   const globs = glob.sync(path.join(options.root, appxManifestGlob));
   let appxPath: string;
   if (globs.length === 1 || !projectName) {
     appxPath = globs[0];
   } else {
     const filteredGlobs = globs.filter(x => x.includes(projectName));
+    appxPath = filteredGlobs[0];
     if (filteredGlobs.length > 1) {
       newWarn(
         `More than one appxmanifest for ${projectName}: ${filteredGlobs.join(
           ',',
         )}`,
       );
+      newWarn(`Choosing ${appxPath}`);
     }
-    appxPath = filteredGlobs[0];
   }
 
   if (!appxPath) {
@@ -155,8 +232,11 @@ function parseAppxManifest(appxManifestPath: string): parse.Document {
   return parse(fs.readFileSync(appxManifestPath, 'utf8'));
 }
 
-function getAppxManifest(options: RunWindowsOptions): parse.Document {
-  return parseAppxManifest(getAppxManifestPath(options, undefined));
+function getAppxManifest(
+  options: RunWindowsOptions,
+  projectName?: string,
+): parse.Document {
+  return parseAppxManifest(getAppxManifestPath(options, projectName));
 }
 
 function handleResponseError(e: Error): never {
@@ -177,7 +257,14 @@ function handleResponseError(e: Error): never {
 export async function deployToDevice(
   options: RunWindowsOptions,
   verbose: boolean,
+  config: Config,
 ) {
+  const windowsConfig: Partial<WindowsProjectConfig> | undefined =
+    config.project.windows;
+  const projectName =
+    windowsConfig && windowsConfig.project && windowsConfig.project.projectName
+      ? windowsConfig.project.projectName
+      : path.parse(options.proj!).name;
   const appPackageFolder = getAppPackage(options);
 
   const deployTarget = options.target
@@ -186,7 +273,7 @@ export async function deployToDevice(
     ? 'emulator'
     : 'device';
   const deployTool = new WinAppDeployTool();
-  const appxManifest = getAppxManifest(options);
+  const appxManifest = getAppxManifest(options, projectName);
   const shouldLaunch = shouldLaunchApp(options);
   const identity = appxManifest.root.children.filter(x => {
     return x.name === 'mp:PhoneIdentity';
@@ -211,7 +298,7 @@ export async function deployToDevice(
       verbose,
     );
   } catch (e) {
-    if (e.message.indexOf('Error code 2148734208 for command') !== -1) {
+    if ((e as Error).message.includes('Error code 2148734208 for command')) {
       await deployTool.installAppPackage(
         appxFile,
         device,
@@ -220,7 +307,7 @@ export async function deployToDevice(
         verbose,
       );
     } else {
-      handleResponseError(e);
+      handleResponseError(e as Error);
     }
   }
 }
@@ -240,7 +327,7 @@ export async function deployToDesktop(
   const projectName =
     windowsConfig && windowsConfig.project && windowsConfig.project.projectName
       ? windowsConfig.project.projectName
-      : options.proj!;
+      : path.parse(options.proj!).name;
   const windowsStoreAppUtils = getWindowsStoreAppUtils(options);
   const appxManifestPath = getAppxManifestPath(options, projectName);
   const appxManifest = parseAppxManifest(appxManifestPath);
@@ -270,7 +357,8 @@ export async function deployToDesktop(
 
   const appPackageFolder = getAppPackage(options, projectName);
 
-  if (options.release) {
+  if (shouldDeployByPackage(options, config)) {
+    // Deploy by package
     await runPowerShellScriptFunction(
       'Removing old version of the app',
       windowsStoreAppUtils,
@@ -291,7 +379,8 @@ export async function deployToDesktop(
       'InstallAppFailure',
     );
   } else {
-    // If we have DeployAppRecipe.exe, use it (start in 16.9 Preview 2, don't use 16.8 even if it's there as that version has bugs)
+    // Deploy from layout
+    // If we have DeployAppRecipe.exe, use it (start in 16.8.4, earlier 16.8 versions have bugs)
     const appxRecipe = path.join(
       path.dirname(appxManifestPath),
       `${projectName}.build.appxrecipe`,
@@ -299,7 +388,7 @@ export async function deployToDesktop(
     const ideFolder = `${buildTools.installationPath}\\Common7\\IDE`;
     const deployAppxRecipeExePath = `${ideFolder}\\DeployAppRecipe.exe`;
     if (
-      vsVersion.gte(Version.fromString('16.9.30801.93')) &&
+      vsVersion.gte(Version.fromString('16.8.30906.45')) &&
       fs.existsSync(deployAppxRecipeExePath)
     ) {
       await commandWithProgress(
@@ -333,7 +422,7 @@ export async function deployToDesktop(
   }
 
   const appFamilyName = execSync(
-    `powershell -NoProfile -c $(Get-AppxPackage -Name ${appName}).PackageFamilyName`,
+    `${powershell} -NoProfile -c $(Get-AppxPackage -Name ${appName}).PackageFamilyName`,
   )
     .toString()
     .trim();
@@ -375,23 +464,19 @@ export function startServerInNewWindow(
   verbose: boolean,
 ): Promise<void> {
   return new Promise(resolve => {
-    if (options.packager) {
-      http
-        .get('http://localhost:8081/status', res => {
-          if (res.statusCode === 200) {
-            newSuccess('React-Native Server already started');
-          } else {
-            newError('React-Native Server not responding');
-          }
-          resolve();
-        })
-        .on('error', () => {
-          launchServer(options, verbose);
-          resolve();
-        });
-    } else {
-      resolve();
-    }
+    http
+      .get('http://localhost:8081/status', res => {
+        if (res.statusCode === 200) {
+          newSuccess('React-Native Server already started');
+        } else {
+          newError('React-Native Server not responding');
+        }
+        resolve();
+      })
+      .on('error', () => {
+        launchServer(options, verbose);
+        resolve();
+      });
   });
 }
 
@@ -403,5 +488,5 @@ function launchServer(options: RunWindowsOptions, verbose: boolean) {
     stdio: verbose ? 'inherit' : 'ignore',
   };
 
-  spawn('cmd.exe', ['/C', 'start npx --no-install react-native start'], opts);
+  spawn('cmd.exe', ['/C', 'start npx react-native start'], opts);
 }

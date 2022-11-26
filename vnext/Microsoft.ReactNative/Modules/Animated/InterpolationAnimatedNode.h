@@ -2,25 +2,24 @@
 // Licensed under the MIT License.
 
 #pragma once
-#include <folly/dynamic.h>
 #include "ValueAnimatedNode.h"
 
-namespace react::uwp {
+namespace Microsoft::ReactNative {
 
 class InterpolationAnimatedNode final : public ValueAnimatedNode {
  public:
   InterpolationAnimatedNode(
       int64_t tag,
-      const folly::dynamic &config,
+      const winrt::Microsoft::ReactNative::JSValueObject &config,
       const std::shared_ptr<NativeAnimatedNodeManager> &manager);
 
   virtual void Update() override;
   virtual void OnDetachedFromNode(int64_t animatedNodeTag) override;
   virtual void OnAttachToNode(int64_t animatedNodeTag) override;
 
-  static constexpr std::wstring_view ExtrapolateTypeIdentity = L"identity";
-  static constexpr std::wstring_view ExtrapolateTypeClamp = L"clamp";
-  static constexpr std::wstring_view ExtrapolateTypeExtend = L"extend";
+  static constexpr std::string_view ExtrapolateTypeIdentity = "identity";
+  static constexpr std::string_view ExtrapolateTypeClamp = "clamp";
+  static constexpr std::string_view ExtrapolateTypeExtend = "extend";
 
  private:
   comp::ExpressionAnimation CreateExpressionAnimation(const winrt::Compositor &compositor, ValueAnimatedNode &parent);
@@ -34,6 +33,8 @@ class InterpolationAnimatedNode final : public ValueAnimatedNode {
       const std::wstring &outputMax);
   winrt::hstring GetLeftExpression(const winrt::hstring &value, const winrt::hstring &leftInterpolateExpression);
   winrt::hstring GetRightExpression(const winrt::hstring &, const winrt::hstring &rightInterpolateExpression);
+
+  double InterpolateValue(double value);
 
   comp::ExpressionAnimation m_rawValueAnimation{nullptr};
   comp::ExpressionAnimation m_offsetAnimation{nullptr};
@@ -55,4 +56,4 @@ class InterpolationAnimatedNode final : public ValueAnimatedNode {
   static constexpr std::wstring_view s_inputName{L"i"};
   static constexpr std::wstring_view s_outputName{L"o"};
 };
-} // namespace react::uwp
+} // namespace Microsoft::ReactNative

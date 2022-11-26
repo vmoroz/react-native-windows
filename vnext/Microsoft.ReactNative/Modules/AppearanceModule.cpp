@@ -10,59 +10,81 @@ using Application = xaml::Application;
 using ApplicationTheme = xaml::ApplicationTheme;
 using UISettings = winrt::Windows::UI::ViewManagement::UISettings;
 
-using Method = facebook::xplat::module::CxxModule::Method;
+namespace Microsoft::ReactNative {
 
-namespace react::uwp {
+static const React::ReactPropertyId<ApplicationTheme> &AppearanceCurrentThemePropertyId() noexcept {
+  static const React::ReactPropertyId<ApplicationTheme> prop{L"ReactNative.Appearance", L"ApplicationTheme"};
+  return prop;
+}
 
-AppearanceChangeListener::AppearanceChangeListener(
-    const Mso::React::IReactContext &context,
-    Mso::DispatchQueue const &uiQueue) noexcept
-    : Mso::ActiveObject<>(uiQueue), m_context(&context) {
-  // Ensure we're constructed on the UI thread
-  VerifyElseCrash(uiQueue.HasThreadAccess());
+void Appearance::Initialize(winrt::Microsoft::ReactNative::ReactContext const &reactContext) noexcept {
+  m_context = reactContext;
 
+  m_context.UIDispatcher().Post([wkThis = weak_from_this()]() {
+    if (auto pThis = wkThis.lock()) {
+      pThis->RequeryTheme();
+    }
+  });
+
+  // UISettings will notify us on a background thread regardless of where we construct it or register for events.
+  // Redirect callbacks to the UI thread where we can check app theme.
+  m_revoker = m_uiSettings.ColorValuesChanged(
+      winrt::auto_revoke,
+      [wkThis = weak_from_this(), reactContext](const auto & /*sender*/, const auto & /*args*/) noexcept {
+        if (auto pThis = wkThis.lock()) {
+          reactContext.UIDispatcher().Post([wkThis]() noexcept {
+            if (auto pThis = wkThis.lock()) {
+              pThis->RequeryTheme();
+            }
+          });
+        }
+      });
+}
+
+ApplicationTheme Appearance::GetCurrentTheme() noexcept {
+  assert(m_context.UIDispatcher().HasThreadAccess()); // xaml::Application is only accessible on the UI thread
   if (auto currentApp = xaml::TryGetCurrentApplication()) {
-    m_currentTheme = currentApp.RequestedTheme();
-
-    // UISettings will notify us on a background thread regardless of where we construct it or register for events.
-    // Redirect callbacks to the UI thread where we can check app theme.
-    m_revoker = m_uiSettings.ColorValuesChanged(
-        winrt::auto_revoke, [weakThis{Mso::WeakPtr(this)}](const auto & /*sender*/, const auto & /*args*/) noexcept {
-          if (auto strongThis = weakThis.GetStrongPtr()) {
-            strongThis->InvokeInQueueStrong([strongThis]() noexcept { strongThis->OnColorValuesChanged(); });
-          }
-        });
+    return currentApp.RequestedTheme();
   }
+
+  return ApplicationTheme::Light;
 }
 
-const char *AppearanceChangeListener::GetColorScheme() const noexcept {
-  return ToString(m_currentTheme);
-}
-
-const char *AppearanceChangeListener::ToString(ApplicationTheme theme) noexcept {
+const char *Appearance::ToString(ApplicationTheme theme) noexcept {
   return theme == ApplicationTheme::Dark ? "dark" : "light";
 }
 
-void AppearanceChangeListener::OnColorValuesChanged() noexcept {
-  auto newTheme = Application::Current().RequestedTheme();
-  if (m_currentTheme != newTheme) {
-    m_currentTheme = newTheme;
+void Appearance::RequeryTheme() noexcept {
+  auto theme = GetCurrentTheme();
+  auto oldThemeBoxed =
+      m_context.Properties().Handle().Set(AppearanceCurrentThemePropertyId().Handle(), winrt::box_value(theme));
+  auto oldTheme = winrt::unbox_value_or<ApplicationTheme>(oldThemeBoxed, ApplicationTheme::Light);
 
-    m_context->CallJSFunction(
-        "RCTDeviceEventEmitter", "emit", folly::dynamic::array("appearanceChanged", ToString(m_currentTheme)));
+  if (oldTheme != theme) {
+    appearanceChanged(ToString(theme));
   }
 }
 
-AppearanceModule::AppearanceModule(Mso::CntPtr<AppearanceChangeListener> &&appearanceListener) noexcept
-    : m_changeListener(std::move(appearanceListener)) {}
+void Appearance::InitOnUIThread(const Mso::React::IReactContext &context) noexcept {
+  xaml::ApplicationTheme theme = ApplicationTheme::Light;
+  if (auto currentApp = xaml::TryGetCurrentApplication()) {
+    theme = currentApp.RequestedTheme();
+  }
 
-std::string AppearanceModule::getName() {
-  return AppearanceModule::Name;
+  winrt::Microsoft::ReactNative::ReactPropertyBag pb{context.Properties()};
+  pb.Set(AppearanceCurrentThemePropertyId(), theme);
 }
 
-std::vector<Method> AppearanceModule::getMethods() {
-  return {Method(
-      "getColorScheme", [this](folly::dynamic /*args*/) { return m_changeListener->GetColorScheme(); }, SyncTag)};
+std::optional<std::string> Appearance::getColorScheme() noexcept {
+  return ToString(*(m_context.Properties().Get(AppearanceCurrentThemePropertyId())));
 }
 
-} // namespace react::uwp
+void Appearance::addListener(std::string eventName) noexcept {
+  // no-op
+}
+
+void Appearance::removeListeners(double count) noexcept {
+  // no-op
+}
+
+} // namespace Microsoft::ReactNative

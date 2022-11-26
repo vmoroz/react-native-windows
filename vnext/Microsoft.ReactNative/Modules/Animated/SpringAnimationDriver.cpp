@@ -7,39 +7,47 @@
 #include <math.h>
 #include "SpringAnimationDriver.h"
 
-namespace react::uwp {
+namespace Microsoft::ReactNative {
+
+static constexpr auto MAX_DELTA_TIME_MS = 4.0 * 1000.0 / 60.0;
+
 SpringAnimationDriver::SpringAnimationDriver(
     int64_t id,
     int64_t animatedValueTag,
     const Callback &endCallback,
-    const folly::dynamic &config,
+    const winrt::Microsoft::ReactNative::JSValueObject &config,
     const std::shared_ptr<NativeAnimatedNodeManager> &manager,
-    const folly::dynamic &dynamicToValues)
+    const winrt::Microsoft::ReactNative::JSValueArray &dynamicToValues)
     : CalculatedAnimationDriver(id, animatedValueTag, endCallback, config, manager),
-      m_dynamicToValues(dynamicToValues) {
-  m_springStiffness = config.find(s_springStiffnessParameterName).dereference().second.asDouble();
-  m_springDamping = config.find(s_springDampingParameterName).dereference().second.asDouble();
-  m_springMass = config.find(s_springMassParameterName).dereference().second.asDouble();
-  m_initialVelocity = config.find(s_initialVelocityParameterName).dereference().second.asDouble();
-  m_endValue = config.find(s_endValueParameterName).dereference().second.asDouble();
-  m_restSpeedThreshold = config.find(s_restSpeedThresholdParameterName).dereference().second.asDouble();
-  m_displacementFromRestThreshold =
-      config.find(s_displacementFromRestThresholdParameterName).dereference().second.asDouble();
-  m_overshootClampingEnabled = config.find(s_overshootClampingEnabledParameterName).dereference().second.asBool();
-  m_iterations = static_cast<int>(config.find(s_iterationsParameterName).dereference().second.asDouble());
+      m_dynamicToValues(dynamicToValues.Copy()) {
+  m_springStiffness = config[s_springStiffnessParameterName].AsDouble();
+  m_springDamping = config[s_springDampingParameterName].AsDouble();
+  m_springMass = config[s_springMassParameterName].AsDouble();
+  m_initialVelocity = config[s_initialVelocityParameterName].AsDouble();
+  m_endValue = config[s_endValueParameterName].AsDouble();
+  m_restSpeedThreshold = config[s_restSpeedThresholdParameterName].AsDouble();
+  m_displacementFromRestThreshold = config[s_displacementFromRestThresholdParameterName].AsDouble();
+  m_overshootClampingEnabled = config[s_overshootClampingEnabledParameterName].AsBoolean();
+  m_iterations = static_cast<int>(config[s_iterationsParameterName].AsDouble());
 }
 
-bool SpringAnimationDriver::IsAnimationDone(double currentValue, double currentVelocity) {
+bool SpringAnimationDriver::IsAnimationDone(
+    double currentValue,
+    std::optional<double> /*previousValue*/,
+    double currentVelocity) {
   return (
       IsAtRest(currentVelocity, currentValue, m_endValue) ||
       (m_overshootClampingEnabled && IsOvershooting(currentValue)));
 }
 
 std::tuple<float, double> SpringAnimationDriver::GetValueAndVelocityForTime(double time) {
-  const auto toValue = [this, time]() {
-    const auto frameFromTime = static_cast<int>(time * 60.0);
-    if (frameFromTime < static_cast<int>(m_dynamicToValues.size())) {
-      return m_startValue + (m_dynamicToValues[frameFromTime].asDouble() * (m_endValue - m_startValue));
+  const auto startValue = m_originalValue.value();
+  const auto toValue = [this, startValue, time]() {
+    if (m_useComposition) {
+      const auto frameFromTime = static_cast<int>(time * 60.0);
+      if (frameFromTime < static_cast<int>(m_dynamicToValues.size())) {
+        return startValue + (m_dynamicToValues[frameFromTime].AsDouble() * (m_endValue - startValue));
+      }
     }
     return m_endValue;
   }();
@@ -51,7 +59,7 @@ std::tuple<float, double> SpringAnimationDriver::GetValueAndVelocityForTime(doub
   const auto zeta = c / (2 * std::sqrt(k * m));
   const auto omega0 = std::sqrt(k / m);
   const auto omega1 = omega0 * std::sqrt(1.0 - (zeta * zeta));
-  const auto x0 = toValue - m_startValue;
+  const auto x0 = toValue - startValue;
 
   if (zeta < 1) {
     const auto envelope = std::exp(-zeta * omega0 * time);
@@ -70,19 +78,66 @@ std::tuple<float, double> SpringAnimationDriver::GetValueAndVelocityForTime(doub
   }
 }
 
+bool SpringAnimationDriver::Update(double timeDeltaMs, bool restarting) {
+  assert(!m_useComposition);
+  if (const auto node = GetAnimatedValue()) {
+    if (restarting) {
+      if (!m_originalValue) {
+        m_originalValue = node->RawValue();
+      } else {
+        node->RawValue(m_originalValue.value());
+      }
+
+      // Spring animations run a frame behind JS driven animations if we do
+      // not start the first frame at 16ms.
+      m_lastTime = timeDeltaMs - s_frameDurationMs;
+      m_timeAccumulator = 0.0;
+    }
+
+    // clamp the amount of timeDeltaMs to avoid stuttering in the UI.
+    // We should be able to catch up in a subsequent advance if necessary.
+    auto adjustedDeltaTime = timeDeltaMs - m_lastTime;
+    if (adjustedDeltaTime > MAX_DELTA_TIME_MS) {
+      adjustedDeltaTime = MAX_DELTA_TIME_MS;
+    }
+    m_timeAccumulator += adjustedDeltaTime;
+    m_lastTime = timeDeltaMs;
+
+    auto [value, velocity] = GetValueAndVelocityForTime(m_timeAccumulator / 1000.0);
+
+    auto isComplete = false;
+    if (IsAnimationDone(value, std::nullopt, velocity)) {
+      if (m_springStiffness > 0) {
+        value = static_cast<float>(m_endValue);
+      } else {
+        m_endValue = value;
+      }
+
+      isComplete = true;
+    }
+
+    node->RawValue(value);
+
+    return isComplete;
+  }
+
+  return true;
+}
+
 bool SpringAnimationDriver::IsAtRest(double currentVelocity, double currentValue, double endValue) {
   return std::abs(currentVelocity) <= m_restSpeedThreshold &&
       (std::abs(currentValue - endValue) <= m_displacementFromRestThreshold || m_springStiffness == 0);
 }
 
 bool SpringAnimationDriver::IsOvershooting(double currentValue) {
+  const auto startValue = m_originalValue.value();
   return m_springStiffness > 0 &&
-      ((m_startValue < m_endValue && currentValue > m_endValue) ||
-       (m_startValue > m_endValue && currentValue < m_endValue));
+      ((startValue < m_endValue && currentValue > m_endValue) ||
+       (startValue > m_endValue && currentValue < m_endValue));
 }
 
 double SpringAnimationDriver::ToValue() {
   return m_endValue;
 }
 
-} // namespace react::uwp
+} // namespace Microsoft::ReactNative

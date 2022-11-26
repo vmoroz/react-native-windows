@@ -99,29 +99,20 @@ void ReactInstanceSettings::DebuggerBreakOnNextLine(bool value) noexcept {
   Mso::React::ReactOptions::SetDebuggerBreakOnNextLine(m_properties, value);
 }
 
+bool ReactInstanceSettings::EnableDefaultCrashHandler() noexcept {
+  return Mso::React::ReactOptions::EnableDefaultCrashHandler(m_properties);
+}
+
+void ReactInstanceSettings::EnableDefaultCrashHandler(bool value) noexcept {
+  Mso::React::ReactOptions::SetEnableDefaultCrashHandler(m_properties, value);
+}
+
 bool ReactInstanceSettings::EnableDeveloperMenu() noexcept {
   return UseDeveloperSupport();
 }
 
 void ReactInstanceSettings::EnableDeveloperMenu(bool value) noexcept {
   UseDeveloperSupport(value);
-}
-
-hstring ReactInstanceSettings::DebugHost() noexcept {
-  std::wstring dhost(SourceBundleHost());
-  dhost.append(L":");
-  dhost.append(std::to_wstring(SourceBundlePort()));
-  return hstring(dhost);
-}
-
-void ReactInstanceSettings::DebugHost(hstring const &value) noexcept {
-  std::wstring dhost(value);
-  auto colonPos = dhost.find(L':');
-  if (colonPos != std::wstring::npos) {
-    SourceBundleHost(hstring(dhost.substr(0, colonPos)));
-    dhost.erase(0, colonPos + 1);
-    SourceBundlePort(static_cast<uint16_t>(std::stoi(dhost)));
-  }
 }
 
 bool ReactInstanceSettings::BackgroundMode() noexcept {
@@ -131,7 +122,6 @@ bool ReactInstanceSettings::BackgroundMode() noexcept {
 void ReactInstanceSettings::BackgroundMode(bool value) noexcept {
   Mso::React::ReactOptions::BackgroundMode(m_properties, value);
 }
-
 
 IReactPropertyNamespace InstanceSettingsNamespace() noexcept {
   static IReactPropertyNamespace value = ReactPropertyBagHelper::GetNamespace(L"ReactNative.InstanceSettings");

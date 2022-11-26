@@ -6,6 +6,7 @@
 #include "ReactApplication.g.cpp"
 #include "winrt/Microsoft.ReactNative.h"
 
+#include "CrashManager.h"
 #include "IReactDispatcher.h"
 #include "Modules/LinkingManagerModule.h"
 #include "ReactNativeHost.h"
@@ -37,15 +38,20 @@ ReactApplication::ReactApplication(IInspectable const &outer) noexcept : ReactAp
         f.CreateInstance(outer ? outer : static_cast<IInspectable const &>(*this), this->m_inner);
   });
 
+#ifndef USE_WINUI3
   Suspending({this, &ReactApplication::OnSuspending});
 
-#if defined _DEBUG && !defined DISABLE_XAML_GENERATED_BREAK_ON_UNHANDLED_EXCEPTION
+#if !defined DISABLE_XAML_GENERATED_BREAK_ON_UNHANDLED_EXCEPTION
   UnhandledException([this](IInspectable const &, UnhandledExceptionEventArgs const &e) {
+#if defined _DEBUG
     if (IsDebuggerPresent()) {
       auto errorMessage = e.Message();
       __debugbreak();
-    }
+    } else
+#endif
+      Mso::React::CrashManager::OnUnhandledException();
   });
+#endif
 #endif
 }
 
@@ -83,14 +89,6 @@ void ReactApplication::UseDeveloperSupport(bool value) noexcept {
   InstanceSettings().UseDeveloperSupport(value);
 }
 
-hstring ReactApplication::JavaScriptMainModuleName() noexcept {
-  return InstanceSettings().JavaScriptMainModuleName();
-}
-
-void ReactApplication::JavaScriptMainModuleName(hstring const &value) noexcept {
-  InstanceSettings().JavaScriptMainModuleName(value);
-}
-
 hstring ReactApplication::JavaScriptBundleFile() noexcept {
   return InstanceSettings().JavaScriptBundleFile();
 }
@@ -102,7 +100,7 @@ void ReactApplication::JavaScriptBundleFile(hstring const &value) noexcept {
 void ReactApplication::OnActivated(Windows::ApplicationModel::Activation::IActivatedEventArgs const &e) {
   if (e.Kind() == Windows::ApplicationModel::Activation::ActivationKind::Protocol) {
     auto protocolActivatedEventArgs{e.as<Windows::ApplicationModel::Activation::ProtocolActivatedEventArgs>()};
-    react::uwp::LinkingManagerModule::OpenUri(protocolActivatedEventArgs.Uri());
+    ::Microsoft::ReactNative::LinkingManager::OpenUri(protocolActivatedEventArgs.Uri());
   }
   this->OnCreate(e);
 }
@@ -115,6 +113,10 @@ void ReactApplication::OnLaunched(activation::LaunchActivatedEventArgs const &e_
 #else
       e_;
 #endif // USE_WINUI3
+
+  if (m_launched) {
+    m_launched({*this}, e);
+  }
 
   this->OnCreate(e);
 }
@@ -197,6 +199,10 @@ void ReactApplication::OnCreate(Windows::ApplicationModel::Activation::IActivate
   }
 
   Window::Current().Activate();
+
+  if (m_viewCreated) {
+    m_viewCreated({*this}, args);
+  }
 }
 
 /// <summary>
@@ -219,6 +225,42 @@ void ReactApplication::OnSuspending(
 /// <param name="e">Details about the navigation failure</param>
 void ReactApplication::OnNavigationFailed(IInspectable const &, NavigationFailedEventArgs const &e) {
   throw hresult_error(E_FAIL, hstring(L"Failed to load Page ") + e.SourcePageType().Name);
+}
+
+void ReactApplication::LaunchedInternal(ReactApplication::AppLaunchedDelegate delegate) noexcept {
+  m_launched = delegate;
+}
+
+ReactApplication::AppLaunchedDelegate ReactApplication::LaunchedInternal() const noexcept {
+  return m_launched;
+}
+
+void ReactApplication::ViewCreatedInternal(ReactApplication::AppViewCreatedDelegate delegate) noexcept {
+  m_viewCreated = delegate;
+}
+
+ReactApplication::AppViewCreatedDelegate ReactApplication::ViewCreatedInternal() const noexcept {
+  return m_viewCreated;
+}
+
+void ReactApplication::PageNavigatedInternal(ReactApplication::AppPageNavigatedDelegate delegate) noexcept {
+  m_pageNavigated = delegate;
+}
+
+ReactApplication::AppPageNavigatedDelegate ReactApplication::PageNavigatedInternal() const noexcept {
+  return m_pageNavigated;
+}
+
+xaml::Markup::IXamlType ReactApplication::GetXamlType(winrt::hstring const &name) const {
+  return m_provider.GetXamlType(name);
+}
+
+xaml::Markup::IXamlType ReactApplication::GetXamlType(::winrt::Windows::UI::Xaml::Interop::TypeName const &type) const {
+  return m_provider.GetXamlType(type);
+}
+
+::winrt::com_array<xaml::Markup::XmlnsDefinition> ReactApplication::GetXmlnsDefinitions() const {
+  return m_provider.GetXmlnsDefinitions();
 }
 
 } // namespace winrt::Microsoft::ReactNative::implementation

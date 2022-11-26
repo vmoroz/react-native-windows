@@ -86,8 +86,9 @@ struct IReactInstance : IUnknown {
 
   virtual void AttachMeasuredRootView(
       facebook::react::IReactRootView *rootView,
-      folly::dynamic &&initialProps) noexcept = 0;
-  virtual void DetachRootView(facebook::react::IReactRootView *rootView) noexcept = 0;
+      const winrt::Microsoft::ReactNative::JSValueArgWriter &initialProps,
+      bool useFabric) noexcept = 0;
+  virtual void DetachRootView(facebook::react::IReactRootView *rootView, bool useFabric) noexcept = 0;
 };
 
 MSO_GUID(IReactSettingsSnapshot, "6652bb2e-4c5e-49f7-b642-e817b0fef4de")
@@ -101,9 +102,11 @@ struct IReactSettingsSnapshot : IUnknown {
   virtual std::string BundleRootPath() const noexcept = 0;
   virtual std::string SourceBundleHost() const noexcept = 0;
   virtual uint16_t SourceBundlePort() const noexcept = 0;
+  virtual bool RequestInlineSourceMap() const noexcept = 0;
   virtual std::string JavaScriptBundleFile() const noexcept = 0;
   virtual bool UseDeveloperSupport() const noexcept = 0;
   virtual bool BackgroundMode() const noexcept = 0;
+  virtual JSIEngine JsiEngine() const noexcept = 0;
 };
 
 MSO_GUID(IReactContext, "a4309a29-8fc5-478e-abea-0ddb9ecc5e40")
@@ -113,12 +116,10 @@ struct IReactContext : IUnknown {
   virtual void CallJSFunction(std::string &&module, std::string &&method, folly::dynamic &&params) const noexcept = 0;
   virtual void DispatchEvent(int64_t viewTag, std::string &&eventName, folly::dynamic &&eventData) const noexcept = 0;
   virtual winrt::Microsoft::ReactNative::JsiRuntime JsiRuntime() const noexcept = 0;
-#ifndef CORE_ABI
   virtual ReactInstanceState State() const noexcept = 0;
   virtual bool IsLoaded() const noexcept = 0;
   virtual std::shared_ptr<facebook::react::Instance> GetInnerInstance() const noexcept = 0;
   virtual IReactSettingsSnapshot const &SettingsSnapshot() const noexcept = 0;
-#endif
 };
 
 //! Settings per each IReactViewHost associated with an IReactHost instance.
@@ -126,8 +127,8 @@ struct ReactViewOptions {
   //! Name of a component registered in JavaScript via AppRegistry.registerComponent('ModuleName', () => ModuleName);
   std::string ComponentName;
 
-  //! Set of initial component properties. It is a JSON string.
-  folly::dynamic InitialProps;
+  // Initial component properties.
+  winrt::Microsoft::ReactNative::JSValueArgWriter InitialProps;
 };
 
 struct ReactDevOptions {
@@ -136,9 +137,6 @@ struct ReactDevOptions {
 
   //! For direct debugging, specifies a name to associate with the JavaScript runtime instance.
   std::string DebuggerRuntimeName;
-
-  //! URL used for debugging
-  std::string DebugHost;
 
   //! When using web debugging and/or live reload, the source is obtained from the packager.
   //! The source url for the bundle is "http://{HOST}:{PORT}/{NAME}{EXTENSION}?platform=..."
@@ -150,6 +148,7 @@ struct ReactDevOptions {
   //! Specify a value for a component, or leave empty to use the default.
   std::string SourceBundleHost; // Host domain (without port) for the bundler server. Default: "localhost".
   uint16_t SourceBundlePort{0}; // Host port for the bundler server. Default: "8081".
+  bool RequestInlineSourceMap{true}; // Request the source map inline
   std::string SourceBundleName; // Bundle name without any extension (e.g. "index.win32"). Default: "index.{PLATFORM}"
   std::string SourceBundleExtension; // Bundle name extension. Default: ".bundle".
 
@@ -239,8 +238,6 @@ struct ReactOptions {
 
   std::string ByteCodeFileUri;
   bool EnableByteCodeCaching{true};
-  bool UseJsi{true};
-  JSIEngine JsiEngine{JSIEngine::Chakra};
 
   //! Enable function nativePerformanceNow.
   //! Method nativePerformanceNow() returns high resolution time info.
@@ -267,6 +264,13 @@ struct ReactOptions {
       winrt::Microsoft::ReactNative::IReactPropertyBag const &properties,
       bool value) noexcept;
   static bool UseFastRefresh(winrt::Microsoft::ReactNative::IReactPropertyBag const &properties) noexcept;
+
+  JSIEngine JsiEngine() const noexcept;
+  void SetJsiEngine(JSIEngine value) noexcept;
+  static JSIEngine JsiEngine(winrt::Microsoft::ReactNative::IReactPropertyBag const &properties) noexcept;
+  static void SetJsiEngine(
+      winrt::Microsoft::ReactNative::IReactPropertyBag const &properties,
+      JSIEngine value) noexcept;
 
   //! Enable live reload to load the source bundle from the React Native packager.
   //! When the file is saved, the packager will trigger reloading.
@@ -308,6 +312,14 @@ struct ReactOptions {
       winrt::Microsoft::ReactNative::IReactPropertyBag const &properties,
       bool value) noexcept;
   static bool BackgroundMode(winrt::Microsoft::ReactNative::IReactPropertyBag const &properties) noexcept;
+
+  //! Enables the default unhandled exception handler
+  void SetEnableDefaultCrashHandler(bool enable) noexcept;
+  bool EnableDefaultCrashHandler() const noexcept;
+  static void SetEnableDefaultCrashHandler(
+      winrt::Microsoft::ReactNative::IReactPropertyBag const &properties,
+      bool value) noexcept;
+  static bool EnableDefaultCrashHandler(winrt::Microsoft::ReactNative::IReactPropertyBag const &properties) noexcept;
 
   //! Adds registered JS bundle to JSBundles.
   LIBLET_PUBLICAPI ReactOptions &AddRegisteredJSBundle(std::string_view jsBundleId) noexcept;

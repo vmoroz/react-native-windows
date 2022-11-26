@@ -7,6 +7,7 @@
 
 #include "ViewControl.h"
 
+#include <UI.Xaml.Automation.Peers.h>
 #include "DynamicAutomationProperties.h"
 
 #include <JSValueWriter.h>
@@ -18,6 +19,7 @@
 #include <INativeUIManager.h>
 #include <IReactInstance.h>
 
+#include <cxxreact/SystraceSection.h>
 #include <inspectable.h>
 #include <unicode.h>
 #include <winrt/Windows.System.h>
@@ -29,6 +31,8 @@
 #include <winrt/Windows.Foundation.h>
 #endif
 
+using namespace facebook::react;
+
 namespace Microsoft::ReactNative {
 
 // ViewShadowNode
@@ -39,26 +43,24 @@ class ViewShadowNode : public ShadowNodeBase {
  public:
   ViewShadowNode() = default;
 
-  void createView() override {
-    Super::createView();
+  void createView(const winrt::Microsoft::ReactNative::JSValueObject &props) override {
+    Super::createView(props);
 
-    auto panel = GetViewPanel();
+    auto panel = GetPanel();
 
-    react::uwp::DynamicAutomationProperties::SetAccessibilityInvokeEventHandler(panel, [=]() {
+    DynamicAutomationProperties::SetAccessibilityInvokeEventHandler(panel, [=]() {
       if (OnClick())
         DispatchEvent("topClick", std::move(folly::dynamic::object("target", m_tag)));
       else
         DispatchEvent("topAccessibilityTap", std::move(folly::dynamic::object("target", m_tag)));
     });
 
-    react::uwp::DynamicAutomationProperties::SetAccessibilityActionEventHandler(
-        panel, [=](winrt::react::uwp::AccessibilityAction const &action) {
+    DynamicAutomationProperties::SetAccessibilityActionEventHandler(
+        panel, [=](winrt::Microsoft::ReactNative::AccessibilityAction const &action) {
           folly::dynamic eventData = folly::dynamic::object("target", m_tag);
 
           eventData.insert(
-              "actionName",
-              action.Label.empty() ? react::uwp::HstringToDynamic(action.Name)
-                                   : react::uwp::HstringToDynamic(action.Label));
+              "actionName", action.Label.empty() ? HstringToDynamic(action.Name) : HstringToDynamic(action.Label));
 
           DispatchEvent("topAccessibilityAction", std::move(eventData));
         });
@@ -124,9 +126,14 @@ class ViewShadowNode : public ShadowNodeBase {
   }
   void IsFocusable(bool isFocusable) {
     m_isFocusable = isFocusable;
+  }
 
-    if (IsControl())
-      GetControl().IsTabStop(m_isFocusable);
+  bool IsAccessible() const {
+    return m_isAccessible;
+  }
+
+  void IsAccessible(bool isAccessible) {
+    m_isAccessible = isAccessible;
   }
 
   bool IsHitTestBrushRequired() const {
@@ -143,28 +150,28 @@ class ViewShadowNode : public ShadowNodeBase {
           Microsoft::Common::Unicode::Utf16ToUtf8(name.c_str()));
     }
 
-    GetViewPanel().InsertAt(static_cast<uint32_t>(index), view.as<xaml::UIElement>());
+    GetPanel().Children().InsertAt(static_cast<uint32_t>(index), view.as<xaml::UIElement>());
   }
 
   void RemoveChildAt(int64_t indexToRemove) override {
     if (indexToRemove == static_cast<uint32_t>(indexToRemove))
-      GetViewPanel().RemoveAt(static_cast<uint32_t>(indexToRemove));
+      GetPanel().Children().RemoveAt(static_cast<uint32_t>(indexToRemove));
   }
 
   void removeAllChildren() override {
-    GetViewPanel().Clear();
+    GetPanel().Children().Clear();
 
     XamlView current = m_view;
 
     // TODO NOW: Why do we do this? Removal of children doesn't seem to imply we
-    // tear down the infrastr
+    // tear down the infrastructure
     if (IsControl()) {
       if (auto control = m_view.try_as<xaml::Controls::ContentControl>()) {
         current = control.Content().as<XamlView>();
         control.Content(nullptr);
       } else {
         std::string name = Microsoft::Common::Unicode::Utf16ToUtf8(winrt::get_class_name(current).c_str());
-        cdebug << "Tearing down, IsControl=true but the control is not a ContentControl, it's a " << name << std::endl;
+        cdebug << "Tearing down, IsControl=true but the control is not a ContentControl, it's a " << name << "\n";
       }
     }
 
@@ -176,12 +183,12 @@ class ViewShadowNode : public ShadowNodeBase {
   }
 
   void ReplaceChild(const XamlView &oldChildView, const XamlView &newChildView) override {
-    auto pPanel = GetViewPanel();
+    auto pPanel = GetPanel();
     if (pPanel != nullptr) {
       uint32_t index;
       if (pPanel.Children().IndexOf(oldChildView.as<xaml::UIElement>(), index)) {
-        pPanel.RemoveAt(index);
-        pPanel.InsertAt(index, newChildView.as<xaml::UIElement>());
+        pPanel.Children().RemoveAt(index);
+        pPanel.Children().InsertAt(index, newChildView.as<xaml::UIElement>());
       } else {
         assert(false);
       }
@@ -197,7 +204,7 @@ class ViewShadowNode : public ShadowNodeBase {
     static_cast<FrameworkElementViewManager *>(GetViewManager())->RefreshTransformMatrix(this);
   }
 
-  winrt::react::uwp::ViewPanel GetViewPanel() {
+  xaml::Controls::Panel GetPanel() {
     XamlView current = m_view;
 
     if (IsControl()) {
@@ -212,18 +219,18 @@ class ViewShadowNode : public ShadowNodeBase {
       }
     }
 
-    auto panel = current.try_as<winrt::react::uwp::ViewPanel>();
+    auto panel = current.try_as<xaml::Controls::Panel>();
     assert(panel != nullptr);
 
     return panel;
   }
 
-  winrt::react::uwp::ViewControl GetControl() {
-    return IsControl() ? m_view.as<winrt::react::uwp::ViewControl>() : nullptr;
+  winrt::Microsoft::ReactNative::ViewControl GetControl() {
+    return IsControl() ? m_view.as<winrt::Microsoft::ReactNative::ViewControl>() : nullptr;
   }
 
   XamlView CreateViewControl() {
-    auto contentControl = winrt::make<winrt::react::uwp::implementation::ViewControl>();
+    auto contentControl = winrt::make<winrt::Microsoft::ReactNative::implementation::ViewControl>();
 
     m_contentControlGotFocusRevoker = contentControl.GotFocus(winrt::auto_revoke, [=](auto &&, auto &&args) {
       if (args.OriginalSource().try_as<xaml::UIElement>() == contentControl.as<xaml::UIElement>()) {
@@ -253,6 +260,7 @@ class ViewShadowNode : public ShadowNodeBase {
   bool m_enableFocusRing = true;
   bool m_onClick = false;
   bool m_isFocusable = false;
+  bool m_isAccessible = false;
   int32_t m_tabIndex = std::numeric_limits<std::int32_t>::max();
 
   xaml::Controls::ContentControl::GotFocus_revoker m_contentControlGotFocusRevoker{};
@@ -263,19 +271,19 @@ class ViewShadowNode : public ShadowNodeBase {
 // specialize
 // PropertyUtils' TryUpdateBackgroundBrush to use ViewBackground.
 // Issue #2172: Additionally, we need to use
-// winrt::react::uwp::ViewPanel::implementation::ViewBackgroundProperty
+// winrt::Microsoft::ReactNative::ViewPanel::implementation::ViewBackgroundProperty
 // rather than the proper projected type, because of how we're using cppwinrt.
 
 template <>
 bool TryUpdateBackgroundBrush(
-    const winrt::react::uwp::ViewPanel &element,
+    const winrt::Microsoft::ReactNative::ViewPanel &element,
     const std::string &propertyName,
     const winrt::Microsoft::ReactNative::JSValue &propertyValue) {
   if (propertyName == "backgroundColor") {
-    if (react::uwp::IsValidColorValue(propertyValue))
-      element.ViewBackground(react::uwp::BrushFrom(propertyValue));
+    if (IsValidColorValue(propertyValue))
+      element.ViewBackground(BrushFrom(propertyValue));
     else if (propertyValue.IsNull())
-      element.ClearValue(react::uwp::ViewPanel::ViewBackgroundProperty());
+      element.ClearValue(ViewPanel::ViewBackgroundProperty());
 
     return true;
   }
@@ -283,26 +291,26 @@ bool TryUpdateBackgroundBrush(
   return false;
 }
 
-// Issue #2172: Calling winrt::react::uwp::ViewPanel::BorderBrushProperty fails
+// Issue #2172: Calling winrt::Microsoft::ReactNative::ViewPanel::BorderBrushProperty fails
 // to call
-// down into winrt::react::uwp::implementation::ViewPanel::BorderBrushProperty
+// down into winrt::Microsoft::ReactNative::implementation::ViewPanel::BorderBrushProperty
 // because of how we're using cppwinrt. So we specialize PropertyUtils'
 // TryUpdateBorderProperties
-// to use winrt::react::uwp::ViewPanel::implementation::BorderBrushProperty
+// to use winrt::Microsoft::ReactNative::ViewPanel::implementation::BorderBrushProperty
 
 template <>
 bool TryUpdateBorderProperties(
     ShadowNodeBase *node,
-    const winrt::react::uwp::ViewPanel &element,
+    const winrt::Microsoft::ReactNative::ViewPanel &element,
     const std::string &propertyName,
     const winrt::Microsoft::ReactNative::JSValue &propertyValue) {
   bool isBorderProperty = true;
 
   if (propertyName == "borderColor") {
-    if (react::uwp::IsValidColorValue(propertyValue))
-      element.BorderBrush(react::uwp::BrushFrom(propertyValue));
+    if (IsValidColorValue(propertyValue))
+      element.BorderBrush(BrushFrom(propertyValue));
     else if (propertyValue.IsNull())
-      element.ClearValue(react::uwp::ViewPanel::BorderBrushProperty());
+      element.ClearValue(ViewPanel::BorderBrushProperty());
   } else if (propertyName == "borderLeftWidth") {
     if (propertyValue.Type() == winrt::Microsoft::ReactNative::JSValueType::Double ||
         propertyValue.Type() == winrt::Microsoft::ReactNative::JSValueType::Int64)
@@ -332,7 +340,7 @@ bool TryUpdateBorderProperties(
         propertyValue.Type() == winrt::Microsoft::ReactNative::JSValueType::Int64)
       SetBorderThickness(node, element, ShadowEdges::AllEdges, propertyValue.AsDouble());
     else if (propertyValue.IsNull())
-      element.ClearValue(react::uwp::ViewPanel::BorderThicknessProperty());
+      element.ClearValue(ViewPanel::BorderThicknessProperty());
   } else {
     isBorderProperty = false;
   }
@@ -367,8 +375,8 @@ ShadowNode *ViewViewManager::createShadow() const {
   return new ViewShadowNode();
 }
 
-XamlView ViewViewManager::CreateViewCore(int64_t /*tag*/) {
-  auto panel = winrt::make<winrt::react::uwp::implementation::ViewPanel>();
+XamlView ViewViewManager::CreateViewCore(int64_t /*tag*/, const winrt::Microsoft::ReactNative::JSValueObject &) {
+  auto panel = winrt::make<winrt::Microsoft::ReactNative::implementation::ViewPanel>();
   panel.VerticalAlignment(xaml::VerticalAlignment::Stretch);
   panel.HorizontalAlignment(xaml::HorizontalAlignment::Stretch);
 
@@ -380,8 +388,6 @@ void ViewViewManager::GetNativeProps(const winrt::Microsoft::ReactNative::IJSVal
 
   winrt::Microsoft::ReactNative::WriteProperty(writer, L"pointerEvents", L"string");
   winrt::Microsoft::ReactNative::WriteProperty(writer, L"onClick", L"function");
-  winrt::Microsoft::ReactNative::WriteProperty(writer, L"onMouseEnter", L"function");
-  winrt::Microsoft::ReactNative::WriteProperty(writer, L"onMouseLeave", L"function");
   winrt::Microsoft::ReactNative::WriteProperty(writer, L"focusable", L"boolean");
   winrt::Microsoft::ReactNative::WriteProperty(writer, L"enableFocusRing", L"boolean");
   winrt::Microsoft::ReactNative::WriteProperty(writer, L"tabIndex", L"number");
@@ -393,42 +399,58 @@ bool ViewViewManager::UpdateProperty(
     const winrt::Microsoft::ReactNative::JSValue &propertyValue) {
   auto *pViewShadowNode = static_cast<ViewShadowNode *>(nodeToUpdate);
 
-  auto pPanel = pViewShadowNode->GetViewPanel();
+  auto pPanel = pViewShadowNode->GetPanel().as<winrt::Microsoft::ReactNative::ViewPanel>();
   bool ret = true;
   if (pPanel != nullptr) {
     if (TryUpdateBackgroundBrush(pPanel, propertyName, propertyValue)) {
     } else if (TryUpdateBorderProperties(nodeToUpdate, pPanel, propertyName, propertyValue)) {
     } else if (TryUpdateCornerRadiusOnNode(nodeToUpdate, pPanel, propertyName, propertyValue)) {
-      UpdateCornerRadiusOnElement(nodeToUpdate, pPanel);
+      // Do not clamp until a size has been set for the View
+      auto maxCornerRadius = std::numeric_limits<double>::max();
+      // The Width and Height properties are not always set on ViewPanel. In
+      // cases where it is embedded in a Control or outer Border, the values
+      // dimensions are set on those wrapper elements. We cannot depend on the
+      // default behavior of `UpdateCornerRadiusOnElement` to check for the
+      // clamp dimension from only the ViewPanel.
+      const xaml::FrameworkElement sizingElement = pViewShadowNode->IsControl() ? pViewShadowNode->GetControl()
+          : pViewShadowNode->HasOuterBorder() ? pPanel.GetOuterBorder().as<xaml::FrameworkElement>()
+                                              : pPanel;
+      if (sizingElement.ReadLocalValue(xaml::FrameworkElement::WidthProperty()) !=
+              xaml::DependencyProperty::UnsetValue() &&
+          sizingElement.ReadLocalValue(xaml::FrameworkElement::HeightProperty()) !=
+              xaml::DependencyProperty::UnsetValue()) {
+        maxCornerRadius = std::min(sizingElement.Width(), sizingElement.Height()) / 2;
+      }
+      UpdateCornerRadiusOnElement(nodeToUpdate, pPanel, maxCornerRadius);
     } else if (TryUpdateMouseEvents(nodeToUpdate, propertyName, propertyValue)) {
     } else if (propertyName == "onClick") {
-      pViewShadowNode->OnClick(!propertyValue.IsNull() && propertyValue.AsBoolean());
+      pViewShadowNode->OnClick(propertyValue.AsBoolean());
     } else if (propertyName == "overflow") {
       if (propertyValue.Type() == winrt::Microsoft::ReactNative::JSValueType::String) {
         bool clipChildren = propertyValue.AsString() == "hidden";
         pPanel.ClipChildren(clipChildren);
       }
-    } else if (propertyName == "pointerEvents") {
-      if (propertyValue.Type() == winrt::Microsoft::ReactNative::JSValueType::String) {
-        bool hitTestable = propertyValue.AsString() != "none";
-        pPanel.IsHitTestVisible(hitTestable);
-      }
     } else if (propertyName == "focusable") {
-      if (propertyValue.Type() == winrt::Microsoft::ReactNative::JSValueType::Boolean)
-        pViewShadowNode->IsFocusable(propertyValue.AsBoolean());
+      pViewShadowNode->IsFocusable(propertyValue.AsBoolean());
     } else if (propertyName == "enableFocusRing") {
-      if (propertyValue.Type() == winrt::Microsoft::ReactNative::JSValueType::Boolean)
-        pViewShadowNode->EnableFocusRing(propertyValue.AsBoolean());
-      else if (propertyValue.IsNull())
-        pViewShadowNode->EnableFocusRing(false);
+      pViewShadowNode->EnableFocusRing(propertyValue.AsBoolean());
     } else if (propertyName == "tabIndex") {
-      auto tabIndex = propertyValue.AsInt64();
-      if (tabIndex == static_cast<int32_t>(tabIndex)) {
-        pViewShadowNode->TabIndex(static_cast<int32_t>(tabIndex));
-      } else if (propertyValue.IsNull()) {
+      auto resetTabIndex = true;
+      if (propertyValue.Type() == winrt::Microsoft::ReactNative::JSValueType::Int64 ||
+          propertyValue.Type() == winrt::Microsoft::ReactNative::JSValueType::Double) {
+        const auto tabIndex = propertyValue.AsInt64();
+        if (tabIndex == static_cast<int32_t>(tabIndex)) {
+          pViewShadowNode->TabIndex(static_cast<int32_t>(tabIndex));
+          resetTabIndex = false;
+        }
+      }
+      if (resetTabIndex) {
         pViewShadowNode->TabIndex(std::numeric_limits<std::int32_t>::max());
       }
     } else {
+      if (propertyName == "accessible") {
+        pViewShadowNode->IsAccessible(propertyValue.AsBoolean());
+      }
       ret = Super::UpdateProperty(nodeToUpdate, propertyName, propertyValue);
     }
   }
@@ -438,35 +460,39 @@ bool ViewViewManager::UpdateProperty(
 
 void ViewViewManager::OnPropertiesUpdated(ShadowNodeBase *node) {
   auto *viewShadowNode = static_cast<ViewShadowNode *>(node);
-  auto panel = viewShadowNode->GetViewPanel();
+  auto panel = viewShadowNode->GetPanel().as<winrt::Microsoft::ReactNative::ViewPanel>();
 
-  if (panel.Background() == nullptr) {
+  if (panel.ReadLocalValue(ViewPanel::ViewBackgroundProperty()) == xaml::DependencyProperty::UnsetValue()) {
     // In XAML, a null background means no hit-test will happen.
     // We actually want hit-testing to happen if the app has registered
     // for mouse events, so detect that case and add a transparent background.
     if (viewShadowNode->IsHitTestBrushRequired()) {
-      panel.Background(EnsureTransparentBrush());
+      panel.ViewBackground(EnsureTransparentBrush());
     }
     // Note:  Technically we could detect when the transparent brush is
     // no longer needed, but this adds complexity and it can't hurt to
     // keep it around, so not adding that code (yet).
   }
 
-  bool shouldBeControl = viewShadowNode->IsFocusable();
+  // If component is focusable, it should be a ViewControl.
+  // If component is a View with accessible set to true, the component should be focusable, thus we need a ViewControl.
+  bool shouldBeControl =
+      (viewShadowNode->IsFocusable() || (viewShadowNode->IsAccessible() && !viewShadowNode->OnClick()));
   if (auto view = viewShadowNode->GetView().try_as<xaml::UIElement>()) {
     // If we have DynamicAutomationProperties, we need a ViewControl with a
     // DynamicAutomationPeer
-    shouldBeControl = shouldBeControl || react::uwp::HasDynamicAutomationProperties(view);
+    shouldBeControl = shouldBeControl || HasDynamicAutomationProperties(view);
   }
 
   panel.FinalizeProperties();
 
   TryUpdateView(viewShadowNode, panel, shouldBeControl);
+  SyncFocusableAndAccessible(viewShadowNode, shouldBeControl);
 }
 
 void ViewViewManager::TryUpdateView(
     ViewShadowNode *pViewShadowNode,
-    winrt::react::uwp::ViewPanel &pPanel,
+    winrt::Microsoft::ReactNative::ViewPanel &pPanel,
     bool useControl) {
   bool isControl = pViewShadowNode->IsControl();
   bool hadOuterBorder = pViewShadowNode->HasOuterBorder();
@@ -522,9 +548,11 @@ void ViewViewManager::TryUpdateView(
   //
   // 2. Transfer needed properties from old to new view
   //
-
-  // Transfer properties from old XamlView to the new one
-  TransferProperties(oldXamlView, newXamlView);
+  {
+    SystraceSection s("ViewViewManager::TransferProperties");
+    // Transfer properties from old XamlView to the new one
+    TransferProperties(oldXamlView, newXamlView);
+  }
 
   // Since we transferred properties to the new view we need to make the call to
   // finalize
@@ -574,6 +602,24 @@ void ViewViewManager::TryUpdateView(
     pViewShadowNode->GetControl().Content(visualRoot);
 }
 
+void ViewViewManager::SyncFocusableAndAccessible(ViewShadowNode *pViewShadowNode, bool useControl) {
+  // If developer specifies either the accessible and focusable prop to be false
+  // remove accessibility and keyboard focus for component. Exception is made
+  // for case where a View with undefined onPress is specified, where
+  // component gains accessibility focus when either the accessible and focusable prop are true.
+  if (useControl) {
+    const auto isFocusable = pViewShadowNode->IsFocusable();
+    const auto isAccessible = pViewShadowNode->IsAccessible();
+    const auto isPressable = pViewShadowNode->OnClick();
+    const auto isTabStop =
+        (isPressable && isFocusable && isAccessible) || (!isPressable && (isFocusable || isAccessible));
+    const auto accessibilityView = isTabStop ? xaml::Automation::Peers::AccessibilityView::Content
+                                             : xaml::Automation::Peers::AccessibilityView::Raw;
+    pViewShadowNode->GetControl().IsTabStop(isTabStop);
+    xaml::Automation::AutomationProperties::SetAccessibilityView(pViewShadowNode->GetControl(), accessibilityView);
+  }
+}
+
 void ViewViewManager::SetLayoutProps(
     ShadowNodeBase &nodeToUpdate,
     const XamlView &viewToUpdate,
@@ -586,13 +632,23 @@ void ViewViewManager::SetLayoutProps(
   // Do this first so that it is setup properly before any events are fired by
   // the Super implementation
   auto *pViewShadowNode = static_cast<ViewShadowNode *>(&nodeToUpdate);
+  auto pPanel = pViewShadowNode->GetPanel().as<winrt::Microsoft::ReactNative::ViewPanel>();
   if (pViewShadowNode->IsControl()) {
-    auto pPanel = pViewShadowNode->GetViewPanel();
     pPanel.Width(width);
     pPanel.Height(height);
   }
 
   Super::SetLayoutProps(nodeToUpdate, viewToUpdate, left, top, width, height);
+  if (pPanel.ReadLocalValue(ViewPanel::CornerRadiusProperty()) != xaml::DependencyProperty::UnsetValue()) {
+    // Rather than use ViewPanel::FinalizeProperties, only perform the explicit
+    // logic required to propagate the CornerRadius value to the Border parent.
+    auto border = pPanel.GetOuterBorder();
+    if (border) {
+      const auto maxCornerRadius = std::min(width, height) / 2;
+      UpdateCornerRadiusOnElement(&nodeToUpdate, pPanel, maxCornerRadius);
+      border.CornerRadius(pPanel.CornerRadius());
+    }
+  }
 }
 
 xaml::Media::SolidColorBrush ViewViewManager::EnsureTransparentBrush() {

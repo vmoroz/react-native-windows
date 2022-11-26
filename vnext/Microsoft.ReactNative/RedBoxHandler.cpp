@@ -34,7 +34,9 @@ struct DefaultRedBoxHandler : winrt::implements<DefaultRedBoxHandler, IRedBoxHan
     auto hostImpl = winrt::get_self<winrt::Microsoft::ReactNative::implementation::ReactNativeHost>(host);
     Mso::WeakPtr<Mso::React::IReactHost> wkHost(hostImpl->ReactHost());
     m_redBoxHandler = Mso::React::CreateDefaultRedBoxHandler(
-        std::move(wkHost), ReactDispatcher::GetUIDispatchQueue(host.InstanceSettings().Properties()));
+        ReactPropertyBag(host.InstanceSettings().Properties()),
+        std::move(wkHost),
+        *ReactDispatcher::GetUIDispatchQueue2(host.InstanceSettings().Properties()));
   }
 
   void ShowNewError(IRedBoxErrorInfo const &info, RedBoxErrorType type) noexcept {
@@ -59,7 +61,11 @@ struct DefaultRedBoxHandler : winrt::implements<DefaultRedBoxHandler, IRedBoxHan
 };
 
 IRedBoxHandler RedBoxHelper::CreateDefaultHandler(winrt::Microsoft::ReactNative::ReactNativeHost const &host) noexcept {
+#ifndef CORE_ABI
   return winrt::make<DefaultRedBoxHandler>(host);
+#else
+  return nullptr;
+#endif
 }
 
 } // namespace winrt::Microsoft::ReactNative::implementation

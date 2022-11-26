@@ -26,7 +26,7 @@ TEST_CLASS (WebSocketModuleTest) {
       "connect", "close", "send", "sendBinary", "ping"};
 
   TEST_METHOD(CreateModule) {
-    auto module = make_unique<WebSocketModule>();
+    auto module = make_unique<WebSocketModule>(nullptr /*inspectableProperties*/);
 
     Assert::IsFalse(module == nullptr);
     Assert::AreEqual(string("WebSocketModule"), module->getName());
@@ -37,6 +37,18 @@ TEST_CLASS (WebSocketModuleTest) {
     }
 
     Assert::AreEqual(static_cast<size_t>(0), module->getConstants().size());
+  }
+
+  TEST_METHOD(ConnectEmptyUriFails) {
+    auto module = make_unique<WebSocketModule>(nullptr /*inspectableProperties*/);
+
+    module->getMethods()
+        .at(WebSocketModule::MethodId::Connect)
+        .func(
+            dynamic::array("" /*url*/, dynamic(), dynamic(), /*id*/ 0), [](vector<dynamic>) {}, [](vector<dynamic>) {});
+
+    // Test passes by not crashing due to an unhandled exception.
+    Assert::IsTrue(true);
   }
 
   TEST_METHOD(ConnectSendsEvent) {
@@ -58,13 +70,14 @@ TEST_CLASS (WebSocketModuleTest) {
     };
 
     auto instance = CreateMockInstance(jsef);
-    auto module = make_unique<WebSocketModule>();
+    auto module = make_unique<WebSocketModule>(nullptr /*inspectableProperties*/);
     module->setInstance(instance);
     module->SetResourceFactory([](const string &) {
       auto rc = make_shared<MockWebSocketResource>();
-      rc->Mocks.Connect = [rc](const IWebSocketResource::Protocols &, const IWebSocketResource::Options &) {
-        rc->OnConnect();
-      };
+      rc->Mocks.Connect = [rc](
+                              string &&,
+                              const Networking::IWebSocketResource::Protocols &,
+                              const Networking::IWebSocketResource::Options &) { rc->OnConnect(); };
 
       return rc;
     });
