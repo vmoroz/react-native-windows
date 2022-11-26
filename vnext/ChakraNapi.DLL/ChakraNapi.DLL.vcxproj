@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|ARM64">
+      <Configuration>Debug</Configuration>
+      <Platform>ARM64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|ARM64">
+      <Configuration>Release</Configuration>
+      <Platform>ARM64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{190864D0-72C9-4F31-B9EA-AE055E0FCF2B}</ProjectGuid>
+    <ProjectName>ChakraNapi.DLL</ProjectName>
+    <TargetName>chakra-napi</TargetName>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <Import Project="$(ReactNativeWindowsDir)PropertySheets\React.Cpp.props" />
+  <Import Project="$(ReactNativeWindowsDir)PropertySheets\Generated\PackageVersion.g.props" />
+  <PropertyGroup Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <!-- Include Warnings.props after Microsoft.Cpp.props to change default WarningLevel -->
+  <Import Project="$(ReactNativeWindowsDir)PropertySheets\Warnings.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+    <Import Project="..\Chakra\Chakra.vcxitems" Label="Shared" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <!--
+    Prevents Microsoft.Windows.CppWinRT.props from adding WindowsApp.lib reference, see
+    WindowsApp_downleve.lib reference below.
+    -->
+    <CppWinRTLibs>false</CppWinRTLibs>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <PreprocessorDefinitions>
+        _WIN32_WINNT=$(WinVer);
+        WIN32;
+        _WINDOWS;
+        _USRDLL;
+        NOMINMAX;
+        %(PreprocessorDefinitions)
+      </PreprocessorDefinitions>
+      <AdditionalOptions>%(AdditionalOptions) /Zc:strictStrings</AdditionalOptions>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <AdditionalOptions>%(AdditionalOptions) /minpdbpathlen:256</AdditionalOptions>
+      <!--
+        comsuppw.lib              - _com_util::ConvertStringToBSTR
+        WindowsApp_downlevel.lib  - Replaces the WindowsApp.lib link reference in Microsoft.Windows.CppWinRT.props
+                                    until we have a better solution for handling the absence of WinRT string and
+                                    error DLLs on Win7.
+      -->
+      <AdditionalDependencies>
+        comsuppw.lib;
+        Shlwapi.lib;
+        Version.lib;
+        WindowsApp_downlevel.lib;
+        %(AdditionalDependencies)
+      </AdditionalDependencies>
+      <DelayLoadDLLs>Chakra.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="pch.cpp">
+      <PrecompiledHeader>Create</PrecompiledHeader>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="pch.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Version.rc">
+      <PreprocessorDefinitions>
+        RNW_VERSION=$(ReactNativeWindowsVersion);
+        RNW_MAJOR=$(ReactNativeWindowsMajor);
+        RNW_MINOR=$(ReactNativeWindowsMinor);
+        RNW_PATCH=$(ReactNativeWindowsPatch);
+        _UNICODE;
+        UNICODE;
+        %(PreprocessorDefinitions)
+      </PreprocessorDefinitions>
+    </ResourceCompile>
+  </ItemGroup>
+  <Choose>
+    <When Condition="'$(EnableSourceLink)' == 'true'">
+      <ItemGroup>
+        <PackageReference Include="Microsoft.Build.Tasks.Git" Version="1.0.0" />
+        <PackageReference Include="Microsoft.SourceLink.Common" Version="1.0.0" />
+        <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0" />
+      </ItemGroup>
+    </When>
+  </Choose>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <Target Name="GetTargetFileName" Returns="$(OutDir)$(TargetName).dll" />
+</Project>
