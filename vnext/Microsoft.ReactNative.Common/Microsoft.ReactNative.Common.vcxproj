@@ -186,9 +186,9 @@
     <ClInclude Include="pch.h" />
     <ClInclude Include="ReactApi.h" />
     <ClInclude Include="ReactNonAbiValue.h" />
-    <ClInclude Include="ReactObject.h" />
+    <ClInclude Include="ReactObjectImpl.h" />
+    <ClInclude Include="ReactPropertyBagImpl.h" />
     <ClInclude Include="ReactPropertyBag.h" />
-    <ClInclude Include="ReactPropertyBagApi.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp" />
@@ -196,7 +196,7 @@
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="ReactApi.cpp" />
-    <ClCompile Include="ReactPropertyBag.cpp" />
+    <ClCompile Include="ReactPropertyBagImpl.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Version.rc">
