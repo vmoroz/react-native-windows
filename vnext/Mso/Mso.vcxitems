@@ -99,26 +99,26 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)typeTraits\typeTraits.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="$(MSBuildThisFileDirectory)src\activeObject\activeObject.cpp" />
+    <ClCompile Condition="'$(BuildMsoDispatchQueue)' != 'false'" Include="$(MSBuildThisFileDirectory)src\activeObject\activeObject.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)src\crash\crash_min.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)src\debugAssertApi\debugAssertApi.cpp" />
-    <ClCompile Include="$(MSBuildThisFileDirectory)src\dispatchQueue\queueService.cpp" />
-    <ClCompile Include="$(MSBuildThisFileDirectory)src\dispatchQueue\taskBatch.cpp" />
-    <ClCompile Include="$(MSBuildThisFileDirectory)src\dispatchQueue\looperScheduler.cpp" />
-    <ClCompile Include="$(MSBuildThisFileDirectory)src\dispatchQueue\taskContext.cpp" />
-    <ClCompile Include="$(MSBuildThisFileDirectory)src\dispatchQueue\taskQueue.cpp" />
-    <ClCompile Include="$(MSBuildThisFileDirectory)src\dispatchQueue\threadPoolScheduler_win.cpp" />
-    <ClCompile Include="$(MSBuildThisFileDirectory)src\dispatchQueue\uiScheduler_winrt.cpp" />
+    <ClCompile Condition="'$(BuildMsoDispatchQueue)' != 'false'" Include="$(MSBuildThisFileDirectory)src\dispatchQueue\queueService.cpp" />
+    <ClCompile Condition="'$(BuildMsoDispatchQueue)' != 'false'" Include="$(MSBuildThisFileDirectory)src\dispatchQueue\taskBatch.cpp" />
+    <ClCompile Condition="'$(BuildMsoDispatchQueue)' != 'false'" Include="$(MSBuildThisFileDirectory)src\dispatchQueue\looperScheduler.cpp" />
+    <ClCompile Condition="'$(BuildMsoDispatchQueue)' != 'false'" Include="$(MSBuildThisFileDirectory)src\dispatchQueue\taskContext.cpp" />
+    <ClCompile Condition="'$(BuildMsoDispatchQueue)' != 'false'" Include="$(MSBuildThisFileDirectory)src\dispatchQueue\taskQueue.cpp" />
+    <ClCompile Condition="'$(BuildMsoDispatchQueue)' != 'false'" Include="$(MSBuildThisFileDirectory)src\dispatchQueue\threadPoolScheduler_win.cpp" />
+    <ClCompile Condition="'$(BuildMsoDispatchQueue)' != 'false'" Include="$(MSBuildThisFileDirectory)src\dispatchQueue\uiScheduler_winrt.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)src\errorCode\errorCode.cpp" />
-    <ClCompile Include="$(MSBuildThisFileDirectory)src\eventWaitHandle\eventWaitHandleImpl_win.cpp" />
-    <ClCompile Include="$(MSBuildThisFileDirectory)src\future\cancellationTokenImpl.cpp" />
-    <ClCompile Include="$(MSBuildThisFileDirectory)src\future\executor.cpp" />
-    <ClCompile Include="$(MSBuildThisFileDirectory)src\future\futureImpl.cpp" />
-    <ClCompile Include="$(MSBuildThisFileDirectory)src\future\futureTask.cpp" />
-    <ClCompile Include="$(MSBuildThisFileDirectory)src\future\promise.cpp" />
-    <ClCompile Include="$(MSBuildThisFileDirectory)src\future\promiseGroup.cpp" />
-    <ClCompile Include="$(MSBuildThisFileDirectory)src\future\whenAll.cpp" />
-    <ClCompile Include="$(MSBuildThisFileDirectory)src\future\whenAny.cpp" />
+    <ClCompile Condition="'$(BuildMsoEventWaitHandler)' != 'false'" Include="$(MSBuildThisFileDirectory)src\eventWaitHandle\eventWaitHandleImpl_win.cpp" />
+    <ClCompile Condition="'$(BuildMsoDispatchQueue)' != 'false'" Include="$(MSBuildThisFileDirectory)src\future\cancellationTokenImpl.cpp" />
+    <ClCompile Condition="'$(BuildMsoDispatchQueue)' != 'false'" Include="$(MSBuildThisFileDirectory)src\future\executor.cpp" />
+    <ClCompile Condition="'$(BuildMsoDispatchQueue)' != 'false'" Include="$(MSBuildThisFileDirectory)src\future\futureImpl.cpp" />
+    <ClCompile Condition="'$(BuildMsoDispatchQueue)' != 'false'" Include="$(MSBuildThisFileDirectory)src\future\futureTask.cpp" />
+    <ClCompile Condition="'$(BuildMsoDispatchQueue)' != 'false'" Include="$(MSBuildThisFileDirectory)src\future\promise.cpp" />
+    <ClCompile Condition="'$(BuildMsoDispatchQueue)' != 'false'" Include="$(MSBuildThisFileDirectory)src\future\promiseGroup.cpp" />
+    <ClCompile Condition="'$(BuildMsoDispatchQueue)' != 'false'" Include="$(MSBuildThisFileDirectory)src\future\whenAll.cpp" />
+    <ClCompile Condition="'$(BuildMsoDispatchQueue)' != 'false'" Include="$(MSBuildThisFileDirectory)src\future\whenAny.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)src\memoryApi\memoryApi.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)src\memoryApi\memoryLeakScope_EmptyImpl.cpp" />
   </ItemGroup>
