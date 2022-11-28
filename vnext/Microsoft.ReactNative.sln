@@ -122,6 +122,12 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Microsoft.ReactNative.UnitT
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Microsoft.ReactNative.IntegrationTests2", "Microsoft.ReactNative.IntegrationTests2\Microsoft.ReactNative.IntegrationTests2.vcxproj", "{DC764AE3-EDED-458D-BF38-2D8D6456F124}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Microsoft.ReactNative.Cxx2", "Microsoft.ReactNative.Cxx2\Microsoft.ReactNative.Cxx2.vcxitems", "{B2A6D704-67C5-4D4F-9859-97A564E4EEF2}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{3022D14E-283A-4C35-A731-F72D68C9A890}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Microsoft.ReactNative.Common", "Microsoft.ReactNative.Common\Microsoft.ReactNative.Common.vcxproj", "{F6B7D36C-07F3-4D1E-BC43-A4CB85D43EFE}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|ARM = Debug|ARM
@@ -400,6 +406,24 @@ Global
 		{DC764AE3-EDED-458D-BF38-2D8D6456F124}.Release|x64.Deploy.0 = Release|x64
 		{DC764AE3-EDED-458D-BF38-2D8D6456F124}.Release|x86.ActiveCfg = Release|Win32
 		{DC764AE3-EDED-458D-BF38-2D8D6456F124}.Release|x86.Build.0 = Release|Win32
+		{F6B7D36C-07F3-4D1E-BC43-A4CB85D43EFE}.Debug|ARM.ActiveCfg = Debug|x64
+		{F6B7D36C-07F3-4D1E-BC43-A4CB85D43EFE}.Debug|ARM.Build.0 = Debug|x64
+		{F6B7D36C-07F3-4D1E-BC43-A4CB85D43EFE}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{F6B7D36C-07F3-4D1E-BC43-A4CB85D43EFE}.Debug|ARM64.Build.0 = Debug|ARM64
+		{F6B7D36C-07F3-4D1E-BC43-A4CB85D43EFE}.Debug|x64.ActiveCfg = Debug|x64
+		{F6B7D36C-07F3-4D1E-BC43-A4CB85D43EFE}.Debug|x64.Build.0 = Debug|x64
+		{F6B7D36C-07F3-4D1E-BC43-A4CB85D43EFE}.Debug|x86.ActiveCfg = Debug|Win32
+		{F6B7D36C-07F3-4D1E-BC43-A4CB85D43EFE}.Debug|x86.Build.0 = Debug|Win32
+		{F6B7D36C-07F3-4D1E-BC43-A4CB85D43EFE}.Debug|x86.Deploy.0 = Debug|Win32
+		{F6B7D36C-07F3-4D1E-BC43-A4CB85D43EFE}.Release|ARM.ActiveCfg = Release|x64
+		{F6B7D36C-07F3-4D1E-BC43-A4CB85D43EFE}.Release|ARM.Build.0 = Release|x64
+		{F6B7D36C-07F3-4D1E-BC43-A4CB85D43EFE}.Release|ARM64.ActiveCfg = Release|ARM64
+		{F6B7D36C-07F3-4D1E-BC43-A4CB85D43EFE}.Release|ARM64.Build.0 = Release|ARM64
+		{F6B7D36C-07F3-4D1E-BC43-A4CB85D43EFE}.Release|x64.ActiveCfg = Release|x64
+		{F6B7D36C-07F3-4D1E-BC43-A4CB85D43EFE}.Release|x64.Build.0 = Release|x64
+		{F6B7D36C-07F3-4D1E-BC43-A4CB85D43EFE}.Release|x86.ActiveCfg = Release|Win32
+		{F6B7D36C-07F3-4D1E-BC43-A4CB85D43EFE}.Release|x86.Build.0 = Release|Win32
+		{F6B7D36C-07F3-4D1E-BC43-A4CB85D43EFE}.Release|x86.Deploy.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -438,12 +462,15 @@ Global
 		Shared\Shared.vcxitems*{2049dbe9-8d13-42c9-ae4b-413ae38fffd0}*SharedItemsImports = 9
 		Microsoft.ReactNative.Cxx\Microsoft.ReactNative.Cxx.vcxitems*{6c60e295-c8ca-4dc5-b8be-09888f58b249}*SharedItemsImports = 4
 		Mso\Mso.vcxitems*{6c60e295-c8ca-4dc5-b8be-09888f58b249}*SharedItemsImports = 4
+		Microsoft.ReactNative.Cxx2\Microsoft.ReactNative.Cxx2.vcxitems*{7ffd1ff9-ab88-43af-ba48-77bfecc53f05}*SharedItemsImports = 4
 		Mso\Mso.vcxitems*{7ffd1ff9-ab88-43af-ba48-77bfecc53f05}*SharedItemsImports = 4
 		Mso\Mso.vcxitems*{84e05bfa-cbaf-4f0d-bfb6-4ce85742a57e}*SharedItemsImports = 9
 		Chakra\Chakra.vcxitems*{93792779-4948-4a5d-8ca7-86ed5e3bec27}*SharedItemsImports = 4
 		Mso\Mso.vcxitems*{93792779-4948-4a5d-8ca7-86ed5e3bec27}*SharedItemsImports = 4
+		Microsoft.ReactNative.Cxx2\Microsoft.ReactNative.Cxx2.vcxitems*{b2a6d704-67c5-4d4f-9859-97a564e4eef2}*SharedItemsImports = 9
 		Chakra\Chakra.vcxitems*{c38970c0-5fbf-4d69-90d8-cbac225ae895}*SharedItemsImports = 9
 		Microsoft.ReactNative.Cxx\Microsoft.ReactNative.Cxx.vcxitems*{da8b35b3-da00-4b02-bde6-6a397b3fd46b}*SharedItemsImports = 9
+		Microsoft.ReactNative.Cxx2\Microsoft.ReactNative.Cxx2.vcxitems*{dc764ae3-eded-458d-bf38-2d8d6456f124}*SharedItemsImports = 4
 		Mso\Mso.vcxitems*{dc764ae3-eded-458d-bf38-2d8d6456f124}*SharedItemsImports = 4
 		include\Include.vcxitems*{ef074ba1-2d54-4d49-a28e-5e040b47cd2e}*SharedItemsImports = 9
 		Chakra\Chakra.vcxitems*{f7d32bd0-2749-483e-9a0d-1635ef7e3136}*SharedItemsImports = 4
