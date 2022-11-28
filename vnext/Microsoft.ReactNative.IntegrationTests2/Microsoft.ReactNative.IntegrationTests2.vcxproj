@@ -129,6 +129,12 @@
     <ProjectReference Include="..\Microsoft.ReactNative.Common\Microsoft.ReactNative.Common.vcxproj">
       <Project>{f6b7d36c-07f3-4d1e-bc43-a4cb85d43efe}</Project>
     </ProjectReference>
+
+    <!--
+    Used by the 'CopyFilesToOutputDirectory' target (more specifically, its '_CopyFilesMarkedCopyLocal' dependency')
+    to co-locate dependencies with the test binary.
+     -->
+    <ReferenceCopyLocalPaths Include="$(OutDir)\..\Microsoft.ReactNative.Common\Microsoft.ReactNative.Common.dll" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>
