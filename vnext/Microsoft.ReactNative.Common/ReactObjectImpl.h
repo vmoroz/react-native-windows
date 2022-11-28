@@ -2,12 +2,12 @@
 // Licensed under the MIT License.
 
 #pragma once
-#ifndef MICROSOFT_REACT_REACTOBJECT_H
-#define MICROSOFT_REACT_REACTOBJECT_H
+#ifndef REACT_OBJECT_IMPL_H
+#define REACT_OBJECT_IMPL_H
 
 #include <atomic>
 
-namespace Microsoft::React {
+namespace react {
 
 class ReactObjectImpl {
 public:
@@ -25,7 +25,6 @@ public:
     delete this;
   }
 
-protected:
   ReactObjectImpl() = default;
   virtual ~ReactObjectImpl() = default;
 
@@ -33,8 +32,8 @@ private:
   std::atomic<uint32_t> refCount_;
 };
 
-}
+} // namespace react
 
-#endif // !MICROSOFT_REACT_REACTOBJECT_H
+#endif // !REACT_OBJECT_IMPL_H
 
 

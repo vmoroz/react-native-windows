@@ -1,1 +1,4 @@
 EXPORTS
+react_object_add_ref
+react_object_release
+react_object_create

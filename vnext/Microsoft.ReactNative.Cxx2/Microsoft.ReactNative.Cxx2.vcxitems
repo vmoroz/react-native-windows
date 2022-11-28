@@ -5,9 +5,22 @@
     <HasSharedItems>true</HasSharedItems>
     <ItemsProjectGuid>{b2a6d704-67c5-4d4f-9859-97a564e4eef2}</ItemsProjectGuid>
   </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>
+        $(MSBuildThisFileDirectory);
+        %(AdditionalIncludeDirectories)
+      </AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
   <ItemGroup>
     <ProjectCapability Include="SourceItemsFromImports" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="$(MSBuildThisFileDirectory)ReactCommonApi.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)ReactObject.h" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(BuildMSRNCxx2)' != 'false'">
+    <ClCompile Include="$(MSBuildThisFileDirectory)ReactCommonApiUser.cpp" />
   </ItemGroup>
 </Project>

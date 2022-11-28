@@ -3,9 +3,24 @@
   <ItemGroup>
     <ClInclude Include="pch.h" />
     <ClInclude Include="framework.h" />
+    <ClInclude Include="ReactApi.h" />
+    <ClInclude Include="ReactNonAbiValue.h" />
+    <ClInclude Include="ReactObjectImpl.h" />
+    <ClInclude Include="ReactPropertyBagImpl.h" />
+    <ClInclude Include="ReactPropertyBag.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="pch.cpp" />
+    <ClCompile Include="ReactApi.cpp" />
+    <ClCompile Include="ReactCommonApi.cpp" />
+    <ClCompile Include="ReactPropertyBagImpl.cpp" />
+    <ClCompile Include="ReactObjectImpl.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <Natvis Include="$(ReactNativeWindowsDir)Folly\Folly.natvis" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Version.rc" />
   </ItemGroup>
 </Project>
