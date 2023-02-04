@@ -25,16 +25,17 @@ std::future<std::string> getTraceFilePath() noexcept {
 }
 } // namespace
 
-bool HermesSamplingProfiler::s_isStarted = false;
+std::atomic_bool HermesSamplingProfiler::s_isStarted{false};
 std::string HermesSamplingProfiler::s_lastTraceFilePath;
 
 std::string HermesSamplingProfiler::GetLastTraceFilePath() noexcept {
   return s_lastTraceFilePath;
 }
 
-winrt::fire_and_forget HermesSamplingProfiler::Start() noexcept {
-  if (!s_isStarted) {
-    s_isStarted = true;
+winrt::fire_and_forget HermesSamplingProfiler::Start(
+    Mso::CntPtr<Mso::React::IReactContext> const &reactContext) noexcept {
+  bool expectedIsStarted = false;
+  if (!s_isStarted.compare_exchange_strong(expectedIsStarted, true)) {
     co_await winrt::resume_background();
     HermesShim::enableSamplingProfiler();
   }
@@ -42,9 +43,10 @@ winrt::fire_and_forget HermesSamplingProfiler::Start() noexcept {
   co_return;
 }
 
-std::future<std::string> HermesSamplingProfiler::Stop() noexcept {
-  if (s_isStarted) {
-    s_isStarted = false;
+std::future<std::string> HermesSamplingProfiler::Stop(
+    Mso::CntPtr<Mso::React::IReactContext> const &reactContext) noexcept {
+  bool expectedIsStarted = true;
+  if (!s_isStarted.compare_exchange_strong(expectedIsStarted, false)) {
     co_await winrt::resume_background();
     HermesShim::disableSamplingProfiler();
     s_lastTraceFilePath = co_await getTraceFilePath();
@@ -55,7 +57,7 @@ std::future<std::string> HermesSamplingProfiler::Stop() noexcept {
 }
 
 bool HermesSamplingProfiler::IsStarted() noexcept {
-  return s_isStarted;
+  return s_isStarted.load();
 }
 
 } // namespace Microsoft::ReactNative
