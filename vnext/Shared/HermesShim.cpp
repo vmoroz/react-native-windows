@@ -4,115 +4,150 @@
 #include "HermesShim.h"
 #include "Crash.h"
 
-namespace Microsoft::ReactNative::HermesShim {
+#define INIT_SYMBOL(symbol, symbolName)                                                    \
+  symbol = reinterpret_cast<decltype(symbol)>(GetProcAddress(s_hermesModule, symbolName)); \
+  VerifyElseCrash(symbol);
 
-static HMODULE s_hermesModule{nullptr};
-static decltype(&facebook::hermes::makeHermesRuntime) s_makeHermesRuntime{nullptr};
-static decltype(&facebook::hermes::HermesRuntime::enableSamplingProfiler) s_enableSamplingProfiler{nullptr};
-static decltype(&facebook::hermes::HermesRuntime::disableSamplingProfiler) s_disableSamplingProfiler{nullptr};
-static decltype(&facebook::hermes::HermesRuntime::dumpSampledTraceToFile) s_dumpSampledTraceToFile{nullptr};
-static decltype(&facebook::hermes::makeHermesRuntimeWithWER) s_makeHermesRuntimeWithWER{nullptr};
-static decltype(&facebook::hermes::hermesCrashHandler) s_hermesCrashHandler{nullptr};
+#define CRASH_ON_ERROR(result) VerifyElseCrash(result == hermes_ok);
+
+namespace Microsoft::ReactNative {
+
+namespace {
+
+HMODULE s_hermesModule{};
+
+decltype(&hermes_create_runtime) s_createRuntime{};
+decltype(&hermes_create_runtime_with_wer) s_createRuntimeWithWER{};
+decltype(&hermes_delete_runtime) s_deleteRuntime{};
+decltype(&hermes_get_jsi_runtime) s_getJsiRuntime{};
+decltype(&hermes_dump_crash_data) s_dumpCrashData{};
+decltype(&hermes_sampling_profiler_enable) s_samplingProfilerEnable{};
+decltype(&hermes_sampling_profiler_disable) s_samplingProfilerDisable{};
+decltype(&hermes_sampling_profiler_add) s_samplingProfilerAdd{};
+decltype(&hermes_sampling_profiler_remove) s_samplingProfilerRemove{};
+decltype(&hermes_sampling_profiler_dump_to_file) s_samplingProfilerDumpToFile{};
 
 #if _M_X64
-constexpr const char *makeHermesRuntimeSymbol =
-    "?makeHermesRuntime@hermes@facebook@@YA?AV?$unique_ptr@VHermesRuntime@hermes@facebook@@U?$default_delete@VHermesRuntime@hermes@facebook@@@std@@@std@@AEBVRuntimeConfig@vm@1@@Z";
-constexpr const char *enableSamlingProfilerSymbol = "?enableSamplingProfiler@HermesRuntime@hermes@facebook@@SAXXZ";
-constexpr const char *disableSamlingProfilerSymbol = "?disableSamplingProfiler@HermesRuntime@hermes@facebook@@SAXXZ";
-constexpr const char *dumpSampledTraceToFileSymbol =
-    "?dumpSampledTraceToFile@HermesRuntime@hermes@facebook@@SAXAEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z";
-constexpr const char *makeHermesRuntimeWithWERSymbol =
-    "?makeHermesRuntimeWithWER@hermes@facebook@@YA?AV?$unique_ptr@VHermesRuntime@hermes@facebook@@U?$default_delete@VHermesRuntime@hermes@facebook@@@std@@@std@@XZ";
-constexpr const char *hermesCrashHandlerSymbol = "?hermesCrashHandler@hermes@facebook@@YAXAEAVHermesRuntime@12@H@Z";
+constexpr const char createRuntimeSymbol[] = "hermes_create_runtime";
+constexpr const char createRuntimeWithWERSymbol[] = "hermes_create_runtime_with_wer";
+constexpr const char deleteRuntimeSymbol[] = "hermes_delete_runtime";
+constexpr const char getJsiRuntimeSymbol[] = "hermes_get_jsi_runtime";
+constexpr const char dumpCrashDataSymbol[] = "hermes_dump_crash_data";
+constexpr const char samplingProfilerEnableSymbol[] = "hermes_sampling_profiler_enable";
+constexpr const char samplingProfilerDisableSymbol[] = "hermes_sampling_profiler_disable";
+constexpr const char samplingProfilerAddSymbol[] = "hermes_sampling_profiler_add";
+constexpr const char samplingProfilerRemoveSymbol[] = "hermes_sampling_profiler_remove";
+constexpr const char samplingProfilerDumpToFileSymbol[] = "hermes_sampling_profiler_dump_to_file";
+#elif _M_ARM64
+constexpr const char createRuntimeSymbol[] = "hermes_create_runtime";
+constexpr const char createRuntimeWithWERSymbol[] = "hermes_create_runtime_with_wer";
+constexpr const char deleteRuntimeSymbol[] = "hermes_delete_runtime";
+constexpr const char getJsiRuntimeSymbol[] = "hermes_get_jsi_runtime";
+constexpr const char dumpCrashDataSymbol[] = "hermes_dump_crash_data";
+constexpr const char samplingProfilerEnableSymbol[] = "hermes_sampling_profiler_enable";
+constexpr const char samplingProfilerDisableSymbol[] = "hermes_sampling_profiler_disable";
+constexpr const char samplingProfilerAddSymbol[] = "hermes_sampling_profiler_add";
+constexpr const char samplingProfilerRemoveSymbol[] = "hermes_sampling_profiler_remove";
+constexpr const char samplingProfilerDumpToFileSymbol[] = "hermes_sampling_profiler_dump_to_file";
+#elif _M_IX86
+constexpr const char createRuntimeSymbol[] = "_hermes_create_runtime";
+constexpr const char createRuntimeWithWERSymbol[] = "_hermes_create_runtime_with_wer";
+constexpr const char deleteRuntimeSymbol[] = "_hermes_delete_runtime";
+constexpr const char getJsiRuntimeSymbol[] = "_hermes_get_jsi_runtime";
+constexpr const char dumpCrashDataSymbol[] = "_hermes_dump_crash_data";
+constexpr const char samplingProfilerEnableSymbol[] = "_hermes_sampling_profiler_enable";
+constexpr const char samplingProfilerDisableSymbol[] = "_hermes_sampling_profiler_disable";
+constexpr const char samplingProfilerAddSymbol[] = "_hermes_sampling_profiler_add";
+constexpr const char samplingProfilerRemoveSymbol[] = "_hermes_sampling_profiler_remove";
+constexpr const char samplingProfilerDumpToFileSymbol[] = "_hermes_sampling_profiler_dump_to_file";
 #endif
 
-#if _M_ARM64
-constexpr const char *makeHermesRuntimeSymbol =
-    "?makeHermesRuntime@hermes@facebook@@YA?AV?$unique_ptr@VHermesRuntime@hermes@facebook@@U?$default_delete@VHermesRuntime@hermes@facebook@@@std@@@std@@AEBVRuntimeConfig@vm@1@@Z";
-constexpr const char *enableSamlingProfilerSymbol = "?enableSamplingProfiler@HermesRuntime@hermes@facebook@@SAXXZ";
-constexpr const char *disableSamlingProfilerSymbol = "?disableSamplingProfiler@HermesRuntime@hermes@facebook@@SAXXZ";
-constexpr const char *dumpSampledTraceToFileSymbol =
-    "?dumpSampledTraceToFile@HermesRuntime@hermes@facebook@@SAXAEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z";
-constexpr const char *makeHermesRuntimeWithWERSymbol =
-    "?makeHermesRuntimeWithWER@hermes@facebook@@YA?AV?$unique_ptr@VHermesRuntime@hermes@facebook@@U?$default_delete@VHermesRuntime@hermes@facebook@@@std@@@std@@XZ";
-constexpr const char *hermesCrashHandlerSymbol = "?hermesCrashHandler@hermes@facebook@@YAXAEAVHermesRuntime@12@H@Z";
-#endif
+std::once_flag s_hermesLoading;
 
-#if _M_IX86
-constexpr const char *makeHermesRuntimeSymbol =
-    "?makeHermesRuntime@hermes@facebook@@YA?AV?$unique_ptr@VHermesRuntime@hermes@facebook@@U?$default_delete@VHermesRuntime@hermes@facebook@@@std@@@std@@ABVRuntimeConfig@vm@1@@Z";
-constexpr const char *enableSamlingProfilerSymbol = "?enableSamplingProfiler@HermesRuntime@hermes@facebook@@SAXXZ";
-constexpr const char *disableSamlingProfilerSymbol = "?disableSamplingProfiler@HermesRuntime@hermes@facebook@@SAXXZ";
-constexpr const char *dumpSampledTraceToFileSymbol =
-    "?dumpSampledTraceToFile@HermesRuntime@hermes@facebook@@SAXABV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z";
-constexpr const char *makeHermesRuntimeWithWERSymbol =
-    "?makeHermesRuntimeWithWER@hermes@facebook@@YA?AV?$unique_ptr@VHermesRuntime@hermes@facebook@@U?$default_delete@VHermesRuntime@hermes@facebook@@@std@@@std@@XZ";
-constexpr const char *hermesCrashHandlerSymbol = "?hermesCrashHandler@hermes@facebook@@YAXAAVHermesRuntime@12@H@Z";
-#endif
-
-static std::once_flag s_hermesLoading;
-
-static void EnsureHermesLoaded() noexcept {
+void EnsureHermesLoaded() noexcept {
   std::call_once(s_hermesLoading, []() {
     VerifyElseCrashSz(!s_hermesModule, "Invalid state: \"hermes.dll\" being loaded again.");
 
     s_hermesModule = LoadLibrary(L"hermes.dll");
     VerifyElseCrashSz(s_hermesModule, "Could not load \"hermes.dll\"");
 
-    s_makeHermesRuntime =
-        reinterpret_cast<decltype(s_makeHermesRuntime)>(GetProcAddress(s_hermesModule, makeHermesRuntimeSymbol));
-    VerifyElseCrash(s_makeHermesRuntime);
-
-    s_enableSamplingProfiler = reinterpret_cast<decltype(s_enableSamplingProfiler)>(
-        GetProcAddress(s_hermesModule, enableSamlingProfilerSymbol));
-    VerifyElseCrash(s_enableSamplingProfiler);
-
-    s_disableSamplingProfiler = reinterpret_cast<decltype(s_disableSamplingProfiler)>(
-        GetProcAddress(s_hermesModule, disableSamlingProfilerSymbol));
-    VerifyElseCrash(s_disableSamplingProfiler);
-
-    s_dumpSampledTraceToFile = reinterpret_cast<decltype(s_dumpSampledTraceToFile)>(
-        GetProcAddress(s_hermesModule, dumpSampledTraceToFileSymbol));
-    VerifyElseCrash(s_dumpSampledTraceToFile);
-
-    s_makeHermesRuntimeWithWER = reinterpret_cast<decltype(s_makeHermesRuntimeWithWER)>(
-        GetProcAddress(s_hermesModule, makeHermesRuntimeWithWERSymbol));
-    VerifyElseCrash(s_makeHermesRuntimeWithWER);
-
-    s_hermesCrashHandler =
-        reinterpret_cast<decltype(s_hermesCrashHandler)>(GetProcAddress(s_hermesModule, hermesCrashHandlerSymbol));
-    VerifyElseCrash(s_hermesCrashHandler);
+    INIT_SYMBOL(s_createRuntime, createRuntimeSymbol);
+    INIT_SYMBOL(s_createRuntimeWithWER, createRuntimeWithWERSymbol);
+    INIT_SYMBOL(s_deleteRuntime, deleteRuntimeSymbol);
+    INIT_SYMBOL(s_getJsiRuntime, getJsiRuntimeSymbol);
+    INIT_SYMBOL(s_dumpCrashData, dumpCrashDataSymbol);
+    INIT_SYMBOL(s_samplingProfilerEnable, samplingProfilerEnableSymbol);
+    INIT_SYMBOL(s_samplingProfilerDisable, samplingProfilerDisableSymbol);
+    INIT_SYMBOL(s_samplingProfilerAdd, samplingProfilerAddSymbol);
+    INIT_SYMBOL(s_samplingProfilerRemove, samplingProfilerRemoveSymbol);
+    INIT_SYMBOL(s_samplingProfilerDumpToFile, samplingProfilerDumpToFileSymbol);
   });
 }
 
-std::unique_ptr<facebook::hermes::HermesRuntime> makeHermesRuntime(const hermes::vm::RuntimeConfig &runtimeConfig) {
-  EnsureHermesLoaded();
-  return s_makeHermesRuntime(runtimeConfig);
+struct RuntimeDeleter {
+  RuntimeDeleter(std::shared_ptr<const HermesShim> &&hermesShimPtr) noexcept : hermesShimPtr_(std::move(hermesShimPtr)) {}
+
+  void operator()(facebook::hermes::HermesRuntime * /*runtime*/) {
+    // Do nothing. Instead, we rely on the RuntimeDeleter destructor.
+  }
+
+ private:
+  std::shared_ptr<const HermesShim> hermesShimPtr_;
+};
+
+} // namespace
+
+HermesShim::HermesShim(hermes_runtime runtime) noexcept : runtime_(runtime) {
+  CRASH_ON_ERROR(s_getJsiRuntime(runtime_, reinterpret_cast<void **>(&nonAbiSafeRuntime_)));
 }
 
-void enableSamplingProfiler() {
-  EnsureHermesLoaded();
-  s_enableSamplingProfiler();
+HermesShim::~HermesShim() {
+  CRASH_ON_ERROR(s_deleteRuntime(runtime_));
 }
 
-void disableSamplingProfiler() {
+/*static*/ std::shared_ptr<HermesShim> HermesShim::make() noexcept {
   EnsureHermesLoaded();
-  s_disableSamplingProfiler();
+  hermes_runtime runtime{};
+  CRASH_ON_ERROR(s_createRuntime(&runtime));
+  return std::make_shared<HermesShim>(runtime);
 }
 
-void dumpSampledTraceToFile(const std::string &fileName) {
+/*static*/
+std::shared_ptr<HermesShim> HermesShim::makeWithWER() noexcept {
   EnsureHermesLoaded();
-  s_dumpSampledTraceToFile(fileName);
+  hermes_runtime runtime{};
+  CRASH_ON_ERROR(s_createRuntimeWithWER(&runtime));
+  return std::make_shared<HermesShim>(runtime);
 }
 
-std::unique_ptr<facebook::hermes::HermesRuntime> makeHermesRuntimeWithWER() {
-  EnsureHermesLoaded();
-  return s_makeHermesRuntimeWithWER();
+std::shared_ptr<facebook::hermes::HermesRuntime> HermesShim::getRuntime() const noexcept {
+  return std::shared_ptr<facebook::hermes::HermesRuntime>(nonAbiSafeRuntime_, RuntimeDeleter(shared_from_this()));
 }
 
-void hermesCrashHandler(facebook::hermes::HermesRuntime &runtime, int fileDescriptor) {
-  EnsureHermesLoaded();
-  s_hermesCrashHandler(runtime, fileDescriptor);
+void HermesShim::dumpCrashData(int fileDescriptor) const noexcept {
+  CRASH_ON_ERROR(s_dumpCrashData(runtime_, fileDescriptor));
 }
 
-} // namespace Microsoft::ReactNative::HermesShim
+/*static*/ void HermesShim::enableSamplingProfiler() noexcept {
+  EnsureHermesLoaded();
+  CRASH_ON_ERROR(s_samplingProfilerEnable());
+}
+
+/*static*/ void HermesShim::disableSamplingProfiler() noexcept {
+  EnsureHermesLoaded();
+  CRASH_ON_ERROR(s_samplingProfilerDisable());
+}
+
+/*static*/ void HermesShim::dumpSampledTraceToFile(const std::string &fileName) noexcept {
+  EnsureHermesLoaded();
+  CRASH_ON_ERROR(s_samplingProfilerDumpToFile(fileName.c_str()));
+}
+void HermesShim::addToProfiling() const noexcept {
+  CRASH_ON_ERROR(s_samplingProfilerAdd(runtime_));
+}
+
+void HermesShim::removeFromProfiling() const noexcept {
+  CRASH_ON_ERROR(s_samplingProfilerRemove(runtime_));
+}
+
+} // namespace Microsoft::ReactNative
