@@ -4,8 +4,8 @@
 #pragma once
 
 #include <ReactHost/React.h>
-#include <string>
 #include <atomic>
+#include <string>
 
 namespace Microsoft::ReactNative {
 
