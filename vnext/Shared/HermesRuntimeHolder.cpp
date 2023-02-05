@@ -3,18 +3,20 @@
 
 #include "pch.h"
 
-#include <memory>
-#include <mutex>
+#include "HermesRuntimeHolder.h"
 
 #include <JSI/decorator.h>
 #include <cxxreact/MessageQueueThread.h>
 #include <cxxreact/SystraceSection.h>
 #include <hermes/hermes.h>
-#include "HermesRuntimeHolder.h"
+#include "HermesShim.h"
 
 #if defined(HERMES_ENABLE_DEBUGGER)
 #include <hermes/inspector/chrome/Registration.h>
 #endif
+
+#include <memory>
+#include <mutex>
 
 using namespace facebook;
 using namespace Microsoft::ReactNative;
@@ -147,6 +149,14 @@ void HermesRuntimeHolder::storeTo(
     React::ReactPropertyBag const &propertyBag,
     std::shared_ptr<HermesRuntimeHolder> const &holder) noexcept {
   propertyBag.Set(HermesRuntimeHolderProperty(), holder);
+}
+
+void HermesRuntimeHolder::addToProfiling() const noexcept {
+  m_hermesShim->addToProfiling();
+}
+
+void HermesRuntimeHolder::removeFromProfiling() const noexcept {
+  m_hermesShim->removeFromProfiling();
 }
 
 } // namespace facebook::react

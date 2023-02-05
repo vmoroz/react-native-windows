@@ -9,13 +9,18 @@
 
 #include <DevSettings.h>
 #include <ReactPropertyBag.h>
-#include "HermesShim.h"
 
 namespace facebook::hermes {
 class HermesRuntime;
 }
 
+namespace Microsoft::ReactNative {
+class HermesShim;
+}
+
 namespace facebook::react {
+
+class MessageQueueThread;
 
 class HermesRuntimeHolder : public Microsoft::JSI::RuntimeHolderLazyInit {
  public: // RuntimeHolderLazyInit implementation.
@@ -37,6 +42,9 @@ class HermesRuntimeHolder : public Microsoft::JSI::RuntimeHolderLazyInit {
   static void storeTo(
       winrt::Microsoft::ReactNative::ReactPropertyBag const &propertyBag,
       std::shared_ptr<HermesRuntimeHolder> const &holder) noexcept;
+
+  void addToProfiling() const noexcept;
+  void removeFromProfiling() const noexcept;
 
  private:
   void initRuntime() noexcept;
