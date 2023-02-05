@@ -100,10 +100,6 @@ facebook::react::JSIEngineOverride HermesRuntimeHolder::getRuntimeType() noexcep
 }
 
 std::shared_ptr<jsi::Runtime> HermesRuntimeHolder::getRuntime() noexcept {
-  return getHermesRuntime();
-}
-
-std::shared_ptr<facebook::hermes::HermesRuntime> HermesRuntimeHolder::getHermesRuntime() noexcept {
   std::call_once(m_onceFlag, [this]() { initRuntime(); });
   VerifyElseCrash(m_hermesRuntime);
   VerifyElseCrashSz(m_ownThreadId == std::this_thread::get_id(), "Must be accessed from JS thread.");

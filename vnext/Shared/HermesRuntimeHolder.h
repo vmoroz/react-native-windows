@@ -34,8 +34,6 @@ class HermesRuntimeHolder : public Microsoft::JSI::RuntimeHolderLazyInit {
       std::shared_ptr<facebook::react::DevSettings> devSettings,
       std::shared_ptr<facebook::react::MessageQueueThread> jsQueue) noexcept;
 
-  std::shared_ptr<facebook::hermes::HermesRuntime> getHermesRuntime() noexcept;
-
   static std::shared_ptr<HermesRuntimeHolder> loadFrom(
       winrt::Microsoft::ReactNative::ReactPropertyBag const &propertyBag) noexcept;
 
