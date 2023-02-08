@@ -31,13 +31,14 @@ struct ReactDispatcher : implements<ReactDispatcher, IReactDispatcher, Mso::Reac
 
   static IReactDispatcher CreateSerialDispatcher() noexcept;
 
-  static Mso::CntPtr<IDispatchQueue2> GetUIDispatchQueue2(IReactPropertyBag const &properties) noexcept;
+  static Mso::CntPtr<Mso::React::IDispatchQueue2> GetUIDispatchQueue2(IReactPropertyBag const &properties) noexcept;
   static IReactDispatcher UIThreadDispatcher() noexcept;
   static IReactPropertyName UIDispatcherProperty() noexcept;
   static IReactDispatcher GetUIDispatcher(IReactPropertyBag const &properties) noexcept;
   static void SetUIThreadDispatcher(IReactPropertyBag const &properties) noexcept;
 
   static IReactPropertyName JSDispatcherProperty() noexcept;
+  static IReactDispatcher GetJSDispatcher(IReactPropertyBag const &properties) noexcept;
 
   void Post(Mso::DispatchTask &&task) const noexcept override;
   void InvokeElsePost(Mso::DispatchTask &&task) const noexcept override;
