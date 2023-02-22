@@ -10,10 +10,6 @@
 #include <DevSettings.h>
 #include <ReactPropertyBag.h>
 
-namespace facebook::hermes {
-class HermesRuntime;
-}
-
 namespace Microsoft::ReactNative {
 class HermesShim;
 }
@@ -49,7 +45,7 @@ class HermesRuntimeHolder : public Microsoft::JSI::RuntimeHolderLazyInit {
 
  private:
   std::shared_ptr<Microsoft::ReactNative::HermesShim> m_hermesShim;
-  std::shared_ptr<facebook::hermes::HermesRuntime> m_hermesRuntime;
+  std::shared_ptr<facebook::jsi::Runtime> m_jsiRuntime;
   std::once_flag m_onceFlag{};
   std::thread::id m_ownThreadId{};
   std::weak_ptr<facebook::react::DevSettings> m_weakDevSettings;
