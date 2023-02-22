@@ -12,6 +12,20 @@
 namespace facebook {
 namespace react {
 IDestructible::~IDestructible() {}
+IInspectorPages::~IInspectorPages() {}
+IRemoteConnection::~IRemoteConnection() {}
+IRemoteConnection2::~IRemoteConnection2() {}
+
+std::unique_ptr<IInspectorPages> __cdecl getInspectorPages() {
+  return nullptr;
+}
+
+std::unique_ptr<ILocalConnection> __cdecl connectInspectorPage(
+    int /*pageId*/,
+    std::unique_ptr<IRemoteConnection2> /*remote*/) {
+  return nullptr;
+}
+
 } // namespace react
 } // namespace facebook
 

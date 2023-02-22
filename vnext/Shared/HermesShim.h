@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include <hermes/hermes_win.h>
+#include <napi/hermes_api.h>
 
 //! We do not package hermes.dll for projects that do not require it. We cannot
 //! use pure delay-loading to achieve this, since WACK will detect the
@@ -19,7 +19,7 @@ class HermesShim : public std::enable_shared_from_this<HermesShim> {
   static std::shared_ptr<HermesShim> make() noexcept;
   static std::shared_ptr<HermesShim> makeWithWER() noexcept;
 
-  std::shared_ptr<facebook::hermes::HermesRuntime> getRuntime() const noexcept;
+  //std::shared_ptr<facebook::hermes::HermesRuntime> getRuntime() const noexcept;
 
   void dumpCrashData(int fileDescriptor) const noexcept;
 
@@ -34,7 +34,7 @@ class HermesShim : public std::enable_shared_from_this<HermesShim> {
 
  private:
   // It must be a raw pointer to avoid circular reference.
-  facebook::hermes::HermesRuntime *nonAbiSafeRuntime_{};
+  //facebook::hermes::HermesRuntime *nonAbiSafeRuntime_{};
   hermes_runtime runtime_{};
 };
 

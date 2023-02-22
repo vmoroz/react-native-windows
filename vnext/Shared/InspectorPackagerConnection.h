@@ -3,9 +3,37 @@
 
 #pragma once
 
-#include <InspectorProxy.h>
 #include <Networking/WinRTWebSocketResource.h>
 #include <jsinspector/InspectorInterfaces.h>
+
+namespace facebook::react {
+
+struct InspectorPage2 {
+  int id;
+  std::string title;
+  std::string vm;
+};
+
+struct IInspectorPages {
+  virtual InspectorPage2 getPage(int n) = 0;
+  virtual int size() = 0;
+  virtual ~IInspectorPages() = 0;
+};
+
+class JSINSPECTOR_EXPORT IRemoteConnection2 : public IDestructible {
+ public:
+  virtual ~IRemoteConnection2() = 0;
+  virtual void onMessage(std::string message) = 0;
+  virtual void onDisconnect() = 0;
+};
+
+std::unique_ptr<IInspectorPages> __cdecl getInspectorPages();
+
+std::unique_ptr<ILocalConnection> __cdecl connectInspectorPage(
+    int pageId,
+    std::unique_ptr<IRemoteConnection2> remote);
+
+} // namespace react
 
 namespace Microsoft::ReactNative {
 
@@ -37,7 +65,7 @@ class InspectorPackagerConnection final : public std::enable_shared_from_this<In
   winrt::fire_and_forget sendMessageToPackagerAsync(std::string &&message) const;
   void sendMessageToPackager(std::string &&message) const;
 
-  // Note:: VM side Inspector processes the messages asynchronousely in a sequential executor with dedicated thread.
+  // Note:: VM side Inspector processes the messages asynchronously in a sequential executor with dedicated thread.
   // Hence, we don't bother invoking the inspector asynchronously.
   void sendMessageToVM(int64_t pageId, std::string &&message);
 

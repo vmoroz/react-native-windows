@@ -52,22 +52,22 @@ void EnsureHermesLoaded() noexcept {
   });
 }
 
-struct RuntimeDeleter {
-  RuntimeDeleter(std::shared_ptr<const HermesShim> &&hermesShimPtr) noexcept
-      : hermesShimPtr_(std::move(hermesShimPtr)) {}
-
-  void operator()(facebook::hermes::HermesRuntime * /*runtime*/) {
-    // Do nothing. Instead, we rely on the RuntimeDeleter destructor.
-  }
-
- private:
-  std::shared_ptr<const HermesShim> hermesShimPtr_;
-};
+//struct RuntimeDeleter {
+//  RuntimeDeleter(std::shared_ptr<const HermesShim> &&hermesShimPtr) noexcept
+//      : hermesShimPtr_(std::move(hermesShimPtr)) {}
+//
+//  void operator()(facebook::hermes::HermesRuntime * /*runtime*/) {
+//    // Do nothing. Instead, we rely on the RuntimeDeleter destructor.
+//  }
+//
+// private:
+//  std::shared_ptr<const HermesShim> hermesShimPtr_;
+//};
 
 } // namespace
 
 HermesShim::HermesShim(hermes_runtime runtime) noexcept : runtime_(runtime) {
-  CRASH_ON_ERROR(s_getNonAbiSafeRuntime(runtime_, reinterpret_cast<void **>(&nonAbiSafeRuntime_)));
+  // CRASH_ON_ERROR(s_getNonAbiSafeRuntime(runtime_, reinterpret_cast<void **>(&nonAbiSafeRuntime_)));
 }
 
 HermesShim::~HermesShim() {
@@ -89,9 +89,9 @@ std::shared_ptr<HermesShim> HermesShim::makeWithWER() noexcept {
   return std::make_shared<HermesShim>(runtime);
 }
 
-std::shared_ptr<facebook::hermes::HermesRuntime> HermesShim::getRuntime() const noexcept {
-  return std::shared_ptr<facebook::hermes::HermesRuntime>(nonAbiSafeRuntime_, RuntimeDeleter(shared_from_this()));
-}
+//std::shared_ptr<facebook::hermes::HermesRuntime> HermesShim::getRuntime() const noexcept {
+//  return std::shared_ptr<facebook::hermes::HermesRuntime>(nonAbiSafeRuntime_, RuntimeDeleter(shared_from_this()));
+//}
 
 void HermesShim::dumpCrashData(int fileDescriptor) const noexcept {
   CRASH_ON_ERROR(s_dumpCrashData(runtime_, fileDescriptor));
