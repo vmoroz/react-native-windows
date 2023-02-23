@@ -32,49 +32,9 @@ HermesRuntimeHolderProperty() noexcept {
 
 namespace {
 
-#ifdef HERMES_ENABLE_DEBUGGER
-// class HermesExecutorRuntimeAdapter final : public facebook::hermes::inspector::RuntimeAdapter {
-//  public:
-//   HermesExecutorRuntimeAdapter(
-//       std::shared_ptr<jsi::Runtime> runtime,
-//       facebook::hermes::HermesRuntime &hermesRuntime,
-//       std::shared_ptr<MessageQueueThread> thread)
-//       : m_runtime(runtime), m_hermesRuntime(hermesRuntime), m_thread(std::move(thread)) {}
-//
-//   virtual ~HermesExecutorRuntimeAdapter() = default;
-//
-//   jsi::Runtime &getRuntime() override {
-//     return *m_runtime;
-//   }
-//
-//   facebook::hermes::debugger::Debugger &getDebugger() override {
-//     return m_hermesRuntime.getDebugger();
-//   }
-//
-//   void tickleJs() override {
-//     // The queue will ensure that runtime_ is still valid when this
-//     // gets invoked.
-//     m_thread->runOnQueue([&runtime = m_runtime]() {
-//       auto func = runtime->global().getPropertyAsFunction(*runtime, "__tickleJs");
-//       func.call(*runtime);
-//     });
-//   }
-//
-//  private:
-//   std::shared_ptr<jsi::Runtime> m_runtime;
-//   facebook::hermes::HermesRuntime &m_hermesRuntime;
-//
-//   std::shared_ptr<MessageQueueThread> m_thread;
-// };
-#endif
-
-std::shared_ptr<HermesShim> makeHermesShimSystraced(bool enableDefaultCrashHandler) {
+std::shared_ptr<HermesShim> makeHermesShimSystraced(const HermesRuntimeConfig& config) {
   SystraceSection s("HermesExecutorFactory::makeHermesRuntimeSystraced");
-  if (enableDefaultCrashHandler) {
-    return HermesShim::makeWithWER();
-  } else {
-    return HermesShim::make();
-  }
+  return HermesShim::make(config);
 }
 
 } // namespace
@@ -102,7 +62,8 @@ std::shared_ptr<jsi::Runtime> HermesRuntimeHolder::getRuntime() noexcept {
 
 HermesRuntimeHolder::HermesRuntimeHolder(
     std::shared_ptr<facebook::react::DevSettings> devSettings,
-    std::shared_ptr<facebook::react::MessageQueueThread> jsQueue) noexcept
+    std::shared_ptr<facebook::react::MessageQueueThread> jsQueue,
+    std::unique_ptr<PreparedScriptStore> &&preparedScriptStore) noexcept
     : m_weakDevSettings(devSettings), m_jsQueue(std::move(jsQueue)) {}
 
 void HermesRuntimeHolder::initRuntime() noexcept {
@@ -112,18 +73,22 @@ void HermesRuntimeHolder::initRuntime() noexcept {
   hermesConfig.enableDefaultCrashHandler(devSettings->enableDefaultCrashHandler);
   hermesConfig.useDirectDebugger(devSettings->useDirectDebugger);
   hermesConfig.debuggerRuntimeName(devSettings->debuggerRuntimeName);
-  hermesConfig.debuggerPort(devSettings->debuggerPort)
+  hermesConfig.debuggerPort(devSettings->debuggerPort);
   hermesConfig.debuggerBreakOnNextLine(devSettings->debuggerBreakOnNextLine);
+  hermesConfig.foregroundTaskRunner(m_jsQueue);
+  hermesConfig.scriptCache(std::move(m_preparedScriptStore));
+
   m_hermesShim = makeHermesShimSystraced(hermesConfig);
   m_jsiRuntime = m_hermesShim->getRuntime();
   m_ownThreadId = std::this_thread::get_id();
 
-  //if (devSettings->useDirectDebugger) {
-  //  //TODO:
-  //  //auto adapter = std::make_unique<HermesExecutorRuntimeAdapter>(m_hermesShim, *m_jsiRuntime, m_jsQueue);
-  //  m_hermesShim->enableDebugging();
-  //      //devSettings->debuggerRuntimeName.empty() ? "Hermes React Native" : devSettings->debuggerRuntimeName.c_str());
-  //}
+  // if (devSettings->useDirectDebugger) {
+  //   //TODO:
+  //   //auto adapter = std::make_unique<HermesExecutorRuntimeAdapter>(m_hermesShim, *m_jsiRuntime, m_jsQueue);
+  //   m_hermesShim->enableDebugging();
+  //       //devSettings->debuggerRuntimeName.empty() ? "Hermes React Native" :
+  //       devSettings->debuggerRuntimeName.c_str());
+  // }
 
   // Add js engine information to Error.prototype so in error reporting we
   // can send this information.

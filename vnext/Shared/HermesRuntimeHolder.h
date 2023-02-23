@@ -8,6 +8,7 @@
 #include <thread>
 
 #include <DevSettings.h>
+#include <JSI/ScriptStore.h>
 #include <ReactPropertyBag.h>
 
 namespace Microsoft::ReactNative {
@@ -50,6 +51,7 @@ class HermesRuntimeHolder : public Microsoft::JSI::RuntimeHolderLazyInit {
   std::thread::id m_ownThreadId{};
   std::weak_ptr<facebook::react::DevSettings> m_weakDevSettings;
   std::shared_ptr<facebook::react::MessageQueueThread> m_jsQueue;
+  std::unique_ptr<PreparedScriptStore> m_preparedScriptStore;
 };
 
 } // namespace facebook::react
