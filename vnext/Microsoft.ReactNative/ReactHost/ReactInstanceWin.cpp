@@ -73,11 +73,11 @@
 #include <Utils/UwpScriptStore.h>
 #endif
 
+#include "BaseScriptStoreImpl.h"
 #include "HermesRuntimeHolder.h"
 
 #if defined(USE_V8)
 #include <winrt/Windows.Storage.h>
-#include "BaseScriptStoreImpl.h"
 #include "V8JSIRuntimeHolder.h"
 #endif // USE_V8
 
@@ -484,8 +484,19 @@ void ReactInstanceWin::Initialize() noexcept {
 
           switch (m_options.JsiEngine()) {
             case JSIEngine::Hermes: {
-              auto hermesRuntimeHolder =
-                  std::make_shared<facebook::react::HermesRuntimeHolder>(devSettings, m_jsMessageThread.Load());
+              if (Microsoft::ReactNative::HasPackageIdentity()) {
+                preparedScriptStore =
+                    std::make_unique<facebook::react::BasePreparedScriptStoreImpl>(getApplicationTempFolder());
+              } else {
+                wchar_t tempPath[MAX_PATH];
+                if (GetTempPathW(static_cast<DWORD>(std::size(tempPath)), tempPath)) {
+                  preparedScriptStore =
+                      std::make_unique<facebook::react::BasePreparedScriptStoreImpl>(winrt::to_string(tempPath));
+                }
+              }
+
+              auto hermesRuntimeHolder = std::make_shared<facebook::react::HermesRuntimeHolder>(
+                  devSettings, m_jsMessageThread.Load(), std::move(preparedScriptStore));
               facebook::react::HermesRuntimeHolder::storeTo(
                   ReactPropertyBag(m_reactContext->Properties()), hermesRuntimeHolder);
               devSettings->jsiRuntimeHolder = hermesRuntimeHolder;
@@ -516,8 +527,8 @@ void ReactInstanceWin::Initialize() noexcept {
                   std::move(scriptStore),
                   std::move(preparedScriptStore),
                   enableMultiThreadSupport);
-
-            } break;
+              break;
+            }
 #endif // USE_V8
             case JSIEngine::Chakra:
 #ifndef CORE_ABI
@@ -1101,13 +1112,10 @@ Mso::CntPtr<IReactInstanceInternal> MakeReactInstance(
       reactHost, std::move(options), std::move(whenCreated), std::move(whenLoaded), std::move(updateUI));
 }
 
-#if defined(USE_V8)
 std::string ReactInstanceWin::getApplicationTempFolder() {
   auto local = winrt::Windows::Storage::ApplicationData::Current().TemporaryFolder().Path();
-
   return Microsoft::Common::Unicode::Utf16ToUtf8(local.c_str(), local.size()) + "\\";
 }
-#endif
 
 bool ReactInstanceWin::UseWebDebugger() const noexcept {
   return m_useWebDebugger;

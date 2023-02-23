@@ -21,8 +21,6 @@ namespace {
 DECLARE_SYMBOL(createRuntime, hermes_create_runtime);
 DECLARE_SYMBOL(createRuntimeWithWER, hermes_create_runtime_with_wer);
 DECLARE_SYMBOL(deleteRuntime, hermes_delete_runtime);
-DECLARE_SYMBOL(debuggerEnable, hermes_debugger_enable);
-DECLARE_SYMBOL(debuggerDisable, hermes_debugger_disable);
 DECLARE_SYMBOL(dumpCrashData, hermes_dump_crash_data);
 DECLARE_SYMBOL(samplingProfilerEnable, hermes_sampling_profiler_enable);
 DECLARE_SYMBOL(samplingProfilerDisable, hermes_sampling_profiler_disable);
@@ -43,8 +41,6 @@ void EnsureHermesLoaded() noexcept {
     INIT_SYMBOL(createRuntime);
     INIT_SYMBOL(createRuntimeWithWER);
     INIT_SYMBOL(deleteRuntime);
-    INIT_SYMBOL(debuggerEnable);
-    INIT_SYMBOL(debuggerDisable);
     INIT_SYMBOL(dumpCrashData);
     INIT_SYMBOL(samplingProfilerEnable);
     INIT_SYMBOL(samplingProfilerDisable);
@@ -56,45 +52,61 @@ void EnsureHermesLoaded() noexcept {
 
 } // namespace
 
+HermesRuntimeConfig &HermesRuntimeConfig::enableDefaultCrashHandler(bool /*value*/) noexcept {
+  return *this;
+}
+
+HermesRuntimeConfig &HermesRuntimeConfig::useDirectDebugger(bool /*value*/) noexcept {
+  return *this;
+}
+
+HermesRuntimeConfig &HermesRuntimeConfig::debuggerRuntimeName(const std::string & /*value*/) noexcept {
+  return *this;
+}
+
+HermesRuntimeConfig &HermesRuntimeConfig::debuggerPort(uint16_t /*value*/) noexcept {
+  return *this;
+}
+
+HermesRuntimeConfig &HermesRuntimeConfig::debuggerBreakOnNextLine(bool /*value*/) noexcept {
+  return *this;
+}
+
+HermesRuntimeConfig &HermesRuntimeConfig::foregroundTaskRunner(
+    std::shared_ptr<facebook::react::MessageQueueThread> /*value*/) noexcept {
+  return *this;
+}
+
+HermesRuntimeConfig &HermesRuntimeConfig::scriptCache(
+    std::unique_ptr<facebook::jsi::PreparedScriptStore> /*value*/) noexcept {
+  return *this;
+}
+
 HermesShim::HermesShim(hermes_runtime runtime) noexcept : runtime_(runtime) {}
 
 HermesShim::~HermesShim() {
   CRASH_ON_ERROR(s_deleteRuntime(runtime_));
 }
 
-/*static*/ std::shared_ptr<HermesShim> HermesShim::make() noexcept {
+/*static*/ std::shared_ptr<HermesShim> HermesShim::make(const HermesRuntimeConfig & /*config*/) noexcept {
   EnsureHermesLoaded();
   hermes_runtime runtime{};
   CRASH_ON_ERROR(s_createRuntime(&runtime));
   return std::make_shared<HermesShim>(runtime);
 }
 
-/*static*/
-std::shared_ptr<HermesShim> HermesShim::makeWithWER() noexcept {
-  EnsureHermesLoaded();
-  hermes_runtime runtime{};
-  CRASH_ON_ERROR(s_createRuntimeWithWER(&runtime));
-  return std::make_shared<HermesShim>(runtime);
-}
-
 std::shared_ptr<facebook::jsi::Runtime> HermesShim::getRuntime() const noexcept {
-  //TODO:
-  //return std::shared_ptr<facebook::hermes::HermesRuntime>(nonAbiSafeRuntime_, RuntimeDeleter(shared_from_this()));
+  // TODO:
+  // return std::shared_ptr<facebook::hermes::HermesRuntime>(nonAbiSafeRuntime_, RuntimeDeleter(shared_from_this()));
   return nullptr;
-}
-
-void HermesShim::enableDebugging(const char *debuggerRuntimeName) const noexcept {
-  EnsureHermesLoaded();
-  CRASH_ON_ERROR(s_samplingProfilerEnable());
-}
-
-void HermesShim::disableDebugging() const noexcept {
-  EnsureHermesLoaded();
-  CRASH_ON_ERROR(s_samplingProfilerEnable());
 }
 
 void HermesShim::dumpCrashData(int fileDescriptor) const noexcept {
   CRASH_ON_ERROR(s_dumpCrashData(runtime_, fileDescriptor));
+}
+
+void HermesShim::stopDebugging() noexcept {
+  // TODO: Implement
 }
 
 /*static*/ void HermesShim::enableSamplingProfiler() noexcept {

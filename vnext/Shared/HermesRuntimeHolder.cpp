@@ -32,7 +32,7 @@ HermesRuntimeHolderProperty() noexcept {
 
 namespace {
 
-std::shared_ptr<HermesShim> makeHermesShimSystraced(const HermesRuntimeConfig& config) {
+std::shared_ptr<HermesShim> makeHermesShimSystraced(const HermesRuntimeConfig &config) {
   SystraceSection s("HermesExecutorFactory::makeHermesRuntimeSystraced");
   return HermesShim::make(config);
 }
@@ -44,9 +44,7 @@ void HermesRuntimeHolder::crashHandler(int fileDescriptor) noexcept {
 }
 
 void HermesRuntimeHolder::teardown() noexcept {
-  if (auto devSettings = m_weakDevSettings.lock(); devSettings && devSettings->useDirectDebugger) {
-    m_hermesShim->disableDebugging();
-  }
+  m_hermesShim->stopDebugging();
 }
 
 facebook::react::JSIEngineOverride HermesRuntimeHolder::getRuntimeType() noexcept {
@@ -63,7 +61,7 @@ std::shared_ptr<jsi::Runtime> HermesRuntimeHolder::getRuntime() noexcept {
 HermesRuntimeHolder::HermesRuntimeHolder(
     std::shared_ptr<facebook::react::DevSettings> devSettings,
     std::shared_ptr<facebook::react::MessageQueueThread> jsQueue,
-    std::unique_ptr<PreparedScriptStore> &&preparedScriptStore) noexcept
+    std::unique_ptr<jsi::PreparedScriptStore> preparedScriptStore) noexcept
     : m_weakDevSettings(devSettings), m_jsQueue(std::move(jsQueue)) {}
 
 void HermesRuntimeHolder::initRuntime() noexcept {
