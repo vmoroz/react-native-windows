@@ -55,9 +55,9 @@
 #include <JSI/NapiJsiV8RuntimeHolder.h>
 #include "V8JSIRuntimeHolder.h"
 #endif
-#include "BaseScriptStoreImpl.h"
 #include <ReactCommon/CallInvoker.h>
 #include <ReactCommon/TurboModuleBinding.h>
+#include "BaseScriptStoreImpl.h"
 #include "ChakraRuntimeHolder.h"
 
 #include <tracing/tracing.h>
@@ -320,9 +320,10 @@ InstanceImpl::InstanceImpl(
         case JSIEngineOverride::Hermes: {
           std::unique_ptr<facebook::jsi::PreparedScriptStore> preparedScriptStore;
 
-          char tempPath[MAX_PATH];
-          if (GetTempPathA(MAX_PATH, tempPath)) {
-            preparedScriptStore = std::make_unique<facebook::react::BasePreparedScriptStoreImpl>(tempPath);
+          wchar_t tempPath[MAX_PATH];
+          if (GetTempPathW(MAX_PATH, tempPath)) {
+            preparedScriptStore =
+                std::make_unique<facebook::react::BasePreparedScriptStoreImpl>(winrt::to_string(tempPath));
           }
 
           m_devSettings->jsiRuntimeHolder =
@@ -355,9 +356,10 @@ InstanceImpl::InstanceImpl(
 #if defined(USE_V8)
           std::unique_ptr<facebook::jsi::PreparedScriptStore> preparedScriptStore;
 
-          char tempPath[MAX_PATH];
-          if (GetTempPathA(MAX_PATH, tempPath)) {
-            preparedScriptStore = std::make_unique<facebook::react::BasePreparedScriptStoreImpl>(tempPath);
+          wchar_t tempPath[MAX_PATH];
+          if (GetTempPathW(MAX_PATH, tempPath)) {
+            preparedScriptStore =
+                std::make_unique<facebook::react::BasePreparedScriptStoreImpl>(winrt::to_string(tempPath));
           }
 
           m_devSettings->jsiRuntimeHolder = make_shared<NapiJsiV8RuntimeHolder>(
