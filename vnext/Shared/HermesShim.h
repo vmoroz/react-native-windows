@@ -32,7 +32,7 @@ class HermesRuntimeConfig {
   bool useDirectDebugger_{};
   bool debuggerBreakOnNextLine_{};
   std::shared_ptr<facebook::react::MessageQueueThread> foregroundTaskRunner_;
-  std::unique_ptr<facebook::jsi::PreparedScriptStore> scriptStore_;
+  std::shared_ptr<facebook::jsi::PreparedScriptStore> scriptStore_;
 };
 
 class HermesShim : public std::enable_shared_from_this<HermesShim> {

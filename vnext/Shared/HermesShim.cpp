@@ -135,6 +135,136 @@ class HermesTaskRunner {
   std::shared_ptr<facebook::react::MessageQueueThread> queue_;
 };
 
+struct HermesJsiBuffer : facebook::jsi::Buffer {
+  static std::shared_ptr<const facebook::jsi::Buffer>
+  Create(const uint8_t *buffer, size_t bufferSize, hermes_data_delete_cb bufferDeleteCallback, void *deleterData) {
+    return std::shared_ptr<const facebook::jsi::Buffer>(
+        new HermesJsiBuffer(buffer, bufferSize, bufferDeleteCallback, deleterData));
+  }
+
+  HermesJsiBuffer(
+      const uint8_t *buffer,
+      size_t bufferSize,
+      hermes_data_delete_cb bufferDeleteCallback,
+      void *deleterData) noexcept
+      : buffer_(buffer),
+        bufferSize_(bufferSize),
+        bufferDeleteCallback_(bufferDeleteCallback),
+        deleterData_(deleterData) {}
+
+  ~HermesJsiBuffer() override {
+    if (bufferDeleteCallback_) {
+      bufferDeleteCallback_(const_cast<uint8_t*>(buffer_), deleterData_);
+    }
+  }
+
+  const uint8_t *data() const override {
+    return buffer_;
+  }
+
+  size_t size() const override {
+    return bufferSize_;
+  }
+
+ private:
+  const uint8_t *buffer_;
+  size_t bufferSize_;
+  hermes_data_delete_cb bufferDeleteCallback_;
+  void *deleterData_;
+};
+
+class HermesScriptCache {
+ public:
+  static void Create(hermes_config config, std::shared_ptr<facebook::jsi::PreparedScriptStore> scriptStore) {
+    GetHermesApi().config_set_script_cache(
+        config, new HermesScriptCache(std::move(scriptStore)), &LoadScript, &StoreScript, &Delete, nullptr);
+  }
+
+ private:
+  HermesScriptCache(std::shared_ptr<facebook::jsi::PreparedScriptStore> scriptStore)
+      : scriptStore_(std::move(scriptStore)) {}
+
+  static void HERMES_CDECL LoadScript(
+      void *scriptCache,
+      hermes_script_cache_metadata *scriptMetadata,
+      const uint8_t **buffer,
+      size_t *bufferSize,
+      hermes_data_delete_cb *bufferDeleteCallback,
+      void **deleterData) {
+    auto &scriptStore = reinterpret_cast<HermesScriptCache *>(scriptCache)->scriptStore_;
+    std::shared_ptr<const facebook::jsi::Buffer> preparedScript = scriptStore->tryGetPreparedScript(
+        facebook::jsi::ScriptSignature{scriptMetadata->source_url, scriptMetadata->source_hash},
+        facebook::jsi::JSRuntimeSignature{scriptMetadata->runtime_name, scriptMetadata->runtime_version},
+        scriptMetadata->tag);
+    *buffer = preparedScript->data();
+    *bufferSize = preparedScript->size();
+    *bufferDeleteCallback = [](void * /*data*/, void *deleterData) noexcept {
+      delete reinterpret_cast<std::shared_ptr<const facebook::jsi::Buffer> *>(deleterData);
+    };
+    *deleterData = new std::shared_ptr<const facebook::jsi::Buffer>(std::move(preparedScript));
+  }
+
+  static void HERMES_CDECL StoreScript(
+      void *scriptCache,
+      hermes_script_cache_metadata *scriptMetadata,
+      const uint8_t *buffer,
+      size_t bufferSize,
+      hermes_data_delete_cb bufferDeleteCallback,
+      void *deleterData) {
+    auto &scriptStore = reinterpret_cast<HermesScriptCache *>(scriptCache)->scriptStore_;
+    scriptStore->persistPreparedScript(
+        HermesJsiBuffer::Create(buffer, bufferSize, bufferDeleteCallback, deleterData),
+        facebook::jsi::ScriptSignature{scriptMetadata->source_url, scriptMetadata->source_hash},
+        facebook::jsi::JSRuntimeSignature{scriptMetadata->runtime_name, scriptMetadata->runtime_version},
+        scriptMetadata->tag);
+  }
+
+  static void HERMES_CDECL Delete(void *scriptCache, void * /*deleterData*/) {
+    delete reinterpret_cast<HermesScriptCache *>(scriptCache);
+  }
+
+ private:
+  std::shared_ptr<facebook::jsi::PreparedScriptStore> scriptStore_;
+  // napi_ext_script_cache NapiJsiV8RuntimeHolder::InitScriptCache(
+  //     unique_ptr<PreparedScriptStore> &&preparedScriptStore) noexcept {
+  //   napi_ext_script_cache scriptCache{};
+  //   scriptCache.cache_object =
+  //       NativeObjectWrapper<unique_ptr<PreparedScriptStore>>::Wrap(std::move(preparedScriptStore));
+  //   scriptCache.load_cached_script = [](napi_env env,
+  //                                       napi_ext_script_cache *script_cache,
+  //                                       napi_ext_cached_script_metadata *script_metadata,
+  //                                       napi_ext_buffer *result) -> napi_status {
+  //     PreparedScriptStore *scriptStore = reinterpret_cast<PreparedScriptStore *>(script_cache->cache_object.data);
+  //     std::shared_ptr<const facebook::jsi::Buffer> buffer = scriptStore->tryGetPreparedScript(
+  //         ScriptSignature{script_metadata->source_url, script_metadata->source_hash},
+  //         JSRuntimeSignature{script_metadata->runtime_name, script_metadata->runtime_version},
+  //         script_metadata->tag);
+  //     if (buffer) {
+  //       result->buffer_object = NativeObjectWrapper<std::shared_ptr<const facebook::jsi::Buffer>>::Wrap(
+  //           std::shared_ptr<const facebook::jsi::Buffer>{buffer});
+  //       result->data = buffer->data();
+  //       result->byte_size = buffer->size();
+  //     } else {
+  //       *result = napi_ext_buffer{};
+  //     }
+  //     return napi_ok;
+  //   };
+  //   scriptCache.store_cached_script = [](napi_env env,
+  //                                        napi_ext_script_cache *script_cache,
+  //                                        napi_ext_cached_script_metadata *script_metadata,
+  //                                        const napi_ext_buffer *buffer) -> napi_status {
+  //     PreparedScriptStore *scriptStore = reinterpret_cast<PreparedScriptStore *>(script_cache->cache_object.data);
+  //     scriptStore->persistPreparedScript(
+  //         NodeApiJsiBuffer::CreateJsiBuffer(buffer),
+  //         ScriptSignature{script_metadata->source_url, script_metadata->source_hash},
+  //         JSRuntimeSignature{script_metadata->runtime_name, script_metadata->runtime_version},
+  //         script_metadata->tag);
+  //     return napi_ok;
+  //   };
+  //   return scriptCache;
+  // }
+};
+
 } // namespace
 
 HermesRuntimeConfig &HermesRuntimeConfig::enableDefaultCrashHandler(bool value) noexcept {
@@ -187,7 +317,7 @@ hermes_runtime HermesRuntimeConfig::createRuntime() const noexcept {
     HermesTaskRunner::Create(config, foregroundTaskRunner_);
   }
   if (scriptStore_) {
-    // CRASH_ON_ERROR(api.config_set_script_cache(config, _debuggerBreakOnNextLine));
+    HermesScriptCache::Create(config, scriptStore_);
   }
   hermes_runtime runtime{};
   CRASH_ON_ERROR(api.create_runtime(config, &runtime));
