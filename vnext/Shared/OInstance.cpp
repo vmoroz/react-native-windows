@@ -53,12 +53,11 @@
 
 #if defined(USE_V8)
 #include <JSI/NapiJsiV8RuntimeHolder.h>
-
-#include "BaseScriptStoreImpl.h"
 #include "V8JSIRuntimeHolder.h"
 #endif
 #include <ReactCommon/CallInvoker.h>
 #include <ReactCommon/TurboModuleBinding.h>
+#include "BaseScriptStoreImpl.h"
 #include "ChakraRuntimeHolder.h"
 
 #include <tracing/tracing.h>
@@ -318,9 +317,19 @@ InstanceImpl::InstanceImpl(
     } else {
       assert(m_devSettings->jsiEngineOverride != JSIEngineOverride::Default);
       switch (m_devSettings->jsiEngineOverride) {
-        case JSIEngineOverride::Hermes:
-          m_devSettings->jsiRuntimeHolder = std::make_shared<HermesRuntimeHolder>(m_devSettings, m_jsThread);
+        case JSIEngineOverride::Hermes: {
+          std::unique_ptr<facebook::jsi::PreparedScriptStore> preparedScriptStore;
+
+          wchar_t tempPath[MAX_PATH];
+          if (GetTempPathW(MAX_PATH, tempPath)) {
+            preparedScriptStore =
+                std::make_unique<facebook::react::BasePreparedScriptStoreImpl>(winrt::to_string(tempPath));
+          }
+
+          m_devSettings->jsiRuntimeHolder =
+              std::make_shared<HermesRuntimeHolder>(m_devSettings, m_jsThread, std::move(preparedScriptStore));
           break;
+        }
         case JSIEngineOverride::V8: {
 #if defined(USE_V8)
           std::unique_ptr<facebook::jsi::ScriptStore> scriptStore = nullptr;
@@ -348,16 +357,9 @@ InstanceImpl::InstanceImpl(
           std::unique_ptr<facebook::jsi::PreparedScriptStore> preparedScriptStore;
 
           wchar_t tempPath[MAX_PATH];
-          if (GetTempPathW(static_cast<DWORD>(std::size(tempPath)), tempPath)) {
+          if (GetTempPathW(MAX_PATH, tempPath)) {
             preparedScriptStore =
                 std::make_unique<facebook::react::BasePreparedScriptStoreImpl>(winrt::to_string(tempPath));
-          }
-
-          if (!preparedScriptStore) {
-            if (m_devSettings->errorCallback)
-              m_devSettings->errorCallback("Could not initialize prepared script store");
-
-            break;
           }
 
           m_devSettings->jsiRuntimeHolder = make_shared<NapiJsiV8RuntimeHolder>(

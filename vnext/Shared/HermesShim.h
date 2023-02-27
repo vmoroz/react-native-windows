@@ -3,7 +3,10 @@
 
 #pragma once
 
-#include <hermes/hermes_win.h>
+#include <JSI/ScriptStore.h>
+#include <cxxreact/MessageQueueThread.h>
+#include <jsi/jsi.h>
+#include <napi/hermes_api.h>
 
 //! We do not package hermes.dll for projects that do not require it. We cannot
 //! use pure delay-loading to achieve this, since WACK will detect the
@@ -11,17 +14,39 @@
 //! GetProcAddress.
 namespace Microsoft::ReactNative {
 
+class HermesRuntimeConfig {
+ public:
+  HermesRuntimeConfig &enableDefaultCrashHandler(bool value) noexcept;
+  HermesRuntimeConfig &useDirectDebugger(bool value) noexcept;
+  HermesRuntimeConfig &debuggerRuntimeName(const std::string &value) noexcept;
+  HermesRuntimeConfig &debuggerPort(uint16_t value) noexcept;
+  HermesRuntimeConfig &debuggerBreakOnNextLine(bool value) noexcept;
+  HermesRuntimeConfig &foregroundTaskRunner(std::shared_ptr<facebook::react::MessageQueueThread> value) noexcept;
+  HermesRuntimeConfig &scriptCache(std::unique_ptr<facebook::jsi::PreparedScriptStore> value) noexcept;
+  hermes_runtime createRuntime() const noexcept;
+
+ private:
+  std::string debuggerRuntimeName_;
+  uint16_t debuggerPort_{};
+  bool enableDefaultCrashHandler_{};
+  bool useDirectDebugger_{};
+  bool debuggerBreakOnNextLine_{};
+  std::shared_ptr<facebook::react::MessageQueueThread> foregroundTaskRunner_;
+  std::shared_ptr<facebook::jsi::PreparedScriptStore> scriptStore_;
+};
+
 class HermesShim : public std::enable_shared_from_this<HermesShim> {
  public:
   HermesShim(hermes_runtime runtimeAbiPtr) noexcept;
   ~HermesShim();
 
-  static std::shared_ptr<HermesShim> make() noexcept;
-  static std::shared_ptr<HermesShim> makeWithWER() noexcept;
+  static std::shared_ptr<HermesShim> make(const HermesRuntimeConfig &config) noexcept;
 
-  std::shared_ptr<facebook::hermes::HermesRuntime> getRuntime() const noexcept;
+  std::shared_ptr<facebook::jsi::Runtime> getRuntime() const noexcept;
 
   void dumpCrashData(int fileDescriptor) const noexcept;
+
+  void stopDebugging() noexcept;
 
   static void enableSamplingProfiler() noexcept;
   static void disableSamplingProfiler() noexcept;
@@ -34,7 +59,7 @@ class HermesShim : public std::enable_shared_from_this<HermesShim> {
 
  private:
   // It must be a raw pointer to avoid circular reference.
-  facebook::hermes::HermesRuntime *nonAbiSafeRuntime_{};
+  facebook::jsi::Runtime *jsiRuntime_{};
   hermes_runtime runtime_{};
 };
 
