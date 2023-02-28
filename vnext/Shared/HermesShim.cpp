@@ -2,10 +2,11 @@
 // Licensed under the MIT License.
 
 #include "HermesShim.h"
+#include <jsinspector/InspectorInterfaces.h>
 #include "Crash.h"
 
 #define INIT_SYMBOL(symbol) \
-  s_hermesApi.symbol = reinterpret_cast<decltype(&hermes_##symbol)>(GetSymbolAddress("hermes_" #symbol));
+  s_hermesApi.symbol = reinterpret_cast<decltype(&hermes_##symbol)>(getSymbolAddress("hermes_" #symbol));
 
 #define CRASH_ON_ERROR(result) VerifyElseCrash(result == hermes_ok);
 
@@ -23,6 +24,7 @@ struct HermesApi {
   decltype(&hermes_sampling_profiler_add) sampling_profiler_add;
   decltype(&hermes_sampling_profiler_remove) sampling_profiler_remove;
   decltype(&hermes_sampling_profiler_dump_to_file) sampling_profiler_dump_to_file;
+
   decltype(&hermes_create_config) create_config;
   decltype(&hermes_delete_config) delete_config;
   decltype(&hermes_config_enable_default_crash_handler) config_enable_default_crash_handler;
@@ -32,19 +34,27 @@ struct HermesApi {
   decltype(&hermes_config_set_debugger_break_on_start) config_set_debugger_break_on_start;
   decltype(&hermes_config_set_task_runner) config_set_task_runner;
   decltype(&hermes_config_set_script_cache) config_set_script_cache;
+
+  decltype(&hermes_set_inspector) set_inspector;
+  decltype(&hermes_create_local_connection) create_local_connection;
+  decltype(&hermes_delete_local_connection) delete_local_connection;
+  decltype(&hermes_local_connection_send_message) local_connection_send_message;
+  decltype(&hermes_local_connection_disconnect) local_connection_disconnect;
 } s_hermesApi;
 
 HMODULE s_hermesModule{};
+std::once_flag s_hermesLoading;
 
-void *GetSymbolAddress(const char *symbolName) {
+void *getSymbolAddress(const char *symbolName) {
   void *result = GetProcAddress(s_hermesModule, symbolName);
   VerifyElseCrash(result);
   return result;
 }
 
-std::once_flag s_hermesLoading;
+int32_t addInspectorPage(void *pageData, const char *title) noexcept;
+void removeInspectorPage(int32_t pageId) noexcept;
 
-HermesApi &GetHermesApi() noexcept {
+HermesApi &getHermesApi() noexcept {
   std::call_once(s_hermesLoading, []() {
     VerifyElseCrashSz(!s_hermesModule, "Invalid state: \"hermes.dll\" being loaded again.");
 
@@ -60,6 +70,7 @@ HermesApi &GetHermesApi() noexcept {
     INIT_SYMBOL(sampling_profiler_add);
     INIT_SYMBOL(sampling_profiler_remove);
     INIT_SYMBOL(sampling_profiler_dump_to_file);
+
     INIT_SYMBOL(create_config);
     INIT_SYMBOL(delete_config);
     INIT_SYMBOL(config_enable_default_crash_handler);
@@ -69,6 +80,14 @@ HermesApi &GetHermesApi() noexcept {
     INIT_SYMBOL(config_set_debugger_break_on_start);
     INIT_SYMBOL(config_set_task_runner);
     INIT_SYMBOL(config_set_script_cache);
+
+    INIT_SYMBOL(set_inspector);
+    INIT_SYMBOL(create_local_connection);
+    INIT_SYMBOL(delete_local_connection);
+    INIT_SYMBOL(local_connection_send_message);
+    INIT_SYMBOL(local_connection_disconnect);
+
+    CRASH_ON_ERROR(s_hermesApi.set_inspector(&addInspectorPage, &removeInspectorPage));
   });
 
   return s_hermesApi;
@@ -111,7 +130,8 @@ class HermesTask {
 class HermesTaskRunner {
  public:
   static void Create(hermes_config config, std::shared_ptr<facebook::react::MessageQueueThread> queue) {
-    GetHermesApi().config_set_task_runner(config, new HermesTaskRunner(std::move(queue)), &PostTask, &Delete, nullptr);
+    CRASH_ON_ERROR(getHermesApi().config_set_task_runner(
+        config, new HermesTaskRunner(std::move(queue)), &PostTask, &Delete, nullptr));
   }
 
  private:
@@ -176,8 +196,8 @@ struct HermesJsiBuffer : facebook::jsi::Buffer {
 class HermesScriptCache {
  public:
   static void Create(hermes_config config, std::shared_ptr<facebook::jsi::PreparedScriptStore> scriptStore) {
-    GetHermesApi().config_set_script_cache(
-        config, new HermesScriptCache(std::move(scriptStore)), &LoadScript, &StoreScript, &Delete, nullptr);
+    CRASH_ON_ERROR(getHermesApi().config_set_script_cache(
+        config, new HermesScriptCache(std::move(scriptStore)), &LoadScript, &StoreScript, &Delete, nullptr));
   }
 
  private:
@@ -265,6 +285,59 @@ class HermesScriptCache {
   // }
 };
 
+class HermesLocalConnection : public facebook::react::ILocalConnection {
+ public:
+  HermesLocalConnection(std::unique_ptr<facebook::react::IRemoteConnection> remoteConneciton, void *pageData) noexcept {
+    CRASH_ON_ERROR(getHermesApi().create_local_connection(
+        pageData,
+        reinterpret_cast<hermes_remote_connection>(remoteConneciton.release()),
+        &OnRemoteConnectionSendMessage,
+        &OnRemoteConnectionDisconnect,
+        &OnRemoteConnectionDelete,
+        nullptr,
+        &localConnection_));
+  }
+
+  ~HermesLocalConnection() override {
+    CRASH_ON_ERROR(getHermesApi().delete_local_connection(localConnection_));
+  }
+
+  void sendMessage(std::string message) {
+    CRASH_ON_ERROR(getHermesApi().local_connection_send_message(localConnection_, message.c_str()));
+  }
+
+  void disconnect() {
+    CRASH_ON_ERROR(getHermesApi().local_connection_disconnect(localConnection_));
+  }
+
+ private:
+  static void OnRemoteConnectionSendMessage(hermes_remote_connection remoteConnection, const char *message) {
+    reinterpret_cast<facebook::react::IRemoteConnection *>(remoteConnection)->onMessage(message);
+  }
+
+  static void OnRemoteConnectionDisconnect(hermes_remote_connection remoteConnection) {
+    reinterpret_cast<facebook::react::IRemoteConnection *>(remoteConnection)->onDisconnect();
+  }
+
+  static void OnRemoteConnectionDelete(void *remoteConnection, void * /*deleterData*/) {
+    delete reinterpret_cast<facebook::react::IRemoteConnection *>(remoteConnection);
+  }
+
+ private:
+  hermes_local_connection localConnection_{};
+};
+
+int32_t addInspectorPage(void *pageData, const char *title) noexcept {
+  return facebook::react::getInspectorInstance().addPage(
+      title, "Hermes", [pageData](std::unique_ptr<facebook::react::IRemoteConnection> remoteConneciton) {
+        return std::make_unique<HermesLocalConnection>(std::move(remoteConneciton), pageData);
+      });
+}
+
+void removeInspectorPage(int32_t pageId) noexcept {
+  facebook::react::getInspectorInstance().removePage(pageId);
+}
+
 } // namespace
 
 HermesRuntimeConfig &HermesRuntimeConfig::enableDefaultCrashHandler(bool value) noexcept {
@@ -305,7 +378,7 @@ HermesRuntimeConfig &HermesRuntimeConfig::scriptCache(
 }
 
 hermes_runtime HermesRuntimeConfig::createRuntime() const noexcept {
-  HermesApi &api = GetHermesApi();
+  HermesApi &api = getHermesApi();
   hermes_config config{};
   CRASH_ON_ERROR(api.create_config(&config));
   CRASH_ON_ERROR(api.config_enable_default_crash_handler(config, enableDefaultCrashHandler_));
@@ -328,7 +401,7 @@ hermes_runtime HermesRuntimeConfig::createRuntime() const noexcept {
 HermesShim::HermesShim(hermes_runtime runtime) noexcept : runtime_(runtime) {}
 
 HermesShim::~HermesShim() {
-  CRASH_ON_ERROR(GetHermesApi().delete_runtime(runtime_));
+  CRASH_ON_ERROR(getHermesApi().delete_runtime(runtime_));
 }
 
 /*static*/ std::shared_ptr<HermesShim> HermesShim::make(const HermesRuntimeConfig &config) noexcept {
@@ -342,7 +415,7 @@ std::shared_ptr<facebook::jsi::Runtime> HermesShim::getRuntime() const noexcept 
 }
 
 void HermesShim::dumpCrashData(int fileDescriptor) const noexcept {
-  CRASH_ON_ERROR(GetHermesApi().dump_crash_data(runtime_, fileDescriptor));
+  CRASH_ON_ERROR(getHermesApi().dump_crash_data(runtime_, fileDescriptor));
 }
 
 void HermesShim::stopDebugging() noexcept {
@@ -350,22 +423,22 @@ void HermesShim::stopDebugging() noexcept {
 }
 
 /*static*/ void HermesShim::enableSamplingProfiler() noexcept {
-  CRASH_ON_ERROR(GetHermesApi().sampling_profiler_enable());
+  CRASH_ON_ERROR(getHermesApi().sampling_profiler_enable());
 }
 
 /*static*/ void HermesShim::disableSamplingProfiler() noexcept {
-  CRASH_ON_ERROR(GetHermesApi().sampling_profiler_disable());
+  CRASH_ON_ERROR(getHermesApi().sampling_profiler_disable());
 }
 
 /*static*/ void HermesShim::dumpSampledTraceToFile(const std::string &fileName) noexcept {
-  CRASH_ON_ERROR(GetHermesApi().sampling_profiler_dump_to_file(fileName.c_str()));
+  CRASH_ON_ERROR(getHermesApi().sampling_profiler_dump_to_file(fileName.c_str()));
 }
 void HermesShim::addToProfiling() const noexcept {
-  CRASH_ON_ERROR(GetHermesApi().sampling_profiler_add(runtime_));
+  CRASH_ON_ERROR(getHermesApi().sampling_profiler_add(runtime_));
 }
 
 void HermesShim::removeFromProfiling() const noexcept {
-  CRASH_ON_ERROR(GetHermesApi().sampling_profiler_remove(runtime_));
+  CRASH_ON_ERROR(getHermesApi().sampling_profiler_remove(runtime_));
 }
 
 } // namespace Microsoft::ReactNative
