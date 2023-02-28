@@ -3,7 +3,6 @@
 
 #include "HermesShim.h"
 #include "Crash.h"
-#include "InspectorConnection.h"
 
 #define INIT_SYMBOL(symbol) \
   s_hermesApi.symbol = reinterpret_cast<decltype(&hermes_##symbol)>(GetSymbolAddress("hermes_" #symbol));

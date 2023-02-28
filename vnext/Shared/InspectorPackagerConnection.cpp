@@ -6,7 +6,6 @@
 #include <folly/json.h>
 #include <tracing/tracing.h>
 #include "InspectorPackagerConnection.h"
-#include "InspectorConnection.h"
 
 namespace Microsoft::ReactNative {
 
@@ -90,14 +89,14 @@ struct InspectorProtocol {
     return payload;
   }
 
-  static folly::dynamic constructVMResponsePayloadForPackager(int64_t pageId, std::string &&messageFromVM) {
+  static folly::dynamic constructVMResponsePayloadForPackager(int32_t pageId, std::string &&messageFromVM) {
     folly::dynamic payload = folly::dynamic::object;
     payload[InspectorProtocol::Message_eventName_wrappedEvent] = messageFromVM;
     payload[InspectorProtocol::Message_PAGEID] = pageId;
     return payload;
   }
 
-  static folly::dynamic constructVMResponsePayloadOnDisconnectForPackager(int64_t pageId) {
+  static folly::dynamic constructVMResponsePayloadOnDisconnectForPackager(int32_t pageId) {
     folly::dynamic payload = folly::dynamic::object;
     payload[InspectorProtocol::Message_PAGEID] = pageId;
     return payload;
@@ -106,7 +105,7 @@ struct InspectorProtocol {
 
 } // namespace
 
-RemoteConnection::RemoteConnection(int64_t pageId, const InspectorPackagerConnection &packagerConnection)
+RemoteConnection::RemoteConnection(int32_t pageId, const InspectorPackagerConnection &packagerConnection)
     : m_packagerConnection(packagerConnection), m_pageId(pageId) {}
 
 void RemoteConnection::onMessage(std::string message) {
@@ -137,7 +136,7 @@ void InspectorPackagerConnection::sendMessageToPackager(std::string &&message) c
   sendMessageToPackagerAsync(std::move(message));
 }
 
-void InspectorPackagerConnection::sendMessageToVM(int64_t pageId, std::string &&message) {
+void InspectorPackagerConnection::sendMessageToVM(int32_t pageId, std::string &&message) {
   m_localConnections[pageId]->sendMessage(std::move(message));
 }
 
@@ -184,11 +183,12 @@ winrt::fire_and_forget InspectorPackagerConnection::connectAsync() {
 
         std::string responsestr = folly::toJson(response);
         self->sendMessageToPackager(std::move(responsestr));
-      } break;
+        break;
+      }
 
       case InspectorProtocol::EventType::WrappedEvent: {
         folly::dynamic payload = messageDyn[InspectorProtocol::Message_PAYLOAD];
-        int64_t pageId = payload[InspectorProtocol::Message_PAGEID].asInt();
+        int32_t pageId = static_cast<int32_t>(payload[InspectorProtocol::Message_PAGEID].asInt());
 
         if (self->m_localConnections.find(pageId) == self->m_localConnections.end()) {
           break;
@@ -196,29 +196,31 @@ winrt::fire_and_forget InspectorPackagerConnection::connectAsync() {
 
         std::string wrappedEvent = payload[InspectorProtocol::Message_eventName_wrappedEvent].getString();
         self->sendMessageToVM(pageId, std::move(wrappedEvent));
-      } break;
+        break;
+      }
 
       case InspectorProtocol::EventType::Connect: {
         folly::dynamic payload = messageDyn[InspectorProtocol::Message_PAYLOAD];
-        int64_t pageId = payload[InspectorProtocol::Message_PAGEID].asInt();
+        int32_t pageId = static_cast<int32_t>(payload[InspectorProtocol::Message_PAGEID].asInt());
 
         if (self->m_localConnections.find(pageId) != self->m_localConnections.end()) {
           break;
         }
 
-        self->m_localConnections[pageId] = InspectorConnection::create(
-            static_cast<int>(pageId), std::make_unique<RemoteConnection>(pageId, *self));
-      } break;
+        self->m_localConnections[pageId] =
+            facebook::react::getInspectorInstance().connect(pageId, std::make_unique<RemoteConnection>(pageId, *self));
+        break;
+      }
 
       case InspectorProtocol::EventType::Disconnect: {
         folly::dynamic payload = messageDyn[InspectorProtocol::Message_PAYLOAD];
-        int64_t pageId = payload[InspectorProtocol::Message_PAGEID].asInt();
+        int32_t pageId = static_cast<int32_t>(payload[InspectorProtocol::Message_PAGEID].asInt());
         if (self->m_localConnections.find(pageId) != self->m_localConnections.end()) {
           self->m_localConnections[pageId]->disconnect();
           self->m_localConnections.erase(pageId);
         }
-
-      } break;
+        break;
+      }
     }
   });
 

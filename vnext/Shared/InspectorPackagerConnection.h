@@ -37,9 +37,10 @@ class InspectorPackagerConnection final : public std::enable_shared_from_this<In
 
   // Note:: VM side Inspector processes the messages asynchronously in a sequential executor with dedicated thread.
   // Hence, we don't bother invoking the inspector asynchronously.
-  void sendMessageToVM(int64_t pageId, std::string &&message);
+  void sendMessageToVM(int32_t pageId, std::string &&message);
 
-  std::unordered_map<int64_t, std::unique_ptr<facebook::react::ILocalConnection>> m_localConnections;
+ private:
+  std::unordered_map<int32_t, std::unique_ptr<facebook::react::ILocalConnection>> m_localConnections;
   std::shared_ptr<Microsoft::React::Networking::WinRTWebSocketResource> m_packagerWebSocketConnection;
   std::shared_ptr<IBundleStatusProvider> m_bundleStatusProvider;
   std::string m_url;
@@ -47,12 +48,12 @@ class InspectorPackagerConnection final : public std::enable_shared_from_this<In
 
 class RemoteConnection final : public facebook::react::IRemoteConnection {
  public:
-  RemoteConnection(int64_t pageId, const InspectorPackagerConnection &packagerConnection);
+  RemoteConnection(int32_t pageId, const InspectorPackagerConnection &packagerConnection);
   void onMessage(std::string message) override;
   void onDisconnect() override;
 
  private:
-  int64_t m_pageId;
+  int32_t m_pageId;
   const InspectorPackagerConnection &m_packagerConnection;
 };
 
