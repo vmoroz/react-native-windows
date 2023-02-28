@@ -31,7 +31,6 @@ class InspectorPackagerConnection final : public std::enable_shared_from_this<In
 
  private:
   friend class RemoteConnection;
-  friend class RemoteConnection2;
 
   winrt::fire_and_forget sendMessageToPackagerAsync(std::string &&message) const;
   void sendMessageToPackager(std::string &&message) const;

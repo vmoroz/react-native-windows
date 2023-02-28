@@ -3,6 +3,7 @@
 
 #include "HermesShim.h"
 #include "Crash.h"
+#include "InspectorConnection.h"
 
 #define INIT_SYMBOL(symbol) \
   s_hermesApi.symbol = reinterpret_cast<decltype(&hermes_##symbol)>(GetSymbolAddress("hermes_" #symbol));
@@ -154,7 +155,7 @@ struct HermesJsiBuffer : facebook::jsi::Buffer {
 
   ~HermesJsiBuffer() override {
     if (bufferDeleteCallback_) {
-      bufferDeleteCallback_(const_cast<uint8_t*>(buffer_), deleterData_);
+      bufferDeleteCallback_(const_cast<uint8_t *>(buffer_), deleterData_);
     }
   }
 
