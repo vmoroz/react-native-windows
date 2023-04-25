@@ -224,7 +224,7 @@ std::string BasePreparedScriptStoreImpl::getPreparedScriptFileName(
     prparedScriptFileName.append(prepareTag);
   }
 
-  // TODO :: Need to constuct a hash. ref:
+  // TODO :: Need to construct a hash. ref:
   // https://en.wikipedia.org/wiki/Base64#Filenames
 
   // extension
