@@ -1,0 +1,15 @@
+{
+    "$schema": "https://json.schemastore.org/component-detection-manifest.json",
+    "Registrations": [
+        {
+            "Component": {
+                "Type": "git",
+                "Git": {
+                  "RepositoryUrl": "https://github.com/microsoft/node-api-jsi",
+                  "CommitHash": "7234c7dcc614058537fd285b92881fdbba73f379"
+                }
+            },
+            "DevelopmentDependency": false
+        }
+    ]
+}

@@ -51,8 +51,8 @@ void *getSymbolAddress(const char *symbolName) {
   return result;
 }
 
-int32_t addInspectorPage(void *pageData, const char *title) noexcept;
-void removeInspectorPage(int32_t pageId) noexcept;
+int32_t NAPI_CDECL addInspectorPage(const char *title, const char *vm, void *connectFunc) noexcept;
+void NAPI_CDECL removeInspectorPage(int32_t pageId) noexcept;
 
 HermesApi &getHermesApi() noexcept {
   std::call_once(s_hermesLoading, []() {
@@ -137,7 +137,7 @@ class HermesTaskRunner {
  private:
   HermesTaskRunner(std::shared_ptr<facebook::react::MessageQueueThread> queue) : queue_(std::move(queue)) {}
 
-  static void HERMES_CDECL PostTask(
+  static void NAPI_CDECL PostTask(
       void *taskRunnerData,
       void *taskData,
       hermes_task_run_cb taskRunCallback,
@@ -147,7 +147,7 @@ class HermesTaskRunner {
     reinterpret_cast<HermesTaskRunner *>(taskRunnerData)->queue_->runOnQueue([task = std::move(task)] { task->Run(); });
   }
 
-  static void HERMES_CDECL Delete(void *taskRunner, void * /*deleterData*/) {
+  static void NAPI_CDECL Delete(void *taskRunner, void * /*deleterData*/) {
     delete reinterpret_cast<HermesTaskRunner *>(taskRunner);
   }
 
@@ -204,7 +204,7 @@ class HermesScriptCache {
   HermesScriptCache(std::shared_ptr<facebook::jsi::PreparedScriptStore> scriptStore)
       : scriptStore_(std::move(scriptStore)) {}
 
-  static void HERMES_CDECL LoadScript(
+  static void NAPI_CDECL LoadScript(
       void *scriptCache,
       hermes_script_cache_metadata *scriptMetadata,
       const uint8_t **buffer,
@@ -224,7 +224,7 @@ class HermesScriptCache {
     *deleterData = new std::shared_ptr<const facebook::jsi::Buffer>(std::move(preparedScript));
   }
 
-  static void HERMES_CDECL StoreScript(
+  static void NAPI_CDECL StoreScript(
       void *scriptCache,
       hermes_script_cache_metadata *scriptMetadata,
       const uint8_t *buffer,
@@ -239,7 +239,7 @@ class HermesScriptCache {
         scriptMetadata->tag);
   }
 
-  static void HERMES_CDECL Delete(void *scriptCache, void * /*deleterData*/) {
+  static void NAPI_CDECL Delete(void *scriptCache, void * /*deleterData*/) {
     delete reinterpret_cast<HermesScriptCache *>(scriptCache);
   }
 
@@ -287,9 +287,11 @@ class HermesScriptCache {
 
 class HermesLocalConnection : public facebook::react::ILocalConnection {
  public:
-  HermesLocalConnection(std::unique_ptr<facebook::react::IRemoteConnection> remoteConneciton, void *pageData) noexcept {
+  HermesLocalConnection(
+      std::unique_ptr<facebook::react::IRemoteConnection> remoteConneciton,
+      void *connectFunc) noexcept {
     CRASH_ON_ERROR(getHermesApi().create_local_connection(
-        pageData,
+        connectFunc,
         reinterpret_cast<hermes_remote_connection>(remoteConneciton.release()),
         &OnRemoteConnectionSendMessage,
         &OnRemoteConnectionDisconnect,
@@ -327,14 +329,14 @@ class HermesLocalConnection : public facebook::react::ILocalConnection {
   hermes_local_connection localConnection_{};
 };
 
-int32_t addInspectorPage(void *pageData, const char *title) noexcept {
+int32_t NAPI_CDECL addInspectorPage(const char *title, const char *vm, void *connectFunc) noexcept {
   return facebook::react::getInspectorInstance().addPage(
-      title, "Hermes", [pageData](std::unique_ptr<facebook::react::IRemoteConnection> remoteConneciton) {
-        return std::make_unique<HermesLocalConnection>(std::move(remoteConneciton), pageData);
+      title, vm, [connectFunc](std::unique_ptr<facebook::react::IRemoteConnection> remoteConneciton) {
+        return std::make_unique<HermesLocalConnection>(std::move(remoteConneciton), connectFunc);
       });
 }
 
-void removeInspectorPage(int32_t pageId) noexcept {
+void NAPI_CDECL removeInspectorPage(int32_t pageId) noexcept {
   facebook::react::getInspectorInstance().removePage(pageId);
 }
 

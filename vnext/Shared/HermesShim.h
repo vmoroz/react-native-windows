@@ -6,7 +6,7 @@
 #include <JSI/ScriptStore.h>
 #include <cxxreact/MessageQueueThread.h>
 #include <jsi/jsi.h>
-#include <napi/hermes_api.h>
+#include <hermes/hermes_api.h>
 
 //! We do not package hermes.dll for projects that do not require it. We cannot
 //! use pure delay-loading to achieve this, since WACK will detect the

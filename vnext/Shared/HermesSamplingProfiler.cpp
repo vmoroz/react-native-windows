@@ -3,7 +3,7 @@
 
 #include "pch.h"
 
-#include <napi/hermes_api.h>
+#include <hermes/hermes_api.h>
 #include <chrono>
 #include <future>
 
