@@ -5,10 +5,18 @@
     <HasSharedItems>true</HasSharedItems>
     <ItemsProjectGuid>{2049dbe9-8d13-42c9-ae4b-413ae38fffd0}</ItemsProjectGuid>
     <ItemsProjectName>Microsoft.ReactNative.Shared</ItemsProjectName>
+    <ReactNativeDir Condition="'$(ReactNativeDir)' == '' AND Exists('$(MSBuildThisFileDirectory)..\..\node_modules\react-native\package.json')">$(MSBuildThisFileDirectory)..\..\node_modules\react-native\</ReactNativeDir>
+    <ReactNativeDir Condition="'$(ReactNativeDir)' == '' AND Exists('$(MSBuildThisFileDirectory)..\..\..\node_modules\react-native\package.json')">$(MSBuildThisFileDirectory)..\..\..\node_modules\react-native\</ReactNativeDir>
+    <NodeApiJsiCommitHash>7234c7dcc614058537fd285b92881fdbba73f379</NodeApiJsiCommitHash>
+    <NodeApiJsiDir Condition="'$(NodeApiJsiDir)' == '' AND '$(ReactNativeDir)' != ''">$(ReactNativeDir)..\..\node_modules\.node-api-jsi\node-api-jsi-$(NodeApiJsiCommitHash)\</NodeApiJsiDir>
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
-      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);$(MSBuildThisFileDirectory)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>
+        $(NodeApiJsiDir)node-api;
+        $(MSBuildThisFileDirectory);
+        %(AdditionalIncludeDirectories)
+      </AdditionalIncludeDirectories>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -223,7 +231,7 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)..\Microsoft.ReactNative\Fabric\Composition\TextInput\WindowsTextInputProps.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)..\Microsoft.ReactNative\Fabric\Composition\TextInput\WindowsTextInputShadowNode.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)..\Microsoft.ReactNative\Fabric\Composition\TextInput\WindowsTextInputState.h" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)..\Microsoft.ReactNative\Fabric\Composition\UiaHelpers.h" />    
+    <ClInclude Include="$(MSBuildThisFileDirectory)..\Microsoft.ReactNative\Fabric\Composition\UiaHelpers.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)..\Microsoft.ReactNative\Fabric\AbiViewProps.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)..\Microsoft.ReactNative\Fabric\AbiViewComponentDescriptor.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)..\Microsoft.ReactNative\Fabric\DWriteHelpers.h" />
@@ -411,7 +419,7 @@
     <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\renderer\components\text\ParagraphEventEmitter.cpp" />
     <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\renderer\components\text\ParagraphProps.cpp" />
     <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\renderer\components\text\ParagraphShadowNode.cpp" DisableSpecificWarnings="4018;4305;%(DisableSpecificWarnings)" />
-    <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\renderer\components\text\ParagraphLayoutManager.cpp"/>
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\renderer\components\text\ParagraphLayoutManager.cpp" />
     <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\renderer\components\text\RawTextProps.cpp" />
     <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\renderer\components\text\TextShadowNode.cpp" />
     <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\renderer\components\text\RawTextShadowNode.cpp" />
@@ -512,5 +520,15 @@
     <Midl Condition="'$(UseFabric)' == 'true'" Include="$(ReactNativeWindowsDir)Microsoft.ReactNative\IReactPackageBuilderFabric.idl" />
     <Midl Condition="'$(UseFabric)' == 'true'" Include="$(ReactNativeWindowsDir)Microsoft.ReactNative\IReactViewComponentBuilder.idl" />
     <Midl Condition="'$(UseFabric)' == 'true'" Include="$(ReactNativeWindowsDir)Microsoft.ReactNative\ViewProps.idl" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="$(NodeApiJsiDir)src\HermesApi.h" />
+    <ClInclude Include="$(NodeApiJsiDir)src\HermesFunctions.inc" />
+    <ClCompile Include="$(NodeApiJsiDir)src\HermesApi.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="$(NodeApiJsiDir)src\NodeApi_win.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
   </ItemGroup>
 </Project>

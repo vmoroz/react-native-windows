@@ -31,6 +31,15 @@
       <Filter>JSI</Filter>
     </ClCompile>
     <ClCompile Include="$(Bridging_SourcePath)\LongLivedObject.cpp" />
+    <ClCompile Include="$(NodeApiJsiDir)\src\NodeApi.cpp">
+      <Filter>NodeApiJsi</Filter>
+    </ClCompile>
+    <ClCompile Include="$(NodeApiJsiDir)\src\NodeApiJsiRuntime.cpp">
+      <Filter>NodeApiJsi</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)JSI\NodeApiJsiLoader.cpp">
+      <Filter>NodeApiJsi</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="$(MSBuildThisFileDirectory)Crash.h" />
@@ -164,6 +173,15 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)JSI\LongLivedJsiValue.h">
       <Filter>TurboModule</Filter>
     </ClInclude>
+    <ClInclude Include="$(NodeApiJsiDir)\src\NodeApi.h">
+      <Filter>NodeApiJsi</Filter>
+    </ClInclude>
+    <ClInclude Include="$(NodeApiJsiDir)\src\NodeApiFunctions.inc">
+      <Filter>NodeApiJsi</Filter>
+    </ClInclude>
+    <ClInclude Include="$(NodeApiJsiDir)\src\NodeApiJsiRuntime.h">
+      <Filter>NodeApiJsi</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="JSI">
@@ -174,6 +192,9 @@
     </Filter>
     <Filter Include="TurboModule">
       <UniqueIdentifier>{b5c0294c-d72f-44fa-8509-369f7d3e4a56}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NodeApiJsi">
+      <UniqueIdentifier>{a34cd50a-190c-4cbb-8fe1-6ff1e16fe389}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

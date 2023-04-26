@@ -269,6 +269,12 @@
     <ClCompile Include="$(ReactNativeWindowsDir)Microsoft.ReactNative\RedBoxErrorFrameInfo.cpp" />
     <ClCompile Include="$(ReactNativeWindowsDir)Microsoft.ReactNative\RedBoxErrorInfo.cpp" />
     <ClCompile Include="$(ReactNativeWindowsDir)Microsoft.ReactNative\TurboModulesProvider.cpp" />
+    <ClCompile Include="$(NodeApiJsiDir)src\HermesApi.cpp">
+      <Filter>Hermes</Filter>
+    </ClCompile>
+    <ClCompile Include="$(NodeApiJsiDir)src\NodeApi_win.cpp">
+      <Filter>Hermes</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Source Files">
@@ -393,6 +399,9 @@
     </Filter>
     <Filter Include="Source Files\Fabric\platform\react\renderer\textlayoutmanager">
       <UniqueIdentifier>{d63d0a43-1f13-4674-aaa5-de02447a46b9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Hermes">
+      <UniqueIdentifier>{b32590e6-ae3d-4388-ab98-767345ce38c9}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -722,6 +731,12 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)..\Microsoft.ReactNative\Fabric\AbiViewProps.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)..\Microsoft.ReactNative\Fabric\AbiViewComponentDescriptor.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)..\Microsoft.ReactNative\Fabric\Composition\UiaHelpers.h" />
+    <ClInclude Include="$(NodeApiJsiDir)src\HermesApi.h">
+      <Filter>Hermes</Filter>
+    </ClInclude>
+    <ClInclude Include="$(NodeApiJsiDir)src\HermesFunctions.inc">
+      <Filter>Hermes</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="$(MSBuildThisFileDirectory)tracing\rnw.wprp">

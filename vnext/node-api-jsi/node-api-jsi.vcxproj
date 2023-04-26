@@ -41,22 +41,6 @@
   <PropertyGroup>
     <ConfigurationType>StaticLibrary</ConfigurationType>
   </PropertyGroup>
-<!--  <ItemGroup>
-    <ClCompile Include="$(NodeApiJsiDir)src\NodeApi.cpp" />
-    <ClCompile Include="$(NodeApiJsiDir)src\NodeApi_win.cpp" />
-    <ClCompile Include="$(NodeApiJsiDir)src\NodeApiJsiRuntime.cpp" />
-    <ClCompile Include="$(NodeApiJsiDir)src\HermesApi.cpp" />
-    <ClCompile Include="pch.cpp">
-      <PrecompiledHeader>Create</PrecompiledHeader>
-    </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="$(NodeApiJsiDir)src\HermesApi.h" />
-    <ClInclude Include="$(NodeApiJsiDir)src\NodeApi.h" />
-    <ClInclude Include="$(NodeApiJsiDir)src\NodeApiJsiRuntime.h" />
-    <ClInclude Include="pch.h" />
-  </ItemGroup>
--->
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <!-- Include Warnings.props after Microsoft.Cpp.props to change default WarningLevel -->
   <Import Project="$(ReactNativeWindowsDir)PropertySheets\Warnings.props" />

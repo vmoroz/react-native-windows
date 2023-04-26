@@ -18,6 +18,7 @@
     <CppWinRTNamespaceMergeDepth>
     </CppWinRTNamespaceMergeDepth>
     <CppWinRTLibs>true</CppWinRTLibs>
+    <BuildMSRNCxxModule>false</BuildMSRNCxxModule>
     <BuildMSRNCxxReactCommon>false</BuildMSRNCxxReactCommon>
     <DesktopCompatible Condition="'$(UseWinUI3)'=='true'">true</DesktopCompatible>
   </PropertyGroup>
