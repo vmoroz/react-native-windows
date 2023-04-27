@@ -33,6 +33,7 @@ class HermesFuncResolver : public IFuncResolver {
 HermesApi &initHermesApi() noexcept {
   static HermesFuncResolver funcResolver;
   static HermesApi s_hermesApi(&funcResolver);
+  HermesApi::setCurrent(&s_hermesApi);
   CRASH_ON_ERROR(s_hermesApi.hermes_set_inspector(&addInspectorPage, &removeInspectorPage));
   return s_hermesApi;
 }
