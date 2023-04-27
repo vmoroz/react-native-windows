@@ -3,6 +3,7 @@
 
 #include "HermesShim.h"
 #include <HermesApi.h>
+#include <NodeApiJsiRuntime.h>
 #include <jsinspector/InspectorInterfaces.h>
 #include "Crash.h"
 
@@ -359,9 +360,13 @@ HermesShim::~HermesShim() {
 }
 
 std::shared_ptr<facebook::jsi::Runtime> HermesShim::getRuntime() const noexcept {
-  // TODO:
-  // return std::shared_ptr<facebook::hermes::HermesRuntime>(nonAbiSafeRuntime_, RuntimeDeleter(shared_from_this()));
-  return nullptr;
+  HermesApi &hermesApi = getHermesApi();
+  napi_env env{};
+  CRASH_ON_ERROR(hermesApi.hermes_get_node_api_env(runtime_, &env));
+
+  std::unique_ptr<facebook::jsi::Runtime> runtime = makeNodeApiJsiRuntime(
+      env, &hermesApi, [runtime = runtime_]() { HermesApi::current()->hermes_delete_runtime(runtime); });
+  return std::shared_ptr<facebook::jsi::Runtime>(std::move(runtime));
 }
 
 void HermesShim::dumpCrashData(int fileDescriptor) const noexcept {
