@@ -527,8 +527,5 @@
     <ClCompile Include="$(NodeApiJsiDir)src\HermesApi.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="$(NodeApiJsiDir)src\NodeApi_win.cpp">
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
-    </ClCompile>
   </ItemGroup>
 </Project>

@@ -28,9 +28,6 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)CxxMessageQueue.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="$(MSBuildThisFileDirectory)HermesRuntimeHolder.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="$(MSBuildThisFileDirectory)JSBigAbiString.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -102,12 +99,6 @@
     </ClCompile>
     <ClCompile Include="$(MSBuildThisFileDirectory)JSI\NapiJsiV8RuntimeHolder.cpp">
       <Filter>Source Files\JSI</Filter>
-    </ClCompile>
-    <ClCompile Include="$(MSBuildThisFileDirectory)HermesSamplingProfiler.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="$(MSBuildThisFileDirectory)HermesShim.cpp">
-      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="$(MSBuildThisFileDirectory)Modules\HttpModule.cpp">
       <Filter>Source Files\Modules</Filter>
@@ -272,7 +263,13 @@
     <ClCompile Include="$(NodeApiJsiDir)src\HermesApi.cpp">
       <Filter>Hermes</Filter>
     </ClCompile>
-    <ClCompile Include="$(NodeApiJsiDir)src\NodeApi_win.cpp">
+    <ClCompile Include="$(MSBuildThisFileDirectory)HermesRuntimeHolder.cpp">
+      <Filter>Hermes</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)HermesSamplingProfiler.cpp">
+      <Filter>Hermes</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)HermesShim.cpp">
       <Filter>Hermes</Filter>
     </ClCompile>
   </ItemGroup>
@@ -453,9 +450,6 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)DevSettings.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="$(MSBuildThisFileDirectory)HermesRuntimeHolder.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="$(MSBuildThisFileDirectory)IDevSupportManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -564,12 +558,6 @@
     </ClInclude>
     <ClInclude Include="$(MSBuildThisFileDirectory)JSI\NapiJsiV8RuntimeHolder.h">
       <Filter>Header Files\JSI</Filter>
-    </ClInclude>
-    <ClInclude Include="$(MSBuildThisFileDirectory)HermesSamplingProfiler.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="$(MSBuildThisFileDirectory)HermesShim.h">
-      <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="$(MSBuildThisFileDirectory)Modules\HttpModule.h">
       <Filter>Header Files\Modules</Filter>
@@ -735,6 +723,15 @@
       <Filter>Hermes</Filter>
     </ClInclude>
     <ClInclude Include="$(NodeApiJsiDir)src\HermesFunctions.inc">
+      <Filter>Hermes</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)HermesRuntimeHolder.h">
+      <Filter>Hermes</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)HermesSamplingProfiler.h">
+      <Filter>Hermes</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)HermesShim.h">
       <Filter>Hermes</Filter>
     </ClInclude>
   </ItemGroup>
