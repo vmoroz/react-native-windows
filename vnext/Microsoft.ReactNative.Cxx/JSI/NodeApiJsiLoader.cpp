@@ -9,7 +9,7 @@ LibHandle LibLoader::loadLib(const char * /*libName*/) {
   return reinterpret_cast<LibHandle>(0);
 }
 
-FuncPtr LibLoader::getFuncPtr(LibHandle libHandle, const char *funcName) {
+FuncPtr LibLoader::getFuncPtr(LibHandle /*libHandle*/, const char * /*funcName*/) {
   return reinterpret_cast<FuncPtr>(0);
 }
 
