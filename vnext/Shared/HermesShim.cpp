@@ -365,8 +365,7 @@ std::shared_ptr<facebook::jsi::Runtime> HermesShim::getRuntime() const noexcept 
   napi_env env{};
   CRASH_ON_ERROR(hermesApi.hermes_get_node_api_env(runtime_, &env));
 
-  std::unique_ptr<facebook::jsi::Runtime> runtime = makeNodeApiJsiRuntime(
-      env, &hermesApi, [runtime = runtime_]() { HermesApi::current()->hermes_delete_runtime(runtime); });
+  std::unique_ptr<facebook::jsi::Runtime> runtime = makeNodeApiJsiRuntime(env, &hermesApi, []() {});
   return std::shared_ptr<facebook::jsi::Runtime>(std::move(runtime));
 }
 
