@@ -43,6 +43,18 @@ HermesApi &getHermesApi() noexcept {
   return s_hermesApi;
 }
 
+struct RuntimeDeleter {
+  RuntimeDeleter(std::shared_ptr<const HermesShim> &&hermesShimPtr) noexcept
+      : hermesShimPtr_(std::move(hermesShimPtr)) {}
+
+  void operator()(facebook::hermes::HermesRuntime * /*runtime*/) {
+    // Do nothing. Instead, we rely on the RuntimeDeleter destructor.
+  }
+
+ private:
+  std::shared_ptr<const HermesShim> hermesShimPtr_;
+};
+
 class HermesTask {
  public:
   HermesTask(
@@ -350,7 +362,10 @@ hermes_runtime HermesRuntimeConfig::createRuntime() const noexcept {
   return runtime;
 }
 
-HermesShim::HermesShim(hermes_runtime runtime) noexcept : runtime_(runtime) {}
+HermesShim::HermesShim(hermes_runtime runtime) noexcept : runtime_(runtime) {
+  CRASH_ON_ERROR(
+      getHermesApi().hermes_get_non_abi_safe_runtime(runtime_, reinterpret_cast<void **>(&nonAbiSafeRuntime_)));
+}
 
 HermesShim::~HermesShim() {
   CRASH_ON_ERROR(getHermesApi().hermes_delete_runtime(runtime_));
@@ -360,13 +375,8 @@ HermesShim::~HermesShim() {
   return std::make_shared<HermesShim>(config.createRuntime());
 }
 
-std::shared_ptr<facebook::jsi::Runtime> HermesShim::getRuntime() const noexcept {
-  HermesApi &hermesApi = getHermesApi();
-  napi_env env{};
-  CRASH_ON_ERROR(hermesApi.hermes_get_node_api_env(runtime_, &env));
-
-  std::unique_ptr<facebook::jsi::Runtime> runtime = makeNodeApiJsiRuntime(env, &hermesApi, []() {});
-  return std::shared_ptr<facebook::jsi::Runtime>(std::move(runtime));
+std::shared_ptr<facebook::hermes::HermesRuntime> HermesShim::getRuntime() const noexcept {
+  return std::shared_ptr<facebook::hermes::HermesRuntime>(nonAbiSafeRuntime_, RuntimeDeleter(shared_from_this()));
 }
 
 void HermesShim::dumpCrashData(int fileDescriptor) const noexcept {

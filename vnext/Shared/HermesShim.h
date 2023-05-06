@@ -7,6 +7,7 @@
 #include <cxxreact/MessageQueueThread.h>
 #include <jsi/jsi.h>
 #include <hermes/hermes_api.h>
+#include <hermes/hermes.h>
 
 //! We do not package hermes.dll for projects that do not require it. We cannot
 //! use pure delay-loading to achieve this, since WACK will detect the
@@ -42,7 +43,7 @@ class HermesShim : public std::enable_shared_from_this<HermesShim> {
 
   static std::shared_ptr<HermesShim> make(const HermesRuntimeConfig &config) noexcept;
 
-  std::shared_ptr<facebook::jsi::Runtime> getRuntime() const noexcept;
+  std::shared_ptr<facebook::hermes::HermesRuntime> getRuntime() const noexcept;
 
   void dumpCrashData(int fileDescriptor) const noexcept;
 
@@ -59,7 +60,8 @@ class HermesShim : public std::enable_shared_from_this<HermesShim> {
 
  private:
   // It must be a raw pointer to avoid circular reference.
-  facebook::jsi::Runtime *jsiRuntime_{};
+  //facebook::jsi::Runtime *jsiRuntime_{};
+  facebook::hermes::HermesRuntime *nonAbiSafeRuntime_{};
   hermes_runtime runtime_{};
 };
 
