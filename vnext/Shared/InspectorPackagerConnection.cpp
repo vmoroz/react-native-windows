@@ -81,7 +81,26 @@ struct InspectorProtocol {
       pageDyn["title"] = page.title;
       pageDyn["vm"] = page.vm;
 
-      pageDyn["isLastBundleDownloadSuccess"] = bundleStatus.m_isLastDownloadSucess;
+      pageDyn["isLastBundleDownloadSuccess"] = bundleStatus.m_isLastDownloadSuccess;
+      pageDyn["bundleUpdateTimestamp"] = bundleStatus.m_updateTimestamp;
+
+      payload.push_back(pageDyn);
+    }
+    return payload;
+  }
+
+  static folly::dynamic constructGetPagesResponsePayloadForPackager(
+      std::unique_ptr<facebook::react::IInspectorPages> pages,
+      InspectorPackagerConnection::BundleStatus bundleStatus) {
+    folly::dynamic payload = folly::dynamic::array;
+    for (int p = 0; p < pages->size(); p++) {
+      const facebook::react::InspectorPage2 page = pages->getPage(p);
+      folly::dynamic pageDyn = folly::dynamic::object;
+      pageDyn["id"] = page.id;
+      pageDyn["title"] = page.title;
+      pageDyn["vm"] = page.vm;
+
+      pageDyn["isLastBundleDownloadSuccess"] = bundleStatus.m_isLastDownloadSuccess;
       pageDyn["bundleUpdateTimestamp"] = bundleStatus.m_updateTimestamp;
 
       payload.push_back(pageDyn);

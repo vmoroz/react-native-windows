@@ -265,8 +265,8 @@ void DevSupportManager::EnsureHermesInspector(
   });
 }
 
-void DevSupportManager::UpdateBundleStatus(bool isLastDownloadSucess, int64_t updateTimestamp) noexcept {
-  m_BundleStatusProvider->updateBundleStatus(isLastDownloadSucess, updateTimestamp);
+void DevSupportManager::UpdateBundleStatus(bool isLastDownloadSuccess, int64_t updateTimestamp) noexcept {
+  m_BundleStatusProvider->updateBundleStatus(isLastDownloadSuccess, updateTimestamp);
 }
 
 std::pair<std::string, bool> GetJavaScriptFromServer(

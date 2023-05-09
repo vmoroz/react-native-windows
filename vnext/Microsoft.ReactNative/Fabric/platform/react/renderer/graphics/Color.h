@@ -34,7 +34,7 @@ struct Color {
 /*
  * On Android, a color can be represented as 32 bits integer, so there is no
  * need to instantiate complex color objects and then pass them as shared
- * pointers. Hense instead of using shared_ptr, we use a simple wrapper class
+ * pointers. Hence instead of using shared_ptr, we use a simple wrapper class
  * which provides a pointer-like interface.
  */
 class SharedColor {
@@ -84,17 +84,9 @@ class SharedColor {
     return m_color != nullptr;
   }
 
-  D2D1::ColorF AsD2DColor() const {
-    return {
-        m_color->m_color.R / 255.0f,
-        m_color->m_color.G / 255.0f,
-        m_color->m_color.B / 255.0f,
-        m_color->m_color.A / 255.0f};
-  }
+  D2D1::ColorF AsD2DColor() const;
 
-  winrt::Windows::UI::Color AsWindowsColor() const {
-    return m_color->m_color;
-  }
+  winrt::Windows::UI::Color AsWindowsColor() const;
 
   COLORREF AsColorRefNoAlpha() const {
     return RGB(m_color->m_color.R, m_color->m_color.G, m_color->m_color.B);

@@ -99,8 +99,10 @@ facebook::react::Props::Shared ParagraphComponentView::props() noexcept {
   return m_props;
 }
 
-facebook::react::Tag ParagraphComponentView::hitTest(facebook::react::Point pt, facebook::react::Point &localPt)
-    const noexcept {
+facebook::react::Tag ParagraphComponentView::hitTest(
+    facebook::react::Point pt,
+    facebook::react::Point &localPt,
+    bool ignorePointerEvents) const noexcept {
   facebook::react::Point ptLocal{pt.x - m_layoutMetrics.frame.origin.x, pt.y - m_layoutMetrics.frame.origin.y};
 
   facebook::react::Tag targetTag;
@@ -115,7 +117,7 @@ facebook::react::Tag ParagraphComponentView::hitTest(facebook::react::Point pt, 
       return targetTag;
       */
 
-  if ((m_props->pointerEvents == facebook::react::PointerEventsMode::Auto ||
+  if ((ignorePointerEvents || m_props->pointerEvents == facebook::react::PointerEventsMode::Auto ||
        m_props->pointerEvents == facebook::react::PointerEventsMode::BoxOnly) &&
       ptLocal.x >= 0 && ptLocal.x <= m_layoutMetrics.frame.size.width && ptLocal.y >= 0 &&
       ptLocal.y <= m_layoutMetrics.frame.size.height) {
@@ -200,13 +202,13 @@ void ParagraphComponentView::updateVisualBrush() noexcept {
   // updateTextAlignment(paragraphProps.textAttributes.alignment);
 
   if (!m_textLayout) {
-    facebook::react::LayoutConstraints contraints;
-    contraints.maximumSize.width =
+    facebook::react::LayoutConstraints constraints;
+    constraints.maximumSize.width =
         m_layoutMetrics.frame.size.width - m_layoutMetrics.contentInsets.left - m_layoutMetrics.contentInsets.right;
-    contraints.maximumSize.height =
+    constraints.maximumSize.height =
         m_layoutMetrics.frame.size.height - m_layoutMetrics.contentInsets.top - m_layoutMetrics.contentInsets.bottom;
 
-    facebook::react::TextLayoutManager::GetTextLayout(m_attributedStringBox, {} /*TODO*/, contraints, m_textLayout);
+    facebook::react::TextLayoutManager::GetTextLayout(m_attributedStringBox, {} /*TODO*/, constraints, m_textLayout);
     requireNewBrush = true;
   }
 
@@ -264,7 +266,7 @@ void ParagraphComponentView::updateVisualBrush() noexcept {
       }
     }
     */
-    // TODO Using brush alignment to align the text makes it blury...
+    // TODO Using brush alignment to align the text makes it blurry...
     surfaceBrush.HorizontalAlignmentRatio(horizAlignment);
     surfaceBrush.VerticalAlignmentRatio(0.f);
     surfaceBrush.Stretch(winrt::Microsoft::ReactNative::Composition::CompositionStretch::None);
@@ -393,7 +395,7 @@ void ParagraphComponentView::DrawText() noexcept {
         }
         m_textLayout->SetDrawingEffect(fragmentBrush.get(), range);
 
-        // DWrite doesn't handle background hightlight colors, so we manually draw the background color for ranges
+        // DWrite doesn't handle background highlight colors, so we manually draw the background color for ranges
         if (facebook::react::isColorMeaningful(fragment.textAttributes.backgroundColor)) {
           UINT32 actualHitTestCount = 0;
           if (range.length > 0) {
@@ -424,7 +426,7 @@ void ParagraphComponentView::DrawText() noexcept {
           if (actualHitTestCount > 0) {
             // Note that an ideal layout will return fractional values,
             // so you may see slivers between the selection ranges due
-            // to the per-primitive antialiasing of the edges unless
+            // to the per-primitive anti-aliasing of the edges unless
             // it is disabled (better for performance anyway).
             auto oldAliasMode = d2dDeviceContext->GetAntialiasMode();
             d2dDeviceContext->SetAntialiasMode(D2D1_ANTIALIAS_MODE_ALIASED);
