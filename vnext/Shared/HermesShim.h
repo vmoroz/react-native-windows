@@ -7,7 +7,6 @@
 #include <cxxreact/MessageQueueThread.h>
 #include <jsi/jsi.h>
 #include <hermes/hermes_api.h>
-#include <hermes/hermes.h>
 
 //! We do not package hermes.dll for projects that do not require it. We cannot
 //! use pure delay-loading to achieve this, since WACK will detect the
@@ -61,7 +60,6 @@ class HermesShim : public std::enable_shared_from_this<HermesShim> {
  private:
   // It must be a raw pointer to avoid circular reference.
   //facebook::jsi::Runtime *jsiRuntime_{};
-  facebook::hermes::HermesRuntime *nonAbiSafeRuntime_{};
   hermes_runtime runtime_{};
   napi_env env_{};
   std::shared_ptr<facebook::jsi::Runtime> nodeApiRuntime_;
