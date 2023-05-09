@@ -43,7 +43,7 @@ class HermesShim : public std::enable_shared_from_this<HermesShim> {
 
   static std::shared_ptr<HermesShim> make(const HermesRuntimeConfig &config) noexcept;
 
-  std::shared_ptr<facebook::hermes::HermesRuntime> getRuntime() const noexcept;
+  std::shared_ptr<facebook::jsi::Runtime> getRuntime() const noexcept;
 
   void dumpCrashData(int fileDescriptor) const noexcept;
 
@@ -63,6 +63,8 @@ class HermesShim : public std::enable_shared_from_this<HermesShim> {
   //facebook::jsi::Runtime *jsiRuntime_{};
   facebook::hermes::HermesRuntime *nonAbiSafeRuntime_{};
   hermes_runtime runtime_{};
+  napi_env env_{};
+  std::shared_ptr<facebook::jsi::Runtime> nodeApiRuntime_;
 };
 
 } // namespace Microsoft::ReactNative

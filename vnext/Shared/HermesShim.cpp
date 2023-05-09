@@ -363,8 +363,10 @@ hermes_runtime HermesRuntimeConfig::createRuntime() const noexcept {
 }
 
 HermesShim::HermesShim(hermes_runtime runtime) noexcept : runtime_(runtime) {
-  CRASH_ON_ERROR(
-      getHermesApi().hermes_get_non_abi_safe_runtime(runtime_, reinterpret_cast<void **>(&nonAbiSafeRuntime_)));
+  HermesApi &api = getHermesApi();
+  CRASH_ON_ERROR(api.hermes_get_non_abi_safe_runtime(runtime_, reinterpret_cast<void **>(&nonAbiSafeRuntime_)));
+  CRASH_ON_ERROR(api.hermes_get_node_api_env(runtime_, &env_));
+  nodeApiRuntime_ = std::shared_ptr<facebook::jsi::Runtime>(makeNodeApiJsiRuntime(env_, &api, []() {}));
 }
 
 HermesShim::~HermesShim() {
@@ -375,8 +377,9 @@ HermesShim::~HermesShim() {
   return std::make_shared<HermesShim>(config.createRuntime());
 }
 
-std::shared_ptr<facebook::hermes::HermesRuntime> HermesShim::getRuntime() const noexcept {
-  return std::shared_ptr<facebook::hermes::HermesRuntime>(nonAbiSafeRuntime_, RuntimeDeleter(shared_from_this()));
+std::shared_ptr<facebook::jsi::Runtime> HermesShim::getRuntime() const noexcept {
+  return nodeApiRuntime_;
+  // return std::shared_ptr<facebook::jsi::Runtime>(nonAbiSafeRuntime_, RuntimeDeleter(shared_from_this()));
 }
 
 void HermesShim::dumpCrashData(int fileDescriptor) const noexcept {
