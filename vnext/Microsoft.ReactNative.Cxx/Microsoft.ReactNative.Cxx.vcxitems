@@ -145,7 +145,7 @@
     <ClInclude Include="$(NodeApiJsiDir)\src\NodeApiFunctions.inc" />
     <ClInclude Include="$(NodeApiJsiDir)\src\NodeApiJsiRuntime.h" />
   </ItemGroup>
-  <ItemGroup Condition="'$(BuildMSRNCxx)' != 'false'">
+  <ItemGroup>
     <ClCompile Include="$(NodeApiJsiDir)\src\NodeApi.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
