@@ -450,7 +450,7 @@ void InstanceImpl::loadBundleInternal(std::string &&jsBundleRelativePath, bool s
           m_devSettings->debugBundlePath.empty() ? jsBundleRelativePath : m_devSettings->debugBundlePath,
           m_devSettings->platformName,
           m_devSettings->bundleAppId,
-          true /* dev */,
+          m_devSettings->devBundle,
           m_devSettings->useFastRefresh,
           m_devSettings->inlineSourceMap,
           hermesBytecodeVersion);
@@ -472,8 +472,8 @@ void InstanceImpl::loadBundleInternal(std::string &&jsBundleRelativePath, bool s
           m_devSettings->debugBundlePath.empty() ? jsBundleRelativePath : m_devSettings->debugBundlePath,
           m_devSettings->platformName,
           m_devSettings->bundleAppId,
-          /*dev*/ true,
-          /*hot*/ false,
+          m_devSettings->devBundle,
+          m_devSettings->useFastRefresh,
           m_devSettings->inlineSourceMap,
           hermesBytecodeVersion);
 
@@ -609,7 +609,7 @@ std::vector<std::unique_ptr<NativeModule>> InstanceImpl::GetDefaultNativeModules
             m_devSettings->debugBundlePath,
             m_devSettings->platformName,
             m_devSettings->bundleAppId,
-            true /*dev*/,
+            m_devSettings->devBundle,
             m_devSettings->useFastRefresh,
             m_devSettings->inlineSourceMap,
             hermesBytecodeVersion)

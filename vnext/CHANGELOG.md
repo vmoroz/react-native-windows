@@ -1,8 +1,84 @@
 # Change Log - react-native-windows
 
-This log was last generated on Mon, 08 May 2023 17:41:02 GMT and should not be manually modified.
+This log was last generated on Wed, 31 May 2023 05:13:44 GMT and should not be manually modified.
 
 <!-- Start content -->
+
+## 0.0.0-canary.658
+
+Wed, 31 May 2023 05:13:44 GMT
+
+### Changes
+
+- Limit Yoga layout to relevant root on resize (erozell@outlook.com)
+
+## 0.0.0-canary.657
+
+Sat, 27 May 2023 05:15:02 GMT
+
+### Changes
+
+- Fix dependency script to install missing components for VS Preview (jthysell@microsoft.com)
+- Bump @react-native-windows/cli to v0.0.0-canary.171
+
+## 0.0.0-canary.656
+
+Fri, 26 May 2023 05:13:21 GMT
+
+### Changes
+
+- Change multi_threaded_map to single_threaded_map in WinRTHttpResource (lyahdav@users.noreply.github.com)
+- Remove unused Beast production code (julio.rocha@microsoft.com)
+
+## 0.0.0-canary.655
+
+Thu, 25 May 2023 20:07:27 GMT
+
+### Changes
+
+- Fix a bunch of properties on Text (30809111+acoates-ms@users.noreply.github.com)
+
+## 0.0.0-canary.654
+
+Thu, 25 May 2023 05:15:04 GMT
+
+### Changes
+
+- [Win32] Export yoga gap function (30809111+acoates-ms@users.noreply.github.com)
+
+## 0.0.0-canary.653
+
+Tue, 23 May 2023 05:13:44 GMT
+
+### Changes
+
+- Fix Utils.cpp not compiling on Clang (lyahdav@users.noreply.github.com)
+- Allow apps to provide accessiblity information on non-focusable components (30809111+acoates-ms@users.noreply.github.com)
+- RN integration 5/5/23 (tatianakapos@microsoft.com)
+
+## 0.0.0-canary.652
+
+Tue, 16 May 2023 05:16:30 GMT
+
+### Changes
+
+- Update Props Function (34109996+chiaramooney@users.noreply.github.com)
+- Integrate 4/28 (34109996+chiaramooney@users.noreply.github.com)
+- Bump @react-native-windows/cli to v0.0.0-canary.170
+- Bump @react-native-windows/codegen to v0.0.0-canary.58
+- Bump @rnw-scripts/just-task to v2.3.9
+- Bump react-native-platform-override to v1.9.7
+
+## 0.0.0-canary.651
+
+Fri, 12 May 2023 05:14:34 GMT
+
+### Changes
+
+- Remove relative path from codegen include in AppearanceModule.h (lyahdav@users.noreply.github.com)
+- [Fabric] fix border for Image and Switch (email not defined)
+- Add option to load ship bundles from metro (30809111+acoates-ms@users.noreply.github.com)
+- Fix V8 Node API Task Runner implementation (#10966) (vmoroz@users.noreply.github.com)
 
 ## 0.0.0-canary.650
 
