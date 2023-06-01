@@ -174,9 +174,6 @@
     <ProjectReference Include="..\Folly\Folly.vcxproj">
       <Project>{A990658C-CE31-4BCC-976F-0FC6B1AF693D}</Project>
     </ProjectReference>
-    <ProjectReference Include="..\node-api-jsi\node-api-jsi.vcxproj ">
-      <Project>{bcc8577e-f1b8-4fb0-b0de-86a12c5aafcf}</Project>
-    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="boost" Version="1.76.0.0" />

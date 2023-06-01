@@ -329,15 +329,11 @@
           "Microsoft.ReactNative": "[1.0.0, )"
         }
       },
-      "node-api-jsi": {
-        "type": "Project"
-      },
       "reactcommon": {
         "type": "Project",
         "dependencies": {
           "Folly": "[1.0.0, )",
-          "boost": "[1.76.0, )",
-          "node-api-jsi": "[1.0.0, )"
+          "boost": "[1.76.0, )"
         }
       }
     },
