@@ -14,14 +14,11 @@
 #include <memory>
 #include <mutex>
 
-using namespace facebook;
-using namespace Microsoft::ReactNative;
-
 namespace React {
 using namespace winrt::Microsoft::ReactNative;
 }
 
-namespace facebook::react {
+namespace Microsoft::ReactNative {
 
 React::ReactPropertyId<React::ReactNonAbiValue<std::shared_ptr<HermesRuntimeHolder>>>
 HermesRuntimeHolderProperty() noexcept {
@@ -33,7 +30,7 @@ HermesRuntimeHolderProperty() noexcept {
 namespace {
 
 std::shared_ptr<HermesShim> makeHermesShimSystraced(const HermesRuntimeConfig &config) {
-  SystraceSection s("HermesExecutorFactory::makeHermesRuntimeSystraced");
+  facebook::react::SystraceSection s("HermesExecutorFactory::makeHermesRuntimeSystraced");
   return HermesShim::make(config);
 }
 
@@ -51,7 +48,7 @@ facebook::react::JSIEngineOverride HermesRuntimeHolder::getRuntimeType() noexcep
   return facebook::react::JSIEngineOverride::Hermes;
 }
 
-std::shared_ptr<jsi::Runtime> HermesRuntimeHolder::getRuntime() noexcept {
+std::shared_ptr<facebook::jsi::Runtime> HermesRuntimeHolder::getRuntime() noexcept {
   std::call_once(m_onceFlag, [this]() { initRuntime(); });
   VerifyElseCrash(m_jsiRuntime);
   VerifyElseCrashSz(m_ownThreadId == std::this_thread::get_id(), "Must be accessed from JS thread.");
@@ -61,7 +58,7 @@ std::shared_ptr<jsi::Runtime> HermesRuntimeHolder::getRuntime() noexcept {
 HermesRuntimeHolder::HermesRuntimeHolder(
     std::shared_ptr<facebook::react::DevSettings> devSettings,
     std::shared_ptr<facebook::react::MessageQueueThread> jsQueue,
-    std::unique_ptr<jsi::PreparedScriptStore> preparedScriptStore) noexcept
+    std::unique_ptr<facebook::jsi::PreparedScriptStore> preparedScriptStore) noexcept
     : m_weakDevSettings(devSettings), m_jsQueue(std::move(jsQueue)) {}
 
 void HermesRuntimeHolder::initRuntime() noexcept {
@@ -115,4 +112,4 @@ void HermesRuntimeHolder::removeFromProfiling() const noexcept {
   m_hermesShim->removeFromProfiling();
 }
 
-} // namespace facebook::react
+} // namespace Microsoft::ReactNative

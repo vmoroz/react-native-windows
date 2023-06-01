@@ -326,8 +326,8 @@ InstanceImpl::InstanceImpl(
                 std::make_unique<facebook::react::BasePreparedScriptStoreImpl>(winrt::to_string(tempPath));
           }
 
-          m_devSettings->jsiRuntimeHolder =
-              std::make_shared<HermesRuntimeHolder>(m_devSettings, m_jsThread, std::move(preparedScriptStore));
+          m_devSettings->jsiRuntimeHolder = std::make_shared<Microsoft::ReactNative::HermesRuntimeHolder>(
+              m_devSettings, m_jsThread, std::move(preparedScriptStore));
           break;
         }
         case JSIEngineOverride::V8: {
@@ -362,8 +362,8 @@ InstanceImpl::InstanceImpl(
                 std::make_unique<facebook::react::BasePreparedScriptStoreImpl>(winrt::to_string(tempPath));
           }
 
-          m_devSettings->jsiRuntimeHolder = make_shared<NapiJsiV8RuntimeHolder>(
-              m_devSettings, m_jsThread, nullptr /*scriptStore*/, std::move(preparedScriptStore));
+          m_devSettings->jsiRuntimeHolder = make_shared<Microsoft::ReactNative::NapiJsiV8RuntimeHolder>(
+              m_devSettings, m_jsThread, std::move(preparedScriptStore));
           break;
 #else
           if (m_devSettings->errorCallback)

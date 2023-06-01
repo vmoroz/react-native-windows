@@ -27,9 +27,6 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)JSI\JsiApiContext.cpp">
       <Filter>JSI</Filter>
     </ClCompile>
-    <ClCompile Include="$(MSBuildThisFileDirectory)JSI\NodeApiJsiRuntime.cpp">
-      <Filter>JSI</Filter>
-    </ClCompile>
     <ClCompile Include="$(Bridging_SourcePath)\LongLivedObject.cpp" />
     <ClCompile Include="$(NodeApiJsiDir)\src\NodeApiJsiRuntime.cpp">
       <Filter>NodeApiJsi</Filter>
@@ -163,9 +160,6 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)DesktopWindowBridge.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)XamlUtils.h">
       <Filter>UI</Filter>
-    </ClInclude>
-    <ClInclude Include="$(MSBuildThisFileDirectory)JSI\NodeApiJsiRuntime.h">
-      <Filter>JSI</Filter>
     </ClInclude>
     <ClInclude Include="$(Bridging_SourcePath)\CallbackWrapper.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)CoreApp.h" />

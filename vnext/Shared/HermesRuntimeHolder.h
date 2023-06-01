@@ -11,13 +11,13 @@
 #include <JSI/ScriptStore.h>
 #include <ReactPropertyBag.h>
 
-namespace Microsoft::ReactNative {
-class HermesShim;
+namespace facebook::react {
+class MessageQueueThread;
 }
 
-namespace facebook::react {
+namespace Microsoft::ReactNative {
 
-class MessageQueueThread;
+class HermesShim;
 
 class HermesRuntimeHolder : public Microsoft::JSI::RuntimeHolderLazyInit {
  public: // RuntimeHolderLazyInit implementation.
@@ -30,7 +30,7 @@ class HermesRuntimeHolder : public Microsoft::JSI::RuntimeHolderLazyInit {
   HermesRuntimeHolder(
       std::shared_ptr<facebook::react::DevSettings> devSettings,
       std::shared_ptr<facebook::react::MessageQueueThread> jsQueue,
-      std::unique_ptr<jsi::PreparedScriptStore> preparedScriptStore) noexcept;
+      std::unique_ptr<facebook::jsi::PreparedScriptStore> preparedScriptStore) noexcept;
 
   static std::shared_ptr<HermesRuntimeHolder> loadFrom(
       winrt::Microsoft::ReactNative::ReactPropertyBag const &propertyBag) noexcept;
@@ -52,7 +52,7 @@ class HermesRuntimeHolder : public Microsoft::JSI::RuntimeHolderLazyInit {
   std::thread::id m_ownThreadId{};
   std::weak_ptr<facebook::react::DevSettings> m_weakDevSettings;
   std::shared_ptr<facebook::react::MessageQueueThread> m_jsQueue;
-  std::unique_ptr<jsi::PreparedScriptStore> m_preparedScriptStore;
+  std::unique_ptr<facebook::jsi::PreparedScriptStore> m_preparedScriptStore;
 };
 
-} // namespace facebook::react
+} // namespace Microsoft::ReactNative

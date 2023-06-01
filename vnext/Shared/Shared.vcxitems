@@ -531,4 +531,11 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
   </ItemGroup>
+  <ItemGroup Condition="'$(UseV8)' == 'true'">
+    <ClInclude Include="$(NodeApiJsiDir)src\ApiLoaders\V8Api.h" />
+    <ClInclude Include="$(NodeApiJsiDir)src\ApiLoaders\V8Api.inc" />
+    <ClCompile Include="$(NodeApiJsiDir)src\ApiLoaders\V8Api.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+  </ItemGroup>
 </Project>

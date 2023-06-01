@@ -255,7 +255,7 @@ ReactInstanceWin::ReactInstanceWin(
                                                                onDestroyed = m_options.OnInstanceDestroyed,
                                                                reactContext = m_reactContext]() noexcept {
         whenLoaded.TryCancel(); // It only has an effect if whenLoaded was not set before
-        facebook::react::HermesRuntimeHolder::storeTo(ReactPropertyBag(reactContext->Properties()), nullptr);
+        Microsoft::ReactNative::HermesRuntimeHolder::storeTo(ReactPropertyBag(reactContext->Properties()), nullptr);
         if (onDestroyed) {
           onDestroyed.Get()->Invoke(reactContext);
         }
@@ -487,7 +487,7 @@ void ReactInstanceWin::Initialize() noexcept {
 
           switch (m_options.JsiEngine()) {
             case JSIEngine::Hermes: {
-              //TODO: Should we use UwpPreparedScriptStore?
+              // TODO: Should we use UwpPreparedScriptStore?
               if (Microsoft::ReactNative::HasPackageIdentity()) {
                 preparedScriptStore =
                     std::make_unique<facebook::react::BasePreparedScriptStoreImpl>(getApplicationTempFolder());
@@ -499,9 +499,9 @@ void ReactInstanceWin::Initialize() noexcept {
                 }
               }
 
-              auto hermesRuntimeHolder = std::make_shared<facebook::react::HermesRuntimeHolder>(
+              auto hermesRuntimeHolder = std::make_shared<Microsoft::ReactNative::HermesRuntimeHolder>(
                   devSettings, m_jsMessageThread.Load(), std::move(preparedScriptStore));
-              facebook::react::HermesRuntimeHolder::storeTo(
+              Microsoft::ReactNative::HermesRuntimeHolder::storeTo(
                   ReactPropertyBag(m_reactContext->Properties()), hermesRuntimeHolder);
               devSettings->jsiRuntimeHolder = hermesRuntimeHolder;
               break;
