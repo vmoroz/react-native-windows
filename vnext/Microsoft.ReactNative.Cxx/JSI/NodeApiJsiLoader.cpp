@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-#include "NodeApi.h"
+#include "ApiLoaders/NodeApi.h"
 
 namespace Microsoft::NodeApiJsi {
 

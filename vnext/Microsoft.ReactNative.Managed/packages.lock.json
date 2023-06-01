@@ -36,8 +36,8 @@
       },
       "Microsoft.JavaScript.Hermes": {
         "type": "Transitive",
-        "resolved": "0.1.9",
-        "contentHash": "iGJNmzzwWJWjwWWMjyAM0cjq5zizfcJlCqE7AILNAdNF0DNlfUxqZ65Oo5YMLvOpMivCQUaqnvyaaSa+3fs79A=="
+        "resolved": "0.1.12",
+        "contentHash": "dx0eVRCxgl7pHIq/XMpRU7PHrXUG6f44sw/iwaySG1Xw7lvCmmw/8ECJYD0RybWDvDNKne8hIP3RpD7jyTApyg=="
       },
       "Microsoft.Net.Native.Compiler": {
         "type": "Transitive",
@@ -181,18 +181,22 @@
         "dependencies": {
           "Common": "[1.0.0, )",
           "Folly": "[1.0.0, )",
-          "Microsoft.JavaScript.Hermes": "[0.1.9, )",
+          "Microsoft.JavaScript.Hermes": "[0.1.12, )",
           "Microsoft.UI.Xaml": "[2.8.0, )",
           "Microsoft.Windows.SDK.BuildTools": "[10.0.22000.194, )",
           "ReactCommon": "[1.0.0, )",
           "boost": "[1.76.0, )"
         }
       },
+      "node-api-jsi": {
+        "type": "Project"
+      },
       "reactcommon": {
         "type": "Project",
         "dependencies": {
           "Folly": "[1.0.0, )",
-          "boost": "[1.76.0, )"
+          "boost": "[1.76.0, )",
+          "node-api-jsi": "[1.0.0, )"
         }
       }
     },

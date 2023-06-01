@@ -2,12 +2,12 @@
 // Licensed under the MIT License.
 
 #include "HermesShim.h"
-#include <HermesApi.h>
+#include <ApiLoaders/HermesApi.h>
 #include <NodeApiJsiRuntime.h>
 #include <jsinspector/InspectorInterfaces.h>
 #include "Crash.h"
 
-#define CRASH_ON_ERROR(result) VerifyElseCrash(result == hermes_ok);
+#define CRASH_ON_ERROR(result) VerifyElseCrash(result == napi_ok);
 
 using namespace Microsoft::NodeApiJsi;
 
@@ -47,8 +47,8 @@ class HermesTask {
  public:
   HermesTask(
       void *taskData,
-      hermes_task_run_cb taskRunCallback,
-      hermes_data_delete_cb taskDataDeleteCallback,
+      jsr_task_run_cb taskRunCallback,
+      jsr_data_delete_cb taskDataDeleteCallback,
       void *deleterData)
       : taskData_(taskData),
         taskRunCallback_(taskRunCallback),
@@ -72,15 +72,15 @@ class HermesTask {
 
  private:
   void *taskData_;
-  hermes_task_run_cb taskRunCallback_;
-  hermes_data_delete_cb taskDataDeleteCallback_;
+  jsr_task_run_cb taskRunCallback_;
+  jsr_data_delete_cb taskDataDeleteCallback_;
   void *deleterData_;
 };
 
 class HermesTaskRunner {
  public:
-  static void Create(hermes_config config, std::shared_ptr<facebook::react::MessageQueueThread> queue) {
-    CRASH_ON_ERROR(getHermesApi().hermes_config_set_task_runner(
+  static void Create(jsr_config config, std::shared_ptr<facebook::react::MessageQueueThread> queue) {
+    CRASH_ON_ERROR(getHermesApi().jsr_config_set_task_runner(
         config, new HermesTaskRunner(std::move(queue)), &PostTask, &Delete, nullptr));
   }
 
@@ -90,8 +90,8 @@ class HermesTaskRunner {
   static void NAPI_CDECL PostTask(
       void *taskRunnerData,
       void *taskData,
-      hermes_task_run_cb taskRunCallback,
-      hermes_data_delete_cb taskDataDeleteCallback,
+      jsr_task_run_cb taskRunCallback,
+      jsr_data_delete_cb taskDataDeleteCallback,
       void *deleterData) {
     auto task = std::make_shared<HermesTask>(taskData, taskRunCallback, taskDataDeleteCallback, deleterData);
     reinterpret_cast<HermesTaskRunner *>(taskRunnerData)->queue_->runOnQueue([task = std::move(task)] { task->Run(); });
@@ -107,7 +107,7 @@ class HermesTaskRunner {
 
 struct HermesJsiBuffer : facebook::jsi::Buffer {
   static std::shared_ptr<const facebook::jsi::Buffer>
-  Create(const uint8_t *buffer, size_t bufferSize, hermes_data_delete_cb bufferDeleteCallback, void *deleterData) {
+  Create(const uint8_t *buffer, size_t bufferSize, jsr_data_delete_cb bufferDeleteCallback, void *deleterData) {
     return std::shared_ptr<const facebook::jsi::Buffer>(
         new HermesJsiBuffer(buffer, bufferSize, bufferDeleteCallback, deleterData));
   }
@@ -115,7 +115,7 @@ struct HermesJsiBuffer : facebook::jsi::Buffer {
   HermesJsiBuffer(
       const uint8_t *buffer,
       size_t bufferSize,
-      hermes_data_delete_cb bufferDeleteCallback,
+      jsr_data_delete_cb bufferDeleteCallback,
       void *deleterData) noexcept
       : buffer_(buffer),
         bufferSize_(bufferSize),
@@ -139,14 +139,14 @@ struct HermesJsiBuffer : facebook::jsi::Buffer {
  private:
   const uint8_t *buffer_;
   size_t bufferSize_;
-  hermes_data_delete_cb bufferDeleteCallback_;
+  jsr_data_delete_cb bufferDeleteCallback_;
   void *deleterData_;
 };
 
 class HermesScriptCache {
  public:
-  static void Create(hermes_config config, std::shared_ptr<facebook::jsi::PreparedScriptStore> scriptStore) {
-    CRASH_ON_ERROR(getHermesApi().hermes_config_set_script_cache(
+  static void Create(jsr_config config, std::shared_ptr<facebook::jsi::PreparedScriptStore> scriptStore) {
+    CRASH_ON_ERROR(getHermesApi().jsr_config_set_script_cache(
         config, new HermesScriptCache(std::move(scriptStore)), &LoadScript, &StoreScript, &Delete, nullptr));
   }
 
@@ -156,16 +156,20 @@ class HermesScriptCache {
 
   static void NAPI_CDECL LoadScript(
       void *scriptCache,
-      hermes_script_cache_metadata *scriptMetadata,
+      const char *sourceUrl,
+      uint64_t sourceHash,
+      const char *runtimeName,
+      uint64_t runtimeVersion,
+      const char *cacheTag,
       const uint8_t **buffer,
       size_t *bufferSize,
-      hermes_data_delete_cb *bufferDeleteCallback,
+      jsr_data_delete_cb *bufferDeleteCallback,
       void **deleterData) {
     auto &scriptStore = reinterpret_cast<HermesScriptCache *>(scriptCache)->scriptStore_;
     std::shared_ptr<const facebook::jsi::Buffer> preparedScript = scriptStore->tryGetPreparedScript(
-        facebook::jsi::ScriptSignature{scriptMetadata->source_url, scriptMetadata->source_hash},
-        facebook::jsi::JSRuntimeSignature{scriptMetadata->runtime_name, scriptMetadata->runtime_version},
-        scriptMetadata->tag);
+        facebook::jsi::ScriptSignature{sourceUrl, sourceHash},
+        facebook::jsi::JSRuntimeSignature{runtimeName, runtimeVersion},
+        cacheTag);
     *buffer = preparedScript->data();
     *bufferSize = preparedScript->size();
     *bufferDeleteCallback = [](void * /*data*/, void *deleterData) noexcept {
@@ -176,17 +180,21 @@ class HermesScriptCache {
 
   static void NAPI_CDECL StoreScript(
       void *scriptCache,
-      hermes_script_cache_metadata *scriptMetadata,
+      const char *sourceUrl,
+      uint64_t sourceHash,
+      const char *runtimeName,
+      uint64_t runtimeVersion,
+      const char *cacheTag,
       const uint8_t *buffer,
       size_t bufferSize,
-      hermes_data_delete_cb bufferDeleteCallback,
+      jsr_data_delete_cb bufferDeleteCallback,
       void *deleterData) {
     auto &scriptStore = reinterpret_cast<HermesScriptCache *>(scriptCache)->scriptStore_;
     scriptStore->persistPreparedScript(
         HermesJsiBuffer::Create(buffer, bufferSize, bufferDeleteCallback, deleterData),
-        facebook::jsi::ScriptSignature{scriptMetadata->source_url, scriptMetadata->source_hash},
-        facebook::jsi::JSRuntimeSignature{scriptMetadata->runtime_name, scriptMetadata->runtime_version},
-        scriptMetadata->tag);
+        facebook::jsi::ScriptSignature{sourceUrl, sourceHash},
+        facebook::jsi::JSRuntimeSignature{runtimeName, runtimeVersion},
+        cacheTag);
   }
 
   static void NAPI_CDECL Delete(void *scriptCache, void * /*deleterData*/) {
@@ -329,35 +337,35 @@ HermesRuntimeConfig &HermesRuntimeConfig::scriptCache(
   return *this;
 }
 
-hermes_runtime HermesRuntimeConfig::createRuntime() const noexcept {
+jsr_runtime HermesRuntimeConfig::createRuntime() const noexcept {
   HermesApi &api = getHermesApi();
-  hermes_config config{};
-  CRASH_ON_ERROR(api.hermes_create_config(&config));
+  jsr_config config{};
+  CRASH_ON_ERROR(api.jsr_create_config(&config));
   CRASH_ON_ERROR(api.hermes_config_enable_default_crash_handler(config, enableDefaultCrashHandler_));
-  CRASH_ON_ERROR(api.hermes_config_enable_debugger(config, useDirectDebugger_));
-  CRASH_ON_ERROR(api.hermes_config_set_debugger_runtime_name(config, debuggerRuntimeName_.c_str()));
-  CRASH_ON_ERROR(api.hermes_config_set_debugger_port(config, debuggerPort_));
-  CRASH_ON_ERROR(api.hermes_config_set_debugger_break_on_start(config, debuggerBreakOnNextLine_));
+  CRASH_ON_ERROR(api.jsr_config_enable_inspector(config, useDirectDebugger_));
+  CRASH_ON_ERROR(api.jsr_config_set_inspector_runtime_name(config, debuggerRuntimeName_.c_str()));
+  CRASH_ON_ERROR(api.jsr_config_set_inspector_port(config, debuggerPort_));
+  CRASH_ON_ERROR(api.jsr_config_set_inspector_break_on_start(config, debuggerBreakOnNextLine_));
   if (foregroundTaskRunner_) {
     HermesTaskRunner::Create(config, foregroundTaskRunner_);
   }
   if (scriptStore_) {
     HermesScriptCache::Create(config, scriptStore_);
   }
-  hermes_runtime runtime{};
-  CRASH_ON_ERROR(api.hermes_create_runtime(config, &runtime));
-  CRASH_ON_ERROR(api.hermes_delete_config(config));
+  jsr_runtime runtime{};
+  CRASH_ON_ERROR(api.jsr_create_runtime(config, &runtime));
+  CRASH_ON_ERROR(api.jsr_delete_config(config));
   return runtime;
 }
 
-HermesShim::HermesShim(hermes_runtime runtime) noexcept : runtime_(runtime) {
+HermesShim::HermesShim(jsr_runtime runtime) noexcept : runtime_(runtime) {
   HermesApi &api = getHermesApi();
-  CRASH_ON_ERROR(api.hermes_get_node_api_env(runtime_, &env_));
+  CRASH_ON_ERROR(api.jsr_runtime_get_node_api_env(runtime_, &env_));
   nodeApiRuntime_ = std::shared_ptr<facebook::jsi::Runtime>(makeNodeApiJsiRuntime(env_, &api, []() {}));
 }
 
 HermesShim::~HermesShim() {
-  CRASH_ON_ERROR(getHermesApi().hermes_delete_runtime(runtime_));
+  CRASH_ON_ERROR(getHermesApi().jsr_delete_runtime(runtime_));
 }
 
 /*static*/ std::shared_ptr<HermesShim> HermesShim::make(const HermesRuntimeConfig &config) noexcept {

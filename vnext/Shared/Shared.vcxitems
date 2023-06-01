@@ -7,7 +7,7 @@
     <ItemsProjectName>Microsoft.ReactNative.Shared</ItemsProjectName>
     <ReactNativeDir Condition="'$(ReactNativeDir)' == '' AND Exists('$(MSBuildThisFileDirectory)..\..\node_modules\react-native\package.json')">$(MSBuildThisFileDirectory)..\..\node_modules\react-native\</ReactNativeDir>
     <ReactNativeDir Condition="'$(ReactNativeDir)' == '' AND Exists('$(MSBuildThisFileDirectory)..\..\..\node_modules\react-native\package.json')">$(MSBuildThisFileDirectory)..\..\..\node_modules\react-native\</ReactNativeDir>
-    <NodeApiJsiCommitHash>7234c7dcc614058537fd285b92881fdbba73f379</NodeApiJsiCommitHash>
+    <NodeApiJsiCommitHash>94be53a0db167acd992a600325aaaadf57bce030</NodeApiJsiCommitHash>
     <NodeApiJsiDir Condition="'$(NodeApiJsiDir)' == '' AND '$(ReactNativeDir)' != ''">$(ReactNativeDir)..\..\node_modules\.node-api-jsi\node-api-jsi-$(NodeApiJsiCommitHash)\</NodeApiJsiDir>
   </PropertyGroup>
   <ItemDefinitionGroup>
@@ -525,9 +525,9 @@
     <Midl Condition="'$(UseFabric)' == 'true'" Include="$(ReactNativeWindowsDir)Microsoft.ReactNative\ViewProps.idl" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="$(NodeApiJsiDir)src\HermesApi.h" />
-    <ClInclude Include="$(NodeApiJsiDir)src\HermesFunctions.inc" />
-    <ClCompile Include="$(NodeApiJsiDir)src\HermesApi.cpp">
+    <ClInclude Include="$(NodeApiJsiDir)src\ApiLoaders\HermesApi.h" />
+    <ClInclude Include="$(NodeApiJsiDir)src\ApiLoaders\HermesApi.inc" />
+    <ClCompile Include="$(NodeApiJsiDir)src\ApiLoaders\HermesApi.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
   </ItemGroup>
