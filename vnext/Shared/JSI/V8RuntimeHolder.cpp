@@ -1,8 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-#include "NapiJsiV8RuntimeHolder.h"
+#include "V8RuntimeHolder.h"
 #include <ApiLoaders/V8Api.h>
+#include <NodeApiJsiRuntime.h>
 #include <crash/verifyElseCrash.h>
 
 using namespace Microsoft::NodeApiJsi;
@@ -14,7 +15,7 @@ namespace {
 
 class V8FuncResolver : public IFuncResolver {
  public:
-  // TODO: Use Office safe DLL loading
+  // TODO: (vmoroz) Use Office safe DLL loading
   V8FuncResolver() : libHandle_(LoadLibrary(L"v8jsi.dll")) {}
 
   FuncPtr getFuncPtr(const char *funcName) override {
@@ -160,12 +161,19 @@ class V8ScriptCache {
         facebook::jsi::ScriptSignature{sourceUrl, sourceHash},
         facebook::jsi::JSRuntimeSignature{runtimeName, runtimeVersion},
         cacheTag);
-    *buffer = preparedScript->data();
-    *bufferSize = preparedScript->size();
-    *bufferDeleteCallback = [](void * /*data*/, void *deleterData) noexcept {
-      delete reinterpret_cast<std::shared_ptr<const facebook::jsi::Buffer> *>(deleterData);
-    };
-    *deleterData = new std::shared_ptr<const facebook::jsi::Buffer>(std::move(preparedScript));
+    if (preparedScript) {
+      *buffer = preparedScript->data();
+      *bufferSize = preparedScript->size();
+      *bufferDeleteCallback = [](void * /*data*/, void *deleterData) noexcept {
+        delete reinterpret_cast<std::shared_ptr<const facebook::jsi::Buffer> *>(deleterData);
+      };
+      *deleterData = new std::shared_ptr<const facebook::jsi::Buffer>(std::move(preparedScript));
+    } else {
+      *buffer = nullptr;
+      *bufferSize = 0;
+      *bufferDeleteCallback = nullptr;
+      *deleterData = nullptr;
+    }
   }
 
   static void NAPI_CDECL StoreScript(
@@ -193,57 +201,21 @@ class V8ScriptCache {
 
  private:
   std::shared_ptr<facebook::jsi::PreparedScriptStore> scriptStore_;
-  // napi_ext_script_cache NapiJsiV8RuntimeHolder::InitScriptCache(
-  //     unique_ptr<PreparedScriptStore> &&preparedScriptStore) noexcept {
-  //   napi_ext_script_cache scriptCache{};
-  //   scriptCache.cache_object =
-  //       NativeObjectWrapper<unique_ptr<PreparedScriptStore>>::Wrap(std::move(preparedScriptStore));
-  //   scriptCache.load_cached_script = [](napi_env env,
-  //                                       napi_ext_script_cache *script_cache,
-  //                                       napi_ext_cached_script_metadata *script_metadata,
-  //                                       napi_ext_buffer *result) -> napi_status {
-  //     PreparedScriptStore *scriptStore = reinterpret_cast<PreparedScriptStore *>(script_cache->cache_object.data);
-  //     std::shared_ptr<const facebook::jsi::Buffer> buffer = scriptStore->tryGetPreparedScript(
-  //         ScriptSignature{script_metadata->source_url, script_metadata->source_hash},
-  //         JSRuntimeSignature{script_metadata->runtime_name, script_metadata->runtime_version},
-  //         script_metadata->tag);
-  //     if (buffer) {
-  //       result->buffer_object = NativeObjectWrapper<std::shared_ptr<const facebook::jsi::Buffer>>::Wrap(
-  //           std::shared_ptr<const facebook::jsi::Buffer>{buffer});
-  //       result->data = buffer->data();
-  //       result->byte_size = buffer->size();
-  //     } else {
-  //       *result = napi_ext_buffer{};
-  //     }
-  //     return napi_ok;
-  //   };
-  //   scriptCache.store_cached_script = [](napi_env env,
-  //                                        napi_ext_script_cache *script_cache,
-  //                                        napi_ext_cached_script_metadata *script_metadata,
-  //                                        const napi_ext_buffer *buffer) -> napi_status {
-  //     PreparedScriptStore *scriptStore = reinterpret_cast<PreparedScriptStore *>(script_cache->cache_object.data);
-  //     scriptStore->persistPreparedScript(
-  //         NodeApiJsiBuffer::CreateJsiBuffer(buffer),
-  //         ScriptSignature{script_metadata->source_url, script_metadata->source_hash},
-  //         JSRuntimeSignature{script_metadata->runtime_name, script_metadata->runtime_version},
-  //         script_metadata->tag);
-  //     return napi_ok;
-  //   };
-  //   return scriptCache;
-  // }
 };
 
 } // namespace
 
-NapiJsiV8RuntimeHolder::NapiJsiV8RuntimeHolder(
+V8RuntimeHolder::V8RuntimeHolder(
     std::shared_ptr<facebook::react::DevSettings> devSettings,
     std::shared_ptr<facebook::react::MessageQueueThread> jsQueue,
-    std::unique_ptr<facebook::jsi::PreparedScriptStore> preparedScriptStore) noexcept
+    std::shared_ptr<facebook::jsi::PreparedScriptStore> preparedScriptStore,
+    bool enableMultiThreadingSupport) noexcept
     : m_weakDevSettings(devSettings),
       m_jsQueue(std::move(jsQueue)),
-      m_preparedScriptStore(std::move(preparedScriptStore)) {}
+      m_preparedScriptStore(std::move(preparedScriptStore)),
+      m_enableMultiThreadingSupport(enableMultiThreadingSupport) {}
 
-void NapiJsiV8RuntimeHolder::InitRuntime() noexcept {
+void V8RuntimeHolder::initRuntime() noexcept {
   std::shared_ptr<facebook::react::DevSettings> devSettings = m_weakDevSettings.lock();
   VerifyElseCrash(devSettings);
 
@@ -255,6 +227,7 @@ void NapiJsiV8RuntimeHolder::InitRuntime() noexcept {
   CRASH_ON_ERROR(api.jsr_config_set_inspector_runtime_name(config, devSettings->debuggerRuntimeName.c_str()));
   CRASH_ON_ERROR(api.jsr_config_set_inspector_port(config, devSettings->debuggerPort));
   CRASH_ON_ERROR(api.jsr_config_set_inspector_break_on_start(config, devSettings->debuggerBreakOnNextLine));
+  CRASH_ON_ERROR(api.v8_config_enable_multithreading(config, m_enableMultiThreadingSupport));
 
   if (m_jsQueue) {
     V8TaskRunner::Create(config, m_jsQueue);
@@ -276,51 +249,12 @@ void NapiJsiV8RuntimeHolder::InitRuntime() noexcept {
   m_ownThreadId = std::this_thread::get_id();
 }
 
-// napi_ext_script_cache NapiJsiV8RuntimeHolder::InitScriptCache(
-//     unique_ptr<PreparedScriptStore> &&preparedScriptStore) noexcept {
-//   napi_ext_script_cache scriptCache{};
-//   scriptCache.cache_object =
-//   NativeObjectWrapper<unique_ptr<PreparedScriptStore>>::Wrap(std::move(preparedScriptStore));
-//   scriptCache.load_cached_script = [](napi_env env,
-//                                       napi_ext_script_cache *script_cache,
-//                                       napi_ext_cached_script_metadata *script_metadata,
-//                                       napi_ext_buffer *result) -> napi_status {
-//     PreparedScriptStore *scriptStore = reinterpret_cast<PreparedScriptStore *>(script_cache->cache_object.data);
-//     std::shared_ptr<const facebook::jsi::Buffer> buffer = scriptStore->tryGetPreparedScript(
-//         ScriptSignature{script_metadata->source_url, script_metadata->source_hash},
-//         JSRuntimeSignature{script_metadata->runtime_name, script_metadata->runtime_version},
-//         script_metadata->tag);
-//     if (buffer) {
-//       result->buffer_object = NativeObjectWrapper<std::shared_ptr<const facebook::jsi::Buffer>>::Wrap(
-//           std::shared_ptr<const facebook::jsi::Buffer>{buffer});
-//       result->data = buffer->data();
-//       result->byte_size = buffer->size();
-//     } else {
-//       *result = napi_ext_buffer{};
-//     }
-//     return napi_ok;
-//   };
-//   scriptCache.store_cached_script = [](napi_env env,
-//                                        napi_ext_script_cache *script_cache,
-//                                        napi_ext_cached_script_metadata *script_metadata,
-//                                        const napi_ext_buffer *buffer) -> napi_status {
-//     PreparedScriptStore *scriptStore = reinterpret_cast<PreparedScriptStore *>(script_cache->cache_object.data);
-//     scriptStore->persistPreparedScript(
-//         NodeApiJsiBuffer::CreateJsiBuffer(buffer),
-//         ScriptSignature{script_metadata->source_url, script_metadata->source_hash},
-//         JSRuntimeSignature{script_metadata->runtime_name, script_metadata->runtime_version},
-//         script_metadata->tag);
-//     return napi_ok;
-//   };
-//   return scriptCache;
-// }
-
-facebook::react::JSIEngineOverride NapiJsiV8RuntimeHolder::getRuntimeType() noexcept {
+facebook::react::JSIEngineOverride V8RuntimeHolder::getRuntimeType() noexcept {
   return facebook::react::JSIEngineOverride::V8NodeApi;
 }
 
-std::shared_ptr<facebook::jsi::Runtime> NapiJsiV8RuntimeHolder::getRuntime() noexcept {
-  std::call_once(m_onceFlag, [this]() { InitRuntime(); });
+std::shared_ptr<facebook::jsi::Runtime> V8RuntimeHolder::getRuntime() noexcept {
+  std::call_once(m_onceFlag, [this]() { initRuntime(); });
   VerifyElseCrash(m_jsiRuntime);
   VerifyElseCrashSz(m_ownThreadId == std::this_thread::get_id(), "Must be accessed from JS thread.");
   return m_jsiRuntime;

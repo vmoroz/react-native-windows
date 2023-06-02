@@ -52,8 +52,7 @@
 #include "HermesRuntimeHolder.h"
 
 #if defined(USE_V8)
-#include <JSI/NapiJsiV8RuntimeHolder.h>
-#include "V8JSIRuntimeHolder.h"
+#include <JSI/V8RuntimeHolder.h>
 #endif
 #include <ReactCommon/CallInvoker.h>
 #include <ReactCommon/TurboModuleBinding.h>
@@ -318,52 +317,31 @@ InstanceImpl::InstanceImpl(
       assert(m_devSettings->jsiEngineOverride != JSIEngineOverride::Default);
       switch (m_devSettings->jsiEngineOverride) {
         case JSIEngineOverride::Hermes: {
-          std::unique_ptr<facebook::jsi::PreparedScriptStore> preparedScriptStore;
+          std::shared_ptr<facebook::jsi::PreparedScriptStore> preparedScriptStore;
 
           wchar_t tempPath[MAX_PATH];
           if (GetTempPathW(MAX_PATH, tempPath)) {
             preparedScriptStore =
-                std::make_unique<facebook::react::BasePreparedScriptStoreImpl>(winrt::to_string(tempPath));
+                std::make_shared<facebook::react::BasePreparedScriptStoreImpl>(winrt::to_string(tempPath));
           }
 
           m_devSettings->jsiRuntimeHolder = std::make_shared<Microsoft::ReactNative::HermesRuntimeHolder>(
               m_devSettings, m_jsThread, std::move(preparedScriptStore));
           break;
         }
-        case JSIEngineOverride::V8: {
-#if defined(USE_V8)
-          std::unique_ptr<facebook::jsi::ScriptStore> scriptStore = nullptr;
-          std::unique_ptr<facebook::jsi::PreparedScriptStore> preparedScriptStore = nullptr;
-
-          char tempPath[MAX_PATH];
-          if (GetTempPathA(MAX_PATH, tempPath)) {
-            preparedScriptStore = std::make_unique<facebook::react::BasePreparedScriptStoreImpl>(tempPath);
-          }
-
-          m_devSettings->jsiRuntimeHolder = std::make_shared<facebook::react::V8JSIRuntimeHolder>(
-              m_devSettings,
-              m_jsThread,
-              std::move(scriptStore),
-              std::move(preparedScriptStore),
-              false /* enableMultiThreadSupport */);
-          break;
-#else
-          assert(false); // V8 is not available in this build, fallthrough
-          [[fallthrough]];
-#endif
-        }
+        case JSIEngineOverride::V8:
         case JSIEngineOverride::V8NodeApi: {
 #if defined(USE_V8)
-          std::unique_ptr<facebook::jsi::PreparedScriptStore> preparedScriptStore;
+          std::shared_ptr<facebook::jsi::PreparedScriptStore> preparedScriptStore;
 
           wchar_t tempPath[MAX_PATH];
           if (GetTempPathW(MAX_PATH, tempPath)) {
             preparedScriptStore =
-                std::make_unique<facebook::react::BasePreparedScriptStoreImpl>(winrt::to_string(tempPath));
+                std::make_shared<facebook::react::BasePreparedScriptStoreImpl>(winrt::to_string(tempPath));
           }
 
-          m_devSettings->jsiRuntimeHolder = make_shared<Microsoft::ReactNative::NapiJsiV8RuntimeHolder>(
-              m_devSettings, m_jsThread, std::move(preparedScriptStore));
+          m_devSettings->jsiRuntimeHolder = make_shared<Microsoft::ReactNative::V8RuntimeHolder>(
+              m_devSettings, m_jsThread, std::move(preparedScriptStore), false);
           break;
 #else
           if (m_devSettings->errorCallback)

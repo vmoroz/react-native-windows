@@ -2,22 +2,14 @@
 // Licensed under the MIT License.
 
 #pragma once
-#include <JSI/RuntimeHolder.h>
-
-#include <jsi/jsi.h>
-#include <thread>
-
 #include <DevSettings.h>
+#include <JSI/RuntimeHolder.h>
 #include <JSI/ScriptStore.h>
 #include <ReactPropertyBag.h>
-
-namespace facebook::react {
-class MessageQueueThread;
-}
+#include <cxxreact/MessageQueueThread.h>
+#include <hermes/hermes_api.h>
 
 namespace Microsoft::ReactNative {
-
-class HermesShim;
 
 class HermesRuntimeHolder : public Microsoft::JSI::RuntimeHolderLazyInit {
  public: // RuntimeHolderLazyInit implementation.
@@ -30,7 +22,8 @@ class HermesRuntimeHolder : public Microsoft::JSI::RuntimeHolderLazyInit {
   HermesRuntimeHolder(
       std::shared_ptr<facebook::react::DevSettings> devSettings,
       std::shared_ptr<facebook::react::MessageQueueThread> jsQueue,
-      std::unique_ptr<facebook::jsi::PreparedScriptStore> preparedScriptStore) noexcept;
+      std::shared_ptr<facebook::jsi::PreparedScriptStore> preparedScriptStore) noexcept;
+  ~HermesRuntimeHolder();
 
   static std::shared_ptr<HermesRuntimeHolder> loadFrom(
       winrt::Microsoft::ReactNative::ReactPropertyBag const &propertyBag) noexcept;
@@ -42,17 +35,21 @@ class HermesRuntimeHolder : public Microsoft::JSI::RuntimeHolderLazyInit {
   void addToProfiling() const noexcept;
   void removeFromProfiling() const noexcept;
 
+  static void enableSamplingProfiler() noexcept;
+  static void disableSamplingProfiler() noexcept;
+  static void dumpSampledTraceToFile(const std::string &fileName) noexcept;
+
  private:
   void initRuntime() noexcept;
 
  private:
-  std::shared_ptr<Microsoft::ReactNative::HermesShim> m_hermesShim;
+  jsr_runtime m_runtime{};
   std::shared_ptr<facebook::jsi::Runtime> m_jsiRuntime;
   std::once_flag m_onceFlag{};
   std::thread::id m_ownThreadId{};
   std::weak_ptr<facebook::react::DevSettings> m_weakDevSettings;
   std::shared_ptr<facebook::react::MessageQueueThread> m_jsQueue;
-  std::unique_ptr<facebook::jsi::PreparedScriptStore> m_preparedScriptStore;
+  std::shared_ptr<facebook::jsi::PreparedScriptStore> m_preparedScriptStore;
 };
 
 } // namespace Microsoft::ReactNative
