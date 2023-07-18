@@ -63,7 +63,8 @@ template <typename T>
 using bridging_t = typename detail::bridging_wrapper<T>::type;
 
 template <typename R, typename T, std::enable_if_t<is_jsi_v<R>, int> = 0>
-R fromJs(jsi::Runtime &rt, T &&value, const std::shared_ptr<CallInvoker> &) {
+auto fromJs(jsi::Runtime &rt, T &&value, const std::shared_ptr<CallInvoker> &)
+    -> decltype(static_cast<R>(convert(rt, std::forward<T>(value)))) {
   return static_cast<R>(convert(rt, std::forward<T>(value)));
 }
 
