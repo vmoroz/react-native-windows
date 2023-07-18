@@ -24,6 +24,12 @@
     </ClCompile>
     <ClCompile Include="JsiTurboModuleTests.cpp" />
     <ClCompile Include="JsiSimpleTurboModuleTests.cpp" />
+    <ClCompile Include="$(Bridging_SourcePath)\tests\BridgingTest.cpp">
+      <Filter>Bridging</Filter>
+    </ClCompile>
+    <ClCompile Include="$(Bridging_SourcePath)\tests\ClassTest.cpp">
+      <Filter>Bridging</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsi\jsi\test\testlib.h" />
@@ -38,6 +44,9 @@
     </ClInclude>
     <ClInclude Include="TestReactNativeHostHolder.h">
       <Filter>Utilities</Filter>
+    </ClInclude>
+    <ClInclude Include="$(Bridging_SourcePath)\tests\BridgingTest.h">
+      <Filter>Bridging</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -54,6 +63,9 @@
     </Filter>
     <Filter Include="Other Files">
       <UniqueIdentifier>{7c09653b-8405-45c7-91cb-9c84b1d401cb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Bridging">
+      <UniqueIdentifier>{bd193802-4ccb-40f3-a6f7-e71b55386db9}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

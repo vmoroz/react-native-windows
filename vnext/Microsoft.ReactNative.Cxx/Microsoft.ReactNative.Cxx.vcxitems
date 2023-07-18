@@ -14,7 +14,7 @@
     <TurboModule_SourcePath Condition="'$(TurboModule_SourcePath)' == '' AND '$(ReactNativeDir)' != ''">$(ReactNativeDir)\ReactCommon\react\nativemodule\core</TurboModule_SourcePath>
     <TurboModule_SourcePath Condition="'$(TurboModule_SourcePath)' == '' AND Exists('$(MSBuildThisFileDirectory)ReactCommon\TurboModule.h')">$(MSBuildThisFileDirectory)</TurboModule_SourcePath>
     <Bridging_SourcePath Condition="'$(Bridging_SourcePath)' == '' AND '$(ReactNativeDir)' != ''">$(ReactNativeDir)\ReactCommon\react\bridging</Bridging_SourcePath>
-    <Bridging_SourcePath Condition="'$(Bridging_SourcePath)' == '' AND Exists('$(MSBuildThisFileDirectory)ReactCommon\CallbackWrapper.h')">$(MSBuildThisFileDirectory)ReactCommon</Bridging_SourcePath>
+    <Bridging_SourcePath Condition="'$(Bridging_SourcePath)' == '' AND Exists('$(MSBuildThisFileDirectory)ReactCommon\CallbackWrapper.h')">$(MSBuildThisFileDirectory)ReactCommon\bridging</Bridging_SourcePath>
 
     <NodeApiJsiCommitHash>53b897b03c1c7e57c3372acc6234447a44e150d6</NodeApiJsiCommitHash>
     <NodeApiJsiLocal Condition="Exists('$(MSBuildThisFileDirectory)NodeApiJsiRuntime.cpp')">true</NodeApiJsiLocal>
@@ -56,7 +56,6 @@
     <ClInclude Include="$(CallInvoker_SourcePath)\ReactCommon\SchedulerPriority.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)XamlUtils.h" />
     <ClInclude Include="$(TurboModule_SourcePath)\ReactCommon\LongLivedObject.h" />
-    <ClInclude Include="$(Bridging_SourcePath)\CallbackWrapper.h" />
     <ClInclude Include="$(TurboModule_SourcePath)\ReactCommon\TurboModule.h" />
     <ClInclude Include="$(TurboModule_SourcePath)\ReactCommon\TurboModuleUtils.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)CppWinRTIncludes.h" />
@@ -109,6 +108,24 @@
     <ClInclude Include="$(NodeApiJsiSrcDir)ApiLoaders\JSRuntimeApi.h" />
     <ClInclude Include="$(NodeApiJsiSrcDir)ApiLoaders\JSRuntimeApi.inc" />
     <ClInclude Include="$(NodeApiJsiSrcDir)NodeApiJsiRuntime.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="$(Bridging_SourcePath)\Array.h" />
+    <ClInclude Include="$(Bridging_SourcePath)\AString.h" />
+    <ClInclude Include="$(Bridging_SourcePath)\Base.h" />
+    <ClInclude Include="$(Bridging_SourcePath)\Bool.h" />
+    <ClInclude Include="$(Bridging_SourcePath)\Bridging.h" />
+    <ClInclude Include="$(Bridging_SourcePath)\CallbackWrapper.h" />
+    <ClInclude Include="$(Bridging_SourcePath)\Class.h" />
+    <ClInclude Include="$(Bridging_SourcePath)\Convert.h" />
+    <ClInclude Include="$(Bridging_SourcePath)\Dynamic.h" />
+    <ClInclude Include="$(Bridging_SourcePath)\Error.h" />
+    <ClInclude Include="$(Bridging_SourcePath)\Function.h" />
+    <ClInclude Include="$(Bridging_SourcePath)\LongLivedObject.h" />
+    <ClInclude Include="$(Bridging_SourcePath)\Number.h" />
+    <ClInclude Include="$(Bridging_SourcePath)\Object.h" />
+    <ClInclude Include="$(Bridging_SourcePath)\Promise.h" />
+    <ClInclude Include="$(Bridging_SourcePath)\Value.h" />
   </ItemGroup>
   <ItemGroup Condition="'$(BuildMSRNCxx)' != 'false'">
     <ClCompile Include="$(MSBuildThisFileDirectory)JSI\JsiAbiApi.cpp" />

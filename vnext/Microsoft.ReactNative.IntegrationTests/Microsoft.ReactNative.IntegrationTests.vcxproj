@@ -141,6 +141,13 @@
     <ClInclude Include="TestReactNativeHostHolder.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="$(Bridging_SourcePath)\tests\BridgingTest.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="$(Bridging_SourcePath)\tests\BridgingTest.cpp" />
+    <ClCompile Include="$(Bridging_SourcePath)\tests\ClassTest.cpp" />
+  </ItemGroup>
+  <ItemGroup>
     <Manifest Include="Application.manifest" />
     <None Include="ExecuteJsiTests.js" />
     <None Include="JsiSimpleTurboModuleTests.js" />

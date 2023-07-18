@@ -5,15 +5,17 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+// [Windows - see issue #11019, this file is an older version]
+// RNW cannot use the global LongLivedObjectCollection
+
 #pragma once
 
 #include <jsi/jsi.h>
-#include <LongLivedObject.h>
+#include "LongLivedObject.h"
 
 #include <memory>
 
-namespace facebook {
-namespace react {
+namespace facebook::react {
 
 // Helper for passing jsi::Function arg to other methods.
 class CallbackWrapper : public LongLivedObject {
@@ -50,8 +52,8 @@ class CallbackWrapper : public LongLivedObject {
       jsi::Function &&callback,
       jsi::Runtime &runtime,
       std::shared_ptr<CallInvoker> jsInvoker) {
-    auto wrapper = std::shared_ptr<CallbackWrapper>(
-        new CallbackWrapper(std::move(callback), runtime, jsInvoker));
+    auto wrapper = std::shared_ptr<CallbackWrapper>(new CallbackWrapper(
+        std::move(callback), runtime, std::move(jsInvoker)));
     LongLivedObjectCollection::get().add(wrapper);
     return wrapper;
   }
@@ -62,7 +64,7 @@ class CallbackWrapper : public LongLivedObject {
       jsi::Runtime &runtime,
       std::shared_ptr<CallInvoker> jsInvoker) {
     auto wrapper = std::shared_ptr<CallbackWrapper>(new CallbackWrapper(
-        longLivedObjectCollection, std::move(callback), runtime, jsInvoker));
+        longLivedObjectCollection, std::move(callback), runtime, std::move(jsInvoker)));
     longLivedObjectCollection->add(wrapper);
     return wrapper;
   }
@@ -99,5 +101,4 @@ class CallbackWrapper : public LongLivedObject {
   }
 };
 
-} // namespace react
-} // namespace facebook
+} // namespace facebook::react

@@ -307,8 +307,7 @@
         "type": "Project",
         "dependencies": {
           "Microsoft.NETCore.UniversalWindowsPlatform": "[6.2.9, )",
-          "Microsoft.ReactNative": "[1.0.0, )",
-          "NETStandard.Library": "[2.0.3, )"
+          "Microsoft.ReactNative": "[1.0.0, )"
         }
       },
       "reactcommon": {

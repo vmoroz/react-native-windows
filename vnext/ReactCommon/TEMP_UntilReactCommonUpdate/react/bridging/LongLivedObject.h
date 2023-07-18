@@ -6,6 +6,7 @@
  */
 
 // [Windows - see issue #11019, this file is an older version]
+// RNW cannot use the global LongLivedObjectCollection
 
 #pragma once
 
@@ -13,8 +14,7 @@
 #include <mutex>
 #include <unordered_set>
 
-namespace facebook {
-namespace react {
+namespace facebook::react {
 
 /**
  * A simple wrapper class that can be registered to a collection that keep it
@@ -31,8 +31,8 @@ class LongLivedObject {
   virtual void allowRelease();
 
  protected:
-  LongLivedObject();
-  virtual ~LongLivedObject();
+  LongLivedObject() = default;
+  virtual ~LongLivedObject() = default;
 };
 
 /**
@@ -42,19 +42,18 @@ class LongLivedObjectCollection {
  public:
   static LongLivedObjectCollection &get();
 
-  LongLivedObjectCollection();
+  LongLivedObjectCollection() = default;
   LongLivedObjectCollection(LongLivedObjectCollection const &) = delete;
   void operator=(LongLivedObjectCollection const &) = delete;
 
-  void add(std::shared_ptr<LongLivedObject> o) const;
-  void remove(const LongLivedObject *o) const;
-  void clear() const;
+  void add(std::shared_ptr<LongLivedObject> o);
+  void remove(const LongLivedObject *o);
+  void clear();
   size_t size() const;
 
  private:
-  mutable std::unordered_set<std::shared_ptr<LongLivedObject>> collection_;
+  std::unordered_set<std::shared_ptr<LongLivedObject>> collection_;
   mutable std::mutex collectionMutex_;
 };
 
-} // namespace react
-} // namespace facebook
+} // namespace facebook::react

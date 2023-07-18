@@ -27,13 +27,15 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)JSI\JsiApiContext.cpp">
       <Filter>JSI</Filter>
     </ClCompile>
-    <ClCompile Include="$(Bridging_SourcePath)\LongLivedObject.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)JSI\NodeApiJsiLoader.cpp">
       <Filter>NodeApiJsi</Filter>
     </ClCompile>
     <ClCompile Include="$(NodeApiJsiSrcDir)ApiLoaders\NodeApi.cpp" />
     <ClCompile Include="$(NodeApiJsiSrcDir)ApiLoaders\JSRuntimeApi.cpp" />
     <ClCompile Include="$(NodeApiJsiSrcDir)NodeApiJsiRuntime.cpp" />
+    <ClCompile Include="$(Bridging_SourcePath)\LongLivedObject.cpp">
+      <Filter>Bridging</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="$(MSBuildThisFileDirectory)Crash.h" />
@@ -159,7 +161,6 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)XamlUtils.h">
       <Filter>UI</Filter>
     </ClInclude>
-    <ClInclude Include="$(Bridging_SourcePath)\CallbackWrapper.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)CoreApp.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)JSI\LongLivedJsiValue.h">
       <Filter>TurboModule</Filter>
@@ -172,6 +173,54 @@
     <ClInclude Include="$(NodeApiDir)js_native_api.h" />
     <ClInclude Include="$(NodeApiDir)js_native_api_types.h" />
     <ClInclude Include="$(NodeApiDir)js_runtime_api.h" />
+    <ClInclude Include="$(Bridging_SourcePath)\Array.h">
+      <Filter>Bridging</Filter>
+    </ClInclude>
+    <ClInclude Include="$(Bridging_SourcePath)\AString.h">
+      <Filter>Bridging</Filter>
+    </ClInclude>
+    <ClInclude Include="$(Bridging_SourcePath)\Base.h">
+      <Filter>Bridging</Filter>
+    </ClInclude>
+    <ClInclude Include="$(Bridging_SourcePath)\Bool.h">
+      <Filter>Bridging</Filter>
+    </ClInclude>
+    <ClInclude Include="$(Bridging_SourcePath)\Bridging.h">
+      <Filter>Bridging</Filter>
+    </ClInclude>
+    <ClInclude Include="$(Bridging_SourcePath)\CallbackWrapper.h">
+      <Filter>Bridging</Filter>
+    </ClInclude>
+    <ClInclude Include="$(Bridging_SourcePath)\Class.h">
+      <Filter>Bridging</Filter>
+    </ClInclude>
+    <ClInclude Include="$(Bridging_SourcePath)\Convert.h">
+      <Filter>Bridging</Filter>
+    </ClInclude>
+    <ClInclude Include="$(Bridging_SourcePath)\Dynamic.h">
+      <Filter>Bridging</Filter>
+    </ClInclude>
+    <ClInclude Include="$(Bridging_SourcePath)\Error.h">
+      <Filter>Bridging</Filter>
+    </ClInclude>
+    <ClInclude Include="$(Bridging_SourcePath)\Function.h">
+      <Filter>Bridging</Filter>
+    </ClInclude>
+    <ClInclude Include="$(Bridging_SourcePath)\LongLivedObject.h">
+      <Filter>Bridging</Filter>
+    </ClInclude>
+    <ClInclude Include="$(Bridging_SourcePath)\Number.h">
+      <Filter>Bridging</Filter>
+    </ClInclude>
+    <ClInclude Include="$(Bridging_SourcePath)\Object.h">
+      <Filter>Bridging</Filter>
+    </ClInclude>
+    <ClInclude Include="$(Bridging_SourcePath)\Promise.h">
+      <Filter>Bridging</Filter>
+    </ClInclude>
+    <ClInclude Include="$(Bridging_SourcePath)\Value.h">
+      <Filter>Bridging</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="JSI">
@@ -185,6 +234,9 @@
     </Filter>
     <Filter Include="NodeApiJsi">
       <UniqueIdentifier>{a34cd50a-190c-4cbb-8fe1-6ff1e16fe389}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Bridging">
+      <UniqueIdentifier>{1b780d2d-68fd-413f-a8d5-5d668ba9a622}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
