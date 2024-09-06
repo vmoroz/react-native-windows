@@ -24,6 +24,10 @@ class QuirkSettingsReactNativeFeatureFlags : public facebook::react::ReactNative
     return m_fuseboxEnabledDebug;
   }
 
+  bool fuseboxEnabledRelease() override {
+    return m_fuseboxEnabledDebug;
+  }
+
  private:
   bool m_fuseboxEnabledDebug;
 };

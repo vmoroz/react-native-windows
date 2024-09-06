@@ -375,8 +375,8 @@ InstanceImpl::InstanceImpl(
 #endif
 
   if (shouldStartHermesInspector(*m_devSettings)) {
-    devManager->EnsureHermesInspector(
-      devSettings->sourceBundleHost, devSettings->sourceBundlePort, devSettings->bundleAppId);
+    m_devManager->EnsureHermesInspector(
+      m_devSettings->sourceBundleHost, m_devSettings->sourceBundlePort, m_devSettings->bundleAppId);
   }
 
   // Default (common) NativeModules
