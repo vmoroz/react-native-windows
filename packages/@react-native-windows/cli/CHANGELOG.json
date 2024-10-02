@@ -2,6 +2,75 @@
   "name": "@react-native-windows/cli",
   "entries": [
     {
+      "date": "Mon, 16 Sep 2024 21:59:06 GMT",
+      "version": "0.75.3",
+      "tag": "@react-native-windows/cli_v0.75.3",
+      "comments": {
+        "patch": [
+          {
+            "author": "jthysell@microsoft.com",
+            "package": "@react-native-windows/cli",
+            "commit": "66d2022b5573abc5fb57584f2eee87d38c62e673",
+            "comment": "Fix parsing of empty build props in run-windows"
+          }
+        ]
+      }
+    },
+    {
+      "date": "Mon, 09 Sep 2024 15:21:54 GMT",
+      "version": "0.75.2",
+      "tag": "@react-native-windows/cli_v0.75.2",
+      "comments": {
+        "patch": [
+          {
+            "author": "30809111+acoates-ms@users.noreply.github.com",
+            "package": "@react-native-windows/cli",
+            "commit": "37b826a56a76f188c8e9d717f386f787b9b8515a",
+            "comment": "[Fabric] Add native component codegen"
+          },
+          {
+            "author": "beachball",
+            "package": "@react-native-windows/cli",
+            "comment": "Bump @react-native-windows/codegen to v0.75.1",
+            "commit": "not available"
+          }
+        ]
+      }
+    },
+    {
+      "date": "Mon, 02 Sep 2024 15:14:59 GMT",
+      "version": "0.75.1",
+      "tag": "@react-native-windows/cli_v0.75.1",
+      "comments": {
+        "patch": [
+          {
+            "author": "jthysell@microsoft.com",
+            "package": "@react-native-windows/cli",
+            "commit": "d03d305b2c997e8d8b3f775a0351d5f1654de0ec",
+            "comment": "Update templates to calculate rnwPath for *.sln files"
+          },
+          {
+            "author": "jthysell@microsoft.com",
+            "package": "@react-native-windows/cli",
+            "commit": "79dfcfc76abbc951f3aa0b4c508b595addf8458b",
+            "comment": "Fix run-windows --singleproc to override high memory"
+          },
+          {
+            "author": "jthysell@microsoft.com",
+            "package": "@react-native-windows/cli",
+            "commit": "e0419218dbfadc01cc12e263e588863c58eb4b6c",
+            "comment": "Improve new project name(space) validation and cleaning"
+          },
+          {
+            "author": "beachball",
+            "package": "@react-native-windows/cli",
+            "comment": "Bump @react-native-windows/telemetry to v0.75.1",
+            "commit": "not available"
+          }
+        ]
+      }
+    },
+    {
       "date": "Mon, 19 Aug 2024 20:18:59 GMT",
       "version": "0.75.0",
       "tag": "@react-native-windows/cli_v0.75.0",

@@ -1,5 +1,5 @@
 {
-  "baseVersion": "0.75.1",
+  "baseVersion": "0.75.3",
   "overrides": [
     {
       "type": "copy",
@@ -439,7 +439,7 @@
       "type": "copy",
       "directory": "js/examples/TurboModule",
       "baseDirectory": "packages/rn-tester/js/examples/TurboModule",
-      "baseHash": "e1c96c62512355c0b4701d9c0028ae18ac6b66ed",
+      "baseHash": "fbeda57d609423628fa66c9dc13e4ffbf545478f",
       "issue": 4054
     },
     {
@@ -572,7 +572,7 @@
       "type": "patch",
       "file": "package.json",
       "baseFile": "packages/rn-tester/package.json",
-      "baseHash": "baf4ff73255b01539ca1f7dff28b956ef99561d3",
+      "baseHash": "632dedacf1dc90aacd19b16917156d050e48c786",
       "issue": 13228
     }
   ]
