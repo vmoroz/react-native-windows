@@ -215,6 +215,26 @@ namespace react {
 
 namespace {
 
+// OJSIExecutor is need to override getRuntimeTargetDelegate to support the modern JSI inspector.
+class OJSIExecutor : public JSIExecutor {
+ public:
+  OJSIExecutor(
+      std::shared_ptr<jsi::Runtime> runtime,
+      std::shared_ptr<ExecutorDelegate> delegate,
+      const JSIScopedTimeoutInvoker &timeoutInvoker,
+      RuntimeInstaller runtimeInstaller,
+      std::shared_ptr<facebook::react::jsinspector_modern::RuntimeTargetDelegate> targetDelegate) noexcept
+      : JSIExecutor(std::move(runtime), std::move(delegate), timeoutInvoker, std::move(runtimeInstaller)),
+        targetDelegate_(std::move(targetDelegate_)) {}
+
+  jsinspector_modern::RuntimeTargetDelegate &getRuntimeTargetDelegate() override {
+    return *targetDelegate_;
+  }
+
+ private:
+  std::shared_ptr<facebook::react::jsinspector_modern::RuntimeTargetDelegate> targetDelegate_;
+};
+
 class OJSIExecutorFactory : public JSExecutorFactory {
  public:
   std::unique_ptr<JSExecutor> createJSExecutor(
@@ -231,7 +251,7 @@ class OJSIExecutorFactory : public JSExecutorFactory {
     }
     bindNativeLogger(*runtimeHolder_->getRuntime(), logger);
 
-    return std::make_unique<JSIExecutor>(
+    return std::make_unique<OJSIExecutor>(
         runtimeHolder_->getRuntime(),
         std::move(delegate),
         JSIExecutor::defaultTimeoutInvoker,
@@ -239,7 +259,8 @@ class OJSIExecutorFactory : public JSExecutorFactory {
 #ifdef ENABLE_JS_SYSTRACE_TO_ETW
           facebook::react::tracing::initializeJSHooks(runtime, isProfiling);
 #endif
-        });
+        },
+        runtimeHolder_->getSharedRuntimeTargetDelegate());
   }
 
   OJSIExecutorFactory(

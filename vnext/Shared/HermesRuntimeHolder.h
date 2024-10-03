@@ -26,7 +26,8 @@ class HermesRuntimeHolder : public Microsoft::JSI::RuntimeHolderLazyInit {
       std::shared_ptr<facebook::jsi::PreparedScriptStore> preparedScriptStore) noexcept;
   ~HermesRuntimeHolder();
 
-  facebook::react::jsinspector_modern::RuntimeTargetDelegate &getRuntimeTargetDelegate();
+  const std::shared_ptr<facebook::react::jsinspector_modern::RuntimeTargetDelegate> &getSharedRuntimeTargetDelegate()
+      override;
 
   static std::shared_ptr<HermesRuntimeHolder> loadFrom(
       winrt::Microsoft::ReactNative::ReactPropertyBag const &propertyBag) noexcept;
@@ -48,7 +49,7 @@ class HermesRuntimeHolder : public Microsoft::JSI::RuntimeHolderLazyInit {
  private:
   jsr_runtime m_runtime{};
   std::shared_ptr<facebook::jsi::Runtime> m_jsiRuntime;
-  std::unique_ptr<facebook::react::jsinspector_modern::RuntimeTargetDelegate> m_targetDelegate;
+  std::shared_ptr<facebook::react::jsinspector_modern::RuntimeTargetDelegate> m_targetDelegate;
   std::once_flag m_onceFlag{};
   std::thread::id m_ownThreadId{};
   std::weak_ptr<facebook::react::DevSettings> m_weakDevSettings;

@@ -19,11 +19,14 @@ namespace Microsoft::JSI {
 struct RuntimeHolderLazyInit {
   virtual std::shared_ptr<facebook::jsi::Runtime> getRuntime() noexcept = 0;
   virtual facebook::react::JSIEngineOverride getRuntimeType() noexcept = 0;
-  virtual facebook::react::jsinspector_modern::RuntimeTargetDelegate &getRuntimeTargetDelegate() {
+
+  virtual const std::shared_ptr<facebook::react::jsinspector_modern::RuntimeTargetDelegate> &
+  getSharedRuntimeTargetDelegate() {
     if (!m_runtimeTargetDelegate) {
-      m_runtimeTargetDelegate.emplace(getRuntime()->description());
+      m_runtimeTargetDelegate = std::make_shared<facebook::react::jsinspector_modern::FallbackRuntimeTargetDelegate>(
+          getRuntime()->description());
     }
-    return *m_runtimeTargetDelegate;
+    return m_runtimeTargetDelegate;
   }
 
   virtual void teardown() noexcept {};
@@ -34,7 +37,7 @@ struct RuntimeHolderLazyInit {
 
  private:
   // Initialized by \c getRuntimeTargetDelegate if not overridden, and then never changes.
-  std::optional<facebook::react::jsinspector_modern::FallbackRuntimeTargetDelegate> m_runtimeTargetDelegate;
+  std::shared_ptr<facebook::react::jsinspector_modern::RuntimeTargetDelegate> m_runtimeTargetDelegate;
 };
 
 } // namespace Microsoft::JSI
