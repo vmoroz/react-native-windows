@@ -4,6 +4,8 @@
 #include <memory>
 
 #include <DevSettings.h>
+#include <jsinspector-modern/FallbackRuntimeTargetDelegate.h>
+#include <jsinspector-modern/RuntimeTarget.h>
 
 namespace Microsoft::JSI {
 
@@ -17,12 +19,22 @@ namespace Microsoft::JSI {
 struct RuntimeHolderLazyInit {
   virtual std::shared_ptr<facebook::jsi::Runtime> getRuntime() noexcept = 0;
   virtual facebook::react::JSIEngineOverride getRuntimeType() noexcept = 0;
+  virtual facebook::react::jsinspector_modern::RuntimeTargetDelegate &getRuntimeTargetDelegate() {
+    if (!m_runtimeTargetDelegate) {
+      m_runtimeTargetDelegate.emplace(getRuntime()->description());
+    }
+    return *m_runtimeTargetDelegate;
+  }
 
   virtual void teardown() noexcept {};
 
   // You can call this when a crash happens to attempt recording additional data
   // The fileDescriptor supplied is a raw file stream an implementation might write JSON to.
   virtual void crashHandler(int fileDescriptor) noexcept {};
+
+ private:
+  // Initialized by \c getRuntimeTargetDelegate if not overridden, and then never changes.
+  std::optional<facebook::react::jsinspector_modern::FallbackRuntimeTargetDelegate> m_runtimeTargetDelegate;
 };
 
 } // namespace Microsoft::JSI

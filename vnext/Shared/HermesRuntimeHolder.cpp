@@ -359,6 +359,10 @@ std::shared_ptr<facebook::jsi::Runtime> HermesRuntimeHolder::getRuntime() noexce
   return m_jsiRuntime;
 }
 
+facebook::react::jsinspector_modern::RuntimeTargetDelegate &HermesRuntimeHolder::getRuntimeTargetDelegate() {
+  return *m_targetDelegate;
+}
+
 void HermesRuntimeHolder::crashHandler(int fileDescriptor) noexcept {
   CRASH_ON_ERROR(getHermesApi().hermes_dump_crash_data(m_runtime, fileDescriptor));
 }
@@ -407,6 +411,10 @@ HermesJSRuntime::HermesJSRuntime(std::shared_ptr<Microsoft::JSI::RuntimeHolderLa
 
 facebook::jsi::Runtime &HermesJSRuntime::getRuntime() noexcept {
   return *m_holder->getRuntime();
+}
+
+facebook::react::jsinspector_modern::RuntimeTargetDelegate &HermesJSRuntime::getRuntimeTargetDelegate() {
+  return m_holder->getRuntimeTargetDelegate();
 }
 
 } // namespace Microsoft::ReactNative
