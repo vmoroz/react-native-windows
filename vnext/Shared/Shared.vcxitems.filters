@@ -828,7 +828,7 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)ModernInspectorPackagerConnectionDelegate.h">
       <Filter>Inspector</Filter>
     </ClInclude>
-    <ClInclude Include="$(MSBuildThisFileDirectory)FuseboxInspectorThread.h">
+    <ClInclude Include="$(MSBuildThisFileDirectory)ModernInspectorThread.h">
       <Filter>Inspector</Filter>
     </ClInclude>
     <ClInclude Include="$(MSBuildThisFileDirectory)InspectorPackagerConnection.h">

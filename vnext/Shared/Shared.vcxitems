@@ -427,7 +427,7 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)CxxMessageQueue.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)DevServerHelper.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)DevSettings.h" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)FuseboxInspectorThread.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)ModernInspectorThread.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Executors\WebSocketJSExecutor.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)HermesRuntimeHolder.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)ModernInspectorPackagerConnectionDelegate.h" />

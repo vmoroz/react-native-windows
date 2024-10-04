@@ -6,7 +6,7 @@
 #include <Networking/WinRTWebSocketResource.h>
 #include <dispatchQueue/dispatchQueue.h>
 #include <winrt/Microsoft.ReactNative.h>
-#include "FuseboxInspectorThread.h"
+#include "ModernInspectorThread.h"
 
 namespace Microsoft::ReactNative {
 
@@ -35,7 +35,7 @@ ModernInspectorWebSocket::ModernInspectorWebSocket(
       std::make_shared<Microsoft::React::Networking::WinRTWebSocketResource>(std::move(certExceptions));
 
   m_packagerWebSocketConnection->SetOnMessage([delegate](auto &&, const std::string &message, bool isBinary) {
-    FuseboxInspectorThread::Instance().InvokeElsePost([delegate, message]() {
+    ModernInspectorThread::Instance().InvokeElsePost([delegate, message]() {
       if (const auto strongDelegate = delegate.lock()) {
         strongDelegate->didReceiveMessage(message);
       }
@@ -43,14 +43,14 @@ ModernInspectorWebSocket::ModernInspectorWebSocket(
   });
   m_packagerWebSocketConnection->SetOnError(
       [delegate](const Microsoft::React::Networking::IWebSocketResource::Error &error) {
-        FuseboxInspectorThread::Instance().InvokeElsePost([delegate, error]() {
+        ModernInspectorThread::Instance().InvokeElsePost([delegate, error]() {
           if (const auto strongDelegate = delegate.lock()) {
             strongDelegate->didFailWithError(std::nullopt, error.Message);
           }
         });
       });
   m_packagerWebSocketConnection->SetOnClose([delegate](auto &&...) {
-    FuseboxInspectorThread::Instance().InvokeElsePost([delegate]() {
+    ModernInspectorThread::Instance().InvokeElsePost([delegate]() {
       if (const auto strongDelegate = delegate.lock()) {
         strongDelegate->didClose();
       }
@@ -83,7 +83,7 @@ ModernInspectorPackagerConnectionDelegate::connectWebSocket(
 
 winrt::fire_and_forget RunWithDelayAsync(std::function<void(void)> callback, std::chrono::milliseconds delayMs) {
   co_await winrt::resume_after(delayMs);
-  FuseboxInspectorThread::Instance().InvokeElsePost([callback]() { callback(); });
+  ModernInspectorThread::Instance().InvokeElsePost([callback]() { callback(); });
 }
 
 void ModernInspectorPackagerConnectionDelegate::scheduleCallback(
