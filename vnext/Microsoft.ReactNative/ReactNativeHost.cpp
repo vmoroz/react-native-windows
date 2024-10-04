@@ -5,7 +5,7 @@
 #include "ReactNativeHost.h"
 #include "ReactNativeHost.g.cpp"
 
-#include "FuseboxInspectorThread.h"
+#include "ModernInspectorThread.h"
 #include "ReactPackageBuilder.h"
 #include "RedBox.h"
 #include "TurboModulesProvider.h"
@@ -84,7 +84,7 @@ ReactNativeHost::ReactNativeHost() noexcept : m_reactHost{Mso::React::MakeReactH
     m_inspectorHostDelegate = std::make_shared<FuseboxHostTargetDelegate>(this);
     m_inspectorTarget = facebook::react::jsinspector_modern::HostTarget::create(
         *m_inspectorHostDelegate, [](std::function<void()> &&callback) {
-          ::Microsoft::ReactNative::FuseboxInspectorThread::Instance().InvokeElsePost([callback]() { callback(); });
+          ::Microsoft::ReactNative::ModernInspectorThread::Instance().InvokeElsePost([callback]() { callback(); });
         });
 
     std::weak_ptr<facebook::react::jsinspector_modern::HostTarget> weakInspectorTarget = m_inspectorTarget;
@@ -99,9 +99,9 @@ ReactNativeHost::ReactNativeHost() noexcept : m_reactHost{Mso::React::MakeReactH
         [weakInspectorTarget](std::unique_ptr<facebook::react::jsinspector_modern::IRemoteConnection> remote)
             -> std::unique_ptr<facebook::react::jsinspector_modern::ILocalConnection> {
           if (const auto inspectorTarget = weakInspectorTarget.lock()) {
-            //facebook::react::jsinspector_modern::HostTarget::SessionMetadata sessionMetadata;
-            //sessionMetadata.integrationName = "React Native Windows (Host)";
-            //return inspectorTarget->connect(std::move(remote), sessionMetadata);
+            // facebook::react::jsinspector_modern::HostTarget::SessionMetadata sessionMetadata;
+            // sessionMetadata.integrationName = "React Native Windows (Host)";
+            // return inspectorTarget->connect(std::move(remote), sessionMetadata);
             return inspectorTarget->connect(std::move(remote));
           }
 
