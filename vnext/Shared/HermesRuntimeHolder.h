@@ -26,6 +26,9 @@ class HermesRuntimeHolder : public Microsoft::JSI::RuntimeHolderLazyInit {
       std::shared_ptr<facebook::jsi::PreparedScriptStore> preparedScriptStore) noexcept;
   ~HermesRuntimeHolder();
 
+  const std::shared_ptr<facebook::react::jsinspector_modern::RuntimeTargetDelegate> &getSharedRuntimeTargetDelegate()
+      override;
+
   static std::shared_ptr<HermesRuntimeHolder> loadFrom(
       winrt::Microsoft::ReactNative::ReactPropertyBag const &propertyBag) noexcept;
 
@@ -46,6 +49,7 @@ class HermesRuntimeHolder : public Microsoft::JSI::RuntimeHolderLazyInit {
  private:
   jsr_runtime m_runtime{};
   std::shared_ptr<facebook::jsi::Runtime> m_jsiRuntime;
+  std::shared_ptr<facebook::react::jsinspector_modern::RuntimeTargetDelegate> m_targetDelegate;
   std::once_flag m_onceFlag{};
   std::thread::id m_ownThreadId{};
   std::weak_ptr<facebook::react::DevSettings> m_weakDevSettings;
@@ -53,24 +57,13 @@ class HermesRuntimeHolder : public Microsoft::JSI::RuntimeHolderLazyInit {
   std::shared_ptr<facebook::jsi::PreparedScriptStore> m_preparedScriptStore;
 };
 
-class HermesJSRuntime : public facebook::react::JSRuntime {
+class HermesJSRuntime final : public facebook::react::JSRuntime {
  public:
   HermesJSRuntime(std::shared_ptr<Microsoft::JSI::RuntimeHolderLazyInit> hermesRuntimeHolder);
 
   facebook::jsi::Runtime &getRuntime() noexcept override;
-  void addConsoleMessage(facebook::jsi::Runtime &runtime, facebook::react::jsinspector_modern::ConsoleMessage message)
-      override;
-  bool supportsConsole() const override;
-  std::unique_ptr<facebook::react::jsinspector_modern::StackTrace> captureStackTrace(
-      facebook::jsi::Runtime &runtime,
-      size_t framesToSkip = 0) override;
 
-  std::unique_ptr<facebook::react::jsinspector_modern::RuntimeAgentDelegate> createAgentDelegate(
-      facebook::react::jsinspector_modern::FrontendChannel frontendChannel,
-      facebook::react::jsinspector_modern::SessionState &sessionState,
-      std::unique_ptr<facebook::react::jsinspector_modern::RuntimeAgentDelegate::ExportedState> previouslyExportedState,
-      const facebook::react::jsinspector_modern::ExecutionContextDescription &executionContextDescription,
-      facebook::react::RuntimeExecutor runtimeExecutor) override;
+  facebook::react::jsinspector_modern::RuntimeTargetDelegate &getRuntimeTargetDelegate() override;
 
  private:
   std::shared_ptr<Microsoft::JSI::RuntimeHolderLazyInit> m_holder;
