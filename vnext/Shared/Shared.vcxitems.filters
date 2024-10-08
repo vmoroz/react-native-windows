@@ -109,6 +109,12 @@
     <Filter Include="ReactCommon\react\nativemodule">
       <UniqueIdentifier>{739297af-da89-4523-899d-02b454fc9330}</UniqueIdentifier>
     </Filter>
+    <Filter Include="ReactCommon\react\nativemodule\core">
+      <UniqueIdentifier>{c0b6b399-2f8c-4d54-8253-db898e6e7b12}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ReactCommon\react\nativemodule\core\ReactCommon">
+      <UniqueIdentifier>{21c8e767-5cda-40cd-902a-7f5b0e7bc652}</UniqueIdentifier>
+    </Filter>
     <Filter Include="ReactCommon\react\nativemodule\samples">
       <UniqueIdentifier>{d6f7e924-6bcc-49c7-b6c0-59f9199a1bf9}</UniqueIdentifier>
     </Filter>
@@ -454,6 +460,184 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)PackagerConnection.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)RuntimeOptions.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)LegacyInspectorPackagerConnection.cpp" />
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\cxxreact\CxxNativeModule.cpp">
+      <Filter>ReactCommon\cxxreact</Filter>
+    </ClInclude>
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\cxxreact\Instance.cpp">
+      <Filter>ReactCommon\cxxreact</Filter>
+    </ClInclude>
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\cxxreact\JSBundleType.cpp">
+      <Filter>ReactCommon\cxxreact</Filter>
+    </ClInclude>
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\cxxreact\JSExecutor.cpp">
+      <Filter>ReactCommon\cxxreact</Filter>
+    </ClInclude>
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\cxxreact\JSIndexedRAMBundle.cpp">
+      <Filter>ReactCommon\cxxreact</Filter>
+    </ClInclude>
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\cxxreact\MethodCall.cpp">
+      <Filter>ReactCommon\cxxreact</Filter>
+    </ClInclude>
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\cxxreact\ModuleRegistry.cpp">
+      <Filter>ReactCommon\cxxreact</Filter>
+    </ClInclude>
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\cxxreact\NativeToJsBridge.cpp">
+      <Filter>ReactCommon\cxxreact</Filter>
+    </ClInclude>
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\cxxreact\RAMBundleRegistry.cpp">
+      <Filter>ReactCommon\cxxreact</Filter>
+    </ClInclude>
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\cxxreact\ReactMarker.cpp">
+      <Filter>ReactCommon\cxxreact</Filter>
+    </ClInclude>
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsi\jsi\JSIDynamic.cpp">
+      <Filter>ReactCommon\jsi\jsi</Filter>
+    </ClInclude>
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsiexecutor\jsireact\JSIExecutor.cpp">
+      <Filter>ReactCommon\jsiexecutor\jsireact</Filter>
+    </ClInclude>
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsiexecutor\jsireact\JSINativeModules.cpp">
+      <Filter>ReactCommon\jsiexecutor\jsireact</Filter>
+    </ClInclude>
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\CdpJson.cpp">
+      <Filter>ReactCommon\jsinspector-modern</Filter>
+    </ClInclude>
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\ConsoleMessage.cpp">
+      <Filter>ReactCommon\jsinspector-modern</Filter>
+    </ClInclude>
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\ExecutionContext.cpp">
+      <Filter>ReactCommon\jsinspector-modern</Filter>
+    </ClInclude>
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\ExecutionContextManager.cpp">
+      <Filter>ReactCommon\jsinspector-modern</Filter>
+    </ClInclude>
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\FallbackRuntimeAgentDelegate.cpp">
+      <Filter>ReactCommon\jsinspector-modern</Filter>
+    </ClInclude>
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\FallbackRuntimeTargetDelegate.cpp">
+      <Filter>ReactCommon\jsinspector-modern</Filter>
+    </ClInclude>
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\HostAgent.cpp">
+      <Filter>ReactCommon\jsinspector-modern</Filter>
+    </ClInclude>
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\HostTarget.cpp">
+      <Filter>ReactCommon\jsinspector-modern</Filter>
+    </ClInclude>
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\InspectorFlags.cpp">
+      <Filter>ReactCommon\jsinspector-modern</Filter>
+    </ClInclude>
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\InspectorInterfaces.cpp">
+      <Filter>ReactCommon\jsinspector-modern</Filter>
+    </ClInclude>
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\InspectorPackagerConnection.cpp">
+      <Filter>ReactCommon\jsinspector-modern</Filter>
+    </ClInclude>
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\InspectorUtilities.cpp">
+      <Filter>ReactCommon\jsinspector-modern</Filter>
+    </ClInclude>
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\InstanceAgent.cpp">
+      <Filter>ReactCommon\jsinspector-modern</Filter>
+    </ClInclude>
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\InstanceTarget.cpp">
+      <Filter>ReactCommon\jsinspector-modern</Filter>
+    </ClInclude>
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\NetworkIOAgent.cpp">
+      <Filter>ReactCommon\jsinspector-modern</Filter>
+    </ClInclude>
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\RuntimeAgent.cpp">
+      <Filter>ReactCommon\jsinspector-modern</Filter>
+    </ClInclude>
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\RuntimeTarget.cpp">
+      <Filter>ReactCommon\jsinspector-modern</Filter>
+    </ClInclude>
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\RuntimeTargetConsole.cpp">
+      <Filter>ReactCommon\jsinspector-modern</Filter>
+    </ClInclude>
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\RuntimeTargetDebuggerSessionObserver.cpp">
+      <Filter>ReactCommon\jsinspector-modern</Filter>
+    </ClInclude>
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\logger\react_native_log.cpp">
+      <Filter>ReactCommon\logger</Filter>
+    </ClInclude>
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\bridging\LongLivedObject.cpp">
+      <Filter>ReactCommon\react\bridging</Filter>
+    </ClInclude>
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\featureflags\ReactNativeFeatureFlags.cpp">
+      <Filter>ReactCommon\react\featureflags</Filter>
+    </ClInclude>
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\featureflags\ReactNativeFeatureFlagsAccessor.cpp">
+      <Filter>ReactCommon\react\featureflags</Filter>
+    </ClInclude>
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\nativemodule\core\ReactCommon\TurboCxxModule.cpp">
+      <Filter>ReactCommon\react\nativemodule\core\ReactCommon</Filter>
+    </ClInclude>
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\nativemodule\core\ReactCommon\TurboModule.cpp">
+      <Filter>ReactCommon\react\nativemodule\core\ReactCommon</Filter>
+    </ClInclude>
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\nativemodule\core\ReactCommon\TurboModuleBinding.cpp">
+      <Filter>ReactCommon\react\nativemodule\core\ReactCommon</Filter>
+    </ClInclude>
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\nativemodule\core\ReactCommon\TurboModuleUtils.cpp">
+      <Filter>ReactCommon\react\nativemodule\core\ReactCommon</Filter>
+    </ClInclude>
+    <CLCompile Include="$(ReactNativeDir)\ReactCommon\react\nativemodule\samples\ReactCommon\NativeSampleTurboCxxModuleSpecJSI.cpp">
+      <Filter>ReactCommon\react\nativemodule\samples\ReactCommon</Filter>
+    </ClInclude>
+    <CLCompile Include="$(ReactNativeDir)\ReactCommon\react\nativemodule\samples\ReactCommon\SampleTurboCxxModule.cpp">
+      <Filter>ReactCommon\react\nativemodule\samples\ReactCommon</Filter>
+    </ClInclude>
+    <CLCompile Include="$(ReactNativeDir)\ReactCommon\react\performance\timeline\PerformanceEntryReporter.cpp">
+      <Filter>ReactCommon\react\performance\timeline</Filter>
+    </ClInclude>
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\renderer\runtimescheduler\RuntimeScheduler.cpp">
+      <Filter>ReactCommon\react\renderer\runtimescheduler</Filter>
+    </ClInclude>
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\renderer\runtimescheduler\RuntimeScheduler_Legacy.cpp">
+      <Filter>ReactCommon\react\renderer\runtimescheduler</Filter>
+    </ClInclude>
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\renderer\runtimescheduler\RuntimeScheduler_Modern.cpp">
+      <Filter>ReactCommon\react\renderer\runtimescheduler</Filter>
+    </ClInclude>
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\renderer\runtimescheduler\RuntimeSchedulerBinding.cpp">
+      <Filter>ReactCommon\react\renderer\runtimescheduler</Filter>
+    </ClInclude>
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\renderer\runtimescheduler\RuntimeSchedulerCallInvoker.cpp">
+      <Filter>ReactCommon\react\renderer\runtimescheduler</Filter>
+    </ClInclude>
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\renderer\runtimescheduler\Task.cpp">
+      <Filter>ReactCommon\react\renderer\runtimescheduler</Filter>
+    </ClInclude>
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\utils\CoreFeatures.cpp">
+      <Filter>ReactCommon\react\utils</Filter>
+    </ClInclude>
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\utils\jsi-utils.cpp">
+      <Filter>ReactCommon\react\utils</Filter>
+    </ClInclude>
+    <CLCompile Include="$(ReactNativeDir)\ReactCommon\reactperflogger\fusebox\FuseboxTracer.cpp">
+      <Filter>ReactCommon\reactperflogger\fusebox</Filter>
+    </ClInclude>
+    <CLCompile Include="$(ReactNativeDir)\ReactCommon\reactperflogger\reactperflogger\BridgeNativeModulePerfLogger.cpp">
+      <Filter>ReactCommon\reactperflogger\reactperflogger</Filter>
+    </ClInclude>
+    <ClCompile Include="$(YogaDir)\yoga\YGConfig.cpp" />
+    <ClCompile Include="$(YogaDir)\yoga\YGEnums.cpp" />
+    <ClCompile Include="$(YogaDir)\yoga\YGNode.cpp" />
+    <ClCompile Include="$(YogaDir)\yoga\YGNodeLayout.cpp" />
+    <ClCompile Include="$(YogaDir)\yoga\YGNodeStyle.cpp" />
+    <ClCompile Include="$(YogaDir)\yoga\YGPixelGrid.cpp" />
+    <ClCompile Include="$(YogaDir)\yoga\YGValue.cpp" />
+    <ClCompile Include="$(YogaDir)\yoga\algorithm\AbsoluteLayout.cpp" />
+    <ClCompile Include="$(YogaDir)\yoga\algorithm\Baseline.cpp" />
+    <ClCompile Include="$(YogaDir)\yoga\algorithm\Cache.cpp" />
+    <ClCompile Include="$(YogaDir)\yoga\algorithm\CalculateLayout.cpp" />
+    <ClCompile Include="$(YogaDir)\yoga\algorithm\FlexLine.cpp" />
+    <ClCompile Include="$(YogaDir)\yoga\algorithm\PixelGrid.cpp" />
+    <ClCompile Include="$(YogaDir)\yoga\config\Config.cpp" />
+    <ClCompile Include="$(YogaDir)\yoga\debug\AssertFatal.cpp" />
+    <ClCompile Include="$(YogaDir)\yoga\debug\Log.cpp" />
+    <ClCompile Include="$(YogaDir)\yoga\event\event.cpp" />
+    <ClCompile Include="$(YogaDir)\yoga\node\LayoutResults.cpp" />
+    <ClCompile Include="$(YogaDir)\yoga\node\Node.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="$(MSBuildThisFileDirectory)Modules\ExceptionsManagerModule.h">
