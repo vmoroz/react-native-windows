@@ -1,20 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="stubs">
-      <UniqueIdentifier>{7f5b0b9a-6a9b-4927-b92e-b796d8722357}</UniqueIdentifier>
+    <Filter Include="callinvoker">
+      <UniqueIdentifier>{d2eae11a-b021-4d0f-bf0f-cc5a164f2579}</UniqueIdentifier>
     </Filter>
-    <Filter Include="stubs\sys">
-      <UniqueIdentifier>{6f281c77-c556-413f-ab0e-e1da95aa47d2}</UniqueIdentifier>
+    <Filter Include="callinvoker\ReactCommon">
+      <UniqueIdentifier>{103aab63-7882-4777-85a5-8fdbbc8e54f9}</UniqueIdentifier>
     </Filter>
     <Filter Include="cxxreact">
       <UniqueIdentifier>{9e2dd06f-00fd-47bc-87cd-856bf393c504}</UniqueIdentifier>
     </Filter>
-    <Filter Include="yoga">
-      <UniqueIdentifier>{3db635c1-ad38-4099-b79d-872a6ef4319f}</UniqueIdentifier>
-    </Filter>
     <Filter Include="jsi">
       <UniqueIdentifier>{c8c4a850-2ee5-4211-9c65-3dd074209b47}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="jsi\jsi">
+      <UniqueIdentifier>{9c8e7a7a-c77d-479d-8611-1ece3cdacad7}</UniqueIdentifier>
     </Filter>
     <Filter Include="jsiexecutor">
       <UniqueIdentifier>{eae1b827-8949-49dd-9740-501033bcd441}</UniqueIdentifier>
@@ -22,50 +22,17 @@
     <Filter Include="jsiexecutor\jsireact">
       <UniqueIdentifier>{1072517c-f7e8-419d-a43a-b037bf46e691}</UniqueIdentifier>
     </Filter>
-    <Filter Include="jsi\jsi">
-      <UniqueIdentifier>{9c8e7a7a-c77d-479d-8611-1ece3cdacad7}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="turbomodule">
-      <UniqueIdentifier>{23b0c36f-4a4b-4380-9e4c-f8cb0c2f2714}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="turbomodule\core">
-      <UniqueIdentifier>{c4d010df-7391-4171-8658-9048078a5523}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="yoga\event">
-      <UniqueIdentifier>{b81cc660-374c-4232-823b-6c76b48564b4}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="react">
-      <UniqueIdentifier>{2d49b4f6-fe41-45da-9942-81217accd474}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="react\renderer">
-      <UniqueIdentifier>{61211521-40da-4211-b23d-bced1fefc5d8}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="react\renderer\core">
-      <UniqueIdentifier>{fa6d6abd-769f-4c36-b881-173f3f218abe}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="react\renderer\debug">
-      <UniqueIdentifier>{cc363422-d654-4288-b8b8-ea8f38aa7604}</UniqueIdentifier>
+    <Filter Include="jsinspector-modern">
+      <UniqueIdentifier>{4fa3cc8f-fe31-4e3d-88f3-625ef41f0a02}</UniqueIdentifier>
     </Filter>
     <Filter Include="logger">
       <UniqueIdentifier>{a6918f44-da21-414d-ad25-d9bdb8f8756b}</UniqueIdentifier>
     </Filter>
-    <Filter Include="reactperflogger">
-      <UniqueIdentifier>{f3362933-5f11-4653-929d-e13607d919b7}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="reactperflogger\reactperflogger">
-      <UniqueIdentifier>{50a825f0-9a6d-454e-94f5-65cf7cad34cc}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="callinvoker">
-      <UniqueIdentifier>{d2eae11a-b021-4d0f-bf0f-cc5a164f2579}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="callinvoker\ReactCommon">
-      <UniqueIdentifier>{103aab63-7882-4777-85a5-8fdbbc8e54f9}</UniqueIdentifier>
+    <Filter Include="react">
+      <UniqueIdentifier>{2d49b4f6-fe41-45da-9942-81217accd474}</UniqueIdentifier>
     </Filter>
     <Filter Include="react\bridging">
       <UniqueIdentifier>{55de2e00-aeb3-4ab3-a731-6edfc63c4db9}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="react\renderer\mapbuffer">
-      <UniqueIdentifier>{297ffef3-6154-41cf-85b1-75eff3d8fba0}</UniqueIdentifier>
     </Filter>
     <Filter Include="react\nativemodule">
       <UniqueIdentifier>{739297af-da89-4523-899d-02b454fc9330}</UniqueIdentifier>
@@ -76,11 +43,71 @@
     <Filter Include="react\nativemodule\samples\ReactCommon">
       <UniqueIdentifier>{e3ff0f65-dba6-4a18-8ec5-acfe73178bb7}</UniqueIdentifier>
     </Filter>
+    <Filter Include="react\performance">
+      <UniqueIdentifier>{e17e9189-5a27-45fa-adf0-8b397716a9ce}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="react\performance\timeline">
+      <UniqueIdentifier>{d57ad0b8-df3f-469c-85d5-ee675f151595}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="react\renderer">
+      <UniqueIdentifier>{61211521-40da-4211-b23d-bced1fefc5d8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="react\renderer\core">
+      <UniqueIdentifier>{fa6d6abd-769f-4c36-b881-173f3f218abe}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="react\renderer\debug">
+      <UniqueIdentifier>{cc363422-d654-4288-b8b8-ea8f38aa7604}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="react\renderer\mapbuffer">
+      <UniqueIdentifier>{297ffef3-6154-41cf-85b1-75eff3d8fba0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="react\renderer\runtimescheduler">
+      <UniqueIdentifier>{8fa16c21-60dd-4ab7-bb45-3e634a6e09b0}</UniqueIdentifier>
+    </Filter>
     <Filter Include="react\renderer\telemetry">
       <UniqueIdentifier>{40bfe98f-f174-4c03-9296-d371bc230e53}</UniqueIdentifier>
     </Filter>
-    <Filter Include="jsinspector-modern">
-      <UniqueIdentifier>{4fa3cc8f-fe31-4e3d-88f3-625ef41f0a02}</UniqueIdentifier>
+    <Filter Include="react\runtime">
+      <UniqueIdentifier>{2995ad49-ae65-4ec4-9392-838a2f725f0e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="reactperflogger">
+      <UniqueIdentifier>{f3362933-5f11-4653-929d-e13607d919b7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="reactperflogger\fusebox">
+      <UniqueIdentifier>{4b54ec22-5b25-4053-ac9b-98574944531c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="reactperflogger\reactperflogger">
+      <UniqueIdentifier>{50a825f0-9a6d-454e-94f5-65cf7cad34cc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="stubs">
+      <UniqueIdentifier>{7f5b0b9a-6a9b-4927-b92e-b796d8722357}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="stubs\sys">
+      <UniqueIdentifier>{6f281c77-c556-413f-ab0e-e1da95aa47d2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="turbomodule">
+      <UniqueIdentifier>{23b0c36f-4a4b-4380-9e4c-f8cb0c2f2714}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="turbomodule\core">
+      <UniqueIdentifier>{c4d010df-7391-4171-8658-9048078a5523}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="yoga">
+      <UniqueIdentifier>{3db635c1-ad38-4099-b79d-872a6ef4319f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="yoga\algorithm">
+      <UniqueIdentifier>{41c4ae5c-9e6f-4793-ba82-2f4cd83a6fb2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="yoga\config">
+      <UniqueIdentifier>{5baa0890-47d8-4f32-997c-d5a85d963778}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="yoga\debug">
+      <UniqueIdentifier>{c9d54fb1-2a86-4f62-b2e7-7c57a2fd9126}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="yoga\event">
+      <UniqueIdentifier>{b81cc660-374c-4232-823b-6c76b48564b4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="yoga\node">
+      <UniqueIdentifier>{ca34baaf-b7b3-4399-a574-4c6970fd32a5}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -199,17 +226,39 @@
     <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\renderer\telemetry\TransactionTelemetry.cpp">
       <Filter>react\renderer\telemetry</Filter>
     </ClCompile>
-    <ClCompile Include="$(YogaDir)\yoga\algorithm\AbsoluteLayout.cpp" />
-    <ClCompile Include="$(YogaDir)\yoga\algorithm\Baseline.cpp" />
-    <ClCompile Include="$(YogaDir)\yoga\algorithm\Cache.cpp" />
-    <ClCompile Include="$(YogaDir)\yoga\algorithm\CalculateLayout.cpp" />
-    <ClCompile Include="$(YogaDir)\yoga\algorithm\FlexLine.cpp" />
-    <ClCompile Include="$(YogaDir)\yoga\algorithm\PixelGrid.cpp" />
-    <ClCompile Include="$(YogaDir)\yoga\config\Config.cpp" />
-    <ClCompile Include="$(YogaDir)\yoga\debug\AssertFatal.cpp" />
-    <ClCompile Include="$(YogaDir)\yoga\debug\Log.cpp" />
-    <ClCompile Include="$(YogaDir)\yoga\node\LayoutResults.cpp" />
-    <ClCompile Include="$(YogaDir)\yoga\node\Node.cpp" />
+    <ClCompile Include="$(YogaDir)\yoga\algorithm\AbsoluteLayout.cpp">
+      <Filter>yoga\algorithm</Filter>
+    </ClCompile>
+    <ClCompile Include="$(YogaDir)\yoga\algorithm\Baseline.cpp">
+      <Filter>yoga\algorithm</Filter>
+    </ClCompile>
+    <ClCompile Include="$(YogaDir)\yoga\algorithm\Cache.cpp">
+      <Filter>yoga\algorithm</Filter>
+    </ClCompile>
+    <ClCompile Include="$(YogaDir)\yoga\algorithm\CalculateLayout.cpp">
+      <Filter>yoga\algorithm</Filter>
+    </ClCompile>
+    <ClCompile Include="$(YogaDir)\yoga\algorithm\FlexLine.cpp">
+      <Filter>yoga\algorithm</Filter>
+    </ClCompile>
+    <ClCompile Include="$(YogaDir)\yoga\algorithm\PixelGrid.cpp">
+      <Filter>yoga\algorithm</Filter>
+    </ClCompile>
+    <ClCompile Include="$(YogaDir)\yoga\config\Config.cpp">
+      <Filter>yoga\config</Filter>
+    </ClCompile>
+    <ClCompile Include="$(YogaDir)\yoga\debug\AssertFatal.cpp">
+      <Filter>yoga\debug</Filter>
+    </ClCompile>
+    <ClCompile Include="$(YogaDir)\yoga\debug\Log.cpp">
+      <Filter>yoga\debug</Filter>
+    </ClCompile>
+    <ClCompile Include="$(YogaDir)\yoga\node\LayoutResults.cpp">
+      <Filter>yoga\node</Filter>
+    </ClCompile>
+    <ClCompile Include="$(YogaDir)\yoga\node\Node.cpp">
+      <Filter>yoga\node</Filter>
+    </ClCompile>
     <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\CdpJson.cpp">
       <Filter>jsinspector-modern</Filter>
     </ClCompile>
@@ -271,13 +320,13 @@
       <Filter>jsinspector-modern</Filter>
     </ClCompile>
     <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\runtime\JSRuntimeFactory.cpp">
-      <Filter>jsinspector-modern</Filter>
+      <Filter>react\runtime</Filter>
     </ClCompile>
-    <CLCompile Include="$(ReactNativeDir)\ReactCommon\reactperflogger\fusebox\FuseboxTracer.cpp">
-      <Filter>jsinspector-modern</Filter>
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\performance\timeline\PerformanceEntryReporter.cpp">
+      <Filter>react\performance\timeline</Filter>
     </ClCompile>
-    <CLCompile Include="$(ReactNativeDir)\ReactCommon\react\performance\timeline\PerformanceEntryReporter.cpp">
-      <Filter>jsinspector-modern</Filter>
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\reactperflogger\fusebox\FuseboxTracer.cpp">
+      <Filter>reactperflogger\fusebox</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -495,9 +544,17 @@
     <ClInclude Include="$(ReactNativeDir)\ReactCommon\react\bridging\Convert.h">
       <Filter>react\bridging</Filter>
     </ClInclude>
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\react\renderer\runtimescheduler\RuntimeScheduler_Legacy.h" />
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\react\renderer\runtimescheduler\RuntimeScheduler_Modern.h" />
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\react\renderer\core\PropsParserContext.h" />
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\react\runtime\JSRuntimeFactory.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\react\renderer\core\PropsParserContext.h">
+      <Filter>react\renderer\core</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\react\renderer\runtimescheduler\RuntimeScheduler_Legacy.h">
+      <Filter>react\renderer\runtimescheduler</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\react\renderer\runtimescheduler\RuntimeScheduler_Modern.h">
+      <Filter>react\renderer\runtimescheduler</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\react\runtime\JSRuntimeFactory.h">
+      <Filter>react\runtime</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
