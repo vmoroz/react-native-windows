@@ -316,9 +316,6 @@
     <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\RuntimeTargetDebuggerSessionObserver.cpp">
       <Filter>jsinspector-modern</Filter>
     </ClCompile>
-    <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\Utf8.cpp">
-      <Filter>jsinspector-modern</Filter>
-    </ClCompile>
     <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\runtime\JSRuntimeFactory.cpp">
       <Filter>react\runtime</Filter>
     </ClCompile>

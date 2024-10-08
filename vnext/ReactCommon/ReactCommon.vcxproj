@@ -187,7 +187,6 @@
     <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\RuntimeTarget.cpp" />
     <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\RuntimeTargetConsole.cpp" />
     <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\RuntimeTargetDebuggerSessionObserver.cpp" />
-    <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\Utf8.cpp" />
     <ClCompile Include="$(ReactNativeDir)\ReactCommon\logger\react_native_log.cpp" />
     <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\runtime\JSRuntimeFactory.cpp" />
     <CLCompile Include="$(ReactNativeDir)\ReactCommon\reactperflogger\fusebox\FuseboxTracer.cpp" />

@@ -9,12 +9,13 @@
 
 #include <folly/dynamic.h>
 #include <folly/json.h>
+#include <optional>
 #include <string>
 #include <string_view>
 
 namespace facebook::react::jsinspector_modern::cdp {
 
-using RequestId = long long;
+using RequestId = int64_t;
 
 /**
  * Error codes to be used in CDP responses.
