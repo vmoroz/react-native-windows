@@ -9,13 +9,13 @@
 
 #include <folly/dynamic.h>
 #include <folly/json.h>
-#include <optional>
+#include <optional> // [Windows #13587]
 #include <string>
 #include <string_view>
 
 namespace facebook::react::jsinspector_modern::cdp {
 
-using RequestId = int64_t;
+using RequestId = int64_t; // [Windows #13587]
 
 /**
  * Error codes to be used in CDP responses.
