@@ -57,6 +57,7 @@ class HermesRuntimeHolder : public Microsoft::JSI::RuntimeHolderLazyInit {
   std::shared_ptr<facebook::jsi::PreparedScriptStore> m_preparedScriptStore;
 };
 
+#ifdef USE_FABRIC
 class HermesJSRuntime final : public facebook::react::JSRuntime {
  public:
   HermesJSRuntime(std::shared_ptr<Microsoft::JSI::RuntimeHolderLazyInit> hermesRuntimeHolder);
@@ -68,5 +69,6 @@ class HermesJSRuntime final : public facebook::react::JSRuntime {
  private:
   std::shared_ptr<Microsoft::JSI::RuntimeHolderLazyInit> m_holder;
 };
+#endif
 
 } // namespace Microsoft::ReactNative

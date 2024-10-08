@@ -295,37 +295,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\Base64.h" />
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\CdpJson.h" />
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\ConsoleMessage.h" />
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\ExecutionContext.h" />
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\ExecutionContextManager.h" />
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\FallbackRuntimeAgentDelegate.h" />
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\FallbackRuntimeTargetDelegate.h" />
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\HostAgent.h" />
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\HostCommand.h" />
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\HostTarget.h" />
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\InspectorFlags.h" />
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\InspectorInterfaces.h" />
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\InspectorPackagerConnection.h" />
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\InspectorPackagerConnectionImpl.h" />
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\InspectorUtilities.h" />
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\InstanceAgent.h" />
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\InstanceTarget.h" />
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\NetworkIOAgent.h" />
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\ReactCdp.h" />
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\RuntimeAgent.h" />
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\RuntimeAgentDelegate.h" />
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\RuntimeTarget.h" />
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\ScopedExecutor.h" />
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\SessionState.h" />
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\StackTrace.h" />
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\UniqueMonostate.h" />
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\Utf8.h" />
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\WeakList.h" />
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\WebSocketInterfaces.h" />
-  </ItemGroup>
-  <ItemGroup>
     <ClInclude Include="$(MSBuildThisFileDirectory)..\codegen\react\components\rnwcore\EventEmitters.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)..\codegen\react\components\rnwcore\Props.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)..\codegen\react\components\rnwcore\ShadowNodes.h" />
@@ -526,6 +495,83 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)Utils\WinRTConversions.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)V8JSIRuntimeHolder.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)WebSocketJSExecutorFactory.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\stubs\sys\mman.h" />
+    <ClInclude Include="..\stubs\sys\time.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\callinvoker\ReactCommon\CallInvoker.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\callinvoker\ReactCommon\SchedulerPriority.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\cxxreact\CxxModule.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\cxxreact\CxxNativeModule.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\cxxreact\Instance.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\cxxreact\JsArgumentHelpers-inl.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\cxxreact\JsArgumentHelpers.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\cxxreact\JSBigString.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\cxxreact\JSBundleType.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\cxxreact\JSExecutor.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\cxxreact\JSIndexedRAMBundle.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\cxxreact\JSModulesUnbundle.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\cxxreact\MessageQueueThread.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\cxxreact\MethodCall.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\cxxreact\ModuleRegistry.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\cxxreact\NativeModule.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\cxxreact\NativeModuleProvider.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\cxxreact\NativeToJsBridge.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\cxxreact\ReactMarker.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\cxxreact\RecoverableError.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\cxxreact\SystraceSection.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsi\jsi\JSIDynamic.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsiexecutor\jsireact\JSIExecutor.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsiexecutor\jsireact\JSINativeModules.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\logger\react_native_log.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\react\runtime\JSRuntimeFactory.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\react\nativemodule\core\ReactCommon\LongLivedObject.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\react\bridging\CallbackWrapper.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\react\bridging\EventEmitter.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\react\bridging\Function.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\react\bridging\Base.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\react\bridging\Convert.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\react\nativemodule\core\ReactCommon\TurboCxxModule.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\react\nativemodule\core\ReactCommon\TurboModule.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\react\nativemodule\core\ReactCommon\TurboModuleBinding.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\react\nativemodule\core\ReactCommon\TurboModuleUtils.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\react\renderer\core\PropsParserContext.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\react\renderer\runtimescheduler\RuntimeScheduler_Legacy.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\react\renderer\runtimescheduler\RuntimeScheduler_Modern.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\Base64.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\CdpJson.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\ConsoleMessage.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\ExecutionContext.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\ExecutionContextManager.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\FallbackRuntimeAgentDelegate.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\FallbackRuntimeTargetDelegate.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\HostAgent.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\HostCommand.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\HostTarget.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\InspectorFlags.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\InspectorInterfaces.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\InspectorPackagerConnection.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\InspectorPackagerConnectionImpl.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\InspectorUtilities.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\InstanceAgent.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\InstanceTarget.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\NetworkIOAgent.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\ReactCdp.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\RuntimeAgent.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\RuntimeAgentDelegate.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\RuntimeTarget.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\ScopedExecutor.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\SessionState.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\StackTrace.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\UniqueMonostate.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\Utf8.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\WeakList.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\WebSocketInterfaces.h" />
+    <ClInclude Include="$(YogaDir)\yoga\YGEnums.h" />
+    <ClInclude Include="$(YogaDir)\yoga\YGMacros.h" />
+    <ClInclude Include="$(YogaDir)\yoga\Yoga.h" />
+  </ItemGroup>
+  <ItemGroup>
     <ClCompile Include="$(ReactNativeWindowsDir)Microsoft.ReactNative\Modules\DevSettingsModule.cpp" />
     <ClCompile Include="$(ReactNativeWindowsDir)Microsoft.ReactNative\Modules\ReactRootViewTagGenerator.cpp" />
     <ClCompile Include="$(ReactNativeWindowsDir)Microsoft.ReactNative\Modules\PlatformConstantsWinModule.cpp" />
@@ -554,8 +600,19 @@
     <ClCompile Include="$(ReactNativeWindowsDir)Microsoft.ReactNative\Views\DevMenu.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\cxxreact\CxxNativeModule.cpp" />
     <ClCompile Include="$(ReactNativeDir)\ReactCommon\cxxreact\Instance.cpp" />
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\cxxreact\JSBundleType.cpp" />
     <ClCompile Include="$(ReactNativeDir)\ReactCommon\cxxreact\JSExecutor.cpp" />
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\cxxreact\JSIndexedRAMBundle.cpp" />
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\cxxreact\MethodCall.cpp" />
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\cxxreact\ModuleRegistry.cpp" />
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\cxxreact\NativeToJsBridge.cpp" />
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\cxxreact\RAMBundleRegistry.cpp" />
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\cxxreact\ReactMarker.cpp" />
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsi\jsi\JSIDynamic.cpp" DisableSpecificWarnings="4715;%(DisableSpecificWarnings)" />
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsiexecutor\jsireact\JSIExecutor.cpp" />
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsiexecutor\jsireact\JSINativeModules.cpp" />
     <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\CdpJson.cpp" />
     <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\ConsoleMessage.cpp" />
     <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\ExecutionContext.cpp" />
@@ -575,23 +632,52 @@
     <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\RuntimeTarget.cpp" />
     <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\RuntimeTargetConsole.cpp" />
     <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\RuntimeTargetDebuggerSessionObserver.cpp" />
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\logger\react_native_log.cpp" />
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\bridging\LongLivedObject.cpp" />
     <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\featureflags\ReactNativeFeatureFlags.cpp" />
     <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\featureflags\ReactNativeFeatureFlagsAccessor.cpp" />
-    <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\renderer\graphics\ColorComponents.cpp" />
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\nativemodule\core\ReactCommon\TurboCxxModule.cpp" />
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\nativemodule\core\ReactCommon\TurboModule.cpp" />
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\nativemodule\core\ReactCommon\TurboModuleBinding.cpp" />
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\nativemodule\core\ReactCommon\TurboModuleUtils.cpp" />
+    <CLCompile Include="$(ReactNativeDir)\ReactCommon\react\nativemodule\samples\ReactCommon\NativeSampleTurboCxxModuleSpecJSI.cpp" />
+    <CLCompile Include="$(ReactNativeDir)\ReactCommon\react\nativemodule\samples\ReactCommon\SampleTurboCxxModule.cpp" />
+    <CLCompile Include="$(ReactNativeDir)\ReactCommon\react\performance\timeline\PerformanceEntryReporter.cpp" />
     <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\renderer\runtimescheduler\RuntimeScheduler.cpp" DisableSpecificWarnings="4715;%(DisableSpecificWarnings)" />
     <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\renderer\runtimescheduler\RuntimeScheduler_Legacy.cpp" DisableSpecificWarnings="4715;%(DisableSpecificWarnings)" />
     <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\renderer\runtimescheduler\RuntimeScheduler_Modern.cpp" DisableSpecificWarnings="4715;%(DisableSpecificWarnings)" />
     <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\renderer\runtimescheduler\RuntimeSchedulerBinding.cpp" />
     <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\renderer\runtimescheduler\RuntimeSchedulerCallInvoker.cpp" />
     <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\renderer\runtimescheduler\Task.cpp" />
-    <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\renderer\components\scrollview\ScrollEvent.cpp" />
     <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\utils\CoreFeatures.cpp" />
     <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\utils\jsi-utils.cpp" />
+    <CLCompile Include="$(ReactNativeDir)\ReactCommon\reactperflogger\fusebox\FuseboxTracer.cpp" />
+    <CLCompile Include="$(ReactNativeDir)\ReactCommon\reactperflogger\reactperflogger\BridgeNativeModulePerfLogger.cpp" />
+    <ClCompile Include="$(YogaDir)\yoga\YGConfig.cpp" />
+    <ClCompile Include="$(YogaDir)\yoga\YGEnums.cpp" />
+    <ClCompile Include="$(YogaDir)\yoga\YGNode.cpp" />
+    <ClCompile Include="$(YogaDir)\yoga\YGNodeLayout.cpp" />
+    <ClCompile Include="$(YogaDir)\yoga\YGNodeStyle.cpp" />
+    <ClCompile Include="$(YogaDir)\yoga\YGPixelGrid.cpp" />
+    <ClCompile Include="$(YogaDir)\yoga\YGValue.cpp" />
+    <ClCompile Include="$(YogaDir)\yoga\algorithm\AbsoluteLayout.cpp" />
+    <ClCompile Include="$(YogaDir)\yoga\algorithm\Baseline.cpp" />
+    <ClCompile Include="$(YogaDir)\yoga\algorithm\Cache.cpp" />
+    <ClCompile Include="$(YogaDir)\yoga\algorithm\CalculateLayout.cpp" />
+    <ClCompile Include="$(YogaDir)\yoga\algorithm\FlexLine.cpp" />
+    <ClCompile Include="$(YogaDir)\yoga\algorithm\PixelGrid.cpp" />
+    <ClCompile Include="$(YogaDir)\yoga\config\Config.cpp" />
+    <ClCompile Include="$(YogaDir)\yoga\debug\AssertFatal.cpp" />
+    <ClCompile Include="$(YogaDir)\yoga\debug\Log.cpp" />
+    <ClCompile Include="$(YogaDir)\yoga\event\event.cpp" />
+    <ClCompile Include="$(YogaDir)\yoga\node\LayoutResults.cpp" />
+    <ClCompile Include="$(YogaDir)\yoga\node\Node.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="$(MSBuildThisFileDirectory)tracing\rnw.wprp" />
   </ItemGroup>
   <ItemGroup Condition="'$(UseFabric)' == 'true'">
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\jserrorhandler\JsErrorHandler.cpp" />
     <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\config\ReactNativeConfig.cpp" />
     <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\renderer\attributedstring\AttributedString.cpp" />
     <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\renderer\attributedstring\AttributedStringBox.cpp" DisableSpecificWarnings="4715;%(DisableSpecificWarnings)" />
@@ -602,6 +688,7 @@
     <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\renderer\componentregistry\ComponentDescriptorProviderRegistry.cpp" />
     <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\renderer\componentregistry\ComponentDescriptorRegistry.cpp" />
     <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\renderer\componentregistry\componentNameByReactViewName.cpp" />
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\renderer\componentregistry\native\NativeComponentRegistryBinding.cpp" />
     <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\renderer\components\image\ImageComponentDescriptor.cpp" />
     <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\renderer\components\image\ImageEventEmitter.cpp" />
     <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\renderer\components\image\ImageProps.cpp" />
@@ -695,9 +782,6 @@
     <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\runtime\JSRuntimeFactory.cpp" />
     <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\runtime\ReactInstance.cpp" />
     <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\runtime\TimerManager.cpp" />
-    <CLCompile Include="$(ReactNativeDir)\ReactCommon\react\performance\timeline\PerformanceEntryReporter.cpp" />
-    <ClCompile Include="$(ReactNativeDir)\ReactCommon\jserrorhandler\JsErrorHandler.cpp" />
-    <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\renderer\componentregistry\native\NativeComponentRegistryBinding.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Midl Include="$(MSBuildThisFileDirectory)..\Microsoft.ReactNative\HttpSettings.idl" />

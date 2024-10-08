@@ -406,6 +406,7 @@ void HermesRuntimeHolder::removeFromProfiling() const noexcept {
 //==============================================================================
 // HermesJSRuntime implementation
 //==============================================================================
+#ifdef USE_FABRIC
 
 HermesJSRuntime::HermesJSRuntime(std::shared_ptr<Microsoft::JSI::RuntimeHolderLazyInit> hermesRuntimeHolder)
     : m_holder(std::move(hermesRuntimeHolder)) {}
@@ -417,5 +418,7 @@ facebook::jsi::Runtime &HermesJSRuntime::getRuntime() noexcept {
 facebook::react::jsinspector_modern::RuntimeTargetDelegate &HermesJSRuntime::getRuntimeTargetDelegate() {
   return *m_holder->getSharedRuntimeTargetDelegate();
 }
+
+#endif
 
 } // namespace Microsoft::ReactNative
