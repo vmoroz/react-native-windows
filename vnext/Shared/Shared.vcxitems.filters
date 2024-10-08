@@ -120,9 +120,6 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)Threading\MessageQueueThreadFactory.cpp">
       <Filter>Threading</Filter>
     </ClCompile>
-    <ClCompile Include="$(MSBuildThisFileDirectory)PackagerConnection.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="$(MSBuildThisFileDirectory)Modules\WebSocketModule.cpp">
       <Filter>Modules</Filter>
     </ClCompile>
@@ -131,9 +128,6 @@
     </ClCompile>
     <ClCompile Include="$(MSBuildThisFileDirectory)JSI\ChakraRuntime.cpp">
       <Filter>JSI</Filter>
-    </ClCompile>
-    <ClCompile Include="$(MSBuildThisFileDirectory)RuntimeOptions.cpp">
-      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="$(MSBuildThisFileDirectory)JSI\ChakraJsiRuntime_edgemode.cpp">
       <Filter>JSI</Filter>
@@ -201,9 +195,6 @@
     </ClCompile>
     <ClCompile Include="$(MSBuildThisFileDirectory)..\Microsoft.ReactNative\Fabric\WindowsImageManager.cpp">
       <Filter>Fabric</Filter>
-    </ClCompile>
-    <ClCompile Include="$(MSBuildThisFileDirectory)..\Microsoft.ReactNative\SchedulerSettings.cpp">
-      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="$(MSBuildThisFileDirectory)..\Microsoft.ReactNative\Fabric\Composition\ActivityIndicatorComponentView.cpp">
       <Filter>Fabric\Composition</Filter>
@@ -306,9 +297,6 @@
     <ClCompile Include="$(ReactNativeWindowsDir)Microsoft.ReactNative\RedBoxErrorFrameInfo.cpp" />
     <ClCompile Include="$(ReactNativeWindowsDir)Microsoft.ReactNative\RedBoxErrorInfo.cpp" />
     <ClCompile Include="$(ReactNativeWindowsDir)Microsoft.ReactNative\TurboModulesProvider.cpp" />
-    <ClCompile Include="$(MSBuildThisFileDirectory)BaseFileReaderResource.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="$(MSBuildThisFileDirectory)HermesRuntimeHolder.cpp">
       <Filter>Hermes</Filter>
     </ClCompile>
@@ -380,9 +368,14 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)ModernInspectorPackagerConnectionDelegate.cpp">
       <Filter>Inspector</Filter>
     </ClCompile>
-    <ClCompile Include="$(MSBuildThisFileDirectory)InspectorPackagerConnection.cpp">
-      <Filter>Inspector</Filter>
-    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\Microsoft.ReactNative\SchedulerSettings.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)BaseFileReaderResource.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)PackagerConnection.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)RuntimeOptions.cpp" />
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\InspectorFlags.cpp" />
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\InspectorInterfaces.cpp" />
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\InspectorPackagerConnection.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)LegacyInspectorPackagerConnection.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="$(MSBuildThisFileDirectory)Modules\ExceptionsManagerModule.h">
@@ -681,9 +674,36 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)ModernInspectorThread.h">
       <Filter>Inspector</Filter>
     </ClInclude>
-    <ClInclude Include="$(MSBuildThisFileDirectory)InspectorPackagerConnection.h">
-      <Filter>Inspector</Filter>
-    </ClInclude>
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\Base64.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\CdpJson.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\ConsoleMessage.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\ExecutionContext.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\ExecutionContextManager.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\FallbackRuntimeAgentDelegate.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\FallbackRuntimeTargetDelegate.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\HostAgent.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\HostCommand.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\HostTarget.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\InspectorFlags.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\InspectorInterfaces.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\InspectorPackagerConnection.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\InspectorPackagerConnectionImpl.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\InspectorUtilities.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\InstanceAgent.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\InstanceTarget.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\NetworkIOAgent.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\ReactCdp.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\RuntimeAgent.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\RuntimeAgentDelegate.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\RuntimeTarget.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\ScopedExecutor.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\SessionState.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\StackTrace.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\UniqueMonostate.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\Utf8.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\WeakList.h" />
+    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\WebSocketInterfaces.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)LegacyInspectorPackagerConnection.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="$(MSBuildThisFileDirectory)tracing\rnw.wprp">

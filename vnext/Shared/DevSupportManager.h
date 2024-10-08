@@ -14,7 +14,7 @@
 #include <memory>
 #include <string>
 
-#include <InspectorPackagerConnection.h>
+#include <LegacyInspectorPackagerConnection.h>
 #include <jsinspector-modern/InspectorPackagerConnection.h>
 
 namespace facebook {
