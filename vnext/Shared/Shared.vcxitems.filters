@@ -70,6 +70,118 @@
     <Filter Include="Inspector">
       <UniqueIdentifier>{b71c7172-2cde-4583-9afe-f1cae4c73f40}</UniqueIdentifier>
     </Filter>
+    
+    <Filter Include="ReactCommon">
+      <UniqueIdentifier>{ce3bb9e0-ac85-4fa2-8cca-93d23a72b125}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ReactCommon\callinvoker">
+      <UniqueIdentifier>{d2eae11a-b021-4d0f-bf0f-cc5a164f2579}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ReactCommon\callinvoker\ReactCommon">
+      <UniqueIdentifier>{103aab63-7882-4777-85a5-8fdbbc8e54f9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ReactCommon\cxxreact">
+      <UniqueIdentifier>{9e2dd06f-00fd-47bc-87cd-856bf393c504}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ReactCommon\jsi">
+      <UniqueIdentifier>{c8c4a850-2ee5-4211-9c65-3dd074209b47}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ReactCommon\jsi\jsi">
+      <UniqueIdentifier>{9c8e7a7a-c77d-479d-8611-1ece3cdacad7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ReactCommon\jsiexecutor">
+      <UniqueIdentifier>{eae1b827-8949-49dd-9740-501033bcd441}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ReactCommon\jsiexecutor\jsireact">
+      <UniqueIdentifier>{1072517c-f7e8-419d-a43a-b037bf46e691}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ReactCommon\jsinspector-modern">
+      <UniqueIdentifier>{4fa3cc8f-fe31-4e3d-88f3-625ef41f0a02}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ReactCommon\logger">
+      <UniqueIdentifier>{a6918f44-da21-414d-ad25-d9bdb8f8756b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ReactCommon\react">
+      <UniqueIdentifier>{2d49b4f6-fe41-45da-9942-81217accd474}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ReactCommon\react\bridging">
+      <UniqueIdentifier>{55de2e00-aeb3-4ab3-a731-6edfc63c4db9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ReactCommon\react\nativemodule">
+      <UniqueIdentifier>{739297af-da89-4523-899d-02b454fc9330}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ReactCommon\react\nativemodule\samples">
+      <UniqueIdentifier>{d6f7e924-6bcc-49c7-b6c0-59f9199a1bf9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ReactCommon\react\nativemodule\samples\ReactCommon">
+      <UniqueIdentifier>{e3ff0f65-dba6-4a18-8ec5-acfe73178bb7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ReactCommon\react\performance">
+      <UniqueIdentifier>{e17e9189-5a27-45fa-adf0-8b397716a9ce}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ReactCommon\react\performance\timeline">
+      <UniqueIdentifier>{d57ad0b8-df3f-469c-85d5-ee675f151595}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ReactCommon\react\renderer">
+      <UniqueIdentifier>{61211521-40da-4211-b23d-bced1fefc5d8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ReactCommon\react\renderer\core">
+      <UniqueIdentifier>{fa6d6abd-769f-4c36-b881-173f3f218abe}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ReactCommon\react\renderer\debug">
+      <UniqueIdentifier>{cc363422-d654-4288-b8b8-ea8f38aa7604}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ReactCommon\react\renderer\mapbuffer">
+      <UniqueIdentifier>{297ffef3-6154-41cf-85b1-75eff3d8fba0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ReactCommon\react\renderer\runtimescheduler">
+      <UniqueIdentifier>{8fa16c21-60dd-4ab7-bb45-3e634a6e09b0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ReactCommon\react\renderer\telemetry">
+      <UniqueIdentifier>{40bfe98f-f174-4c03-9296-d371bc230e53}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ReactCommon\react\runtime">
+      <UniqueIdentifier>{2995ad49-ae65-4ec4-9392-838a2f725f0e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ReactCommon\reactperflogger">
+      <UniqueIdentifier>{f3362933-5f11-4653-929d-e13607d919b7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ReactCommon\reactperflogger\fusebox">
+      <UniqueIdentifier>{4b54ec22-5b25-4053-ac9b-98574944531c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ReactCommon\reactperflogger\reactperflogger">
+      <UniqueIdentifier>{50a825f0-9a6d-454e-94f5-65cf7cad34cc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ReactCommon\stubs">
+      <UniqueIdentifier>{7f5b0b9a-6a9b-4927-b92e-b796d8722357}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ReactCommon\stubs\sys">
+      <UniqueIdentifier>{6f281c77-c556-413f-ab0e-e1da95aa47d2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ReactCommon\turbomodule">
+      <UniqueIdentifier>{23b0c36f-4a4b-4380-9e4c-f8cb0c2f2714}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ReactCommon\turbomodule\core">
+      <UniqueIdentifier>{c4d010df-7391-4171-8658-9048078a5523}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="yoga">
+      <UniqueIdentifier>{3db635c1-ad38-4099-b79d-872a6ef4319f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="yoga\algorithm">
+      <UniqueIdentifier>{41c4ae5c-9e6f-4793-ba82-2f4cd83a6fb2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="yoga\config">
+      <UniqueIdentifier>{5baa0890-47d8-4f32-997c-d5a85d963778}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="yoga\debug">
+      <UniqueIdentifier>{c9d54fb1-2a86-4f62-b2e7-7c57a2fd9126}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="yoga\event">
+      <UniqueIdentifier>{b81cc660-374c-4232-823b-6c76b48564b4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="yoga\node">
+      <UniqueIdentifier>{ca34baaf-b7b3-4399-a574-4c6970fd32a5}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="$(MSBuildThisFileDirectory)tracing\tracing.cpp">
@@ -319,14 +431,6 @@
     </ClCompile>
     <ClCompile Include="$(MSBuildThisFileDirectory)..\Microsoft.ReactNative\AsynchronousEventBeat.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)..\Microsoft.ReactNative\SynchronousEventBeat.cpp" />
-    <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\renderer\runtimescheduler\RuntimeScheduler.cpp" />
-    <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\renderer\runtimescheduler\RuntimeScheduler_Legacy.cpp" />
-    <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\renderer\runtimescheduler\RuntimeScheduler_Modern.cpp" />
-    <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\renderer\runtimescheduler\RuntimeSchedulerBinding.cpp" />
-    <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\renderer\runtimescheduler\RuntimeSchedulerCallInvoker.cpp" />
-    <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\renderer\runtimescheduler\Task.cpp" />
-    <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\renderer\components\scrollview\ScrollEvent.cpp" />
-    <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\utils\CoreFeatures.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)..\Microsoft.ReactNative\Fabric\platform\react\renderer\graphics\PlatformColorUtils.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)..\Microsoft.ReactNative\Fabric\AbiViewShadowNode.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)..\Microsoft.ReactNative\Fabric\AbiState.cpp" />
@@ -340,29 +444,7 @@
     <ClCompile Include="$(ReactNativeWindowsDir)Microsoft.ReactNative\Modules\SampleTurboModule.cpp" />
     <ClCompile Include="$(ReactNativeWindowsDir)Microsoft.ReactNative\Modules\SourceCode.cpp" />
     <ClCompile Include="$(ReactNativeWindowsDir)Microsoft.ReactNative\Modules\Timing.cpp" />
-    <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\featureflags\ReactNativeFeatureFlags.cpp" />
-    <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\featureflags\ReactNativeFeatureFlagsAccessor.cpp" />
-    <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\InstanceTarget.cpp" />
-    <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\InstanceAgent.cpp" />
-    <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\HostAgent.cpp" />
-    <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\HostTarget.cpp" />
-    <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\InspectorUtilities.cpp" />
-    <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\RuntimeAgent.cpp" />
-    <ClCompile Include="$(ReactNativeDir)\ReactCommon\cxxreact\Instance.cpp" />
-    <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\FallbackRuntimeAgentDelegate.cpp" />
-    <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\FallbackRuntimeTargetDelegate.cpp" />
-    <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\RuntimeTarget.cpp" />
-    <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\RuntimeTargetDebuggerSessionObserver.cpp" />
-    <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\ExecutionContextManager.cpp" />
-    <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\ExecutionContext.cpp" />
-    <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\CdpJson.cpp" />
-    <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\ConsoleMessage.cpp" />
-    <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\NetworkIOAgent.cpp" />
-    <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\utils\jsi-utils.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)..\Microsoft.ReactNative\Fabric\Composition\TextDrawing.cpp" />
-    <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\renderer\graphics\ColorComponents.cpp" />
-    <ClCompile Include="$(ReactNativeDir)\ReactCommon\cxxreact\JSExecutor.cpp" />
-    <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\RuntimeTargetConsole.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)Networking\NetworkPropertyIds.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)..\Microsoft.ReactNative\Fabric\AbiEventEmitter.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)ModernInspectorPackagerConnectionDelegate.cpp">
@@ -372,9 +454,6 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)BaseFileReaderResource.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)PackagerConnection.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)RuntimeOptions.cpp" />
-    <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\InspectorFlags.cpp" />
-    <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\InspectorInterfaces.cpp" />
-    <ClCompile Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\InspectorPackagerConnection.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)LegacyInspectorPackagerConnection.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -674,35 +753,6 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)ModernInspectorThread.h">
       <Filter>Inspector</Filter>
     </ClInclude>
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\Base64.h" />
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\CdpJson.h" />
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\ConsoleMessage.h" />
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\ExecutionContext.h" />
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\ExecutionContextManager.h" />
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\FallbackRuntimeAgentDelegate.h" />
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\FallbackRuntimeTargetDelegate.h" />
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\HostAgent.h" />
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\HostCommand.h" />
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\HostTarget.h" />
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\InspectorFlags.h" />
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\InspectorInterfaces.h" />
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\InspectorPackagerConnection.h" />
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\InspectorPackagerConnectionImpl.h" />
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\InspectorUtilities.h" />
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\InstanceAgent.h" />
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\InstanceTarget.h" />
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\NetworkIOAgent.h" />
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\ReactCdp.h" />
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\RuntimeAgent.h" />
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\RuntimeAgentDelegate.h" />
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\RuntimeTarget.h" />
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\ScopedExecutor.h" />
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\SessionState.h" />
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\StackTrace.h" />
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\UniqueMonostate.h" />
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\Utf8.h" />
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\WeakList.h" />
-    <ClInclude Include="$(ReactNativeDir)\ReactCommon\jsinspector-modern\WebSocketInterfaces.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)LegacyInspectorPackagerConnection.h" />
   </ItemGroup>
   <ItemGroup>
