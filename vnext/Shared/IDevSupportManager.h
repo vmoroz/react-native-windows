@@ -4,7 +4,6 @@
 #pragma once
 
 #include <cxxreact/JSExecutor.h>
-#include <dispatchQueue/dispatchQueue.h>
 #include <functional>
 #include <memory>
 #include <string>

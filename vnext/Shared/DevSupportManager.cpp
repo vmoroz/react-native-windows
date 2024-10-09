@@ -210,7 +210,7 @@ std::string GetPackageName(const std::string &bundleAppId) {
 
   std::string packageName{"RNW"};
   wchar_t fullName[PACKAGE_FULL_NAME_MAX_LENGTH]{};
-  UINT32 size = ARRAYSIZE(fullName);
+  uint32_t size = ARRAYSIZE(fullName);
   if (SUCCEEDED(GetCurrentPackageFullName(&size, fullName))) {
     // we are in an unpackaged app
     packageName = winrt::to_string(fullName);

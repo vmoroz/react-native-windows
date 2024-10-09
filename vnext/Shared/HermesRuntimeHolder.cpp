@@ -361,6 +361,7 @@ std::shared_ptr<facebook::jsi::Runtime> HermesRuntimeHolder::getRuntime() noexce
 
 const std::shared_ptr<facebook::react::jsinspector_modern::RuntimeTargetDelegate> &
 HermesRuntimeHolder::getSharedRuntimeTargetDelegate() {
+  // TODO: [vmoroz] create on demand using Hermes API.
   return m_targetDelegate;
 }
 

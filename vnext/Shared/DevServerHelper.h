@@ -119,6 +119,7 @@ class DevServerHelper {
   static constexpr const char PackagerOkStatus[] = "packager-status:running";
   const int LongPollFailureDelayMs = 5000;
 
+  // TODO: [vmoroz]  avoid using vaiadic args for the format and move it to a utility class.
   template <typename... Args>
   static std::string string_format(const char *format, Args... args) {
     size_t size = snprintf(nullptr, 0, format, args...) + 1;
