@@ -7,7 +7,7 @@
 
 namespace Microsoft::ReactNative {
 
-class ModernInspectorThread final {
+class ReactInspectorThread {
  public:
   static Mso::DispatchQueue &Instance() {
     static Mso::DispatchQueue queue = Mso::DispatchQueue::MakeSerialQueue();

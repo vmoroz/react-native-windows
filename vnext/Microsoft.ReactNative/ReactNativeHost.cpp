@@ -5,7 +5,7 @@
 #include "ReactNativeHost.h"
 #include "ReactNativeHost.g.cpp"
 
-#include "ModernInspectorThread.h"
+#include "Inspector/ReactInspectorThread.h"
 #include "ReactPackageBuilder.h"
 #include "RedBox.h"
 #include "TurboModulesProvider.h"
@@ -92,7 +92,7 @@ ReactNativeHost::ReactNativeHost() noexcept : m_reactHost{Mso::React::MakeReactH
     m_inspectorHostDelegate = std::make_shared<ModernInspectorHostTargetDelegate>(*this);
     m_inspectorTarget = facebook::react::jsinspector_modern::HostTarget::create(
         *m_inspectorHostDelegate, [](std::function<void()> &&callback) {
-          ::Microsoft::ReactNative::ModernInspectorThread::Instance().Post(
+          ::Microsoft::ReactNative::ReactInspectorThread::Instance().Post(
               [callback = std::move(callback)]() { callback(); });
         });
 
@@ -294,7 +294,7 @@ Mso::React::IReactHost *ReactNativeHost::ReactHost() noexcept {
 }
 
 void ReactNativeHost::OnDebuggerResume() noexcept {
-  ::Microsoft::ReactNative::ModernInspectorThread::Instance().Post(
+  ::Microsoft::ReactNative::ReactInspectorThread::Instance().Post(
       [weakInspectorTarget = std::weak_ptr(m_inspectorTarget)]() {
         if (const auto inspectorTarget = weakInspectorTarget.lock()) {
           inspectorTarget->sendCommand(facebook::react::jsinspector_modern::HostCommand::DebuggerResume);

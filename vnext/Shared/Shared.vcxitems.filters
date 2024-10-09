@@ -196,6 +196,9 @@
     <Filter Include="ReactCommon\react\featureflags">
       <UniqueIdentifier>{523a308e-319e-4e68-a653-39d2d38cba9c}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Chakra">
+      <UniqueIdentifier>{517a9755-ea3e-4eb2-a0a3-b52b79fffd3e}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="$(MSBuildThisFileDirectory)tracing\tracing.cpp">
@@ -217,7 +220,6 @@
       <Filter>Modules</Filter>
     </ClCompile>
     <ClCompile Include="$(MSBuildThisFileDirectory)BaseScriptStoreImpl.cpp" />
-    <ClCompile Include="$(MSBuildThisFileDirectory)ChakraRuntimeHolder.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)CxxMessageQueue.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)JSBigAbiString.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)LayoutAnimation.cpp" />
@@ -430,10 +432,8 @@
       <Filter>Hermes</Filter>
     </ClCompile>
     <ClCompile Include="$(NodeApiJsiDir)src\ApiLoaders\HermesApi.cpp" />
-    <ClCompile Include="$(MSBuildThisFileDirectory)JSI\V8RuntimeHolder.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)SafeLoadLibrary.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)Hasher.cpp" />
-    <ClCompile Include="$(MSBuildThisFileDirectory)V8JSIRuntimeHolder.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)Networking\DefaultBlobResource.cpp">
       <Filter>Networking</Filter>
     </ClCompile>
@@ -461,9 +461,6 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)..\Microsoft.ReactNative\Fabric\Composition\TextDrawing.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)Networking\NetworkPropertyIds.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)..\Microsoft.ReactNative\Fabric\AbiEventEmitter.cpp" />
-    <ClCompile Include="$(MSBuildThisFileDirectory)ModernInspectorPackagerConnectionDelegate.cpp">
-      <Filter>Inspector</Filter>
-    </ClCompile>
     <ClCompile Include="$(MSBuildThisFileDirectory)..\Microsoft.ReactNative\SchedulerSettings.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)BaseFileReaderResource.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)PackagerConnection.cpp" />
@@ -685,6 +682,18 @@
     <ClCompile Include="$(YogaDir)\yoga\node\Node.cpp">
       <Filter>ReactCommon\yoga\node</Filter>
     </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)V8JSIRuntimeHolder.cpp">
+      <Filter>V8</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)JSI\V8RuntimeHolder.cpp">
+      <Filter>V8</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)ChakraRuntimeHolder.cpp">
+      <Filter>Chakra</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)Inspector\ReactInspectorPackagerConnectionDelegate.cpp">
+      <Filter>Inspector</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="$(MSBuildThisFileDirectory)Modules\ExceptionsManagerModule.h">
@@ -714,7 +723,6 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)AbiSafe.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)BaseScriptStoreImpl.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)BatchingMessageQueueThread.h" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)ChakraRuntimeHolder.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)CreateModules.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)CxxMessageQueue.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)DevServerHelper.h" />
@@ -972,17 +980,9 @@
     <ClInclude Include="$(NodeApiJsiDir)src\ApiLoaders\HermesApi.h" />
     <ClInclude Include="$(NodeApiJsiDir)src\ApiLoaders\HermesApi.inc" />
     <ClInclude Include="$(MSBuildThisFileDirectory)..\Microsoft.ReactNative\JsiApi.h" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)JSI\V8RuntimeHolder.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)SafeLoadLibrary.h" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)V8JSIRuntimeHolder.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)..\Microsoft.ReactNative\Fabric\Composition\Modal\WindowsModalHostViewSate.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)..\Microsoft.ReactNative\Fabric\Composition\CompositionViewComponentView.h" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)ModernInspectorPackagerConnectionDelegate.h">
-      <Filter>Inspector</Filter>
-    </ClInclude>
-    <ClInclude Include="$(MSBuildThisFileDirectory)ModernInspectorThread.h">
-      <Filter>Inspector</Filter>
-    </ClInclude>
     <ClInclude Include="$(MSBuildThisFileDirectory)LegacyInspectorPackagerConnection.h" />
     <ClInclude Include="..\stubs\sys\mman.h">
       <Filter>ReactCommon\stubs\sys</Filter>
@@ -1202,6 +1202,21 @@
     </ClInclude>
     <ClInclude Include="$(YogaDir)\yoga\Yoga.h">
       <Filter>ReactCommon\yoga</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)V8JSIRuntimeHolder.h">
+      <Filter>V8</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)JSI\V8RuntimeHolder.h">
+      <Filter>V8</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)ChakraRuntimeHolder.h">
+      <Filter>Chakra</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Inspector\ReactInspectorPackagerConnectionDelegate.h">
+      <Filter>Inspector</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Inspector\ReactInspectorThread.h">
+      <Filter>Inspector</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

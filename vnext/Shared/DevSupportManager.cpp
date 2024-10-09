@@ -9,7 +9,7 @@
 #include <Shared/DevSettings.h>
 
 #include <Executors/WebSocketJSExecutor.h>
-#include "ModernInspectorPackagerConnectionDelegate.h"
+#include "Inspector/ReactInspectorPackagerConnectionDelegate.h"
 #include "PackagerConnection.h"
 
 #include "Unicode.h"
@@ -322,7 +322,7 @@ void DevSupportManager::EnsureHermesInspector(
       m_fuseboxInspectorPackagerConnection = std::make_unique<jsinspector_modern::InspectorPackagerConnection>(
           inspectorUrl,
           packageName,
-          std::make_unique<Microsoft::ReactNative::ModernInspectorPackagerConnectionDelegate>());
+          std::make_unique<Microsoft::ReactNative::ReactInspectorPackagerConnectionDelegate>());
       m_fuseboxInspectorPackagerConnection->connect();
     } else {
       m_inspectorPackagerConnection =

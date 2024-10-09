@@ -45,9 +45,9 @@
 #include <Shlwapi.h>
 #include <WebSocketJSExecutorFactory.h>
 #include <safeint.h>
+#include "Inspector/ReactInspectorThread.h"
 #include "PackagerConnection.h"
 #include "Threading/MessageDispatchQueue.h"
-#include "ModernInspectorThread.h"
 
 #if defined(USE_HERMES) && defined(ENABLE_DEVSERVER_HBCBUNDLES)
 #include <hermes/BytecodeVersion.h>
@@ -352,17 +352,17 @@ void InstanceImpl::SetInError() noexcept {
 }
 
 namespace {
-  bool shouldStartHermesInspector(DevSettings& devSettings) {
-    bool isHermes =
+bool shouldStartHermesInspector(DevSettings &devSettings) {
+  bool isHermes =
       ((devSettings.jsiEngineOverride == JSIEngineOverride::Hermes) ||
-        (devSettings.jsiEngineOverride == JSIEngineOverride::Default && devSettings.jsiRuntimeHolder &&
-          devSettings.jsiRuntimeHolder->getRuntimeType() == facebook::react::JSIEngineOverride::Hermes));
+       (devSettings.jsiEngineOverride == JSIEngineOverride::Default && devSettings.jsiRuntimeHolder &&
+        devSettings.jsiRuntimeHolder->getRuntimeType() == facebook::react::JSIEngineOverride::Hermes));
 
-    if (isHermes && devSettings.useDirectDebugger && !devSettings.useWebDebugger)
-      return true;
-    else
-      return false;
-  }
+  if (isHermes && devSettings.useDirectDebugger && !devSettings.useWebDebugger)
+    return true;
+  else
+    return false;
+}
 } // namespace
 
 InstanceImpl::InstanceImpl(
@@ -397,7 +397,7 @@ InstanceImpl::InstanceImpl(
 
   if (shouldStartHermesInspector(*m_devSettings)) {
     devManager->EnsureHermesInspector(
-      devSettings->sourceBundleHost, devSettings->sourceBundlePort, devSettings->bundleAppId);
+        devSettings->sourceBundleHost, devSettings->sourceBundlePort, devSettings->bundleAppId);
   }
 
   // Default (common) NativeModules
@@ -613,7 +613,7 @@ void InstanceImpl::loadBundleInternal(std::string &&jsBundleRelativePath, bool s
 InstanceImpl::~InstanceImpl() {
   if (m_devSettings->inspectorTarget) {
     auto messageDispatchQueue =
-        Mso::React::MessageDispatchQueue(::Microsoft::ReactNative::ModernInspectorThread::Instance(), nullptr);
+        Mso::React::MessageDispatchQueue(::Microsoft::ReactNative::ReactInspectorThread::Instance(), nullptr);
     messageDispatchQueue.runOnQueueSync([weakInnerInstance = std::weak_ptr(m_innerInstance)]() {
       if (auto innerInstance = weakInnerInstance.lock()) {
         innerInstance->unregisterFromInspector();

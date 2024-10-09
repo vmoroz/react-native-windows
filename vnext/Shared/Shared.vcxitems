@@ -222,17 +222,17 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)..\Microsoft.ReactNative\SynchronousEventBeat.cpp">
       <ExcludedFromBuild Condition="'$(UseFabric)' != 'true'">true</ExcludedFromBuild>
     </ClCompile>
-	<ClCompile Include="$(MSBuildThisFileDirectory)..\Microsoft.ReactNative\ReactNativeWin32App.cpp">
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\Microsoft.ReactNative\ReactNativeWin32App.cpp">
       <ExcludedFromBuild Condition="'$(UseFabric)' != 'true'">true</ExcludedFromBuild>
       <DependentUpon>$(ReactNativeWindowsDir)Microsoft.ReactNative\ReactNativeAppBuilder.idl</DependentUpon>
       <SubType>Code</SubType>
     </ClCompile>
-	<ClCompile Include="$(MSBuildThisFileDirectory)..\Microsoft.ReactNative\ReactNativeAppBuilder.cpp">
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\Microsoft.ReactNative\ReactNativeAppBuilder.cpp">
       <ExcludedFromBuild Condition="'$(UseFabric)' != 'true'">true</ExcludedFromBuild>
       <DependentUpon>$(ReactNativeWindowsDir)Microsoft.ReactNative\ReactNativeAppBuilder.idl</DependentUpon>
       <SubType>Code</SubType>
     </ClCompile>
-	<ClCompile Include="$(MSBuildThisFileDirectory)..\Microsoft.ReactNative\ReactInstanceSettingsBuilder.cpp">
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\Microsoft.ReactNative\ReactInstanceSettingsBuilder.cpp">
       <ExcludedFromBuild Condition="'$(UseFabric)' != 'true'">true</ExcludedFromBuild>
       <DependentUpon>$(ReactNativeWindowsDir)Microsoft.ReactNative\ReactNativeAppBuilder.idl</DependentUpon>
       <SubType>Code</SubType>
@@ -247,7 +247,7 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)Hasher.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)HermesRuntimeHolder.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)HermesSamplingProfiler.cpp" />
-    <ClCompile Include="$(MSBuildThisFileDirectory)ModernInspectorPackagerConnectionDelegate.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)Inspector\ReactInspectorPackagerConnectionDelegate.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)LegacyInspectorPackagerConnection.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)InstanceManager.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)JSBigAbiString.cpp" />
@@ -340,8 +340,8 @@
       <DependentUpon>$(MSBuildThisFileDirectory)..\Microsoft.ReactNative\JsiApi.idl</DependentUpon>
     </ClInclude>
     <ClInclude Include="$(MSBuildThisFileDirectory)..\Microsoft.ReactNative\SchedulerSettings.h" />
-     <ClInclude Include="$(MSBuildThisFileDirectory)..\Microsoft.ReactNative\ReactNativeWin32App.h">
-     <ExcludedFromBuild Condition="'$(UseFabric)' != 'true'">true</ExcludedFromBuild>
+    <ClInclude Include="$(MSBuildThisFileDirectory)..\Microsoft.ReactNative\ReactNativeWin32App.h">
+      <ExcludedFromBuild Condition="'$(UseFabric)' != 'true'">true</ExcludedFromBuild>
       <DependentUpon>$(MSBuildThisFileDirectory)..\Microsoft.ReactNative\ReactNativeAppBuilder.idl</DependentUpon>
       <SubType>Code</SubType>
     </ClInclude>
@@ -351,7 +351,7 @@
       <SubType>Code</SubType>
     </ClInclude>
     <ClInclude Include="$(MSBuildThisFileDirectory)..\Microsoft.ReactNative\ReactInstanceSettingsBuilder.h">
-     <ExcludedFromBuild Condition="'$(UseFabric)' != 'true'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(UseFabric)' != 'true'">true</ExcludedFromBuild>
       <DependentUpon>$(MSBuildThisFileDirectory)..\Microsoft.ReactNative\ReactNativeAppBuilder.idl</DependentUpon>
       <SubType>Code</SubType>
     </ClInclude>
@@ -415,6 +415,8 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)HermesSamplingProfiler.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)IBlobPersistor.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)IFileReaderResource.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Inspector\ReactInspectorPackagerConnectionDelegate.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Inspector\ReactInspectorThread.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)LegacyInspectorPackagerConnection.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)JSI\ByteArrayBuffer.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)JSI\ChakraApi.h" />
@@ -459,10 +461,8 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)CxxMessageQueue.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)DevServerHelper.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)DevSettings.h" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)ModernInspectorThread.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Executors\WebSocketJSExecutor.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)HermesRuntimeHolder.h" />
-    <ClInclude Include="$(MSBuildThisFileDirectory)ModernInspectorPackagerConnectionDelegate.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)IDevSupportManager.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)InstanceManager.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)IReactRootView.h" />
@@ -821,7 +821,7 @@
     <Midl Condition="'$(UseFabric)' == 'true' OR '$(IncludeFabricInterface)' == 'true'" Include="$(ReactNativeWindowsDir)Microsoft.ReactNative\Theme.idl" />
     <Midl Condition="'$(UseFabric)' == 'true' OR '$(IncludeFabricInterface)' == 'true'" Include="$(ReactNativeWindowsDir)Microsoft.ReactNative\UriImageManager.idl" />
     <Midl Condition="'$(UseFabric)' == 'true' OR '$(IncludeFabricInterface)' == 'true'" Include="$(ReactNativeWindowsDir)Microsoft.ReactNative\ViewProps.idl" />
-  <Midl Condition="'$(UseFabric)' == 'true' OR '$(IncludeFabricInterface)' == 'true'" Include="$(ReactNativeWindowsDir)Microsoft.ReactNative\ReactNativeAppBuilder.idl" />
+    <Midl Condition="'$(UseFabric)' == 'true' OR '$(IncludeFabricInterface)' == 'true'" Include="$(ReactNativeWindowsDir)Microsoft.ReactNative\ReactNativeAppBuilder.idl" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="$(NodeApiJsiDir)src\ApiLoaders\HermesApi.h" />

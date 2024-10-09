@@ -6,7 +6,7 @@
 
 namespace Microsoft::ReactNative {
 
-class ModernInspectorPackagerConnectionDelegate final
+class ReactInspectorPackagerConnectionDelegate final
     : public facebook::react::jsinspector_modern::InspectorPackagerConnectionDelegate {
  public: // InspectorPackagerConnectionDelegate implementation
   std::unique_ptr<facebook::react::jsinspector_modern::IWebSocket> connectWebSocket(
