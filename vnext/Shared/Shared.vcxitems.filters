@@ -580,13 +580,13 @@
     <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\nativemodule\core\ReactCommon\TurboModuleUtils.cpp">
       <Filter>ReactCommon\react\nativemodule\core\ReactCommon</Filter>
     </ClCompile>
-    <CLCompile Include="$(ReactNativeDir)\ReactCommon\react\nativemodule\samples\ReactCommon\NativeSampleTurboCxxModuleSpecJSI.cpp">
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\nativemodule\samples\ReactCommon\NativeSampleTurboCxxModuleSpecJSI.cpp">
       <Filter>ReactCommon\react\nativemodule\samples\ReactCommon</Filter>
     </ClCompile>
-    <CLCompile Include="$(ReactNativeDir)\ReactCommon\react\nativemodule\samples\ReactCommon\SampleTurboCxxModule.cpp">
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\nativemodule\samples\ReactCommon\SampleTurboCxxModule.cpp">
       <Filter>ReactCommon\react\nativemodule\samples\ReactCommon</Filter>
     </ClCompile>
-    <CLCompile Include="$(ReactNativeDir)\ReactCommon\react\performance\timeline\PerformanceEntryReporter.cpp">
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\performance\timeline\PerformanceEntryReporter.cpp">
       <Filter>ReactCommon\react\performance\timeline</Filter>
     </ClCompile>
     <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\renderer\runtimescheduler\RuntimeScheduler.cpp">
@@ -613,10 +613,10 @@
     <ClCompile Include="$(ReactNativeDir)\ReactCommon\react\utils\jsi-utils.cpp">
       <Filter>ReactCommon\react\utils</Filter>
     </ClCompile>
-    <CLCompile Include="$(ReactNativeDir)\ReactCommon\reactperflogger\fusebox\FuseboxTracer.cpp">
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\reactperflogger\fusebox\FuseboxTracer.cpp">
       <Filter>ReactCommon\reactperflogger\fusebox</Filter>
     </ClCompile>
-    <CLCompile Include="$(ReactNativeDir)\ReactCommon\reactperflogger\reactperflogger\BridgeNativeModulePerfLogger.cpp">
+    <ClCompile Include="$(ReactNativeDir)\ReactCommon\reactperflogger\reactperflogger\BridgeNativeModulePerfLogger.cpp">
       <Filter>ReactCommon\reactperflogger\reactperflogger</Filter>
     </ClCompile>
     <ClCompile Include="$(YogaDir)\yoga\YGConfig.cpp">
