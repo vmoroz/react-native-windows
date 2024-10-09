@@ -187,6 +187,15 @@
     <Filter Include="ReactCommon\yoga\node">
       <UniqueIdentifier>{ca34baaf-b7b3-4399-a574-4c6970fd32a5}</UniqueIdentifier>
     </Filter>
+    <Filter Include="V8">
+      <UniqueIdentifier>{e0723a4d-6e5c-4a6e-a4f8-800c1c5c486c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ReactCommon\react\utils">
+      <UniqueIdentifier>{97453974-4140-4286-a759-a2a3627c6236}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ReactCommon\react\featureflags">
+      <UniqueIdentifier>{523a308e-319e-4e68-a653-39d2d38cba9c}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="$(MSBuildThisFileDirectory)tracing\tracing.cpp">
