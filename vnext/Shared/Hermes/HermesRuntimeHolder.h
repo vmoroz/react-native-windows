@@ -81,7 +81,7 @@ typedef hermes_status(HERMES_CDECL *hermes_create_cdp_agent)(
     hermes_enqueue_frontend_message_functor enqueue_frontend_message_callback,
     hermes_cdp_state cdp_state,
     hermes_cdp_agent *result);
-typedef hermes_status(HERMES_CDECL *hermes_create_cdp_state)(hermes_runtime runtime, hermes_cdp_state *result);
+typedef hermes_status(HERMES_CDECL *hermes_get_cdp_state)(hermes_cdp_agent cdp_agent, hermes_cdp_state *result);
 typedef hermes_status(HERMES_CDECL *hermes_capture_stack_trace)(hermes_runtime runtime, hermes_stack_trace *result);
 typedef hermes_status(HERMES_CDECL *hermes_release_cdp_debugger)(hermes_cdp_debugger cdp_debugger);
 typedef hermes_status(HERMES_CDECL *hermes_release_cdp_agent)(hermes_cdp_agent cdp_agent);
@@ -96,7 +96,7 @@ typedef struct {
   void *reserved[3];
   hermes_create_cdp_debugger create_cdp_debugger;
   hermes_create_cdp_agent create_cdp_agent;
-  hermes_create_cdp_state create_cdp_state;
+  hermes_get_cdp_state get_cdp_state;
   hermes_capture_stack_trace capture_stack_trace;
   hermes_release_cdp_debugger release_cdp_debugger;
   hermes_release_cdp_agent release_cdp_agent;
@@ -229,9 +229,9 @@ struct HermesApi2 {
     return HermesUniqueCdpAgent{cdp_agent};
   }
 
-  HermesUniqueCdpState createCdpState(hermes_runtime runtime) {
+  HermesUniqueCdpState getCdpState(hermes_cdp_agent cdp_agent) {
     hermes_cdp_state cdp_state{};
-    checkStatus(vtable->create_cdp_state(runtime, &cdp_state));
+    checkStatus(vtable->get_cdp_state(cdp_agent, &cdp_state));
     return HermesUniqueCdpState{cdp_state};
   }
 

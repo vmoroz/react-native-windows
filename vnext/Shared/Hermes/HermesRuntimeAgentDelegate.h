@@ -11,10 +11,8 @@
 
 namespace Microsoft::ReactNative {
 
-/**
- * A RuntimeAgentDelegate that handles requests from the Chrome DevTools
- * Protocol for an instance of Hermes, using the modern CDPAgent API.
- */
+// A RuntimeAgentDelegate that handles requests from the Chrome DevTools
+// Protocol for an instance of Hermes, using the modern CDPAgent API.
 class HermesRuntimeAgentDelegate : public facebook::react::jsinspector_modern::RuntimeAgentDelegate {
  public:
   HermesRuntimeAgentDelegate(
@@ -30,7 +28,6 @@ class HermesRuntimeAgentDelegate : public facebook::react::jsinspector_modern::R
 
  public: // RuntimeAgentDelegate implementation
   bool handleRequest(const facebook::react::jsinspector_modern::cdp::PreparsedRequest &req) override;
-
   std::unique_ptr<RuntimeAgentDelegate::ExportedState> getExportedState() override;
 
  private:
