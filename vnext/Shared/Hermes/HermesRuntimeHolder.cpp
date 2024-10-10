@@ -404,6 +404,11 @@ void HermesRuntimeHolder::removeFromProfiling() const noexcept {
   CRASH_ON_ERROR(getHermesApi().hermes_sampling_profiler_dump_to_file(fileName.c_str()));
 }
 
+hermes_runtime HermesRuntimeHolder::getHermesRuntime() noexcept {
+  // TODO: (@vmoroz) Implement
+  return nullptr;
+}
+
 //==============================================================================
 // HermesJSRuntime implementation
 //==============================================================================

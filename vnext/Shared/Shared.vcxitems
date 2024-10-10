@@ -245,7 +245,9 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)Executors\WebSocketJSExecutor.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)Executors\WebSocketJSExecutorFactory.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)Hasher.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)Hermes\HermesRuntimeAgentDelegate.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)Hermes\HermesRuntimeHolder.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)Hermes\HermesRuntimeTargetDelegate.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)Hermes\HermesSamplingProfiler.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)Inspector\ReactInspectorPackagerConnectionDelegate.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)LegacyInspectorPackagerConnection.cpp" />
@@ -412,6 +414,8 @@
     <ClInclude Include="$(MSBuildThisFileDirectory)AbiSafe.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)BaseFileReaderResource.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)CppRuntimeOptions.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Hermes\HermesRuntimeAgentDelegate.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Hermes\HermesRuntimeTargetDelegate.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)Hermes\HermesSamplingProfiler.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)IBlobPersistor.h" />
     <ClInclude Include="$(MSBuildThisFileDirectory)IFileReaderResource.h" />

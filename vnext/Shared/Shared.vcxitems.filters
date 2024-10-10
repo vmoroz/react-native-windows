@@ -694,6 +694,12 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)Inspector\ReactInspectorPackagerConnectionDelegate.cpp">
       <Filter>Inspector</Filter>
     </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)Hermes\HermesRuntimeAgentDelegate.cpp">
+      <Filter>Hermes</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)Hermes\HermesRuntimeTargetDelegate.cpp">
+      <Filter>Hermes</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="$(MSBuildThisFileDirectory)Modules\ExceptionsManagerModule.h">
@@ -1217,6 +1223,12 @@
     </ClInclude>
     <ClInclude Include="$(MSBuildThisFileDirectory)Inspector\ReactInspectorThread.h">
       <Filter>Inspector</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Hermes\HermesRuntimeAgentDelegate.h">
+      <Filter>Hermes</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Hermes\HermesRuntimeTargetDelegate.h">
+      <Filter>Hermes</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
