@@ -13,10 +13,9 @@ namespace Microsoft::ReactNative {
 namespace {
 
 struct HermesStateWrapper : public RuntimeAgentDelegate::ExportedState {
-  explicit HermesStateWrapper(facebook::hermes::HermesUniqueCdpState &&hermesCdpState)
-      : hermesCdpState_(std::move(hermesCdpState)) {}
+  explicit HermesStateWrapper(HermesUniqueCdpState &&hermesCdpState) : hermesCdpState_(std::move(hermesCdpState)) {}
 
-  static facebook::hermes::HermesUniqueCdpState unwrapDestructively(ExportedState *wrapper) {
+  static HermesUniqueCdpState unwrapDestructively(ExportedState *wrapper) {
     if (!wrapper) {
       return {};
     }

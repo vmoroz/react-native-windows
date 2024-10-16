@@ -7,6 +7,7 @@
 #include "HermesRuntimeAgentDelegate.h"
 
 using namespace facebook::react::jsinspector_modern;
+using namespace facebook::hermes;
 
 namespace Microsoft::ReactNative {
 
@@ -14,22 +15,22 @@ namespace {
 
 class HermesStackTraceWrapper : public StackTrace {
  public:
-  explicit HermesStackTraceWrapper(facebook::hermes::HermesUniqueStackTrace &&hermesStackTrace)
+  explicit HermesStackTraceWrapper(HermesUniqueStackTrace &&hermesStackTrace)
       : hermesStackTrace_{std::move(hermesStackTrace)} {}
 
-  facebook::hermes::HermesUniqueStackTrace &operator*() {
+  HermesUniqueStackTrace &operator*() {
     return hermesStackTrace_;
   }
 
  private:
-  facebook::hermes::HermesUniqueStackTrace hermesStackTrace_;
+  HermesUniqueStackTrace hermesStackTrace_;
 };
 
 } // namespace
 
 HermesRuntimeTargetDelegate::HermesRuntimeTargetDelegate(std::shared_ptr<HermesRuntimeHolder> hermesRuntimeHolder)
     : hermesRuntimeHolder_(std::move(hermesRuntimeHolder)),
-      hermesCdpDebugger_(facebook::hermes::HermesApi2().createCdpDebugger(hermesRuntimeHolder_->getHermesRuntime())) {}
+      hermesCdpDebugger_(HermesApi2().createCdpDebugger(hermesRuntimeHolder_->getHermesRuntime())) {}
 
 HermesRuntimeTargetDelegate::~HermesRuntimeTargetDelegate() = default;
 
@@ -108,18 +109,18 @@ void HermesRuntimeTargetDelegate::addConsoleMessage(facebook::jsi::Runtime & /*r
       throw std::logic_error{"Unknown console message type"};
   }
 
-  facebook::hermes::HermesUniqueStackTrace hermesStackTrace{};
+  HermesUniqueStackTrace hermesStackTrace{};
   if (auto hermesStackTraceWrapper = dynamic_cast<HermesStackTraceWrapper *>(message.stackTrace.get())) {
     hermesStackTrace = std::move(**hermesStackTraceWrapper);
   }
 
   // TODO: Implement this
-  // facebook::hermes::HermesApi().addConsoleMessage(
+  // HermesApi2().addConsoleMessage(
   //    hermesCdpDebugger_.get(),
   //    message.timestamp,
   //    type,
   //    std::move(message.args),
-  //    std::move(hermesStackTrace));
+  //    hermesStackTrace.release());
 }
 
 bool HermesRuntimeTargetDelegate::supportsConsole() const {
@@ -130,7 +131,7 @@ std::unique_ptr<StackTrace> HermesRuntimeTargetDelegate::captureStackTrace(
     facebook::jsi::Runtime & /*runtime*/,
     size_t /*framesToSkip*/) {
   return std::make_unique<HermesStackTraceWrapper>(
-      facebook::hermes::HermesApi2().captureStackTrace(hermesRuntimeHolder_->getHermesRuntime()));
+      HermesApi2().captureStackTrace(hermesRuntimeHolder_->getHermesRuntime()));
 }
 
 } // namespace Microsoft::ReactNative
